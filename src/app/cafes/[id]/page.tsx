@@ -2,10 +2,10 @@
 
 import { supabase } from "@/lib/supabaseClient";
 import CafeGallery from "@/components/CafeGallery";
+import CafeDetailsAccordion from "@/components/CafeDetailsAccordion";
 import Link from "next/link";
 
 type CafePageProps = {
-  // Next 13.5+ gives params as a Promise in server components
   params: Promise<{ id: string }>;
 };
 
@@ -15,7 +15,6 @@ type CafeImageRow = {
   cafe_id?: string;
 };
 
-// Config for console / devices chips
 const CONSOLE_CONFIG: {
   key:
     | "ps5_count"
@@ -29,36 +28,72 @@ const CONSOLE_CONFIG: {
     | "vr_count";
   label: string;
   icon: string;
+  color: string;
 }[] = [
-  { key: "ps5_count", label: "PS5", icon: "🎮" },
-  { key: "ps4_count", label: "PS4", icon: "🎮" },
-  { key: "xbox_count", label: "Xbox", icon: "🎮" },
-  { key: "pc_count", label: "PC", icon: "💻" },
-  { key: "pool_count", label: "Pool", icon: "🎱" },
-  { key: "arcade_count", label: "Arcade", icon: "🕹️" },
-  { key: "snooker_count", label: "Snooker", icon: "🎱" },
-  { key: "steering_wheel_count", label: "Wheel", icon: "🏎️" },
-  { key: "vr_count", label: "VR", icon: "🥽" },
+  { key: "ps5_count", label: "PS5", icon: "🎮", color: "#0070d1" },
+  { key: "ps4_count", label: "PS4", icon: "🎮", color: "#003791" },
+  { key: "xbox_count", label: "Xbox", icon: "🎮", color: "#107c10" },
+  { key: "pc_count", label: "PC", icon: "💻", color: "#ff073a" },
+  { key: "pool_count", label: "Pool", icon: "🎱", color: "#8b4513" },
+  { key: "arcade_count", label: "Arcade", icon: "🕹️", color: "#ff6b00" },
+  { key: "snooker_count", label: "Snooker", icon: "🎱", color: "#228b22" },
+  { key: "steering_wheel_count", label: "Racing", icon: "🏎️", color: "#e10600" },
+  { key: "vr_count", label: "VR", icon: "🥽", color: "#9945ff" },
 ];
 
 export const dynamic = "force-dynamic";
 
 export default async function CafePage({ params }: CafePageProps) {
-  // 1) Resolve params and get id from URL
   const { id } = await params;
+
+  // Common styles
+  const fonts = {
+    heading: "'Orbitron', sans-serif",
+    body: "'Rajdhani', sans-serif",
+  };
+
+  const colors = {
+    red: "#ff073a",
+    cyan: "#00f0ff",
+    dark: "#08080c",
+    cardBg: "rgba(18, 18, 24, 0.9)",
+    border: "rgba(255, 255, 255, 0.08)",
+    textPrimary: "#ffffff",
+    textSecondary: "#9ca3af",
+    textMuted: "#6b7280",
+  };
 
   if (!id) {
     return (
-      <main className="mx-auto max-w-4xl px-4 py-12">
-        <h1 className="mb-4 text-2xl font-semibold">Café not found</h1>
-        <p className="text-gray-400">
+      <main
+        style={{
+          maxWidth: "896px",
+          margin: "0 auto",
+          padding: "48px 16px",
+          fontFamily: fonts.body,
+        }}
+      >
+        <link
+          href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&display=swap"
+          rel="stylesheet"
+        />
+        <h1
+          style={{
+            fontFamily: fonts.heading,
+            fontSize: "24px",
+            color: colors.red,
+            marginBottom: "16px",
+          }}
+        >
+          Café not found
+        </h1>
+        <p style={{ color: colors.textSecondary }}>
           The URL did not contain a valid café id.
         </p>
       </main>
     );
   }
 
-  // 2) Fetch café details (also bring console counts + cover)
   const { data: cafeRows, error: cafeError } = await supabase
     .from("cafes")
     .select(
@@ -97,16 +132,35 @@ export default async function CafePage({ params }: CafePageProps) {
 
   if (!cafe || cafeError) {
     return (
-      <main className="mx-auto max-w-4xl px-4 py-12">
-        <h1 className="mb-4 text-2xl font-semibold">Café not found</h1>
-        <p className="text-gray-400">
+      <main
+        style={{
+          maxWidth: "896px",
+          margin: "0 auto",
+          padding: "48px 16px",
+          fontFamily: fonts.body,
+        }}
+      >
+        <link
+          href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&display=swap"
+          rel="stylesheet"
+        />
+        <h1
+          style={{
+            fontFamily: fonts.heading,
+            fontSize: "24px",
+            color: colors.red,
+            marginBottom: "16px",
+          }}
+        >
+          Café not found
+        </h1>
+        <p style={{ color: colors.textSecondary }}>
           This café doesn&apos;t exist anymore or could not be loaded.
         </p>
       </main>
     );
   }
 
-  // 3) Gallery images
   const { data: galleryRows } = await supabase
     .from("cafe_images")
     .select("id, image_url, cafe_id")
@@ -119,7 +173,6 @@ export default async function CafePage({ params }: CafePageProps) {
       alt: `${cafe.name} photo`,
     })) ?? [];
 
-  // 4) Google Maps link
   const mapsUrl =
     cafe.google_maps_url ??
     (cafe.address
@@ -128,158 +181,704 @@ export default async function CafePage({ params }: CafePageProps) {
         )}`
       : null);
 
-  // 5) Consoles / devices available
   const availableConsoles = CONSOLE_CONFIG.filter(({ key }) => {
     const value = (cafe as any)[key] as number | null;
     return (value ?? 0) > 0;
   });
 
-  // 6) UI
+  // Styles
+  const sectionCardStyle: React.CSSProperties = {
+    background: `linear-gradient(145deg, rgba(18, 18, 24, 0.8) 0%, rgba(14, 14, 18, 0.9) 100%)`,
+    backdropFilter: "blur(10px)",
+    border: `1px solid ${colors.border}`,
+    borderRadius: "16px",
+    padding: "20px",
+  };
+
+  const sectionTitleStyle: React.CSSProperties = {
+    fontFamily: fonts.heading,
+    fontSize: "14px",
+    fontWeight: 600,
+    color: colors.red,
+    textTransform: "uppercase",
+    letterSpacing: "2px",
+    marginBottom: "16px",
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+  };
+
   return (
-    <main className="mx-auto max-w-5xl space-y-8 px-4 py-8">
-      {/* Top: cover image + booking card */}
-      <section className="flex flex-col gap-4 md:grid md:grid-cols-[2fr,1fr] md:items-start">
-        {/* Cover / banner */}
-        {cafe.cover_url ? (
-          <div className="relative aspect-[2/1] w-full overflow-hidden rounded-2xl md:aspect-[2.3/1]">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={cafe.cover_url}
-              alt={cafe.name}
-              className="h-full w-full object-cover"
-            />
-            <div className="absolute inset-0 bg-black/20" />
-          </div>
-        ) : (
-          <div className="flex h-40 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-600 via-indigo-600 to-sky-500 px-6 text-center md:h-56">
-            <div>
-              <h1 className="mb-2 text-2xl font-bold text-white md:text-3xl">
-                {cafe.name}
-              </h1>
-              <p className="text-xs text-white/80 md:text-sm">
-                High-energy gaming space for PC, console and more.
-              </p>
-            </div>
-          </div>
-        )}
+    <main
+      style={{
+        fontFamily: fonts.body,
+        background: `linear-gradient(180deg, ${colors.dark} 0%, #0a0a10 50%, ${colors.dark} 100%)`,
+        minHeight: "100vh",
+        position: "relative",
+      }}
+    >
+      {/* Google Fonts */}
+      <link
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet"
+      />
 
-        {/* Details + booking card */}
-        <div className="space-y-4 rounded-2xl border border-neutral-800 bg-neutral-900 p-5">
-          {/* Name + address + inline directions */}
-          <div className="space-y-2">
-            <h2 className="text-lg font-semibold md:text-xl">{cafe.name}</h2>
+      {/* Background ambient glow */}
+      <div
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: `
+            radial-gradient(ellipse at 20% 0%, rgba(255, 7, 58, 0.08) 0%, transparent 50%),
+            radial-gradient(ellipse at 80% 100%, rgba(0, 240, 255, 0.06) 0%, transparent 50%)
+          `,
+          pointerEvents: "none",
+          zIndex: 0,
+        }}
+      />
 
-            {mapsUrl ? (
-              <div className="flex items-center justify-between gap-3 text-xs md:text-sm">
-                <div className="flex min-w-0 flex-1 items-center gap-2">
-                  <span className="text-[14px] leading-none text-red-400">
-                    📍
+      <div
+        style={{
+          maxWidth: "1024px",
+          margin: "0 auto",
+          padding: "24px 16px",
+          position: "relative",
+          zIndex: 1,
+          display: "flex",
+          flexDirection: "column",
+          gap: "24px",
+        }}
+      >
+        {/* Hero Section */}
+        <section
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr",
+            gap: "16px",
+          }}
+        >
+          {/* Cover Image */}
+          {cafe.cover_url ? (
+            <div
+              style={{
+                position: "relative",
+                aspectRatio: "16/9",
+                width: "100%",
+                overflow: "hidden",
+                borderRadius: "16px",
+              }}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={cafe.cover_url}
+                alt={cafe.name}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                }}
+              />
+              {/* Gradient overlay */}
+              <div
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  background: `linear-gradient(180deg, transparent 0%, transparent 40%, rgba(8, 8, 12, 0.6) 70%, rgba(8, 8, 12, 0.95) 100%)`,
+                  pointerEvents: "none",
+                }}
+              />
+              {/* Title overlay */}
+              <div
+                style={{
+                  position: "absolute",
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  padding: "20px",
+                  zIndex: 2,
+                }}
+              >
+                <h1
+                  style={{
+                    fontFamily: fonts.heading,
+                    fontSize: "clamp(20px, 4vw, 32px)",
+                    fontWeight: 700,
+                    color: colors.textPrimary,
+                    textShadow: "0 2px 20px rgba(0, 0, 0, 0.5)",
+                    marginBottom: "8px",
+                  }}
+                >
+                  {cafe.name}
+                </h1>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "12px",
+                    flexWrap: "wrap",
+                  }}
+                >
+                  {/* Status badge */}
+                  <span
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      padding: "6px 12px",
+                      background: "rgba(34, 197, 94, 0.15)",
+                      border: "1px solid rgba(34, 197, 94, 0.3)",
+                      borderRadius: "20px",
+                      fontSize: "12px",
+                      fontWeight: 600,
+                      color: "#22c55e",
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: "6px",
+                        height: "6px",
+                        background: "#22c55e",
+                        borderRadius: "50%",
+                      }}
+                    />
+                    Open Now
                   </span>
-                  <span className="truncate text-gray-400">
+                  {cafe.address && (
+                    <span
+                      style={{
+                        fontSize: "13px",
+                        color: "rgba(255, 255, 255, 0.7)",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                      }}
+                    >
+                      <span style={{ color: colors.red }}>📍</span>
+                      {cafe.address}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* Fallback cover */
+            <div
+              style={{
+                aspectRatio: "16/9",
+                width: "100%",
+                borderRadius: "16px",
+                background: `linear-gradient(135deg, #1a1a2e 0%, #16213e 25%, #0f3460 50%, #1a1a2e 75%, #16213e 100%)`,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "24px",
+                textAlign: "center",
+                position: "relative",
+                overflow: "hidden",
+              }}
+            >
+              <div
+                style={{
+                  position: "absolute",
+                  right: "20px",
+                  bottom: "20px",
+                  fontSize: "80px",
+                  opacity: 0.1,
+                }}
+              >
+                🎮
+              </div>
+              <div style={{ position: "relative", zIndex: 1 }}>
+                <h1
+                  style={{
+                    fontFamily: fonts.heading,
+                    fontSize: "clamp(24px, 5vw, 36px)",
+                    fontWeight: 700,
+                    color: colors.textPrimary,
+                    marginBottom: "12px",
+                  }}
+                >
+                  {cafe.name}
+                </h1>
+                <p
+                  style={{
+                    fontSize: "14px",
+                    color: "rgba(255, 255, 255, 0.6)",
+                    maxWidth: "300px",
+                  }}
+                >
+                  Premium gaming experience with latest consoles & high-end PCs
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Booking Card */}
+          <div
+            style={{
+              background: `linear-gradient(145deg, rgba(20, 20, 28, 0.95) 0%, rgba(16, 16, 22, 0.98) 100%)`,
+              backdropFilter: "blur(20px)",
+              border: `1px solid rgba(255, 7, 58, 0.2)`,
+              borderRadius: "20px",
+              padding: "20px",
+              position: "relative",
+              overflow: "hidden",
+            }}
+          >
+            {/* Top accent line */}
+            <div
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                height: "1px",
+                background: `linear-gradient(90deg, transparent, rgba(255, 7, 58, 0.5), transparent)`,
+              }}
+            />
+
+            {/* Cafe Name */}
+            <h2
+              style={{
+                fontFamily: fonts.heading,
+                fontSize: "18px",
+                fontWeight: 600,
+                color: colors.textPrimary,
+                marginBottom: "16px",
+              }}
+            >
+              {cafe.name}
+            </h2>
+
+            {/* Address with directions */}
+            {mapsUrl && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "12px",
+                  marginBottom: "20px",
+                  paddingBottom: "16px",
+                  borderBottom: `1px solid ${colors.border}`,
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: "10px",
+                    flex: 1,
+                    minWidth: 0,
+                  }}
+                >
+                  <span style={{ fontSize: "16px", color: colors.red }}>📍</span>
+                  <span
+                    style={{
+                      fontSize: "13px",
+                      color: colors.textSecondary,
+                      lineHeight: 1.4,
+                    }}
+                  >
                     {cafe.address ?? "Address coming soon"}
                   </span>
                 </div>
-
                 <a
                   href={mapsUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="shrink-0 text-xs font-semibold text-sky-400 underline-offset-2 hover:underline md:text-sm"
+                  style={{
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    color: colors.cyan,
+                    textDecoration: "none",
+                    whiteSpace: "nowrap",
+                    padding: "6px 12px",
+                    background: "rgba(0, 240, 255, 0.1)",
+                    borderRadius: "6px",
+                  }}
                 >
-                  Directions
+                  Directions →
                 </a>
               </div>
-            ) : (
-              <p className="mt-1 text-xs text-gray-400 md:text-sm">
-                {cafe.address ?? "Address coming soon"}
-              </p>
             )}
-          </div>
 
-          {/* Pricing */}
-          <div className="pt-3 text-xs text-gray-400 md:text-sm">
-            <p>Starts from</p>
-            <p className="text-xl font-semibold text-white md:text-2xl">
-              ₹{cafe.hourly_price ?? 0}
-              <span className="text-xs font-normal text-gray-400 md:text-sm">
-                {" "}
-                /hr
-              </span>
-            </p>
-            <p className="text-[10px] text-gray-500 md:text-xs">
-              intro price (subject to change)
-            </p>
-          </div>
-
-          {/* CTA */}
-          <Link href={`/cafes/${cafe.id}/book`}>
-            <button className="mt-2 w-full rounded-xl bg-white py-3 text-sm font-semibold text-black">
-              Book now
-            </button>
-          </Link>
-        </div>
-      </section>
-
-      {/* Consoles / devices available */}
-      {availableConsoles.length > 0 && (
-        <section className="space-y-2">
-          <h2 className="text-base font-semibold md:text-lg">
-            Consoles available
-          </h2>
-          <div className="flex flex-wrap gap-1.5">
-            {availableConsoles.map(({ key, icon, label }) => (
-              <span
-                key={key}
-                className="inline-flex items-center gap-1 rounded-full bg-neutral-900 px-2.5 py-1 text-[11px] text-gray-100"
+            {/* Pricing */}
+            <div style={{ marginBottom: "24px" }}>
+              <p
+                style={{
+                  fontSize: "12px",
+                  color: colors.textMuted,
+                  marginBottom: "6px",
+                  textTransform: "uppercase",
+                  letterSpacing: "1px",
+                }}
               >
-                <span className="text-base leading-none md:text-lg">
-                  {icon}
+                Starting from
+              </p>
+              <div>
+                <span
+                  style={{
+                    fontFamily: fonts.body,
+                    fontSize: "18px",
+                    color: colors.cyan,
+                    marginRight: "2px",
+                  }}
+                >
+                  ₹
                 </span>
-                <span className="leading-none">{label}</span>
+                <span
+                  style={{
+                    fontFamily: fonts.heading,
+                    fontSize: "36px",
+                    fontWeight: 700,
+                    color: colors.textPrimary,
+                  }}
+                >
+                  {cafe.hourly_price ?? 0}
+                </span>
+                <span
+                  style={{
+                    fontSize: "14px",
+                    color: colors.textMuted,
+                    fontWeight: 400,
+                  }}
+                >
+                  {" "}
+                  /hr
+                </span>
+              </div>
+              <p
+                style={{
+                  fontSize: "11px",
+                  color: "#4b5563",
+                  marginTop: "6px",
+                }}
+              >
+                💡 Prices may vary based on console/device
+              </p>
+            </div>
+
+            {/* Quick equipment preview */}
+            {availableConsoles.length > 0 && (
+              <div
+                style={{
+                  display: "flex",
+                  gap: "8px",
+                  flexWrap: "wrap",
+                  marginBottom: "20px",
+                }}
+              >
+                {availableConsoles.slice(0, 4).map(({ key, icon, label }) => (
+                  <span
+                    key={key}
+                    style={{
+                      fontSize: "11px",
+                      padding: "4px 10px",
+                      background: "rgba(255, 255, 255, 0.05)",
+                      borderRadius: "6px",
+                      color: "#d1d5db",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "4px",
+                    }}
+                  >
+                    <span style={{ fontSize: "14px" }}>{icon}</span>
+                    {label}
+                  </span>
+                ))}
+                {availableConsoles.length > 4 && (
+                  <span
+                    style={{
+                      fontSize: "11px",
+                      padding: "4px 10px",
+                      background: "rgba(255, 7, 58, 0.1)",
+                      borderRadius: "6px",
+                      color: colors.red,
+                    }}
+                  >
+                    +{availableConsoles.length - 4} more
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Book Now Button */}
+            <Link href={`/cafes/${cafe.id}/book`} style={{ display: "block" }}>
+              <button
+                style={{
+                  width: "100%",
+                  padding: "14px 24px",
+                  background: `linear-gradient(135deg, ${colors.red} 0%, #ff3366 50%, ${colors.red} 100%)`,
+                  border: "none",
+                  borderRadius: "12px",
+                  color: "white",
+                  fontFamily: fonts.heading,
+                  fontWeight: 600,
+                  fontSize: "14px",
+                  textTransform: "uppercase",
+                  letterSpacing: "1px",
+                  cursor: "pointer",
+                }}
+              >
+                🎮 Book Your Session
+              </button>
+            </Link>
+
+            {/* Trust indicators */}
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                gap: "16px",
+                marginTop: "16px",
+                paddingTop: "16px",
+                borderTop: `1px solid ${colors.border}`,
+              }}
+            >
+              <span
+                style={{
+                  fontSize: "11px",
+                  color: colors.textMuted,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px",
+                }}
+              >
+                <span style={{ color: "#22c55e" }}>✓</span> Instant Confirmation
               </span>
-            ))}
+              <span
+                style={{
+                  fontSize: "11px",
+                  color: colors.textMuted,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px",
+                }}
+              >
+                <span style={{ color: "#22c55e" }}>✓</span> Free Cancellation
+              </span>
+            </div>
           </div>
         </section>
-      )}
 
-      {/* About */}
-      <section className="space-y-2">
-        <h2 className="text-base font-semibold md:text-lg">About the café</h2>
-        <p className="text-xs leading-relaxed text-gray-400 md:text-sm">
-          {cafe.description
-            ? cafe.description
-            : "Description coming soon. This café will soon add more details about their setup, PCs, consoles and ambience."}
-        </p>
-      </section>
-
-      {/* Gallery */}
-      <section className="space-y-2">
-        <h2 className="text-base font-semibold md:text-lg">Gallery</h2>
-        <CafeGallery images={galleryImages} />
-      </section>
-
-      {/* Venue / directions */}
-      <section className="space-y-2">
-        <h2 className="text-base font-semibold md:text-lg">Venue</h2>
-        <div className="flex flex-col gap-3 rounded-2xl border border-neutral-800 bg-neutral-900 p-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="text-sm font-medium md:text-base">{cafe.name}</p>
-            <p className="text-xs text-gray-400 md:text-sm">
-              {cafe.address ?? "Address coming soon"}
-            </p>
-          </div>
-          {mapsUrl && (
-            <a
-              href={mapsUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center justify-center rounded-xl border border-neutral-700 px-4 py-2 text-xs md:text-sm"
+        {/* Equipment Section */}
+        {availableConsoles.length > 0 && (
+          <section style={sectionCardStyle}>
+            <h2 style={sectionTitleStyle}>
+              <span>🎮</span> Available Equipment
+              <span
+                style={{
+                  flex: 1,
+                  height: "1px",
+                  background: `linear-gradient(90deg, rgba(255, 7, 58, 0.3), transparent)`,
+                }}
+              />
+            </h2>
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: "10px",
+              }}
             >
-              Get directions
-            </a>
-          )}
-        </div>
-      </section>
+              {availableConsoles.map(({ key, icon, label, color }) => {
+                const count = (cafe as any)[key] as number;
+                return (
+                  <div
+                    key={key}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      padding: "8px 14px",
+                      borderRadius: "10px",
+                      background: "rgba(255, 255, 255, 0.05)",
+                      border: `1px solid rgba(255, 255, 255, 0.1)`,
+                      fontSize: "13px",
+                      fontWeight: 500,
+                      color: "#e5e5e5",
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: "18px",
+                        filter: `drop-shadow(0 0 8px ${color})`,
+                      }}
+                    >
+                      {icon}
+                    </span>
+                    <span>{label}</span>
+                    {count > 1 && (
+                      <span
+                        style={{
+                          fontFamily: fonts.heading,
+                          fontSize: "11px",
+                          padding: "2px 6px",
+                          borderRadius: "6px",
+                          background: "rgba(255, 255, 255, 0.1)",
+                          color: colors.cyan,
+                        }}
+                      >
+                        ×{count}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* About Section */}
+        <section style={sectionCardStyle}>
+          <h2 style={sectionTitleStyle}>
+            <span>📖</span> About
+            <span
+              style={{
+                flex: 1,
+                height: "1px",
+                background: `linear-gradient(90deg, rgba(255, 7, 58, 0.3), transparent)`,
+              }}
+            />
+          </h2>
+          <p
+            style={{
+              fontSize: "14px",
+              lineHeight: 1.7,
+              color: colors.textSecondary,
+            }}
+          >
+            {cafe.description
+              ? cafe.description
+              : `Welcome to ${cafe.name} - your ultimate gaming destination! We offer a premium gaming experience with the latest consoles, high-end PCs, and comfortable seating. Whether you're into competitive esports, casual gaming, or just hanging out with friends, we've got you covered.`}
+          </p>
+        </section>
+
+        {/* Cafe Details Accordion - Highlights & Specs */}
+        <CafeDetailsAccordion
+          opening_hours={cafe.opening_hours}
+          peak_hours={cafe.peak_hours}
+          popular_games={cafe.popular_games}
+          offers={cafe.offers}
+          monitor_details={cafe.monitor_details}
+          processor_details={cafe.processor_details}
+          gpu_details={cafe.gpu_details}
+          ram_details={cafe.ram_details}
+          accessories_details={cafe.accessories_details}
+        />
+
+        {/* Gallery Section */}
+        <section style={sectionCardStyle}>
+          <h2 style={sectionTitleStyle}>
+            <span>📸</span> Gallery
+            <span
+              style={{
+                flex: 1,
+                height: "1px",
+                background: `linear-gradient(90deg, rgba(255, 7, 58, 0.3), transparent)`,
+              }}
+            />
+          </h2>
+          <CafeGallery images={galleryImages} />
+        </section>
+
+        {/* Venue Section */}
+        <section
+          style={{
+            background: `linear-gradient(135deg, rgba(20, 20, 28, 0.9) 0%, rgba(16, 16, 22, 0.95) 100%)`,
+            border: `1px solid rgba(0, 240, 255, 0.15)`,
+            borderRadius: "16px",
+            padding: "20px",
+            position: "relative",
+            overflow: "hidden",
+          }}
+        >
+          {/* Top accent gradient */}
+          <div
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              height: "2px",
+              background: `linear-gradient(90deg, ${colors.cyan}, ${colors.red}, ${colors.cyan})`,
+            }}
+          />
+
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "16px",
+            }}
+          >
+            <div>
+              <h3
+                style={{
+                  fontFamily: fonts.heading,
+                  fontSize: "16px",
+                  fontWeight: 600,
+                  color: colors.textPrimary,
+                  marginBottom: "8px",
+                }}
+              >
+                📍 {cafe.name}
+              </h3>
+              <p
+                style={{
+                  fontSize: "14px",
+                  color: colors.textSecondary,
+                  maxWidth: "400px",
+                }}
+              >
+                {cafe.address ?? "Address coming soon"}
+              </p>
+            </div>
+            {mapsUrl && (
+              <a
+                href={mapsUrl}
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  padding: "10px 20px",
+                  background: "rgba(0, 240, 255, 0.1)",
+                  border: `1px solid rgba(0, 240, 255, 0.3)`,
+                  borderRadius: "10px",
+                  color: colors.cyan,
+                  fontFamily: fonts.body,
+                  fontWeight: 600,
+                  fontSize: "14px",
+                  textDecoration: "none",
+                  width: "fit-content",
+                }}
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                  <circle cx="12" cy="10" r="3" />
+                </svg>
+                Get Directions
+              </a>
+            )}
+          </div>
+        </section>
+
+        {/* Bottom spacing for mobile */}
+        <div style={{ height: "80px" }} />
+      </div>
     </main>
   );
 }

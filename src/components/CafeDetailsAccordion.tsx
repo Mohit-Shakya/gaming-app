@@ -19,6 +19,45 @@ type CafeDetailsAccordionProps = {
 
 type SectionId = "highlights" | "device" | null;
 
+// ============ STYLES ============
+const colors = {
+  red: "#ff073a",
+  cyan: "#00f0ff",
+  dark: "#08080c",
+  darkCard: "#0f0f14",
+  border: "rgba(255, 255, 255, 0.08)",
+  textPrimary: "#ffffff",
+  textSecondary: "#9ca3af",
+  textMuted: "#6b7280",
+  green: "#22c55e",
+  orange: "#f59e0b",
+  purple: "#a855f7",
+};
+
+const fonts = {
+  heading: "'Orbitron', sans-serif",
+  body: "'Rajdhani', sans-serif",
+};
+
+// Highlight items config
+const highlightItems = [
+  { key: "opening_hours", icon: "⏰", label: "Opening Hours", color: colors.cyan },
+  { key: "peak_hours", icon: "🔥", label: "Peak Hours", color: colors.orange },
+  { key: "popular_games", icon: "🎮", label: "Popular Games", color: colors.red },
+  { key: "offers", icon: "🏷️", label: "Offers", color: colors.green },
+];
+
+// Spec items config
+const specItems = [
+  { key: "monitor_details", icon: "🖥️", label: "Monitor" },
+  { key: "screen_size", icon: "📐", label: "Screen Size" },
+  { key: "processor_details", icon: "⚡", label: "Processor" },
+  { key: "gpu_details", icon: "🎴", label: "Graphics Card" },
+  { key: "ram_details", icon: "💾", label: "RAM" },
+  { key: "ssd_details", icon: "💿", label: "Storage" },
+  { key: "accessories_details", icon: "🎧", label: "Accessories" },
+];
+
 export default function CafeDetailsAccordion(props: CafeDetailsAccordionProps) {
   const [openSection, setOpenSection] = useState<SectionId>("highlights");
 
@@ -43,108 +82,305 @@ export default function CafeDetailsAccordion(props: CafeDetailsAccordionProps) {
   if (!hasHighlights && !hasDeviceSpecs) return null;
 
   return (
-    <section className="rounded-2xl border border-neutral-800 bg-neutral-900">
-      <div className="flex items-center justify-between px-4 py-3 sm:px-5">
-        <h2 className="text-base font-semibold md:text-lg">Café details</h2>
+    <section
+      style={{
+        fontFamily: fonts.body,
+        borderRadius: "16px",
+        overflow: "hidden",
+        border: `1px solid ${colors.border}`,
+        background: `linear-gradient(145deg, rgba(18, 18, 24, 0.9) 0%, rgba(14, 14, 18, 0.95) 100%)`,
+      }}
+    >
+      {/* Header */}
+      <div
+        style={{
+          padding: "16px 20px",
+          borderBottom: `1px solid ${colors.border}`,
+          display: "flex",
+          alignItems: "center",
+          gap: "10px",
+        }}
+      >
+        <span style={{ fontSize: "20px" }}>📋</span>
+        <h2
+          style={{
+            fontFamily: fonts.heading,
+            fontSize: "14px",
+            fontWeight: 600,
+            color: colors.red,
+            textTransform: "uppercase",
+            letterSpacing: "2px",
+            margin: 0,
+          }}
+        >
+          Café Details
+        </h2>
       </div>
 
-      {/* Top highlights */}
+      {/* Top Highlights Section */}
       {hasHighlights && (
-        <div className="border-t border-neutral-800">
+        <div style={{ borderBottom: openSection === "highlights" || hasDeviceSpecs ? `1px solid ${colors.border}` : "none" }}>
+          {/* Accordion Header */}
           <button
             type="button"
             onClick={() => toggle("highlights")}
-            className="flex w-full items-center justify-between px-4 py-3 text-left text-sm sm:px-5"
+            style={{
+              width: "100%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "14px 20px",
+              background: openSection === "highlights" 
+                ? "rgba(255, 7, 58, 0.05)" 
+                : "transparent",
+              border: "none",
+              cursor: "pointer",
+              transition: "background 0.2s ease",
+            }}
           >
-            <span className="font-medium text-gray-100">Top highlights</span>
-            <span className="text-xs text-gray-400">
-              {openSection === "highlights" ? "▲" : "▼"}
-            </span>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <span style={{ fontSize: "16px" }}>✨</span>
+              <span
+                style={{
+                  fontSize: "14px",
+                  fontWeight: 600,
+                  color: colors.textPrimary,
+                }}
+              >
+                Top Highlights
+              </span>
+            </div>
+            <div
+              style={{
+                width: "24px",
+                height: "24px",
+                borderRadius: "6px",
+                background: openSection === "highlights" 
+                  ? `rgba(255, 7, 58, 0.2)` 
+                  : "rgba(255, 255, 255, 0.05)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                transition: "all 0.2s ease",
+              }}
+            >
+              <span
+                style={{
+                  fontSize: "10px",
+                  color: openSection === "highlights" ? colors.red : colors.textMuted,
+                  transform: openSection === "highlights" ? "rotate(180deg)" : "rotate(0deg)",
+                  transition: "transform 0.2s ease",
+                }}
+              >
+                ▼
+              </span>
+            </div>
           </button>
 
+          {/* Accordion Content */}
           {openSection === "highlights" && (
-            <div className="space-y-2 px-4 pb-4 text-xs text-gray-300 sm:px-5 sm:text-sm">
-              {props.opening_hours && (
-                <p>
-                  <span className="font-semibold">⏰ Opening hours: </span>
-                  {props.opening_hours}
-                </p>
-              )}
-              {props.peak_hours && (
-                <p>
-                  <span className="font-semibold">🔥 Peak hours: </span>
-                  {props.peak_hours}
-                </p>
-              )}
-              {props.popular_games && (
-                <p>
-                  <span className="font-semibold">🎮 Popular games: </span>
-                  {props.popular_games}
-                </p>
-              )}
-              {props.offers && (
-                <p>
-                  <span className="font-semibold">🏷️ Offers: </span>
-                  {props.offers}
-                </p>
-              )}
+            <div
+              style={{
+                padding: "0 20px 16px",
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                gap: "12px",
+              }}
+            >
+              {highlightItems.map((item) => {
+                const value = props[item.key as keyof CafeDetailsAccordionProps];
+                if (!value) return null;
+
+                return (
+                  <div
+                    key={item.key}
+                    style={{
+                      padding: "14px",
+                      background: "rgba(255, 255, 255, 0.03)",
+                      borderRadius: "12px",
+                      border: `1px solid rgba(255, 255, 255, 0.05)`,
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                        marginBottom: "8px",
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: "16px",
+                          filter: `drop-shadow(0 0 6px ${item.color})`,
+                        }}
+                      >
+                        {item.icon}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: "11px",
+                          fontWeight: 600,
+                          color: item.color,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.5px",
+                        }}
+                      >
+                        {item.label}
+                      </span>
+                    </div>
+                    <p
+                      style={{
+                        fontSize: "13px",
+                        color: colors.textSecondary,
+                        margin: 0,
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      {value}
+                    </p>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
       )}
 
-      {/* Device specifications */}
+      {/* Device Specifications Section */}
       {hasDeviceSpecs && (
-        <div className="border-t border-neutral-800">
+        <div>
+          {/* Accordion Header */}
           <button
             type="button"
             onClick={() => toggle("device")}
-            className="flex w-full items-center justify-between px-4 py-3 text-left text-sm sm:px-5"
+            style={{
+              width: "100%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "14px 20px",
+              background: openSection === "device" 
+                ? "rgba(0, 240, 255, 0.05)" 
+                : "transparent",
+              border: "none",
+              cursor: "pointer",
+              transition: "background 0.2s ease",
+            }}
           >
-            <span className="font-medium text-gray-100">
-              Device specifications
-            </span>
-            <span className="text-xs text-gray-400">
-              {openSection === "device" ? "▲" : "▼"}
-            </span>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <span style={{ fontSize: "16px" }}>💻</span>
+              <span
+                style={{
+                  fontSize: "14px",
+                  fontWeight: 600,
+                  color: colors.textPrimary,
+                }}
+              >
+                Device Specifications
+              </span>
+            </div>
+            <div
+              style={{
+                width: "24px",
+                height: "24px",
+                borderRadius: "6px",
+                background: openSection === "device" 
+                  ? `rgba(0, 240, 255, 0.2)` 
+                  : "rgba(255, 255, 255, 0.05)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                transition: "all 0.2s ease",
+              }}
+            >
+              <span
+                style={{
+                  fontSize: "10px",
+                  color: openSection === "device" ? colors.cyan : colors.textMuted,
+                  transform: openSection === "device" ? "rotate(180deg)" : "rotate(0deg)",
+                  transition: "transform 0.2s ease",
+                }}
+              >
+                ▼
+              </span>
+            </div>
           </button>
 
+          {/* Accordion Content */}
           {openSection === "device" && (
-            <div className="grid grid-cols-1 gap-x-6 gap-y-2 px-4 pb-4 text-xs text-gray-300 sm:grid-cols-2 sm:px-5 sm:text-sm">
-              {props.monitor_details && (
-                <SpecRow label="Monitor" value={props.monitor_details} />
-              )}
-              {props.processor_details && (
-                <SpecRow label="Processor" value={props.processor_details} />
-              )}
-              {props.gpu_details && (
-                <SpecRow label="Graphic card" value={props.gpu_details} />
-              )}
-              {props.ram_details && (
-                <SpecRow label="RAM" value={props.ram_details} />
-              )}
-              {props.ssd_details && (
-                <SpecRow label="SSD" value={props.ssd_details} />
-              )}
-              {props.accessories_details && (
-                <SpecRow label="Accessories" value={props.accessories_details} />
-              )}
-              {props.screen_size && (
-                <SpecRow label="Screen size" value={props.screen_size} />
-              )}
+            <div
+              style={{
+                padding: "0 20px 16px",
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
+                gap: "10px",
+              }}
+            >
+              {specItems.map((item) => {
+                const value = props[item.key as keyof CafeDetailsAccordionProps];
+                if (!value) return null;
+
+                return (
+                  <div
+                    key={item.key}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "12px",
+                      padding: "12px",
+                      background: "rgba(255, 255, 255, 0.02)",
+                      borderRadius: "10px",
+                      border: `1px solid rgba(255, 255, 255, 0.04)`,
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: "36px",
+                        height: "36px",
+                        background: "rgba(0, 240, 255, 0.1)",
+                        borderRadius: "8px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: "18px",
+                        flexShrink: 0,
+                      }}
+                    >
+                      {item.icon}
+                    </div>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div
+                        style={{
+                          fontSize: "10px",
+                          color: colors.textMuted,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.5px",
+                          marginBottom: "2px",
+                        }}
+                      >
+                        {item.label}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: "13px",
+                          color: colors.textPrimary,
+                          fontWeight: 500,
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                      >
+                        {value}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
       )}
     </section>
-  );
-}
-
-function SpecRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex justify-between gap-4">
-      <span className="text-gray-400">{label}</span>
-      <span className="flex-1 text-right text-gray-200">{value}</span>
-    </div>
   );
 }

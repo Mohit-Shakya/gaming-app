@@ -10,8 +10,8 @@ type BookingRow = {
   id: string;
   cafe_id: string | null;
   user_id: string | null;
-  booking_date: string | null; // 'YYYY-MM-DD'
-  start_time: string | null; // e.g. "10:00 am"
+  booking_date: string | null;
+  start_time: string | null;
   total_amount: number | null;
   status: string | null;
   created_at: string | null;
@@ -37,6 +37,38 @@ type BookingWithRelations = BookingRow & {
   cafe: CafeRow | null;
 };
 
+// ============ STYLES ============
+const colors = {
+  red: "#ff073a",
+  cyan: "#00f0ff",
+  dark: "#08080c",
+  darkCard: "#0f0f14",
+  border: "rgba(255, 255, 255, 0.08)",
+  textPrimary: "#ffffff",
+  textSecondary: "#9ca3af",
+  textMuted: "#6b7280",
+  green: "#22c55e",
+  orange: "#f59e0b",
+};
+
+const fonts = {
+  heading: "'Orbitron', sans-serif",
+  body: "'Rajdhani', sans-serif",
+};
+
+// Console icons
+const consoleIcons: Record<string, string> = {
+  ps5: "🎮",
+  ps4: "🎮",
+  xbox: "🎮",
+  pc: "💻",
+  pool: "🎱",
+  arcade: "🕹️",
+  snooker: "🎱",
+  vr: "🥽",
+  steering: "🏎️",
+};
+
 export default function BookingDetailsPage() {
   const params = useParams<{ bookingId: string }>();
   const bookingId = params?.bookingId;
@@ -45,8 +77,9 @@ export default function BookingDetailsPage() {
   const [data, setData] = useState<BookingWithRelations | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isCancelling, setIsCancelling] = useState(false);
 
-  // --------- load booking + items + cafe ----------
+  // Load booking + items + cafe
   useEffect(() => {
     if (!bookingId) return;
 
@@ -57,7 +90,6 @@ export default function BookingDetailsPage() {
         setLoading(true);
         setErrorMsg(null);
 
-        // 1) get booking
         const { data: booking, error: bookingError } = await supabase
           .from("bookings")
           .select("*")
@@ -74,7 +106,6 @@ export default function BookingDetailsPage() {
           return;
         }
 
-        // 2) items
         const { data: itemsRows, error: itemsError } = await supabase
           .from("booking_items")
           .select("*")
@@ -87,7 +118,6 @@ export default function BookingDetailsPage() {
 
         const items = (itemsRows || []) as BookingItemRow[];
 
-        // 3) cafe
         let cafe: CafeRow | null = null;
         if (booking.cafe_id) {
           const { data: cafeRow, error: cafeError } = await supabase
@@ -127,7 +157,7 @@ export default function BookingDetailsPage() {
     };
   }, [bookingId]);
 
-  // -------- helpers --------
+  // Helpers
   const formattedDate = useMemo(() => {
     if (!data?.booking_date) return "Date not set";
     try {
@@ -148,152 +178,659 @@ export default function BookingDetailsPage() {
     return data.items.reduce((sum, item) => sum + (item.quantity ?? 0), 0);
   }, [data]);
 
-  function statusBadge(status?: string | null) {
-    const value = (status || "confirmed").toLowerCase();
-    const common =
-      "inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold tracking-wide";
+  const canCancel = useMemo(() => {
+    if (!data) return false;
+    const status = (data.status || "").toLowerCase();
+    if (status === "cancelled") return false;
+    if (!data.booking_date) return false;
 
-    if (value === "cancelled") {
-      return (
-        <span className={`${common} bg-red-100 text-red-700`}>CANCELLED</span>
+    const todayStr = new Date().toISOString().slice(0, 10);
+    return data.booking_date >= todayStr;
+  }, [data]);
+
+  const isUpcoming = useMemo(() => {
+    if (!data?.booking_date) return false;
+    const todayStr = new Date().toISOString().slice(0, 10);
+    return data.booking_date >= todayStr;
+  }, [data]);
+
+  async function handleCancelBooking() {
+    if (!data || !bookingId) return;
+    if (!canCancel) return;
+
+    const ok = window.confirm(
+      "Are you sure you want to cancel this booking? This cannot be undone."
+    );
+    if (!ok) return;
+
+    try {
+      setIsCancelling(true);
+
+      const { error } = await supabase
+        .from("bookings")
+        .update({
+          status: "cancelled",
+          cancelled_at: new Date().toISOString(),
+        })
+        .eq("id", bookingId);
+
+      if (error) throw error;
+
+      setData((prev) =>
+        prev
+          ? { ...prev, status: "cancelled" }
+          : prev
       );
+    } catch (err) {
+      console.error("Error cancelling booking:", err);
+      alert("Could not cancel booking. Please try again.");
+    } finally {
+      setIsCancelling(false);
+    }
+  }
+
+  function getStatusInfo(status?: string | null) {
+    const value = (status || "confirmed").toLowerCase();
+    
+    if (value === "cancelled") {
+      return {
+        label: "CANCELLED",
+        bg: "rgba(239, 68, 68, 0.15)",
+        border: "rgba(239, 68, 68, 0.3)",
+        color: "#ef4444",
+        icon: "✕",
+      };
     }
     if (value === "pending") {
-      return (
-        <span className={`${common} bg-yellow-100 text-yellow-700`}>
-          PENDING
-        </span>
-      );
+      return {
+        label: "PENDING",
+        bg: "rgba(245, 158, 11, 0.15)",
+        border: "rgba(245, 158, 11, 0.3)",
+        color: colors.orange,
+        icon: "⏳",
+      };
     }
+    return {
+      label: "CONFIRMED",
+      bg: "rgba(34, 197, 94, 0.15)",
+      border: "rgba(34, 197, 94, 0.3)",
+      color: colors.green,
+      icon: "✓",
+    };
+  }
+
+  // Loading state
+  if (loading) {
     return (
-      <span className={`${common} bg-emerald-100 text-emerald-700`}>
-        CONFIRMED
-      </span>
+      <div style={{
+        minHeight: "100vh",
+        background: `linear-gradient(180deg, ${colors.dark} 0%, #0a0a10 100%)`,
+        fontFamily: fonts.body,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}>
+        <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+        <div style={{ textAlign: "center" }}>
+          <div style={{
+            width: "48px",
+            height: "48px",
+            border: `3px solid ${colors.border}`,
+            borderTopColor: colors.cyan,
+            borderRadius: "50%",
+            margin: "0 auto 16px",
+            animation: "spin 1s linear infinite",
+          }} />
+          <p style={{ color: colors.textSecondary, fontSize: "14px" }}>
+            Loading booking details...
+          </p>
+        </div>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
     );
   }
 
-  // -------- render --------
+  // Error state
+  if (errorMsg || !data) {
+    return (
+      <div style={{
+        minHeight: "100vh",
+        background: `linear-gradient(180deg, ${colors.dark} 0%, #0a0a10 100%)`,
+        fontFamily: fonts.body,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "20px",
+      }}>
+        <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+        <div style={{ fontSize: "64px", marginBottom: "20px" }}>🎮</div>
+        <h1 style={{
+          fontFamily: fonts.heading,
+          fontSize: "20px",
+          color: colors.red,
+          marginBottom: "12px",
+        }}>
+          Booking Not Found
+        </h1>
+        <p style={{
+          color: colors.textSecondary,
+          fontSize: "14px",
+          marginBottom: "24px",
+          textAlign: "center",
+        }}>
+          {errorMsg ?? "This booking doesn't exist or has been removed."}
+        </p>
+        <button
+          onClick={() => router.push("/dashboard")}
+          style={{
+            padding: "14px 28px",
+            background: `linear-gradient(135deg, ${colors.red} 0%, #ff3366 100%)`,
+            border: "none",
+            borderRadius: "12px",
+            color: "white",
+            fontFamily: fonts.heading,
+            fontSize: "13px",
+            fontWeight: 600,
+            textTransform: "uppercase",
+            letterSpacing: "1px",
+            cursor: "pointer",
+          }}
+        >
+          Go to Dashboard
+        </button>
+      </div>
+    );
+  }
+
+  const statusInfo = getStatusInfo(data.status);
+
   return (
-    <div className="min-h-screen bg-[#f4f5fb] text-[#111827]">
-      <div className="mx-auto max-w-xl px-4 pb-10 pt-6">
-        <header className="mb-5">
-          <p className="text-xs font-medium uppercase tracking-[0.18em] text-gray-500">
-            Booking
-          </p>
-          <h1 className="mt-1 text-lg font-semibold tracking-tight">
-            Booking details
-          </h1>
+    <div style={{
+      minHeight: "100vh",
+      background: `linear-gradient(180deg, ${colors.dark} 0%, #0a0a10 100%)`,
+      fontFamily: fonts.body,
+      color: colors.textPrimary,
+      position: "relative",
+    }}>
+      <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+      {/* Background glow */}
+      <div style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: `
+          radial-gradient(ellipse at 20% 0%, rgba(255, 7, 58, 0.06) 0%, transparent 50%),
+          radial-gradient(ellipse at 80% 100%, rgba(0, 240, 255, 0.04) 0%, transparent 50%)
+        `,
+        pointerEvents: "none",
+        zIndex: 0,
+      }} />
+
+      <div style={{
+        maxWidth: "600px",
+        margin: "0 auto",
+        padding: "20px 16px 40px",
+        position: "relative",
+        zIndex: 1,
+      }}>
+        {/* Header */}
+        <header style={{ marginBottom: "24px" }}>
+          <button
+            onClick={() => router.push("/dashboard")}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              background: "none",
+              border: "none",
+              color: colors.textSecondary,
+              fontSize: "14px",
+              cursor: "pointer",
+              padding: "0",
+              marginBottom: "16px",
+            }}
+          >
+            <span style={{ fontSize: "18px" }}>←</span>
+            Back to Dashboard
+          </button>
+
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}>
+            <div>
+              <p style={{
+                fontSize: "12px",
+                color: colors.cyan,
+                textTransform: "uppercase",
+                letterSpacing: "2px",
+                marginBottom: "4px",
+              }}>
+                Booking Details
+              </p>
+              <h1 style={{
+                fontFamily: fonts.heading,
+                fontSize: "20px",
+                fontWeight: 700,
+                color: colors.textPrimary,
+                margin: 0,
+              }}>
+                #{data.id.slice(0, 8).toUpperCase()}
+              </h1>
+            </div>
+
+            {/* Status Badge */}
+            <div style={{
+              padding: "8px 16px",
+              background: statusInfo.bg,
+              border: `1px solid ${statusInfo.border}`,
+              borderRadius: "20px",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+            }}>
+              <span style={{ fontSize: "14px" }}>{statusInfo.icon}</span>
+              <span style={{
+                fontSize: "12px",
+                fontWeight: 600,
+                color: statusInfo.color,
+                letterSpacing: "0.5px",
+              }}>
+                {statusInfo.label}
+              </span>
+            </div>
+          </div>
         </header>
 
-        {loading ? (
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="h-16 animate-pulse rounded-2xl bg-gray-200/70"
-              />
-            ))}
+        {/* Upcoming/Past Badge */}
+        {data.status?.toLowerCase() !== "cancelled" && (
+          <div style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "8px",
+            padding: "10px 16px",
+            background: isUpcoming 
+              ? "rgba(0, 240, 255, 0.1)" 
+              : "rgba(255, 255, 255, 0.05)",
+            border: `1px solid ${isUpcoming ? "rgba(0, 240, 255, 0.2)" : colors.border}`,
+            borderRadius: "10px",
+            marginBottom: "20px",
+          }}>
+            <span style={{ fontSize: "16px" }}>
+              {isUpcoming ? "🎯" : "📅"}
+            </span>
+            <span style={{
+              fontSize: "13px",
+              color: isUpcoming ? colors.cyan : colors.textSecondary,
+              fontWeight: 500,
+            }}>
+              {isUpcoming ? "Upcoming Session" : "Past Session"}
+            </span>
           </div>
-        ) : errorMsg ? (
-          <p className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-xs text-red-700">
-            {errorMsg}
-          </p>
-        ) : !data ? (
-          <p className="text-xs text-gray-500">
-            Booking not found. It may have been deleted.
-          </p>
-        ) : (
-          <>
-            {/* Selected café + slot */}
-            <section className="mb-4 rounded-2xl border border-gray-100 bg-white px-4 py-3 shadow-sm">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">
-                    Selected gaming café
-                  </p>
-                  <p className="mt-1 text-[15px] font-semibold text-gray-900">
-                    {data.cafe?.name ?? "Gaming Café"}
-                  </p>
-                  <p className="mt-1 text-[12px] text-gray-600">
-                    {formattedDate} • {data.start_time || "Time not set"}
-                  </p>
-                </div>
-                <div className="flex flex-col items-end gap-1">
-                  {statusBadge(data.status)}
-                  <p className="text-[11px] text-gray-400">
-                    ID: {data.id.slice(0, 8)}…
-                  </p>
-                </div>
-              </div>
-            </section>
+        )}
 
-            {/* Tickets */}
-            <section className="mb-4 rounded-2xl border border-gray-100 bg-white px-4 py-3 shadow-sm">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">
-                Tickets
-              </p>
-              <div className="mt-2 space-y-2">
-                {data.items.map((item) => (
-                  <div
-                    key={item.id ?? `${item.ticket_id}-${item.console}`}
-                    className="flex items-center justify-between text-[13px]"
-                  >
-                    <div>
-                      <p className="font-medium text-gray-900">
-                        {item.title ?? "Ticket"}
-                      </p>
-                      <p className="text-[11px] text-gray-500">
-                        {item.quantity ?? 0} ticket
-                        {(item.quantity ?? 0) === 1 ? "" : "s"}
-                      </p>
-                    </div>
-                    <p className="text-[13px] font-semibold text-gray-900">
-                      ₹{(item.price ?? 0) * (item.quantity ?? 0)}
-                    </p>
-                  </div>
-                ))}
-              </div>
-              <p className="mt-3 text-[11px] text-gray-500">
-                Total tickets: {totalTickets}
-              </p>
-            </section>
+        {/* Venue Card */}
+        <section style={{
+          background: `linear-gradient(135deg, rgba(255, 7, 58, 0.08) 0%, ${colors.darkCard} 100%)`,
+          border: `1px solid rgba(255, 7, 58, 0.15)`,
+          borderRadius: "20px",
+          padding: "24px",
+          marginBottom: "20px",
+          position: "relative",
+          overflow: "hidden",
+        }}>
+          {/* Top accent */}
+          <div style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            height: "3px",
+            background: `linear-gradient(90deg, ${colors.red}, ${colors.cyan})`,
+          }} />
 
-            {/* Payment details */}
-            <section className="mb-4 rounded-2xl border border-gray-100 bg-white px-4 py-3 shadow-sm">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">
-                Payment details
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "16px",
+          }}>
+            <div style={{
+              width: "64px",
+              height: "64px",
+              background: `linear-gradient(135deg, ${colors.red}20 0%, ${colors.red}10 100%)`,
+              borderRadius: "16px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "32px",
+            }}>
+              🎮
+            </div>
+            <div style={{ flex: 1 }}>
+              <p style={{
+                fontSize: "11px",
+                color: colors.textMuted,
+                textTransform: "uppercase",
+                letterSpacing: "1px",
+                marginBottom: "4px",
+              }}>
+                Gaming Venue
               </p>
-              <div className="mt-2 flex items-center justify-between text-[13px]">
-                <span>Grand total</span>
-                <span className="font-semibold">
-                  ₹{data.total_amount ?? 0}
+              <p style={{
+                fontSize: "18px",
+                fontWeight: 600,
+                color: colors.textPrimary,
+                marginBottom: "8px",
+              }}>
+                {data.cafe?.name ?? "Gaming Café"}
+              </p>
+              <div style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: "12px",
+              }}>
+                <span style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  fontSize: "13px",
+                  color: colors.textSecondary,
+                }}>
+                  <span>📅</span>
+                  {formattedDate}
+                </span>
+                <span style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  fontSize: "13px",
+                  color: colors.cyan,
+                  fontWeight: 600,
+                }}>
+                  <span>⏰</span>
+                  {data.start_time || "Time not set"}
                 </span>
               </div>
-            </section>
-
-            {/* Info */}
-            <section className="rounded-2xl border border-gray-100 bg-white px-4 py-3 text-[12px] text-gray-600 shadow-sm">
-              Your booking details and café information will also be available
-              in your dashboard.
-            </section>
-
-            <div className="mt-6 flex gap-3">
-              <button
-                onClick={() => router.push("/dashboard")}
-                className="flex-1 rounded-xl bg-[#111827] px-4 py-2 text-center text-xs font-semibold uppercase tracking-wide text-white"
-              >
-                Go to dashboard
-              </button>
-              <Link
-                href="/"
-                className="flex-1 rounded-xl border border-gray-300 bg-white px-4 py-2 text-center text-xs font-semibold uppercase tracking-wide text-gray-800"
-              >
-                Book another café
-              </Link>
             </div>
-          </>
-        )}
+          </div>
+        </section>
+
+        {/* Tickets Section */}
+        <section style={{
+          background: colors.darkCard,
+          border: `1px solid ${colors.border}`,
+          borderRadius: "16px",
+          padding: "20px",
+          marginBottom: "20px",
+        }}>
+          <h3 style={{
+            fontSize: "12px",
+            color: colors.textMuted,
+            textTransform: "uppercase",
+            letterSpacing: "1.5px",
+            marginBottom: "16px",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+          }}>
+            <span>🎟️</span> Tickets ({totalTickets})
+          </h3>
+
+          {data.items.length === 0 ? (
+            <p style={{ fontSize: "13px", color: colors.textSecondary }}>
+              No ticket details available.
+            </p>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              {data.items.map((item) => (
+                <div
+                  key={item.id ?? `${item.ticket_id}-${item.console}`}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "14px 16px",
+                    background: "rgba(255, 255, 255, 0.03)",
+                    borderRadius: "12px",
+                    border: `1px solid ${colors.border}`,
+                  }}
+                >
+                  <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "12px",
+                  }}>
+                    <span style={{ fontSize: "24px" }}>
+                      {consoleIcons[item.console || "ps5"] || "🎮"}
+                    </span>
+                    <div>
+                      <p style={{
+                        fontSize: "14px",
+                        fontWeight: 600,
+                        color: colors.textPrimary,
+                        marginBottom: "2px",
+                      }}>
+                        {item.title ?? "Ticket"}
+                      </p>
+                      <p style={{
+                        fontSize: "12px",
+                        color: colors.textMuted,
+                      }}>
+                        {item.quantity ?? 0} × ₹{item.price ?? 0}
+                      </p>
+                    </div>
+                  </div>
+                  <p style={{
+                    fontFamily: fonts.heading,
+                    fontSize: "16px",
+                    fontWeight: 600,
+                    color: colors.cyan,
+                  }}>
+                    ₹{(item.price ?? 0) * (item.quantity ?? 0)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* Payment Summary */}
+        <section style={{
+          background: colors.darkCard,
+          border: `1px solid ${colors.border}`,
+          borderRadius: "16px",
+          padding: "20px",
+          marginBottom: "20px",
+        }}>
+          <h3 style={{
+            fontSize: "12px",
+            color: colors.textMuted,
+            textTransform: "uppercase",
+            letterSpacing: "1.5px",
+            marginBottom: "16px",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+          }}>
+            <span>💳</span> Payment Summary
+          </h3>
+
+          <div style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            padding: "16px",
+            background: "rgba(34, 197, 94, 0.08)",
+            borderRadius: "12px",
+            border: "1px solid rgba(34, 197, 94, 0.15)",
+          }}>
+            <div>
+              <p style={{
+                fontSize: "12px",
+                color: colors.textMuted,
+                marginBottom: "4px",
+              }}>
+                Total Amount Paid
+              </p>
+              <p style={{
+                fontFamily: fonts.heading,
+                fontSize: "28px",
+                fontWeight: 700,
+                color: colors.textPrimary,
+              }}>
+                ₹{data.total_amount ?? 0}
+              </p>
+            </div>
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              padding: "8px 14px",
+              background: "rgba(34, 197, 94, 0.15)",
+              borderRadius: "8px",
+            }}>
+              <span style={{ color: colors.green }}>✓</span>
+              <span style={{
+                fontSize: "12px",
+                color: colors.green,
+                fontWeight: 600,
+              }}>
+                Paid
+              </span>
+            </div>
+          </div>
+        </section>
+
+        {/* Booking Info */}
+        <section style={{
+          background: "rgba(0, 240, 255, 0.05)",
+          border: `1px solid rgba(0, 240, 255, 0.15)`,
+          borderRadius: "12px",
+          padding: "14px 16px",
+          marginBottom: "24px",
+          display: "flex",
+          alignItems: "flex-start",
+          gap: "12px",
+        }}>
+          <span style={{ fontSize: "18px" }}>💡</span>
+          <div>
+            <p style={{
+              fontSize: "13px",
+              color: colors.textSecondary,
+              lineHeight: 1.5,
+              margin: 0,
+            }}>
+              {isUpcoming 
+                ? "Show this booking at the venue. Arrive 5 minutes early for the best experience!"
+                : "Thank you for gaming with us! We hope you had a great time."
+              }
+            </p>
+            <p style={{
+              fontSize: "11px",
+              color: colors.textMuted,
+              marginTop: "8px",
+            }}>
+              Booked on: {new Date(data.created_at || "").toLocaleDateString("en-IN", {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </p>
+          </div>
+        </section>
+
+        {/* Action Buttons */}
+        <div style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: "12px",
+        }}>
+          <button
+            onClick={() => router.push("/dashboard")}
+            style={{
+              padding: "16px 24px",
+              background: `linear-gradient(135deg, ${colors.cyan} 0%, #0891b2 100%)`,
+              border: "none",
+              borderRadius: "14px",
+              color: colors.dark,
+              fontFamily: fonts.heading,
+              fontSize: "14px",
+              fontWeight: 600,
+              textTransform: "uppercase",
+              letterSpacing: "1px",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "8px",
+              boxShadow: `0 8px 32px ${colors.cyan}40`,
+            }}
+          >
+            <span>📊</span>
+            View All Bookings
+          </button>
+
+          <Link
+            href="/"
+            style={{
+              padding: "16px 24px",
+              background: "rgba(255, 255, 255, 0.05)",
+              border: `1px solid ${colors.border}`,
+              borderRadius: "14px",
+              color: colors.textPrimary,
+              fontFamily: fonts.heading,
+              fontSize: "14px",
+              fontWeight: 600,
+              textTransform: "uppercase",
+              letterSpacing: "1px",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "8px",
+              textDecoration: "none",
+            }}
+          >
+            <span>🎮</span>
+            Book Another Session
+          </Link>
+
+          {canCancel && (
+            <button
+              onClick={handleCancelBooking}
+              disabled={isCancelling}
+              style={{
+                padding: "14px 24px",
+                background: "rgba(239, 68, 68, 0.1)",
+                border: `1px solid rgba(239, 68, 68, 0.3)`,
+                borderRadius: "12px",
+                color: "#ef4444",
+                fontFamily: fonts.body,
+                fontSize: "13px",
+                fontWeight: 600,
+                cursor: isCancelling ? "not-allowed" : "pointer",
+                opacity: isCancelling ? 0.6 : 1,
+                marginTop: "8px",
+              }}
+            >
+              {isCancelling ? "Cancelling..." : "Cancel Booking"}
+            </button>
+          )}
+        </div>
       </div>
+
+      <style>{`
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 }

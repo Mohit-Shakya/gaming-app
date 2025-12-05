@@ -1,3 +1,4 @@
+// src/app/dashboard/page.tsx
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -8,8 +9,8 @@ type BookingRow = {
   id: string;
   cafe_id: string | null;
   user_id?: string | null;
-  booking_date?: string | null; // 'YYYY-MM-DD'
-  start_time?: string | null;   // e.g. "10:00 am"
+  booking_date?: string | null;
+  start_time?: string | null;
   total_amount?: number | null;
   status?: string | null;
   created_at?: string | null;
@@ -22,6 +23,26 @@ type CafeRow = {
 
 type BookingWithCafe = BookingRow & { cafe?: CafeRow | null };
 
+// ============ STYLES ============
+const colors = {
+  red: "#ff073a",
+  cyan: "#00f0ff",
+  dark: "#08080c",
+  darkCard: "#0f0f14",
+  border: "rgba(255, 255, 255, 0.08)",
+  textPrimary: "#ffffff",
+  textSecondary: "#9ca3af",
+  textMuted: "#6b7280",
+  green: "#22c55e",
+  orange: "#f59e0b",
+  purple: "#a855f7",
+};
+
+const fonts = {
+  heading: "'Orbitron', sans-serif",
+  body: "'Rajdhani', sans-serif",
+};
+
 export default function DashboardPage() {
   const router = useRouter();
 
@@ -29,8 +50,9 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [cancelingId, setCancelingId] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string>("");
 
-  // ---------- Load user + bookings ----------
+  // Load user + bookings
   useEffect(() => {
     let cancelled = false;
 
@@ -39,7 +61,6 @@ export default function DashboardPage() {
         setLoading(true);
         setErrorMsg(null);
 
-        // 1) Current user
         const {
           data: { user },
           error: authError,
@@ -55,19 +76,15 @@ export default function DashboardPage() {
           return;
         }
 
-        console.log("[Dashboard] Loading bookings for user", user.id);
+        // Get user name from metadata
+        const name = user.user_metadata?.full_name || user.email?.split("@")[0] || "Gamer";
+        setUserName(name.split(" ")[0]); // First name only
 
-        // 2) Bookings for this user
         const { data: bookingRows, error: bookingError } = await supabase
           .from("bookings")
           .select("*")
           .eq("user_id", user.id)
-          .order("booking_date", { ascending: true });
-
-        console.log("[Dashboard] bookings result:", {
-          bookingRows,
-          bookingError,
-        });
+          .order("booking_date", { ascending: false });
 
         if (bookingError) {
           console.error("Supabase bookingError:", bookingError);
@@ -79,7 +96,6 @@ export default function DashboardPage() {
           return;
         }
 
-        // 3) Cafes referenced by those bookings
         const cafeIds = Array.from(
           new Set(
             bookingRows
@@ -95,8 +111,6 @@ export default function DashboardPage() {
             .from("cafes")
             .select("id, name")
             .in("id", cafeIds);
-
-          console.log("[Dashboard] cafes result:", { cafeRows, cafeError });
 
           if (cafeError) {
             console.error("Supabase cafeError:", cafeError);
@@ -132,7 +146,7 @@ export default function DashboardPage() {
     };
   }, [router]);
 
-  // ---------- Split upcoming vs past ----------
+  // Split upcoming vs past
   const { upcoming, past } = useMemo(() => {
     if (!bookings.length)
       return {
@@ -142,17 +156,29 @@ export default function DashboardPage() {
 
     const todayStr = new Date().toISOString().slice(0, 10);
 
-    const upcomingBookings = bookings.filter((b) => {
-      const date = b.booking_date ?? "";
-      return date >= todayStr;
-    });
+    const upcomingBookings = bookings
+      .filter((b) => {
+        const date = b.booking_date ?? "";
+        return date >= todayStr;
+      })
+      .sort((a, b) => (a.booking_date ?? "").localeCompare(b.booking_date ?? ""));
 
-    const pastBookings = bookings.filter((b) => {
-      const date = b.booking_date ?? "";
-      return date < todayStr;
-    });
+    const pastBookings = bookings
+      .filter((b) => {
+        const date = b.booking_date ?? "";
+        return date < todayStr;
+      })
+      .sort((a, b) => (b.booking_date ?? "").localeCompare(a.booking_date ?? ""));
 
     return { upcoming: upcomingBookings, past: pastBookings };
+  }, [bookings]);
+
+  // Stats
+  const stats = useMemo(() => {
+    const total = bookings.length;
+    const confirmed = bookings.filter(b => (b.status || "").toLowerCase() === "confirmed").length;
+    const totalSpent = bookings.reduce((sum, b) => sum + (b.total_amount ?? 0), 0);
+    return { total, confirmed, totalSpent };
   }, [bookings]);
 
   function formatDate(dateStr?: string | null) {
@@ -161,8 +187,7 @@ export default function DashboardPage() {
       const d = new Date(`${dateStr}T00:00:00`);
       return d.toLocaleDateString("en-IN", {
         day: "numeric",
-        month: "long",
-        year: "numeric",
+        month: "short",
         weekday: "short",
       });
     } catch {
@@ -170,28 +195,34 @@ export default function DashboardPage() {
     }
   }
 
-  function statusBadge(status?: string | null) {
+  function getStatusInfo(status?: string | null) {
     const value = (status || "confirmed").toLowerCase();
-    const common =
-      "inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold tracking-wide";
-
+    
     if (value === "cancelled") {
-      return (
-        <span className={`${common} bg-red-100 text-red-700`}>CANCELLED</span>
-      );
+      return {
+        label: "CANCELLED",
+        bg: "rgba(239, 68, 68, 0.15)",
+        border: "rgba(239, 68, 68, 0.3)",
+        color: "#ef4444",
+        icon: "✕",
+      };
     }
     if (value === "pending") {
-      return (
-        <span className={`${common} bg-yellow-100 text-yellow-700`}>
-          PENDING
-        </span>
-      );
+      return {
+        label: "PENDING",
+        bg: "rgba(245, 158, 11, 0.15)",
+        border: "rgba(245, 158, 11, 0.3)",
+        color: colors.orange,
+        icon: "⏳",
+      };
     }
-    return (
-      <span className={`${common} bg-emerald-100 text-emerald-700`}>
-        CONFIRMED
-      </span>
-    );
+    return {
+      label: "CONFIRMED",
+      bg: "rgba(34, 197, 94, 0.15)",
+      border: "rgba(34, 197, 94, 0.3)",
+      color: colors.green,
+      icon: "✓",
+    };
   }
 
   function canCancelBooking(b: BookingWithCafe) {
@@ -202,7 +233,9 @@ export default function DashboardPage() {
     return b.booking_date >= todayStr;
   }
 
-  async function handleCancelBooking(id: string) {
+  async function handleCancelBooking(id: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    
     const booking = bookings.find((b) => b.id === id);
     if (!booking) return;
     if (!canCancelBooking(booking)) return;
@@ -236,134 +269,543 @@ export default function DashboardPage() {
     }
   }
 
-  function BookingListSection({
-    title,
-    items,
-    emptyText,
-    enableCancel,
-  }: {
-    title: string;
-    items: BookingWithCafe[];
+  // Booking Card Component
+  function BookingCard({ booking, showCancel }: { booking: BookingWithCafe; showCancel?: boolean }) {
+    const statusInfo = getStatusInfo(booking.status);
+    const canCancel = showCancel && canCancelBooking(booking);
+    const isCancelling = cancelingId === booking.id;
+    const isUpcoming = (booking.booking_date ?? "") >= new Date().toISOString().slice(0, 10);
+
+    return (
+      <div
+        onClick={() => router.push(`/bookings/${booking.id}`)}
+        style={{
+          background: colors.darkCard,
+          border: `1px solid ${colors.border}`,
+          borderRadius: "16px",
+          padding: "16px",
+          cursor: "pointer",
+          transition: "all 0.2s ease",
+          position: "relative",
+          overflow: "hidden",
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.borderColor = "rgba(255, 7, 58, 0.3)";
+          e.currentTarget.style.transform = "translateY(-2px)";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.borderColor = colors.border;
+          e.currentTarget.style.transform = "translateY(0)";
+        }}
+      >
+        {/* Left accent bar */}
+        <div style={{
+          position: "absolute",
+          left: 0,
+          top: 0,
+          bottom: 0,
+          width: "3px",
+          background: isUpcoming ? colors.cyan : colors.textMuted,
+          borderRadius: "3px 0 0 3px",
+        }} />
+
+        <div style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: "12px",
+        }}>
+          {/* Left side - Info */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              marginBottom: "10px",
+            }}>
+              <div style={{
+                width: "40px",
+                height: "40px",
+                background: `linear-gradient(135deg, ${colors.red}20 0%, ${colors.red}10 100%)`,
+                borderRadius: "10px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "20px",
+              }}>
+                🎮
+              </div>
+              <div>
+                <p style={{
+                  fontSize: "15px",
+                  fontWeight: 600,
+                  color: colors.textPrimary,
+                  marginBottom: "2px",
+                }}>
+                  {booking.cafe?.name ?? "Gaming Café"}
+                </p>
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  fontSize: "12px",
+                  color: colors.textSecondary,
+                }}>
+                  <span>📅 {formatDate(booking.booking_date)}</span>
+                  <span style={{ color: colors.cyan }}>
+                    ⏰ {booking.start_time || "Time TBD"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Cancel button */}
+            {canCancel && (
+              <button
+                onClick={(e) => handleCancelBooking(booking.id, e)}
+                disabled={isCancelling}
+                style={{
+                  padding: "6px 12px",
+                  background: "rgba(239, 68, 68, 0.1)",
+                  border: "1px solid rgba(239, 68, 68, 0.2)",
+                  borderRadius: "6px",
+                  color: "#ef4444",
+                  fontSize: "11px",
+                  fontWeight: 600,
+                  cursor: isCancelling ? "not-allowed" : "pointer",
+                  opacity: isCancelling ? 0.6 : 1,
+                  marginTop: "8px",
+                }}
+              >
+                {isCancelling ? "Cancelling..." : "Cancel"}
+              </button>
+            )}
+          </div>
+
+          {/* Right side - Price & Status */}
+          <div style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "flex-end",
+            gap: "8px",
+          }}>
+            <p style={{
+              fontFamily: fonts.heading,
+              fontSize: "18px",
+              fontWeight: 700,
+              color: colors.cyan,
+            }}>
+              ₹{booking.total_amount ?? 0}
+            </p>
+            <div style={{
+              padding: "4px 10px",
+              background: statusInfo.bg,
+              border: `1px solid ${statusInfo.border}`,
+              borderRadius: "12px",
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
+            }}>
+              <span style={{ fontSize: "10px" }}>{statusInfo.icon}</span>
+              <span style={{
+                fontSize: "10px",
+                fontWeight: 600,
+                color: statusInfo.color,
+                letterSpacing: "0.5px",
+              }}>
+                {statusInfo.label}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Section Component
+  function BookingSection({ 
+    title, 
+    icon, 
+    items, 
+    emptyText, 
+    emptyIcon,
+    showCancel 
+  }: { 
+    title: string; 
+    icon: string;
+    items: BookingWithCafe[]; 
     emptyText: string;
-    enableCancel?: boolean;
+    emptyIcon: string;
+    showCancel?: boolean;
   }) {
     return (
-      <section className="mb-6">
-        <h2 className="mb-2 text-sm font-semibold tracking-tight text-gray-800">
-          {title}
+      <section style={{ marginBottom: "28px" }}>
+        <h2 style={{
+          fontSize: "13px",
+          fontWeight: 600,
+          color: colors.textSecondary,
+          textTransform: "uppercase",
+          letterSpacing: "1.5px",
+          marginBottom: "14px",
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+        }}>
+          <span>{icon}</span> {title}
+          {items.length > 0 && (
+            <span style={{
+              marginLeft: "auto",
+              padding: "2px 8px",
+              background: colors.red + "20",
+              borderRadius: "10px",
+              fontSize: "11px",
+              color: colors.red,
+            }}>
+              {items.length}
+            </span>
+          )}
         </h2>
+
         {items.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-gray-200 bg-white px-4 py-3 text-xs text-gray-500">
-            {emptyText}
-          </p>
+          <div style={{
+            padding: "32px 20px",
+            background: colors.darkCard,
+            border: `1px dashed ${colors.border}`,
+            borderRadius: "16px",
+            textAlign: "center",
+          }}>
+            <div style={{ fontSize: "40px", marginBottom: "12px", opacity: 0.5 }}>
+              {emptyIcon}
+            </div>
+            <p style={{
+              fontSize: "13px",
+              color: colors.textMuted,
+              maxWidth: "250px",
+              margin: "0 auto",
+              lineHeight: 1.5,
+            }}>
+              {emptyText}
+            </p>
+          </div>
         ) : (
-          <div className="space-y-3">
-            {items.map((b) => {
-              const cafeName = b.cafe?.name ?? "Gaming Café";
-              const canCancel = enableCancel && canCancelBooking(b);
-              const isThisCancelling = cancelingId === b.id;
-
-              return (
-                <div
-                  key={b.id}
-                  className="rounded-2xl border border-gray-100 bg-white px-4 py-3 text-left shadow-sm transition hover:border-gray-300 hover:shadow-md"
-                >
-                  <button
-                    onClick={() =>
-                      router.push(`/bookings/${b.id}/success`)
-                    }
-                    className="w-full text-left"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1">
-                        <div className="text-[13px] font-semibold text-gray-900">
-                          {cafeName}
-                        </div>
-
-                        <div className="mt-2 text-[11px] text-gray-600">
-                          <span className="font-medium">
-                            {formatDate(b.booking_date)}
-                          </span>{" "}
-                          • <span>{b.start_time || "Time not set"}</span>
-                        </div>
-                      </div>
-                      <div className="flex flex-col items-end gap-1">
-                        <div className="text-sm font-semibold text-gray-900">
-                          ₹{b.total_amount ?? 0}
-                        </div>
-                        {statusBadge(b.status)}
-                      </div>
-                    </div>
-                  </button>
-
-                  {canCancel && (
-                    <div className="mt-2 flex justify-end">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleCancelBooking(b.id);
-                        }}
-                        disabled={isThisCancelling}
-                        className="text-[11px] font-semibold uppercase tracking-wide text-red-600 disabled:opacity-60"
-                      >
-                        {isThisCancelling ? "Cancelling..." : "Cancel booking"}
-                      </button>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            {items.map((booking) => (
+              <BookingCard 
+                key={booking.id} 
+                booking={booking} 
+                showCancel={showCancel}
+              />
+            ))}
           </div>
         )}
       </section>
     );
   }
 
-  // ---------- Render ----------
+  // Loading state
+  if (loading) {
+    return (
+      <div style={{
+        minHeight: "100vh",
+        background: `linear-gradient(180deg, ${colors.dark} 0%, #0a0a10 100%)`,
+        fontFamily: fonts.body,
+      }}>
+        <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+        <div style={{
+          maxWidth: "600px",
+          margin: "0 auto",
+          padding: "20px 16px",
+        }}>
+          <div style={{
+            height: "100px",
+            background: colors.darkCard,
+            borderRadius: "16px",
+            marginBottom: "20px",
+            animation: "pulse 2s ease-in-out infinite",
+          }} />
+          {[1, 2, 3].map((i) => (
+            <div
+              key={i}
+              style={{
+                height: "80px",
+                background: colors.darkCard,
+                borderRadius: "16px",
+                marginBottom: "12px",
+                animation: "pulse 2s ease-in-out infinite",
+                animationDelay: `${i * 0.2}s`,
+              }}
+            />
+          ))}
+        </div>
+        <style>{`
+          @keyframes pulse {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 0.8; }
+          }
+        `}</style>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-[#f4f5fb] text-[#111827]">
-      <div className="mx-auto max-w-xl px-4 pb-10 pt-6">
-        <header className="mb-5">
-          <p className="text-xs font-medium uppercase tracking-[0.18em] text-gray-500">
+    <div style={{
+      minHeight: "100vh",
+      background: `linear-gradient(180deg, ${colors.dark} 0%, #0a0a10 100%)`,
+      fontFamily: fonts.body,
+      color: colors.textPrimary,
+      position: "relative",
+    }}>
+      <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+      {/* Background glow */}
+      <div style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: `
+          radial-gradient(ellipse at 20% 0%, rgba(255, 7, 58, 0.08) 0%, transparent 50%),
+          radial-gradient(ellipse at 80% 100%, rgba(0, 240, 255, 0.06) 0%, transparent 50%)
+        `,
+        pointerEvents: "none",
+        zIndex: 0,
+      }} />
+
+      <div style={{
+        maxWidth: "600px",
+        margin: "0 auto",
+        padding: "20px 16px 40px",
+        position: "relative",
+        zIndex: 1,
+      }}>
+        {/* Header */}
+        <header style={{ marginBottom: "24px" }}>
+          <p style={{
+            fontSize: "12px",
+            color: colors.cyan,
+            textTransform: "uppercase",
+            letterSpacing: "2px",
+            marginBottom: "4px",
+          }}>
             Dashboard
           </p>
-          <h1 className="mt-1 text-lg font-semibold tracking-tight">
-            Your bookings
+          <h1 style={{
+            fontFamily: fonts.heading,
+            fontSize: "24px",
+            fontWeight: 700,
+            color: colors.textPrimary,
+            margin: "0 0 8px 0",
+          }}>
+            Hey, {userName}! 👋
           </h1>
-          <p className="mt-1 text-[12px] text-gray-500">
-            View and manage all your gaming café bookings in one place.
+          <p style={{
+            fontSize: "14px",
+            color: colors.textSecondary,
+          }}>
+            Manage your gaming sessions
           </p>
         </header>
 
-        {loading ? (
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="h-16 animate-pulse rounded-2xl bg-gray-200/70"
-              />
-            ))}
+        {/* Stats Cards */}
+        {bookings.length > 0 && (
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(3, 1fr)",
+            gap: "12px",
+            marginBottom: "28px",
+          }}>
+            <div style={{
+              background: colors.darkCard,
+              border: `1px solid ${colors.border}`,
+              borderRadius: "14px",
+              padding: "16px",
+              textAlign: "center",
+            }}>
+              <p style={{
+                fontFamily: fonts.heading,
+                fontSize: "24px",
+                fontWeight: 700,
+                color: colors.cyan,
+                marginBottom: "4px",
+              }}>
+                {stats.total}
+              </p>
+              <p style={{
+                fontSize: "11px",
+                color: colors.textMuted,
+                textTransform: "uppercase",
+                letterSpacing: "0.5px",
+              }}>
+                Total
+              </p>
+            </div>
+            <div style={{
+              background: colors.darkCard,
+              border: `1px solid ${colors.border}`,
+              borderRadius: "14px",
+              padding: "16px",
+              textAlign: "center",
+            }}>
+              <p style={{
+                fontFamily: fonts.heading,
+                fontSize: "24px",
+                fontWeight: 700,
+                color: colors.green,
+                marginBottom: "4px",
+              }}>
+                {upcoming.length}
+              </p>
+              <p style={{
+                fontSize: "11px",
+                color: colors.textMuted,
+                textTransform: "uppercase",
+                letterSpacing: "0.5px",
+              }}>
+                Upcoming
+              </p>
+            </div>
+            <div style={{
+              background: colors.darkCard,
+              border: `1px solid ${colors.border}`,
+              borderRadius: "14px",
+              padding: "16px",
+              textAlign: "center",
+            }}>
+              <p style={{
+                fontFamily: fonts.heading,
+                fontSize: "24px",
+                fontWeight: 700,
+                color: colors.red,
+                marginBottom: "4px",
+              }}>
+                ₹{stats.totalSpent}
+              </p>
+              <p style={{
+                fontSize: "11px",
+                color: colors.textMuted,
+                textTransform: "uppercase",
+                letterSpacing: "0.5px",
+              }}>
+                Spent
+              </p>
+            </div>
           </div>
-        ) : errorMsg ? (
-          <p className="rounded-xl border border-red-100 bg-red-50 px-4 py-3 text-xs text-red-700">
-            {errorMsg}
-          </p>
-        ) : (
+        )}
+
+        {/* Error Message */}
+        {errorMsg && (
+          <div style={{
+            padding: "16px",
+            background: "rgba(239, 68, 68, 0.1)",
+            border: "1px solid rgba(239, 68, 68, 0.3)",
+            borderRadius: "12px",
+            marginBottom: "20px",
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+          }}>
+            <span style={{ fontSize: "20px" }}>⚠️</span>
+            <p style={{
+              fontSize: "13px",
+              color: "#ef4444",
+              margin: 0,
+            }}>
+              {errorMsg}
+            </p>
+          </div>
+        )}
+
+        {/* Quick Action */}
+        <button
+          onClick={() => router.push("/")}
+          style={{
+            width: "100%",
+            padding: "16px 20px",
+            background: `linear-gradient(135deg, ${colors.red} 0%, #ff3366 100%)`,
+            border: "none",
+            borderRadius: "14px",
+            color: "white",
+            fontFamily: fonts.heading,
+            fontSize: "14px",
+            fontWeight: 600,
+            textTransform: "uppercase",
+            letterSpacing: "1px",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: "10px",
+            marginBottom: "28px",
+            boxShadow: `0 8px 32px ${colors.red}40`,
+          }}
+        >
+          <span style={{ fontSize: "18px" }}>🎮</span>
+          Book New Session
+        </button>
+
+        {/* Booking Sections */}
+        {!errorMsg && (
           <>
-            <BookingListSection
-              title="Upcoming bookings"
+            <BookingSection
+              title="Upcoming Sessions"
+              icon="🎯"
               items={upcoming}
-              emptyText="You don't have any upcoming bookings yet. Book a gaming café to see it here."
-              enableCancel
+              emptyText="No upcoming sessions. Book a gaming café to get started!"
+              emptyIcon="🎮"
+              showCancel
             />
-            <BookingListSection
-              title="Past bookings"
+            
+            <BookingSection
+              title="Past Sessions"
+              icon="📅"
               items={past}
-              emptyText="Past bookings will show up here once you've completed a booking."
+              emptyText="Your gaming history will appear here after your first session."
+              emptyIcon="🕹️"
             />
           </>
+        )}
+
+        {/* Empty State for No Bookings */}
+        {!errorMsg && bookings.length === 0 && !loading && (
+          <div style={{
+            textAlign: "center",
+            padding: "40px 20px",
+          }}>
+            <div style={{
+              width: "100px",
+              height: "100px",
+              margin: "0 auto 20px",
+              background: `linear-gradient(135deg, ${colors.red}20 0%, ${colors.cyan}20 100%)`,
+              borderRadius: "50%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "50px",
+            }}>
+              🎮
+            </div>
+            <h2 style={{
+              fontFamily: fonts.heading,
+              fontSize: "18px",
+              color: colors.textPrimary,
+              marginBottom: "8px",
+            }}>
+              No Bookings Yet
+            </h2>
+            <p style={{
+              fontSize: "14px",
+              color: colors.textSecondary,
+              marginBottom: "24px",
+              maxWidth: "280px",
+              margin: "0 auto 24px",
+              lineHeight: 1.5,
+            }}>
+              Start your gaming adventure by booking your first session at a café near you!
+            </p>
+          </div>
         )}
       </div>
     </div>
   );
-}
+} 
