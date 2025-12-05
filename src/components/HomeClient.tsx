@@ -1,6 +1,7 @@
 // src/components/HomeClient.tsx
 "use client";
 
+import useRequireCompleteProfile from "@/hooks/useRequireCompleteProfile";
 import { useMemo, useState, useRef, useEffect } from "react";
 import CafeList from "@/components/CafeList";
 import type { Cafe } from "../types/cafe";

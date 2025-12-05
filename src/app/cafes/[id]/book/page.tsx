@@ -360,6 +360,25 @@ export default function BookingPage() {
       return;
     }
 
+    // Check if profile is complete
+    if (user) {
+      try {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("onboarding_complete")
+          .eq("id", user.id)
+          .maybeSingle();
+        
+        if (!profile?.onboarding_complete) {
+          sessionStorage.setItem("redirectAfterOnboarding", window.location.pathname);
+          router.push("/onboarding");
+          return;
+        }
+      } catch (err) {
+        console.error("Error checking profile:", err);
+      }
+    }
+
     setIsSubmitting(true);
 
     try {

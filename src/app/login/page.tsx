@@ -39,10 +39,25 @@ export default function LoginPage() {
   const signInWithGoogle = async () => {
     try {
       setLoading(true);
+      
+      // Check if there's a redirect URL saved (from booking flow)
+      const savedRedirect = typeof window !== "undefined" 
+        ? sessionStorage.getItem("redirectAfterLogin") 
+        : null;
+      
+      // After login, go to onboarding (which will check if profile is complete)
+      const redirectTo = `${window.location.origin}/onboarding`;
+      
+      // Save the original intended destination for after onboarding
+      if (savedRedirect) {
+        sessionStorage.setItem("redirectAfterOnboarding", savedRedirect);
+        sessionStorage.removeItem("redirectAfterLogin");
+      }
+      
       await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/`,
+          redirectTo,
         },
       });
     } catch (err) {
