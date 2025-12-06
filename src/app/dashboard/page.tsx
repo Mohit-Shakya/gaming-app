@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { colors, fonts } from "@/lib/constants";
 
 type BookingRow = {
   id: string;
@@ -22,26 +23,6 @@ type CafeRow = {
 };
 
 type BookingWithCafe = BookingRow & { cafe?: CafeRow | null };
-
-// ============ STYLES ============
-const colors = {
-  red: "#ff073a",
-  cyan: "#00f0ff",
-  dark: "#08080c",
-  darkCard: "#0f0f14",
-  border: "rgba(255, 255, 255, 0.08)",
-  textPrimary: "#ffffff",
-  textSecondary: "#9ca3af",
-  textMuted: "#6b7280",
-  green: "#22c55e",
-  orange: "#f59e0b",
-  purple: "#a855f7",
-};
-
-const fonts = {
-  heading: "'Orbitron', sans-serif",
-  body: "'Rajdhani', sans-serif",
-};
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -510,7 +491,6 @@ export default function DashboardPage() {
         background: `linear-gradient(180deg, ${colors.dark} 0%, #0a0a10 100%)`,
         fontFamily: fonts.body,
       }}>
-        <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
         <div style={{
           maxWidth: "600px",
           margin: "0 auto",
@@ -555,8 +535,6 @@ export default function DashboardPage() {
       color: colors.textPrimary,
       position: "relative",
     }}>
-      <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-
       {/* Background glow */}
       <div style={{
         position: "fixed",

@@ -5,24 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import useUser from "@/hooks/useUser";
-
-// ============ STYLES ============
-const colors = {
-  red: "#ff073a",
-  cyan: "#00f0ff",
-  dark: "#08080c",
-  darkCard: "#0f0f14",
-  border: "rgba(255, 255, 255, 0.08)",
-  textPrimary: "#ffffff",
-  textSecondary: "#9ca3af",
-  textMuted: "#6b7280",
-  green: "#22c55e",
-};
-
-const fonts = {
-  heading: "'Orbitron', sans-serif",
-  body: "'Rajdhani', sans-serif",
-};
+import { colors, fonts } from "@/lib/constants";
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -175,7 +158,6 @@ export default function OnboardingPage() {
         alignItems: "center",
         justifyContent: "center",
       }}>
-        <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
         <div style={{ textAlign: "center" }}>
           <div style={{
             width: "48px",
@@ -205,8 +187,6 @@ export default function OnboardingPage() {
       color: colors.textPrimary,
       position: "relative",
     }}>
-      <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-
       {/* Background glow */}
       <div style={{
         position: "fixed",

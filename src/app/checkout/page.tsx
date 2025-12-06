@@ -1,14 +1,16 @@
 // src/app/checkout/page.tsx
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import useUser from "@/hooks/useUser";
+import { ConsoleId, colors, fonts, CONSOLE_LABELS } from "@/lib/constants";
+import { getEndTime } from "@/lib/timeUtils";
 
-type DraftTicket = {
+type CheckoutTicket = {
   ticketId: string;
-  console: string;
+  console: ConsoleId;
   title: string;
   price: number;
   quantity: number;
@@ -16,146 +18,91 @@ type DraftTicket = {
 
 type CheckoutDraft = {
   cafeId: string;
-  cafeName?: string;
-  bookingDate: string;
-  timeSlot: string;
-  tickets: DraftTicket[];
+  cafeName: string;
+  bookingDate: string; // "2025-12-06"
+  timeSlot: string;    // "2:04 pm" or "2:30 pm"
+  tickets: CheckoutTicket[];
   totalAmount: number;
+  source: "walk_in" | "online";
 };
 
-// ============ STYLES ============
-const colors = {
-  red: "#ff073a",
-  cyan: "#00f0ff",
-  dark: "#08080c",
-  darkCard: "#0f0f14",
-  border: "rgba(255, 255, 255, 0.08)",
-  borderLight: "rgba(255, 255, 255, 0.12)",
-  textPrimary: "#ffffff",
-  textSecondary: "#9ca3af",
-  textMuted: "#6b7280",
-  green: "#22c55e",
-  greenDark: "#16a34a",
-  orange: "#f59e0b",
-};
-
-const fonts = {
-  heading: "'Orbitron', sans-serif",
-  body: "'Rajdhani', sans-serif",
-};
-
-// Console icons mapping
-const consoleIcons: Record<string, string> = {
-  ps5: "🎮",
-  ps4: "🎮",
-  xbox: "🎮",
-  pc: "💻",
-  pool: "🎱",
-  arcade: "🕹️",
-  snooker: "🎱",
-  vr: "🥽",
-  steering: "🏎️",
-};
+// ========= THEME =========
+// Colors, fonts, and constants imported from @/lib/constants
 
 export default function CheckoutPage() {
   const router = useRouter();
   const { user } = useUser();
 
   const [draft, setDraft] = useState<CheckoutDraft | null>(null);
-  const [loadingDraft, setLoadingDraft] = useState(true);
-  const [offerCode, setOfferCode] = useState("");
-  const [offerApplied, setOfferApplied] = useState(false);
-  const [isPaying, setIsPaying] = useState(false);
-  const [showOfferInput, setShowOfferInput] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [placing, setPlacing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Load draft from sessionStorage
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const raw = sessionStorage.getItem("checkoutDraft");
-    if (!raw) {
-      setLoadingDraft(false);
-      return;
-    }
     try {
+      const raw =
+        typeof window !== "undefined"
+          ? window.sessionStorage.getItem("checkoutDraft")
+          : null;
+      if (!raw) {
+        setError("No booking in progress.");
+        setLoading(false);
+        return;
+      }
       const parsed = JSON.parse(raw) as CheckoutDraft;
       setDraft(parsed);
+      setLoading(false);
     } catch (err) {
-      console.error("Failed to parse checkoutDraft", err);
-    } finally {
-      setLoadingDraft(false);
+      console.error("Failed to read checkoutDraft", err);
+      setError("Could not load booking details.");
+      setLoading(false);
     }
   }, []);
 
-  // Amount calculations
-  const baseAmount = draft?.totalAmount ?? 0;
-  const convenienceFee = 13;
-  const offerDiscount = offerApplied ? Math.min(baseAmount * 0.2, 150) : 0;
-  const grandTotal = Math.max(baseAmount + convenienceFee - offerDiscount, 0);
-
-  const ticketsCount = useMemo(() => {
-    if (!draft) return 0;
-    return draft.tickets.reduce((sum, t) => sum + (t.quantity ?? 0), 0);
-  }, [draft]);
-
-  const dateLabel = useMemo(() => {
-    if (!draft?.bookingDate) return "";
-    const d = new Date(`${draft.bookingDate}T00:00:00`);
-    return d.toLocaleDateString("en-IN", {
-      weekday: "short",
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
-  }, [draft]);
-
-  // Apply offer
-  function handleApplyOffer() {
-    if (offerCode.toLowerCase() === "game20" || offerCode.toLowerCase() === "first50") {
-      setOfferApplied(true);
-      setShowOfferInput(false);
-    } else {
-      alert("Invalid offer code. Try GAME20 or FIRST50");
-    }
-  }
-
-  // Main pay handler
-  async function handlePayClick() {
-    if (!draft) {
-      alert("No booking data found. Please start again.");
-      return;
-    }
+  async function handlePlaceOrder() {
+    if (!draft) return;
     if (!user) {
-      alert("Please login to complete your booking.");
+      alert("Please login again.");
       router.push("/login");
       return;
     }
 
-    setIsPaying(true);
+    setPlacing(true);
+    setError(null);
 
     try {
-      const { data: booking, error: bookingError } = await supabase
+      const { cafeId, bookingDate, timeSlot, totalAmount, source, tickets } =
+        draft;
+
+      // 1. Create booking row
+      const { data: bookingData, error: bookingError } = await supabase
         .from("bookings")
         .insert({
-          cafe_id: draft.cafeId,
+          cafe_id: cafeId,
           user_id: user.id,
-          booking_date: draft.bookingDate,
-          start_time: draft.timeSlot,
-          total_amount: grandTotal,
-          status: "confirmed",
+          booking_date: bookingDate,
+          start_time: timeSlot,
+          total_amount: totalAmount,
+          status: "confirmed", // later you can change based on payment
+          source, // "online" | "walk_in"
         })
         .select("id")
-        .single();
+        .maybeSingle();
 
-      if (bookingError) {
-        console.error("Booking insert error:", bookingError);
-        throw bookingError;
+      if (bookingError || !bookingData) {
+        console.error("Booking insert error", bookingError);
+        setError("Could not place booking. Please try again.");
+        setPlacing(false);
+        return;
       }
 
-      const bookingId = booking.id as string;
+      const bookingId = bookingData.id;
 
-      const itemsPayload = draft.tickets.map((t) => ({
+      // 2. Insert booking items  ✅ IMPORTANT: include ticket_id
+      const itemsPayload = tickets.map((t) => ({
         booking_id: bookingId,
-        ticket_id: t.ticketId,
+        ticket_id: t.ticketId, // <-- this was missing earlier
         console: t.console,
         title: t.title,
         price: t.price,
@@ -167,811 +114,548 @@ export default function CheckoutPage() {
         .insert(itemsPayload);
 
       if (itemsError) {
-        console.error("Booking items insert error:", itemsError);
-        throw itemsError;
+        console.error("Booking items insert error", itemsError);
+        setError("Booking created but items failed. Contact support.");
+        setPlacing(false);
+        return;
       }
 
+      // Clear draft from session storage
       if (typeof window !== "undefined") {
-        sessionStorage.removeItem("checkoutDraft");
+        window.sessionStorage.removeItem("checkoutDraft");
       }
 
-      router.replace(`/bookings/${bookingId}/success`);
-    } catch (err: any) {
-      console.error("Error while creating booking:", err);
-      alert(`Could not complete booking. Please try again.\n\n${err?.message ?? ""}`);
-    } finally {
-      setIsPaying(false);
+      // Redirect to success page
+      router.replace(`/bookings/success?ref=${bookingId}`);
+    } catch (err) {
+      console.error("Place order error", err);
+      setError("Something went wrong. Please try again.");
+      setPlacing(false);
     }
   }
 
-  // Loading state
-  if (loadingDraft) {
+  if (loading) {
     return (
-      <div style={{
-        minHeight: "100vh",
-        background: `linear-gradient(180deg, ${colors.dark} 0%, #0a0a10 100%)`,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        fontFamily: fonts.body,
-      }}>
-        <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-        <div style={{ textAlign: "center" }}>
-          <div style={{
-            width: "48px",
-            height: "48px",
-            border: `3px solid ${colors.border}`,
-            borderTopColor: colors.red,
-            borderRadius: "50%",
-            margin: "0 auto 16px",
-            animation: "spin 1s linear infinite",
-          }} />
-          <p style={{ color: colors.textSecondary, fontSize: "14px" }}>Loading checkout...</p>
-        </div>
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <div
+        style={{
+          minHeight: "100vh",
+          background: colors.dark,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontFamily: fonts.body,
+          color: colors.textSecondary,
+        }}
+      >
+        Loading checkout…
       </div>
     );
   }
 
-  // No draft state
   if (!draft) {
     return (
-      <div style={{
-        minHeight: "100vh",
-        background: `linear-gradient(180deg, ${colors.dark} 0%, #0a0a10 100%)`,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        fontFamily: fonts.body,
-        padding: "20px",
-      }}>
-        <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-        <div style={{ fontSize: "64px", marginBottom: "20px" }}>🎮</div>
-        <h1 style={{
-          fontFamily: fonts.heading,
-          fontSize: "20px",
-          color: colors.textPrimary,
-          marginBottom: "12px",
-        }}>
-          Session Expired
-        </h1>
-        <p style={{
+      <div
+        style={{
+          minHeight: "100vh",
+          background: colors.dark,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontFamily: fonts.body,
           color: colors.textSecondary,
-          fontSize: "14px",
-          marginBottom: "24px",
+          padding: "24px",
           textAlign: "center",
-        }}>
-          Your checkout session has expired.<br />Please start a new booking.
-        </p>
-        <button
-          onClick={() => router.push("/")}
-          style={{
-            padding: "14px 28px",
-            background: `linear-gradient(135deg, ${colors.red} 0%, #ff3366 100%)`,
-            border: "none",
-            borderRadius: "12px",
-            color: "white",
-            fontFamily: fonts.heading,
-            fontSize: "13px",
-            fontWeight: 600,
-            textTransform: "uppercase",
-            letterSpacing: "1px",
-            cursor: "pointer",
-          }}
-        >
-          Browse Cafés
-        </button>
+        }}
+      >
+        {error || "No booking found. Go back and start a new booking."}
       </div>
     );
   }
 
+  const isWalkIn = draft.source === "walk_in";
+
+  // Format date nicely
+  const dateLabel = new Date(
+    `${draft.bookingDate}T00:00:00`
+  ).toLocaleDateString("en-IN", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+
+  const totalTickets = draft.tickets.reduce((sum, t) => sum + t.quantity, 0);
+  const endTime = getEndTime(draft.timeSlot);
+
   return (
-    <div style={{
-      minHeight: "100vh",
-      background: `linear-gradient(180deg, ${colors.dark} 0%, #0a0a10 100%)`,
-      fontFamily: fonts.body,
-      color: colors.textPrimary,
-      position: "relative",
-    }}>
-      <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-
-      {/* Background glow */}
-      <div style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: `
-          radial-gradient(ellipse at 20% 0%, rgba(255, 7, 58, 0.08) 0%, transparent 50%),
-          radial-gradient(ellipse at 80% 100%, rgba(0, 240, 255, 0.06) 0%, transparent 50%)
-        `,
-        pointerEvents: "none",
-        zIndex: 0,
-      }} />
-
-      <div style={{
-        maxWidth: "600px",
-        margin: "0 auto",
-        padding: "20px 16px 160px",
+    <div
+      style={{
+        minHeight: "100vh",
+        background: `radial-gradient(circle at top, #1e1b4b 0, #050509 45%)`,
+        fontFamily: fonts.body,
+        color: colors.textPrimary,
         position: "relative",
-        zIndex: 1,
-      }}>
-        {/* Header */}
-        <header style={{ marginBottom: "24px" }}>
+      }}
+    >
+      {/* subtle glow */}
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          pointerEvents: "none",
+          background: `
+            radial-gradient(circle at 10% 0%, rgba(255,7,58,0.2) 0, transparent 40%),
+            radial-gradient(circle at 90% 100%, rgba(0,240,255,0.12) 0, transparent 45%)
+          `,
+          opacity: 0.9,
+        }}
+      />
+
+      <div
+        style={{
+          maxWidth: "720px",
+          margin: "0 auto",
+          padding: "20px 16px 140px",
+          position: "relative",
+          zIndex: 1,
+        }}
+      >
+        {/* Top bar */}
+        <header
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: "20px",
+          }}
+        >
           <button
             onClick={() => router.back()}
             style={{
               display: "flex",
               alignItems: "center",
-              gap: "8px",
-              background: "none",
+              gap: 8,
+              background: "transparent",
               border: "none",
               color: colors.textSecondary,
-              fontSize: "14px",
+              fontSize: 14,
               cursor: "pointer",
-              padding: "0",
-              marginBottom: "16px",
             }}
           >
-            <span style={{ fontSize: "18px" }}>←</span>
+            <span style={{ fontSize: 18 }}>←</span>
             Back
           </button>
 
-          <div style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}>
-            <div>
-              <p style={{
-                fontSize: "12px",
-                color: colors.cyan,
-                textTransform: "uppercase",
-                letterSpacing: "2px",
-                marginBottom: "4px",
-              }}>
-                Checkout
-              </p>
-              <h1 style={{
-                fontFamily: fonts.heading,
-                fontSize: "22px",
-                fontWeight: 700,
-                color: colors.textPrimary,
-                margin: 0,
-              }}>
-                Order Summary
-              </h1>
-            </div>
-            
-            {/* Secure badge */}
-            <div style={{
-              display: "flex",
+          {/* Top-right chip */}
+          <div
+            style={{
+              display: "inline-flex",
               alignItems: "center",
-              gap: "6px",
+              gap: 8,
               padding: "6px 12px",
-              background: "rgba(34, 197, 94, 0.1)",
-              border: "1px solid rgba(34, 197, 94, 0.2)",
-              borderRadius: "20px",
-            }}>
-              <span style={{ fontSize: "12px" }}>🔒</span>
-              <span style={{
-                fontSize: "11px",
-                color: colors.green,
-                fontWeight: 600,
-              }}>
-                Secure
-              </span>
-            </div>
+              borderRadius: 999,
+              background: isWalkIn
+                ? "rgba(245,158,11,0.12)"
+                : "rgba(22,163,74,0.14)",
+              border: `1px solid ${
+                isWalkIn ? "rgba(245,158,11,0.7)" : "rgba(22,163,74,0.7)"
+              }`,
+              fontSize: 11,
+              textTransform: "uppercase",
+              letterSpacing: 1,
+            }}
+          >
+            <span
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: "50%",
+                background: isWalkIn ? colors.orange : colors.green,
+              }}
+            />
+            <span style={{ fontFamily: fonts.heading }}>
+              {isWalkIn ? "Walk-in Booking" : "Secure Online Checkout"}
+            </span>
           </div>
         </header>
 
-        {/* Booking Info Card */}
-        <section style={{
-          background: `linear-gradient(135deg, rgba(0, 240, 255, 0.08) 0%, ${colors.darkCard} 100%)`,
-          border: `1px solid rgba(0, 240, 255, 0.2)`,
-          borderRadius: "16px",
-          padding: "20px",
-          marginBottom: "20px",
-          position: "relative",
-          overflow: "hidden",
-        }}>
-          {/* Top accent */}
-          <div style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            height: "2px",
-            background: `linear-gradient(90deg, ${colors.cyan}, transparent)`,
-          }} />
-
-          <div style={{
-            display: "flex",
-            alignItems: "flex-start",
-            gap: "16px",
-          }}>
-            {/* Cafe icon */}
-            <div style={{
-              width: "56px",
-              height: "56px",
-              background: `linear-gradient(135deg, ${colors.cyan}20 0%, ${colors.cyan}10 100%)`,
-              borderRadius: "12px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "28px",
-              flexShrink: 0,
-            }}>
-              🎮
-            </div>
-
-            <div style={{ flex: 1 }}>
-              <h2 style={{
-                fontSize: "16px",
-                fontWeight: 600,
-                color: colors.textPrimary,
-                marginBottom: "8px",
-              }}>
-                {draft.cafeName || "Gaming Café"}
-              </h2>
-              
-              <div style={{
-                display: "flex",
-                flexWrap: "wrap",
-                gap: "12px",
-              }}>
-                <div style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                }}>
-                  <span style={{ fontSize: "14px" }}>📅</span>
-                  <span style={{
-                    fontSize: "13px",
-                    color: colors.textSecondary,
-                  }}>
-                    {dateLabel}
-                  </span>
-                </div>
-                <div style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                }}>
-                  <span style={{ fontSize: "14px" }}>⏰</span>
-                  <span style={{
-                    fontSize: "13px",
-                    color: colors.cyan,
-                    fontWeight: 600,
-                  }}>
-                    {draft.timeSlot}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Tickets Section */}
-        <section style={{ marginBottom: "20px" }}>
-          <h3 style={{
-            fontSize: "12px",
-            color: colors.textMuted,
-            textTransform: "uppercase",
-            letterSpacing: "1.5px",
-            marginBottom: "12px",
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-          }}>
-            <span>🎟️</span> Your Tickets
-          </h3>
-
-          <div style={{
-            background: colors.darkCard,
-            border: `1px solid ${colors.border}`,
-            borderRadius: "16px",
-            overflow: "hidden",
-          }}>
-            {draft.tickets.map((ticket, index) => (
-              <div
-                key={ticket.ticketId}
-                style={{
-                  padding: "16px",
-                  borderBottom: index < draft.tickets.length - 1 
-                    ? `1px solid ${colors.border}` 
-                    : "none",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: "12px",
-                }}
-              >
-                <div style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "12px",
-                }}>
-                  <div style={{
-                    width: "40px",
-                    height: "40px",
-                    background: `linear-gradient(135deg, ${colors.red}20 0%, ${colors.red}10 100%)`,
-                    borderRadius: "10px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: "20px",
-                  }}>
-                    {consoleIcons[ticket.console] || "🎮"}
-                  </div>
-                  <div>
-                    <div style={{
-                      fontSize: "14px",
-                      fontWeight: 600,
-                      color: colors.textPrimary,
-                      marginBottom: "2px",
-                    }}>
-                      {ticket.title}
-                    </div>
-                    <div style={{
-                      fontSize: "12px",
-                      color: colors.textMuted,
-                    }}>
-                      {ticket.quantity} × ₹{ticket.price}
-                    </div>
-                  </div>
-                </div>
-                <div style={{
-                  fontFamily: fonts.heading,
-                  fontSize: "16px",
-                  fontWeight: 600,
-                  color: colors.cyan,
-                }}>
-                  ₹{ticket.price * ticket.quantity}
-                </div>
-              </div>
-            ))}
-
-            {/* Subtotal */}
-            <div style={{
-              padding: "14px 16px",
-              background: "rgba(255, 255, 255, 0.02)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}>
-              <span style={{
-                fontSize: "13px",
-                color: colors.textSecondary,
-              }}>
-                Subtotal ({ticketsCount} ticket{ticketsCount > 1 ? "s" : ""})
-              </span>
-              <span style={{
-                fontSize: "15px",
-                fontWeight: 600,
-                color: colors.textPrimary,
-              }}>
-                ₹{baseAmount}
-              </span>
-            </div>
-          </div>
-        </section>
-
-        {/* Offers Section */}
-        <section style={{ marginBottom: "20px" }}>
-          <h3 style={{
-            fontSize: "12px",
-            color: colors.textMuted,
-            textTransform: "uppercase",
-            letterSpacing: "1.5px",
-            marginBottom: "12px",
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-          }}>
-            <span>🎁</span> Offers & Discounts
-          </h3>
-
-          <div style={{
-            background: colors.darkCard,
-            border: `1px solid ${offerApplied ? colors.green + "40" : colors.border}`,
-            borderRadius: "16px",
-            padding: "16px",
-          }}>
-            {offerApplied ? (
-              <div style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-              }}>
-                <div style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "12px",
-                }}>
-                  <div style={{
-                    width: "40px",
-                    height: "40px",
-                    background: `linear-gradient(135deg, ${colors.green}30 0%, ${colors.green}15 100%)`,
-                    borderRadius: "10px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: "20px",
-                  }}>
-                    ✓
-                  </div>
-                  <div>
-                    <div style={{
-                      fontSize: "14px",
-                      fontWeight: 600,
-                      color: colors.green,
-                      marginBottom: "2px",
-                    }}>
-                      Offer Applied!
-                    </div>
-                    <div style={{
-                      fontSize: "12px",
-                      color: colors.textMuted,
-                    }}>
-                      20% OFF up to ₹150
-                    </div>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setOfferApplied(false)}
-                  style={{
-                    padding: "8px 14px",
-                    background: "transparent",
-                    border: `1px solid ${colors.border}`,
-                    borderRadius: "8px",
-                    color: colors.textMuted,
-                    fontSize: "12px",
-                    cursor: "pointer",
-                  }}
-                >
-                  Remove
-                </button>
-              </div>
-            ) : showOfferInput ? (
-              <div>
-                <div style={{
-                  display: "flex",
-                  gap: "10px",
-                  marginBottom: "12px",
-                }}>
-                  <input
-                    type="text"
-                    value={offerCode}
-                    onChange={(e) => setOfferCode(e.target.value)}
-                    placeholder="Enter offer code"
-                    style={{
-                      flex: 1,
-                      padding: "12px 16px",
-                      background: "rgba(255, 255, 255, 0.05)",
-                      border: `1px solid ${colors.border}`,
-                      borderRadius: "10px",
-                      color: colors.textPrimary,
-                      fontSize: "14px",
-                      fontFamily: fonts.body,
-                      outline: "none",
-                    }}
-                  />
-                  <button
-                    onClick={handleApplyOffer}
-                    style={{
-                      padding: "12px 20px",
-                      background: `linear-gradient(135deg, ${colors.red} 0%, #ff3366 100%)`,
-                      border: "none",
-                      borderRadius: "10px",
-                      color: "white",
-                      fontSize: "13px",
-                      fontWeight: 600,
-                      cursor: "pointer",
-                    }}
-                  >
-                    Apply
-                  </button>
-                </div>
-                <p style={{
-                  fontSize: "12px",
-                  color: colors.textMuted,
-                }}>
-                  💡 Try: GAME20 or FIRST50
-                </p>
-              </div>
-            ) : (
-              <div style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-              }}>
-                <div style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "12px",
-                }}>
-                  <div style={{
-                    width: "40px",
-                    height: "40px",
-                    background: `linear-gradient(135deg, ${colors.orange}20 0%, ${colors.orange}10 100%)`,
-                    borderRadius: "10px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: "20px",
-                  }}>
-                    %
-                  </div>
-                  <div>
-                    <div style={{
-                      fontSize: "14px",
-                      fontWeight: 600,
-                      color: colors.textPrimary,
-                      marginBottom: "2px",
-                    }}>
-                      Have an offer code?
-                    </div>
-                    <div style={{
-                      fontSize: "12px",
-                      color: colors.textMuted,
-                    }}>
-                      Get up to 20% OFF
-                    </div>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setShowOfferInput(true)}
-                  style={{
-                    padding: "10px 18px",
-                    background: "rgba(255, 255, 255, 0.05)",
-                    border: `1px solid ${colors.border}`,
-                    borderRadius: "10px",
-                    color: colors.cyan,
-                    fontSize: "13px",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                  }}
-                >
-                  Add Code
-                </button>
-              </div>
-            )}
-          </div>
-        </section>
-
-        {/* Payment Details */}
-        <section style={{ marginBottom: "20px" }}>
-          <h3 style={{
-            fontSize: "12px",
-            color: colors.textMuted,
-            textTransform: "uppercase",
-            letterSpacing: "1.5px",
-            marginBottom: "12px",
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-          }}>
-            <span>💳</span> Payment Details
-          </h3>
-
-          <div style={{
-            background: colors.darkCard,
-            border: `1px solid ${colors.border}`,
-            borderRadius: "16px",
-            padding: "16px",
-          }}>
-            <div style={{
-              display: "flex",
-              justifyContent: "space-between",
-              padding: "8px 0",
-            }}>
-              <span style={{ fontSize: "14px", color: colors.textSecondary }}>
-                Ticket Amount
-              </span>
-              <span style={{ fontSize: "14px", color: colors.textPrimary }}>
-                ₹{baseAmount}
-              </span>
-            </div>
-
-            <div style={{
-              display: "flex",
-              justifyContent: "space-between",
-              padding: "8px 0",
-            }}>
-              <span style={{ fontSize: "14px", color: colors.textSecondary }}>
-                Convenience Fee
-              </span>
-              <span style={{ fontSize: "14px", color: colors.textPrimary }}>
-                ₹{convenienceFee}
-              </span>
-            </div>
-
-            {offerApplied && (
-              <div style={{
-                display: "flex",
-                justifyContent: "space-between",
-                padding: "8px 0",
-              }}>
-                <span style={{ fontSize: "14px", color: colors.green }}>
-                  Offer Discount
-                </span>
-                <span style={{ fontSize: "14px", color: colors.green }}>
-                  − ₹{offerDiscount.toFixed(0)}
-                </span>
-              </div>
-            )}
-
-            <div style={{
-              borderTop: `1px dashed ${colors.border}`,
-              marginTop: "8px",
-              paddingTop: "12px",
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}>
-              <span style={{
-                fontSize: "16px",
-                fontWeight: 600,
-                color: colors.textPrimary,
-              }}>
-                Total Amount
-              </span>
-              <span style={{
-                fontFamily: fonts.heading,
-                fontSize: "24px",
-                fontWeight: 700,
-                color: colors.cyan,
-              }}>
-                ₹{grandTotal}
-              </span>
-            </div>
-          </div>
-        </section>
-
-        {/* Booking Info Note */}
-        <section>
-          <div style={{
-            background: "rgba(0, 240, 255, 0.05)",
-            border: `1px solid rgba(0, 240, 255, 0.15)`,
-            borderRadius: "12px",
-            padding: "14px 16px",
-            display: "flex",
-            alignItems: "flex-start",
-            gap: "12px",
-          }}>
-            <span style={{ fontSize: "18px" }}>ℹ️</span>
-            <p style={{
-              fontSize: "13px",
-              color: colors.textSecondary,
-              lineHeight: 1.5,
+        {/* Title */}
+        <div style={{ marginBottom: 20 }}>
+          <p
+            style={{
+              fontSize: 11,
+              letterSpacing: 3,
+              textTransform: "uppercase",
+              color: colors.textMuted,
+              marginBottom: 6,
+            }}
+          >
+            Checkout
+          </p>
+          <h1
+            style={{
+              fontFamily: fonts.heading,
+              fontSize: 24,
+              fontWeight: 700,
               margin: 0,
-            }}>
-              Booking confirmation will be sent to your registered email address. 
-              Please show the confirmation at the venue.
-            </p>
-          </div>
-        </section>
-      </div>
+            }}
+          >
+            Order Summary
+          </h1>
+        </div>
 
-      {/* Bottom Payment Bar */}
-      <div style={{
-        position: "fixed",
-        bottom: 0,
-        left: 0,
-        right: 0,
-        background: "rgba(15, 15, 20, 0.98)",
-        backdropFilter: "blur(20px)",
-        borderTop: `1px solid ${colors.border}`,
-        padding: "16px",
-        zIndex: 100,
-      }}>
-        <div style={{
-          maxWidth: "600px",
-          margin: "0 auto",
-        }}>
-          {/* Savings banner */}
-          {offerApplied && (
-            <div style={{
-              background: `linear-gradient(90deg, ${colors.green}20 0%, transparent 100%)`,
-              borderRadius: "8px",
-              padding: "8px 12px",
-              marginBottom: "12px",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-            }}>
-              <span style={{ fontSize: "14px" }}>🎉</span>
-              <span style={{
-                fontSize: "13px",
-                color: colors.green,
-                fontWeight: 600,
-              }}>
-                You're saving ₹{offerDiscount.toFixed(0)} on this order!
-              </span>
-            </div>
-          )}
-
-          <div style={{
+        {/* Cafe + slot card */}
+        <section
+          style={{
+            background:
+              "linear-gradient(135deg, rgba(15,23,42,0.95), rgba(17,24,39,0.95))",
+            borderRadius: 20,
+            border: `1px solid ${colors.border}`,
+            padding: "16px 18px",
+            marginBottom: 18,
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            gap: "16px",
-          }}>
-            <div>
-              <div style={{
-                fontSize: "12px",
-                color: colors.textMuted,
-                marginBottom: "2px",
-              }}>
-                Amount Payable
-              </div>
-              <div style={{
-                fontFamily: fonts.heading,
-                fontSize: "28px",
-                fontWeight: 700,
-                color: colors.textPrimary,
-              }}>
-                ₹{grandTotal}
-              </div>
-            </div>
-
-            <button
-              disabled={isPaying}
-              onClick={handlePayClick}
+            gap: 16,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <div
               style={{
-                padding: "16px 32px",
-                background: isPaying
-                  ? "rgba(255, 255, 255, 0.1)"
-                  : `linear-gradient(135deg, ${colors.green} 0%, ${colors.greenDark} 100%)`,
-                border: "none",
-                borderRadius: "14px",
-                color: isPaying ? colors.textMuted : "white",
-                fontFamily: fonts.heading,
-                fontSize: "14px",
-                fontWeight: 600,
-                textTransform: "uppercase",
-                letterSpacing: "1px",
-                cursor: isPaying ? "not-allowed" : "pointer",
+                width: 52,
+                height: 52,
+                borderRadius: 16,
+                background:
+                  "radial-gradient(circle at 0 0, #38bdf8 0, #020617 55%)",
                 display: "flex",
                 alignItems: "center",
-                gap: "8px",
-                boxShadow: isPaying ? "none" : `0 8px 32px ${colors.green}40`,
-                transition: "all 0.2s ease",
+                justifyContent: "center",
+                fontSize: 26,
               }}
             >
-              {isPaying ? (
-                <>
-                  <span style={{
-                    width: "16px",
-                    height: "16px",
-                    border: "2px solid rgba(255,255,255,0.3)",
-                    borderTopColor: "white",
-                    borderRadius: "50%",
-                    animation: "spin 1s linear infinite",
-                  }} />
-                  Processing...
-                </>
-              ) : (
-                <>
-                  🎮 Pay Now
-                </>
-              )}
-            </button>
+              🎮
+            </div>
+            <div>
+              <div
+                style={{
+                  fontSize: 14,
+                  fontWeight: 600,
+                  marginBottom: 4,
+                }}
+              >
+                {draft.cafeName}
+              </div>
+              <div
+                style={{
+                  fontSize: 12,
+                  color: colors.textSecondary,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 2,
+                }}
+              >
+                <span>{dateLabel}</span>
+                <span>
+                  {draft.timeSlot} – {endTime}{" "}
+                  <span style={{ color: colors.textMuted }}>
+                    (1 hour session)
+                  </span>
+                </span>
+              </div>
+
+              {/* booking type pill inside card */}
+              <div
+                style={{
+                  marginTop: 6,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "4px 10px",
+                  borderRadius: 999,
+                  background: isWalkIn
+                    ? "rgba(245,158,11,0.15)"
+                    : "rgba(34,197,94,0.18)",
+                  fontSize: 11,
+                  color: isWalkIn ? colors.orange : colors.green,
+                  border: `1px solid ${
+                    isWalkIn
+                      ? "rgba(245,158,11,0.5)"
+                      : "rgba(34,197,94,0.6)"
+                  }`,
+                  textTransform: "uppercase",
+                  letterSpacing: 0.5,
+                }}
+              >
+                <span>{isWalkIn ? "🚶‍♂️" : "🔒"}</span>
+                <span>
+                  {isWalkIn ? "Walk-in Booking" : "Online Booking"}
+                </span>
+              </div>
+            </div>
           </div>
-        </div>
+        </section>
+
+        {/* Tickets list */}
+        <section
+          style={{
+            marginTop: 10,
+            borderRadius: 18,
+            background: colors.darkerCard,
+            border: `1px solid ${colors.border}`,
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              padding: "12px 16px",
+              borderBottom: `1px solid ${colors.border}`,
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+            <span style={{ fontSize: 16 }}>🎟️</span>
+            <div>
+              <div
+                style={{
+                  fontSize: 13,
+                  fontWeight: 600,
+                  textTransform: "uppercase",
+                  letterSpacing: 1,
+                }}
+              >
+                Your Tickets
+              </div>
+              <div
+                style={{
+                  fontSize: 11,
+                  color: colors.textMuted,
+                }}
+              >
+                {totalTickets} ticket
+                {totalTickets > 1 ? "s" : ""} · {draft.timeSlot} – {endTime}
+              </div>
+            </div>
+          </div>
+
+          <div
+            style={{
+              padding: "10px 12px 12px",
+              display: "flex",
+              flexDirection: "column",
+              gap: 10,
+            }}
+          >
+            {draft.tickets.map((t) => {
+              if (t.quantity <= 0) return null;
+              const lineTotal = t.price * t.quantity;
+              return (
+                <div
+                  key={t.ticketId}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "10px 8px",
+                    borderRadius: 12,
+                    background: "rgba(15,23,42,0.9)",
+                  }}
+                >
+                  <div>
+                    <div
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 600,
+                        marginBottom: 4,
+                      }}
+                    >
+                      {t.title}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 11,
+                        color: colors.textMuted,
+                      }}
+                    >
+                      {t.quantity} x ₹{t.price} • {CONSOLE_LABELS[t.console]}
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      fontFamily: fonts.heading,
+                      fontSize: 14,
+                    }}
+                  >
+                    ₹{lineTotal}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Price summary */}
+          <div
+            style={{
+              borderTop: `1px dashed ${colors.border}`,
+              padding: "10px 14px 12px",
+              display: "flex",
+              flexDirection: "column",
+              gap: 6,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                fontSize: 12,
+                color: colors.textSecondary,
+              }}
+            >
+              <span>Subtotal</span>
+              <span>₹{draft.totalAmount}</span>
+            </div>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                fontSize: 12,
+                color: colors.textSecondary,
+              }}
+            >
+              <span>GST & charges</span>
+              <span>Included</span>
+            </div>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                marginTop: 4,
+                fontSize: 13,
+                fontWeight: 600,
+              }}
+            >
+              <span>Total</span>
+              <span style={{ fontFamily: fonts.heading, fontSize: 16 }}>
+                ₹{draft.totalAmount}
+              </span>
+            </div>
+          </div>
+        </section>
+
+        {/* Info line for walk-in vs online */}
+        <section
+          style={{ marginTop: 16, fontSize: 12, color: colors.textMuted }}
+        >
+          {isWalkIn ? (
+            <p style={{ margin: 0 }}>
+              This is a <strong>walk-in booking</strong>. Your slot is reserved
+              for the selected time.{" "}
+              <span style={{ color: colors.orange }}>
+                Payment will be taken at the café counter.
+              </span>
+            </p>
+          ) : (
+            <p style={{ margin: 0 }}>
+              Complete the payment to{" "}
+              <strong>lock your slot and confirm your booking.</strong>
+            </p>
+          )}
+        </section>
+
+        {/* Error message */}
+        {error && (
+          <div
+            style={{
+              marginTop: 16,
+              padding: "10px 12px",
+              borderRadius: 10,
+              border: "1px solid rgba(248,113,113,0.6)",
+              background: "rgba(248,113,113,0.08)",
+              fontSize: 12,
+              color: "#fecaca",
+            }}
+          >
+            {error}
+          </div>
+        )}
       </div>
 
-      <style>{`
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-        input::placeholder {
-          color: ${colors.textMuted};
-        }
-      `}</style>
+      {/* Bottom bar */}
+      <div
+        style={{
+          position: "fixed",
+          left: 0,
+          right: 0,
+          bottom: 0,
+          borderTop: `1px solid ${colors.border}`,
+          background: "rgba(5,5,9,0.98)",
+          backdropFilter: "blur(18px)",
+          padding: "12px 16px",
+          zIndex: 20,
+        }}
+      >
+        <div
+          style={{
+            maxWidth: 720,
+            margin: "0 auto",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 16,
+          }}
+        >
+          <div>
+            <div
+              style={{
+                fontSize: 13,
+                fontWeight: 600,
+              }}
+            >
+              ₹{draft.totalAmount}
+            </div>
+            <div
+              style={{
+                fontSize: 11,
+                color: colors.textMuted,
+              }}
+            >
+              {totalTickets} ticket
+              {totalTickets > 1 ? "s" : ""} · {draft.timeSlot} – {endTime}
+            </div>
+          </div>
+
+          <button
+            disabled={placing}
+            onClick={handlePlaceOrder}
+            style={{
+              flexShrink: 0,
+              padding: "12px 22px",
+              borderRadius: 999,
+              border: "none",
+              fontFamily: fonts.heading,
+              fontSize: 12,
+              fontWeight: 600,
+              letterSpacing: 1,
+              textTransform: "uppercase",
+              cursor: placing ? "not-allowed" : "pointer",
+              background: placing
+                ? "rgba(148,163,184,0.3)"
+                : isWalkIn
+                ? `linear-gradient(135deg, ${colors.orange} 0, #f97316 100%)`
+                : `linear-gradient(135deg, ${colors.green} 0, #16a34a 100%)`,
+              color: "white",
+              minWidth: 190,
+              textAlign: "center",
+            }}
+          >
+            {placing
+              ? "Processing..."
+              : isWalkIn
+              ? "Confirm Walk-in (Pay at Counter)"
+              : `Pay ₹${draft.totalAmount} & Confirm`}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

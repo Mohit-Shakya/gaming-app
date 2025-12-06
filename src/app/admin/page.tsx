@@ -1,555 +1,407 @@
 // src/app/admin/page.tsx
 "use client";
 
-import { useEffect, useState, FormEvent } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import useUser from "@/hooks/useUser";
+import { colors, fonts } from "@/lib/constants";
 
-type CafeRow = {
-  id: string;
-  name: string;
-  address?: string | null;
-  city?: string | null;
-  ps5_count?: number | null;
-  ps4_count?: number | null;
-  xbox_count?: number | null;
-  pc_count?: number | null;
-  pool_count?: number | null;
-  arcade_count?: number | null;
-  hourly_price?: number | null;
-  total_seats?: number | null;
+type AdminStats = {
+  totalCafes: number;
+  totalBookings: number;
+  todayBookings: number;
+  totalUsers: number;
+  totalRevenue: number;
 };
 
-type AdminState = "checking" | "denied" | "ok";
-type FormMode = "create" | "edit";
+export default function AdminDashboardPage() {
+  const router = useRouter();
+  const { user, loading: userLoading } = useUser();
 
-export default function AdminPage() {
-  const [adminState, setAdminState] = useState<AdminState>("checking");
-  const [adminEmail, setAdminEmail] = useState<string | null>(null);
+  const [isChecking, setIsChecking] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [stats, setStats] = useState<AdminStats | null>(null);
+  const [loadingStats, setLoadingStats] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const [cafes, setCafes] = useState<CafeRow[]>([]);
-  const [loadingCafes, setLoadingCafes] = useState(false);
-  const [cafesError, setCafesError] = useState<string | null>(null);
+  // 1) Check if user is admin
+  useEffect(() => {
+    async function checkAdmin() {
+      if (userLoading) return;
 
-  // form + mode (create vs edit)
-  const [mode, setMode] = useState<FormMode>("create");
-  const [editingId, setEditingId] = useState<string | null>(null);
-
-  const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
-
-  const [form, setForm] = useState({
-    name: "",
-    address: "",
-    city: "",
-    ps5_count: "0",
-    ps4_count: "0",
-    xbox_count: "0",
-    pc_count: "0",
-    pool_count: "0",
-    arcade_count: "0",
-    hourly_price: "0",
-  });
-
-  // ---------- HELPERS ----------
-  function handleChange(field: keyof typeof form, value: string) {
-    setForm((prev) => ({ ...prev, [field]: value }));
-  }
-
-  function toInt(value: string): number {
-    const n = Number(value);
-    if (!Number.isFinite(n) || n < 0) return 0;
-    return Math.floor(n);
-  }
-
-  // central fetch function used by effect + manual refresh
-  async function reloadCafes() {
-    try {
-      setLoadingCafes(true);
-      setCafesError(null);
-
-      const { data, error } = await supabase
-        .from("cafes")
-        .select(
-          "id, name, address, city, ps5_count, ps4_count, xbox_count, pc_count, pool_count, arcade_count, hourly_price, total_seats"
-        )
-        .order("created_at", { ascending: false });
-
-      if (error) {
-        console.error("[Admin] cafes load error:", error);
-        setCafesError("Could not load cafés from database.");
+      if (!user) {
+        router.push("/login");
         return;
       }
 
-      setCafes((data as CafeRow[]) ?? []);
-    } finally {
-      setLoadingCafes(false);
-    }
-  }
-
-  // ---------- ADMIN CHECK ----------
-  useEffect(() => {
-    async function checkAdmin() {
       try {
-        setAdminState("checking");
-
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-
-        if (!user) {
-          setAdminState("denied");
-          return;
-        }
-
-        setAdminEmail(user.email ?? null);
-
-        const { data: profile, error } = await supabase
+        const { data: profile, error: profileError } = await supabase
           .from("profiles")
-          .select("role")
+          .select("id, role, is_admin")
           .eq("id", user.id)
           .maybeSingle();
 
-        if (error || !profile || profile.role !== "admin") {
-          setAdminState("denied");
+        if (profileError) {
+          console.error("Admin check error:", profileError);
+          // If there's an error, just redirect - don't let them access admin
+          setIsAdmin(false);
+          router.push("/dashboard");
           return;
         }
 
-        setAdminState("ok");
-        await reloadCafes();
+        // If no profile found, redirect to onboarding
+        if (!profile) {
+          console.log("No profile found, redirecting to onboarding");
+          router.push("/onboarding");
+          return;
+        }
+
+        const role = (profile as any)?.role;
+        const is_admin = (profile as any)?.is_admin;
+
+        const isReallyAdmin =
+          role === "admin" || role === "super_admin" || is_admin === true;
+
+        if (!isReallyAdmin) {
+          // Not admin – kick to normal dashboard
+          router.push("/dashboard");
+          return;
+        }
+
+        setIsAdmin(true);
       } catch (err) {
-        console.error("[Admin] unexpected error:", err);
-        setAdminState("denied");
+        console.error("Admin check error:", err);
+        router.push("/dashboard");
+        return;
+      } finally {
+        setIsChecking(false);
       }
     }
 
     checkAdmin();
-  }, []);
+  }, [user, userLoading, router]);
 
-  // ---------- SUBMIT (CREATE or EDIT) ----------
-  async function handleSubmitCafe(e: FormEvent) {
-    e.preventDefault();
-    setSaveError(null);
-    setSaveSuccess(null);
+  // 2) Load simple stats for admin
+  useEffect(() => {
+    if (!isAdmin) return;
 
-    if (!form.name.trim()) {
-      setSaveError("Please enter a café name.");
-      return;
-    }
-    if (!form.address.trim()) {
-      setSaveError("Please enter an address / area.");
-      return;
-    }
-    if (!form.city.trim()) {
-      setSaveError("Please enter a city.");
-      return;
-    }
+    async function loadStats() {
+      try {
+        setLoadingStats(true);
+        setError(null);
 
-    const payloadCounts = {
-      ps5_count: toInt(form.ps5_count),
-      ps4_count: toInt(form.ps4_count),
-      xbox_count: toInt(form.xbox_count),
-      pc_count: toInt(form.pc_count),
-      pool_count: toInt(form.pool_count),
-      arcade_count: toInt(form.arcade_count),
-    };
-
-    const totalSeats =
-      payloadCounts.ps5_count +
-      payloadCounts.ps4_count +
-      payloadCounts.xbox_count +
-      payloadCounts.pc_count +
-      payloadCounts.pool_count +
-      payloadCounts.arcade_count;
-
-    const payload = {
-      name: form.name.trim(),
-      address: form.address.trim(),
-      city: form.city.trim(),
-      hourly_price: toInt(form.hourly_price),
-      total_seats: totalSeats,
-      ...payloadCounts,
-    };
-
-    try {
-      setSaving(true);
-
-      if (mode === "create") {
-        const { error } = await supabase.from("cafes").insert(payload);
-
-        if (error) {
-          console.error("[Admin] insert cafe error:", error);
-          setSaveError(error.message || "Could not create café.");
-          return;
-        }
-
-        setSaveSuccess("New gaming café created.");
-      } else if (mode === "edit" && editingId) {
-        const { error } = await supabase
+        // Cafes count
+        const { count: cafesCount, error: cafesError } = await supabase
           .from("cafes")
-          .update(payload)
-          .eq("id", editingId);
+          .select("id", { count: "exact", head: true });
 
-        if (error) {
-          console.error("[Admin] update cafe error:", error);
-          setSaveError(error.message || "Could not update café.");
-          return;
-        }
+        if (cafesError) throw cafesError;
 
-        setSaveSuccess("Café details updated.");
+        // Total bookings
+        const { count: bookingsCount, error: bookingsError } = await supabase
+          .from("bookings")
+          .select("id", { count: "exact", head: true });
+
+        if (bookingsError) throw bookingsError;
+
+        // Today bookings
+        const todayStr = new Date().toISOString().slice(0, 10);
+        const { count: todayBookingsCount, error: todayError } = await supabase
+          .from("bookings")
+          .select("id", { count: "exact", head: true })
+          .eq("booking_date", todayStr);
+
+        if (todayError) throw todayError;
+
+        // Total users
+        const { count: usersCount, error: usersError } = await supabase
+          .from("profiles")
+          .select("id", { count: "exact", head: true });
+
+        if (usersError) throw usersError;
+
+        // Total revenue (simple sum of total_amount on bookings)
+        const { data: revenueRows, error: revenueError } = await supabase
+          .from("bookings")
+          .select("total_amount");
+
+        if (revenueError) throw revenueError;
+
+        const totalRevenue =
+          revenueRows?.reduce(
+            (sum, row) => sum + (row.total_amount ?? 0),
+            0
+          ) ?? 0;
+
+        setStats({
+          totalCafes: cafesCount ?? 0,
+          totalBookings: bookingsCount ?? 0,
+          todayBookings: todayBookingsCount ?? 0,
+          totalUsers: usersCount ?? 0,
+          totalRevenue,
+        });
+      } catch (err) {
+        console.error("Admin stats error:", err);
+        setError("Could not load admin stats.");
+      } finally {
+        setLoadingStats(false);
       }
-
-      // reset to create mode + reload
-      setMode("create");
-      setEditingId(null);
-      setForm({
-        name: "",
-        address: "",
-        city: "",
-        ps5_count: "0",
-        ps4_count: "0",
-        xbox_count: "0",
-        pc_count: "0",
-        pool_count: "0",
-        arcade_count: "0",
-        hourly_price: "0",
-      });
-
-      await reloadCafes();
-    } catch (err) {
-      console.error("[Admin] unexpected save error:", err);
-      setSaveError("Unexpected error while saving café.");
-    } finally {
-      setSaving(false);
     }
-  }
 
-  function startEdit(cafe: CafeRow) {
-    setMode("edit");
-    setEditingId(cafe.id);
-    setSaveError(null);
-    setSaveSuccess(null);
+    loadStats();
+  }, [isAdmin]);
 
-    setForm({
-      name: cafe.name ?? "",
-      address: cafe.address ?? "",
-      city: cafe.city ?? "",
-      ps5_count: String(cafe.ps5_count ?? 0),
-      ps4_count: String(cafe.ps4_count ?? 0),
-      xbox_count: String(cafe.xbox_count ?? 0),
-      pc_count: String(cafe.pc_count ?? 0),
-      pool_count: String(cafe.pool_count ?? 0),
-      arcade_count: String(cafe.arcade_count ?? 0),
-      hourly_price: String(cafe.hourly_price ?? 0),
-    });
-
-    // scroll to top so user sees the form
-    if (typeof window !== "undefined") {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
-  }
-
-  function cancelEdit() {
-    setMode("create");
-    setEditingId(null);
-    setSaveError(null);
-    setSaveSuccess(null);
-    setForm({
-      name: "",
-      address: "",
-      city: "",
-      ps5_count: "0",
-      ps4_count: "0",
-      xbox_count: "0",
-      pc_count: "0",
-      pool_count: "0",
-      arcade_count: "0",
-      hourly_price: "0",
-    });
-  }
-
-  // ---------- RENDER STATES ----------
-  if (adminState === "checking") {
+  // Loading admin check
+  if (isChecking || userLoading) {
     return (
-      <div className="min-h-screen bg-[#0b0b0b] text-white">
-        <div className="mx-auto max-w-xl px-4 py-8">
-          <p className="text-sm text-gray-300">Checking admin access…</p>
-        </div>
+      <div
+        style={{
+          minHeight: "100vh",
+          background: colors.dark,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontFamily: fonts.body,
+          color: colors.textSecondary,
+        }}
+      >
+        Checking admin access…
       </div>
     );
   }
 
-  if (adminState === "denied") {
-    return (
-      <div className="min-h-screen bg-[#0b0b0b] text-white">
-        <div className="mx-auto max-w-xl px-4 py-8">
-          <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
-            You are not allowed to access the admin panel.
-          </p>
-        </div>
-      </div>
-    );
+  if (!isAdmin) {
+    // While redirecting
+    return null;
   }
 
-  // ---------- MAIN ADMIN UI ----------
   return (
-    <div className="min-h-screen bg-[#0b0b0b] text-white">
-      <div className="mx-auto max-w-3xl px-4 py-6">
-        {/* Header */}
-        <header className="mb-6">
-          <p className="text-xs font-medium uppercase tracking-[0.18em] text-gray-400">
-            Admin
-          </p>
-          <h1 className="mt-1 text-xl font-semibold tracking-tight">
-            Admin panel
-          </h1>
-          {adminEmail && (
-            <p className="mt-1 text-[12px] text-gray-400">
-              Signed in as <span className="font-mono">{adminEmail}</span>
+    <div
+      style={{
+        minHeight: "100vh",
+        background: `radial-gradient(circle at top, #1e1b4b 0, #050509 45%)`,
+        fontFamily: fonts.body,
+        color: colors.textPrimary,
+      }}
+    >
+      <div
+        style={{
+          maxWidth: 960,
+          margin: "0 auto",
+          padding: "16px 16px 40px",
+        }}
+      >
+        {/* Top bar */}
+        <header
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: 24,
+          }}
+        >
+          <div>
+            <p
+              style={{
+                fontSize: 11,
+                letterSpacing: 3,
+                textTransform: "uppercase",
+                color: colors.textMuted,
+                marginBottom: 4,
+              }}
+            >
+              Admin
             </p>
-          )}
+            <h1
+              style={{
+                fontFamily: fonts.heading,
+                fontSize: 22,
+                margin: 0,
+              }}
+            >
+              Platform Overview
+            </h1>
+          </div>
+
+          <button
+            onClick={() => router.push("/dashboard")}
+            style={{
+              padding: "8px 14px",
+              borderRadius: 999,
+              border: `1px solid ${colors.border}`,
+              background: "rgba(15,23,42,0.8)",
+              color: colors.textSecondary,
+              fontSize: 12,
+              cursor: "pointer",
+            }}
+          >
+            Go to user dashboard
+          </button>
         </header>
 
-        {/* Create / Edit café */}
-        <section className="mb-8 rounded-2xl bg-white px-4 py-4 text-[#111827] shadow-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="mb-1 text-sm font-semibold tracking-tight">
-                {mode === "create"
-                  ? "Add new gaming café"
-                  : "Edit gaming café"}
-              </h2>
-              <p className="mb-2 text-[12px] text-gray-500">
-                Use this form to onboard or update a café in your booking app.
-              </p>
-            </div>
-            {mode === "edit" && (
-              <button
-                type="button"
-                onClick={cancelEdit}
-                className="text-[11px] font-medium text-gray-600 underline"
+        {/* Stats grid */}
+        <section
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+            gap: 12,
+            marginBottom: 20,
+          }}
+        >
+          {[
+            {
+              label: "Total Cafés",
+              value: stats?.totalCafes ?? 0,
+              hint: "Active gaming cafés",
+            },
+            {
+              label: "Total Bookings",
+              value: stats?.totalBookings ?? 0,
+              hint: "All-time",
+            },
+            {
+              label: "Today’s Bookings",
+              value: stats?.todayBookings ?? 0,
+              hint: "Today",
+            },
+            {
+              label: "Total Users",
+              value: stats?.totalUsers ?? 0,
+              hint: "Registered players",
+            },
+          ].map((card) => (
+            <div
+              key={card.label}
+              style={{
+                padding: "14px 14px",
+                borderRadius: 16,
+                background: colors.darkerCard,
+                border: `1px solid ${colors.border}`,
+              }}
+            >
+              <p
+                style={{
+                  fontSize: 11,
+                  color: colors.textMuted,
+                  marginBottom: 6,
+                  textTransform: "uppercase",
+                  letterSpacing: 1,
+                }}
               >
-                Cancel edit
-              </button>
-            )}
-          </div>
-
-          {mode === "edit" && editingId && (
-            <p className="mb-3 rounded-lg bg-yellow-50 px-3 py-2 text-[11px] text-yellow-800">
-              You are editing an existing café. Make changes and click{" "}
-              <strong>Save changes</strong>, or click{" "}
-              <strong>Cancel edit</strong> to go back to create mode.
-            </p>
-          )}
-
-          <form className="space-y-3" onSubmit={handleSubmitCafe}>
-            {/* Name */}
-            <div>
-              <label className="block text-[12px] font-medium text-gray-700">
-                Café name *
-              </label>
-              <input
-                type="text"
-                value={form.name}
-                onChange={(e) => handleChange("name", e.target.value)}
-                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-black"
-                placeholder="Gaming Zone, PlayTime Gaming Café…"
-              />
-            </div>
-
-            {/* Address + City */}
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div>
-                <label className="block text-[12px] font-medium text-gray-700">
-                  Address / Area *
-                </label>
-                <input
-                  type="text"
-                  value={form.address}
-                  onChange={(e) => handleChange("address", e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-black"
-                  placeholder="Satya Niketan"
-                />
-              </div>
-              <div>
-                <label className="block text-[12px] font-medium text-gray-700">
-                  City *
-                </label>
-                <input
-                  type="text"
-                  value={form.city}
-                  onChange={(e) => handleChange("city", e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-black"
-                  placeholder="Delhi"
-                />
-              </div>
-            </div>
-
-            {/* Capacity */}
-            <div>
-              <p className="mb-1 text-[12px] font-medium text-gray-700">
-                Console capacity per café
+                {card.label}
               </p>
-              <div className="grid grid-cols-3 gap-2 text-[12px]">
-                {[
-                  { key: "ps5_count", label: "PS5" },
-                  { key: "ps4_count", label: "PS4" },
-                  { key: "xbox_count", label: "Xbox" },
-                  { key: "pc_count", label: "PC" },
-                  { key: "pool_count", label: "Pool" },
-                  { key: "arcade_count", label: "Arcade" },
-                ].map((f) => (
-                  <div key={f.key} className="flex flex-col">
-                    <span className="text-gray-600">{f.label}</span>
-                    <input
-                      type="number"
-                      min={0}
-                      value={form[f.key as keyof typeof form]}
-                      onChange={(e) =>
-                        handleChange(
-                          f.key as keyof typeof form,
-                          e.target.value
-                        )
-                      }
-                      className="mt-1 rounded-lg border border-gray-300 px-2 py-1 text-sm outline-none focus:border-black"
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Hourly price */}
-            <div>
-              <label className="block text-[12px] font-medium text-gray-700">
-                Base hourly price (₹) *
-              </label>
-              <input
-                type="number"
-                min={0}
-                value={form.hourly_price}
-                onChange={(e) => handleChange("hourly_price", e.target.value)}
-                className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none focus:border-black"
-                placeholder="100"
-              />
-            </div>
-
-            {/* Messages */}
-            {saveError && (
-              <p className="rounded-lg bg-red-50 px-3 py-2 text-[11px] text-red-700">
-                {saveError}
+              <p
+                style={{
+                  fontFamily: fonts.heading,
+                  fontSize: 22,
+                  margin: 0,
+                }}
+              >
+                {loadingStats ? "…" : card.value}
               </p>
-            )}
-            {saveSuccess && (
-              <p className="rounded-lg bg-emerald-50 px-3 py-2 text-[11px] text-emerald-700">
-                {saveSuccess}
+              <p
+                style={{
+                  marginTop: 4,
+                  fontSize: 11,
+                  color: colors.textSecondary,
+                }}
+              >
+                {card.hint}
               </p>
-            )}
+            </div>
+          ))}
 
-            {/* Submit */}
-            <button
-              type="submit"
-              disabled={saving}
-              className="mt-1 inline-flex items-center justify-center rounded-lg bg-black px-4 py-2 text-xs font-semibold uppercase tracking-wide text-white disabled:cursor-not-allowed disabled:bg-gray-700"
+          {/* Revenue card */}
+          <div
+            style={{
+              padding: "14px 14px",
+              borderRadius: 16,
+              background:
+                "linear-gradient(135deg, rgba(34,197,94,0.18), rgba(15,23,42,0.9))",
+              border: `1px solid rgba(34,197,94,0.4)`,
+            }}
+          >
+            <p
+              style={{
+                fontSize: 11,
+                color: "rgba(209,250,229,0.9)",
+                marginBottom: 6,
+                textTransform: "uppercase",
+                letterSpacing: 1,
+              }}
             >
-              {saving
-                ? "Saving…"
-                : mode === "create"
-                ? "Create café"
-                : "Save changes"}
-            </button>
-          </form>
+              Total Revenue (All cafés)
+            </p>
+            <p
+              style={{
+                fontFamily: fonts.heading,
+                fontSize: 22,
+                margin: 0,
+                color: "#bbf7d0",
+              }}
+            >
+              {loadingStats ? "…" : `₹${stats?.totalRevenue ?? 0}`}
+            </p>
+            <p
+              style={{
+                marginTop: 4,
+                fontSize: 11,
+                color: "rgba(209,250,229,0.8)",
+              }}
+            >
+              Simple sum of booking totals
+            </p>
+          </div>
         </section>
 
-        {/* Cafés list */}
-        <section className="rounded-2xl bg-white px-4 py-4 text-[#111827] shadow-sm">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-semibold tracking-tight">
-              Existing cafés
-            </h2>
-            <button
-              onClick={reloadCafes}
-              disabled={loadingCafes}
-              className="text-[11px] font-medium text-gray-600 underline disabled:cursor-not-allowed disabled:text-gray-400"
-            >
-              {loadingCafes ? "Refreshing…" : "Refresh"}
-            </button>
-          </div>
-
-          {cafesError && (
-            <p className="rounded-lg bg-red-50 px-3 py-2 text-[11px] text-red-700">
-              {cafesError}
-            </p>
-          )}
-
-          {loadingCafes && cafes.length === 0 ? (
-            <div className="space-y-2">
-              {[1, 2, 3].map((i) => (
-                <div
-                  key={i}
-                  className="h-12 animate-pulse rounded-xl bg-gray-200/70"
-                />
-              ))}
-            </div>
-          ) : cafes.length === 0 ? (
-            <p className="text-[12px] text-gray-500">
-              No cafés found yet. Use the form above to create the first one.
-            </p>
-          ) : (
-            <div className="space-y-2 text-[12px]">
-              {cafes.map((cafe) => {
-                const totalCount =
-                  (cafe.ps5_count ?? 0) +
-                  (cafe.ps4_count ?? 0) +
-                  (cafe.xbox_count ?? 0) +
-                  (cafe.pc_count ?? 0) +
-                  (cafe.pool_count ?? 0) +
-                  (cafe.arcade_count ?? 0);
-
-                return (
-                  <div
-                    key={cafe.id}
-                    className="flex items-start justify-between gap-2 rounded-xl border border-gray-100 px-3 py-2 shadow-sm"
-                  >
-                    <div className="flex-1">
-                      <div className="text-[13px] font-semibold">
-                        {cafe.name}
-                      </div>
-                      <div className="mt-1 text-[11px] text-gray-500">
-                        {[cafe.address, cafe.city]
-                          .filter(Boolean)
-                          .join(", ")}
-                      </div>
-                      <div className="mt-1 text-[11px] text-gray-500">
-                        Base hourly price: ₹{cafe.hourly_price ?? 0}
-                      </div>
-                    </div>
-                    <div className="text-right text-[11px] text-gray-600">
-                      <div>Total setups: {totalCount}</div>
-                      <div className="mt-1">
-                        PS5 {cafe.ps5_count ?? 0} · PS4{" "}
-                        {cafe.ps4_count ?? 0} · Xbox{" "}
-                        {cafe.xbox_count ?? 0}
-                      </div>
-                      <div>
-                        PC {cafe.pc_count ?? 0} · Pool{" "}
-                        {cafe.pool_count ?? 0} · Arcade{" "}
-                        {cafe.arcade_count ?? 0}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => startEdit(cafe)}
-                        className="mt-2 rounded-full border border-gray-300 px-2 py-0.5 text-[11px] font-medium text-gray-700 hover:border-black"
-                      >
-                        Edit
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+        {/* Placeholder sections for next steps */}
+        <section
+          style={{
+            marginTop: 12,
+            padding: "16px 14px",
+            borderRadius: 16,
+            background: colors.darkCard,
+            border: `1px dashed ${colors.border}`,
+          }}
+        >
+          <p
+            style={{
+              fontSize: 13,
+              fontWeight: 600,
+              marginBottom: 6,
+            }}
+          >
+            Next: Cafés list + booking table
+          </p>
+          <p
+            style={{
+              fontSize: 12,
+              color: colors.textSecondary,
+            }}
+          >
+            In the next step we’ll add:
+            <br />• Table of all cafés (name, city, status, owner)
+            <br />• Quick link to view bookings per café
+          </p>
         </section>
+
+        {error && (
+          <div
+            style={{
+              marginTop: 16,
+              padding: "10px 12px",
+              borderRadius: 10,
+              border: "1px solid rgba(248,113,113,0.6)",
+              background: "rgba(248,113,113,0.08)",
+              fontSize: 12,
+              color: "#fecaca",
+            }}
+          >
+            {error}
+          </div>
+        )}
       </div>
     </div>
   );
-}
+} 

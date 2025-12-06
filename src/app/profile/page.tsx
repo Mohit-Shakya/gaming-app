@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import useUser from "@/hooks/useUser";
 import { supabase } from "@/lib/supabaseClient";
+import { colors, fonts } from "@/lib/constants";
 
 type ProfileRow = {
   id: string;
@@ -13,27 +14,6 @@ type ProfileRow = {
   last_name: string | null;
   phone: string | null;
   date_of_birth: string | null;
-};
-
-// ============ STYLES ============
-const colors = {
-  red: "#ff073a",
-  cyan: "#00f0ff",
-  dark: "#08080c",
-  darkCard: "#0f0f14",
-  border: "rgba(255, 255, 255, 0.08)",
-  borderLight: "rgba(255, 255, 255, 0.12)",
-  textPrimary: "#ffffff",
-  textSecondary: "#9ca3af",
-  textMuted: "#6b7280",
-  green: "#22c55e",
-  orange: "#f59e0b",
-  purple: "#a855f7",
-};
-
-const fonts = {
-  heading: "'Orbitron', sans-serif",
-  body: "'Rajdhani', sans-serif",
 };
 
 export default function ProfilePage() {
@@ -196,7 +176,6 @@ export default function ProfilePage() {
         alignItems: "center",
         justifyContent: "center",
       }}>
-        <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
         <div style={{ textAlign: "center" }}>
           <div style={{
             width: "48px",
@@ -226,8 +205,6 @@ export default function ProfilePage() {
       color: colors.textPrimary,
       position: "relative",
     }}>
-      <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-
       {/* Background glow */}
       <div style={{
         position: "fixed",

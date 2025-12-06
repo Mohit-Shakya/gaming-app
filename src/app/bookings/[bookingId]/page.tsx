@@ -5,6 +5,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
+import { colors, fonts } from "@/lib/constants";
 
 type BookingRow = {
   id: string;
@@ -35,25 +36,6 @@ type CafeRow = {
 type BookingWithRelations = BookingRow & {
   items: BookingItemRow[];
   cafe: CafeRow | null;
-};
-
-// ============ STYLES ============
-const colors = {
-  red: "#ff073a",
-  cyan: "#00f0ff",
-  dark: "#08080c",
-  darkCard: "#0f0f14",
-  border: "rgba(255, 255, 255, 0.08)",
-  textPrimary: "#ffffff",
-  textSecondary: "#9ca3af",
-  textMuted: "#6b7280",
-  green: "#22c55e",
-  orange: "#f59e0b",
-};
-
-const fonts = {
-  heading: "'Orbitron', sans-serif",
-  body: "'Rajdhani', sans-serif",
 };
 
 // Console icons
@@ -270,7 +252,6 @@ export default function BookingDetailsPage() {
         alignItems: "center",
         justifyContent: "center",
       }}>
-        <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
         <div style={{ textAlign: "center" }}>
           <div style={{
             width: "48px",
@@ -303,7 +284,6 @@ export default function BookingDetailsPage() {
         justifyContent: "center",
         padding: "20px",
       }}>
-        <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
         <div style={{ fontSize: "64px", marginBottom: "20px" }}>🎮</div>
         <h1 style={{
           fontFamily: fonts.heading,
@@ -353,8 +333,6 @@ export default function BookingDetailsPage() {
       color: colors.textPrimary,
       position: "relative",
     }}>
-      <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-
       {/* Background glow */}
       <div style={{
         position: "fixed",
