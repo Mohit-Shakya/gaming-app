@@ -150,25 +150,34 @@ function minutesToTimeString(totalMinutes: number): string {
   return `${displayHours}:${mins.toString().padStart(2, "0")} ${period}`;
 }
 
-function generateTickets(consoleId: ConsoleId, basePrice: number): TicketOption[] {
+function generateTickets(consoleId: ConsoleId, pricingTier: { qty1: number | null; qty2: number | null; qty3: number | null; qty4: number | null } | null, fallbackPrice: number): TicketOption[] {
   const consoleName = CONSOLES.find((c) => c.id === consoleId)?.label || consoleId;
   const tickets: TicketOption[] = [];
 
-  const maxPlayers = ["pool", "snooker"].includes(consoleId)
+  const maxConsoles = ["pool", "snooker"].includes(consoleId)
     ? 2
     : ["pc", "vr", "steering"].includes(consoleId)
     ? 1
     : 4;
 
-  for (let p = 1; p <= maxPlayers; p++) {
-    const priceMultiplier = p === 1 ? 1 : p === 2 ? 1.6 : p === 3 ? 2.2 : 2.5;
+  for (let qty = 1; qty <= maxConsoles; qty++) {
+    let price: number;
+
+    // Use tier-based pricing if available, otherwise fallback to simple multiplication
+    if (pricingTier) {
+      const qtyKey = `qty${qty}` as 'qty1' | 'qty2' | 'qty3' | 'qty4';
+      price = pricingTier[qtyKey] ?? (fallbackPrice * qty);
+    } else {
+      price = fallbackPrice * qty;
+    }
+
     tickets.push({
-      id: `${consoleId}_${p}`,
+      id: `${consoleId}_${qty}`,
       console: consoleId,
-      title: `${consoleName} | ${p} Player${p > 1 ? "s" : ""}`,
-      players: p,
-      price: Math.round(basePrice * priceMultiplier),
-      description: `Access for ${p} player${p > 1 ? "s" : ""} for 60 minutes.`,
+      title: `${consoleName} | ${qty} Console${qty > 1 ? "s" : ""}`,
+      players: qty,
+      price: price,
+      description: `${qty} ${consoleName} console${qty > 1 ? "s" : ""} for 60 minutes.`,
     });
   }
   return tickets;
@@ -239,6 +248,15 @@ export default function BookingPage() {
   // Cafe data
   const [cafeName, setCafeName] = useState<string>("Gaming Café");
   const [cafePrice, setCafePrice] = useState<number>(150);
+
+  type ConsolePricingTier = {
+    qty1: number | null;
+    qty2: number | null;
+    qty3: number | null;
+    qty4: number | null;
+  };
+
+  const [consolePricing, setConsolePricing] = useState<Partial<Record<ConsoleId, ConsolePricingTier>>>({});
   const [consoleLimits, setConsoleLimits] = useState<Partial<Record<ConsoleId, number>>>({});
   const [availableConsoles, setAvailableConsoles] = useState<ConsoleId[]>([]);
   const [loading, setLoading] = useState(true);
@@ -290,6 +308,39 @@ export default function BookingPage() {
 
         if (available.length > 0 && !available.includes(selectedConsole)) {
           setSelectedConsole(available[0]);
+        }
+
+        // Load console pricing from database
+        const { data: pricingData, error: pricingError } = await supabase
+          .from("console_pricing")
+          .select("console_type, quantity, hourly_price")
+          .eq("cafe_id", cafeId);
+
+        if (!pricingError && pricingData) {
+          const pricing: Partial<Record<ConsoleId, ConsolePricingTier>> = {};
+
+          pricingData.forEach((item: any) => {
+            // Map database console_type to ConsoleId
+            let consoleId = item.console_type as ConsoleId;
+            // Handle steering_wheel mapping
+            if (item.console_type === "steering_wheel") {
+              consoleId = "steering";
+            }
+
+            // Initialize tier object if not exists
+            if (!pricing[consoleId]) {
+              pricing[consoleId] = { qty1: null, qty2: null, qty3: null, qty4: null };
+            }
+
+            // Set the price for the specific quantity
+            const qty = item.quantity;
+            if (qty >= 1 && qty <= 4) {
+              const qtyKey = `qty${qty}` as keyof ConsolePricingTier;
+              pricing[consoleId]![qtyKey] = item.hourly_price;
+            }
+          });
+
+          setConsolePricing(pricing);
         }
       } catch (err) {
         console.error("Error:", err);
@@ -453,8 +504,9 @@ export default function BookingPage() {
   }, [isWalkIn, filteredTimeSlots, selectedTime]);
 
   const tickets = useMemo(() => {
-    return generateTickets(selectedConsole, cafePrice);
-  }, [selectedConsole, cafePrice]);
+    const pricingTier = consolePricing[selectedConsole] ?? null;
+    return generateTickets(selectedConsole, pricingTier, cafePrice);
+  }, [selectedConsole, consolePricing, cafePrice]);
 
   const usedPerConsole = useMemo(() => {
     const map: Partial<Record<ConsoleId, number>> = {};
@@ -472,7 +524,8 @@ export default function BookingPage() {
     Object.entries(quantities).forEach(([ticketId, qty]) => {
       if (qty <= 0) return;
       const consoleId = ticketId.split("_")[0] as ConsoleId;
-      const consoleTickets = generateTickets(consoleId, cafePrice);
+      const pricingTier = consolePricing[consoleId] ?? null;
+      const consoleTickets = generateTickets(consoleId, pricingTier, cafePrice);
       const ticket = consoleTickets.find((t) => t.id === ticketId);
       if (ticket) {
         totalTickets += qty;
@@ -481,7 +534,7 @@ export default function BookingPage() {
     });
 
     return { totalTickets, totalAmount };
-  }, [quantities, cafePrice]);
+  }, [quantities, consolePricing, cafePrice]);
 
   const getRealAvailable = useCallback(
     (consoleId: ConsoleId) => {
@@ -581,7 +634,8 @@ export default function BookingPage() {
         .filter(([_, qty]) => qty > 0)
         .map(([ticketId, qty]) => {
           const consoleId = ticketId.split("_")[0] as ConsoleId;
-          const consoleTickets = generateTickets(consoleId, cafePrice);
+          const pricingTier = consolePricing[consoleId] ?? null;
+          const consoleTickets = generateTickets(consoleId, pricingTier, cafePrice);
           const ticket = consoleTickets.find((t) => t.id === ticketId);
           return {
             ticketId,
@@ -1183,7 +1237,7 @@ export default function BookingPage() {
                             {console.label}
                           </div>
                           <div style={{ fontSize: "12px", color: colors.textMuted }}>
-                            ₹{cafePrice}/hr per player
+                            ₹{consolePricing[consoleId]?.qty1 ?? cafePrice}/hr for 1 console
                           </div>
                           {nextAvailableAt && (isSoldOut || isLowStock) && (
                             <div

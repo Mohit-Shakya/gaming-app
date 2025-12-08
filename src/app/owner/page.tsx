@@ -1,0 +1,1721 @@
+// src/app/owner/page.tsx
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabaseClient";
+import useUser from "@/hooks/useUser";
+import { colors, fonts } from "@/lib/constants";
+
+type OwnerStats = {
+  cafesCount: number;
+  bookingsToday: number;
+  recentBookings: number;
+  recentRevenue: number;
+  totalBookings: number;
+  pendingBookings: number;
+};
+
+type CafeRow = {
+  id: string;
+  name: string | null;
+  city?: string | null;
+  address?: string | null;
+  description?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  website?: string | null;
+  opening_hours?: string | null;
+  status?: string | null;
+};
+
+type BookingRow = {
+  id: string;
+  cafe_id: string | null;
+  user_id: string | null;
+  booking_date: string | null;
+  start_time: string | null;
+  duration?: number | null;
+  total_amount: number | null;
+  status: string | null;
+  source: string | null;
+  created_at: string | null;
+  booking_items?: Array<{
+    console: string | null;
+    quantity: number | null;
+  }>;
+  user_name?: string | null;
+  user_email?: string | null;
+  user_phone?: string | null;
+  cafe_name?: string | null;
+};
+
+type NavTab = 'overview' | 'bookings' | 'cafes' | 'analytics';
+
+export default function OwnerDashboardPage() {
+  const router = useRouter();
+  const { user, loading: userLoading } = useUser();
+
+  const [checkingRole, setCheckingRole] = useState(true);
+  const [allowed, setAllowed] = useState(false);
+  const [activeTab, setActiveTab] = useState<NavTab>('overview');
+
+  const [stats, setStats] = useState<OwnerStats | null>(null);
+  const [cafes, setCafes] = useState<CafeRow[]>([]);
+  const [bookings, setBookings] = useState<BookingRow[]>([]);
+  const [loadingData, setLoadingData] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Booking filters
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [sourceFilter, setSourceFilter] = useState<string>("all");
+  const [cafeFilter, setCafeFilter] = useState<string>("all");
+  const [dateFilter, setDateFilter] = useState<string>("");
+  const [searchQuery, setSearchQuery] = useState<string>("");
+
+  // Edit modal state
+  const [editingBooking, setEditingBooking] = useState<BookingRow | null>(null);
+  const [editAmount, setEditAmount] = useState<string>("");
+  const [editStatus, setEditStatus] = useState<string>("");
+  const [editDate, setEditDate] = useState<string>("");
+  const [editStartTime, setEditStartTime] = useState<string>("");
+  const [saving, setSaving] = useState(false);
+
+  // Check role
+  useEffect(() => {
+    async function checkRole() {
+      if (userLoading) return;
+
+      if (!user) {
+        router.push("/login");
+        return;
+      }
+
+      try {
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", user.id)
+          .single();
+
+        if (profileError) throw profileError;
+
+        const role = profile?.role?.toLowerCase();
+        if (role === "owner" || role === "admin" || role === "super_admin") {
+          setAllowed(true);
+        } else {
+          router.push("/dashboard");
+        }
+      } catch (err) {
+        console.error("Error checking role:", err);
+        router.push("/dashboard");
+      } finally {
+        setCheckingRole(false);
+      }
+    }
+
+    checkRole();
+  }, [user, userLoading, router]);
+
+  // Load data
+  useEffect(() => {
+    if (!allowed || !user) return;
+
+    async function loadData() {
+      try {
+        setLoadingData(true);
+        setError(null);
+
+        if (!user) return;
+        const ownerId = user.id;
+        const todayStr = new Date().toISOString().slice(0, 10);
+
+        // Fetch cafes
+        const { data: cafeRows, error: cafesError } = await supabase
+          .from("cafes")
+          .select("id, name, address, description")
+          .eq("owner_id", ownerId)
+          .order("created_at", { ascending: false});
+
+        if (cafesError) throw cafesError;
+
+        const ownerCafes = (cafeRows as CafeRow[]) ?? [];
+        setCafes(ownerCafes);
+
+        if (!ownerCafes.length) {
+          setBookings([]);
+          setStats({
+            cafesCount: 0,
+            bookingsToday: 0,
+            recentBookings: 0,
+            recentRevenue: 0,
+            totalBookings: 0,
+            pendingBookings: 0,
+          });
+          return;
+        }
+
+        const cafeIds = ownerCafes.map((c) => c.id);
+
+        // Fetch bookings with booking items
+        const { data: bookingRows, error: bookingsError } = await supabase
+          .from("bookings")
+          .select(`
+            id,
+            cafe_id,
+            user_id,
+            booking_date,
+            start_time,
+            total_amount,
+            status,
+            source,
+            created_at,
+            booking_items (
+              console,
+              quantity
+            )
+          `)
+          .in("cafe_id", cafeIds)
+          .order("created_at", { ascending: false })
+          .limit(100);
+
+        if (bookingsError) throw bookingsError;
+
+        const ownerBookings = (bookingRows as BookingRow[]) ?? [];
+
+        // Get all unique user IDs
+        const userIds = [...new Set(ownerBookings.map(b => b.user_id).filter(Boolean))];
+
+        // Fetch all user profiles at once
+        const userProfiles = new Map();
+        if (userIds.length > 0) {
+          try {
+            const { data: profiles } = await supabase
+              .from("profiles")
+              .select("id, first_name, last_name, phone")
+              .in("id", userIds);
+
+            if (profiles && profiles.length > 0) {
+              profiles.forEach((profile: any) => {
+                const fullName = [profile.first_name, profile.last_name]
+                  .filter(Boolean)
+                  .join(" ") || null;
+
+                userProfiles.set(profile.id, {
+                  name: fullName,
+                  email: null,
+                  phone: profile.phone || null,
+                });
+              });
+            }
+          } catch (err) {
+            console.error("[Owner Dashboard] Error fetching profiles:", err);
+          }
+        }
+
+        // Enrich bookings with user and cafe data
+        const enrichedBookings = ownerBookings.map((booking: any) => {
+          const cafe = ownerCafes.find((c) => c.id === booking.cafe_id);
+          const cafe_name = cafe?.name || null;
+
+          // Get user data from profiles map
+          const userProfile = booking.user_id ? userProfiles.get(booking.user_id) : null;
+
+          // If no profile found, show user ID as fallback
+          const user_name = userProfile?.name || (booking.user_id ? `User ${booking.user_id.slice(0, 8)}` : null);
+          const user_email = userProfile?.email || null;
+          const user_phone = userProfile?.phone || null;
+
+          return {
+            ...booking,
+            user_name,
+            user_email,
+            user_phone,
+            cafe_name,
+          };
+        });
+
+        setBookings(enrichedBookings);
+
+        // Calculate stats
+        const bookingsToday = enrichedBookings.filter(
+          (b) => b.booking_date === todayStr
+        ).length;
+
+        const pendingBookings = enrichedBookings.filter(
+          (b) => b.status?.toLowerCase() === "pending"
+        ).length;
+
+        const recentRevenue = enrichedBookings
+          .slice(0, 20)
+          .reduce((sum, b) => sum + (b.total_amount || 0), 0);
+
+        setStats({
+          cafesCount: ownerCafes.length,
+          bookingsToday,
+          recentBookings: Math.min(enrichedBookings.length, 20),
+          recentRevenue,
+          totalBookings: enrichedBookings.length,
+          pendingBookings,
+        });
+      } catch (err: any) {
+        console.error("[OwnerDashboard] loadData error:", err);
+        setError(err.message || "Could not load café owner dashboard.");
+      } finally {
+        setLoadingData(false);
+      }
+    }
+
+    loadData();
+  }, [allowed, user]);
+
+  // Handle edit booking
+  function handleEditBooking(booking: BookingRow) {
+    if (booking.source?.toLowerCase() !== "walk_in") {
+      alert("Only walk-in bookings can be edited");
+      return;
+    }
+    setEditingBooking(booking);
+    setEditAmount(booking.total_amount?.toString() || "");
+    setEditStatus(booking.status || "confirmed");
+    setEditDate(booking.booking_date || "");
+    setEditStartTime(booking.start_time || "");
+  }
+
+  // Handle save booking
+  async function handleSaveBooking() {
+    if (!editingBooking) return;
+
+    try {
+      setSaving(true);
+      const { error } = await supabase
+        .from("bookings")
+        .update({
+          total_amount: parseFloat(editAmount),
+          status: editStatus,
+          booking_date: editDate,
+          start_time: editStartTime,
+        })
+        .eq("id", editingBooking.id);
+
+      if (error) throw error;
+
+      setBookings((prev) =>
+        prev.map((b) =>
+          b.id === editingBooking.id
+            ? {
+                ...b,
+                total_amount: parseFloat(editAmount),
+                status: editStatus,
+                booking_date: editDate,
+                start_time: editStartTime,
+              }
+            : b
+        )
+      );
+
+      setEditingBooking(null);
+      alert("Booking updated successfully!");
+    } catch (err: any) {
+      console.error("Error updating booking:", err);
+      alert("Failed to update booking: " + err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // Filter bookings
+  const filteredBookings = bookings.filter((booking) => {
+    // Status filter
+    if (statusFilter !== "all" && booking.status?.toLowerCase() !== statusFilter) {
+      return false;
+    }
+
+    // Source filter
+    if (sourceFilter !== "all") {
+      const bookingSource = booking.source?.toLowerCase() === "walk_in" ? "walk_in" : "online";
+      if (bookingSource !== sourceFilter) return false;
+    }
+
+    // Cafe filter
+    if (cafeFilter !== "all" && booking.cafe_id !== cafeFilter) {
+      return false;
+    }
+
+    // Date filter
+    if (dateFilter && booking.booking_date !== dateFilter) {
+      return false;
+    }
+
+    // Search query
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      const matchesId = booking.id.toLowerCase().includes(query);
+      const matchesName = booking.user_name?.toLowerCase().includes(query);
+      const matchesEmail = booking.user_email?.toLowerCase().includes(query);
+      const matchesPhone = booking.user_phone?.toLowerCase().includes(query);
+      if (!matchesId && !matchesName && !matchesEmail && !matchesPhone) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+
+  // Loading state
+  if (checkingRole || userLoading) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          background: colors.dark,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: colors.textPrimary,
+        }}
+      >
+        Loading...
+      </div>
+    );
+  }
+
+  if (!allowed) {
+    return null;
+  }
+
+  // Navigation items
+  const navItems: { id: NavTab; label: string; icon: string }[] = [
+    { id: 'overview', label: 'Overview', icon: '📊' },
+    { id: 'bookings', label: 'Bookings', icon: '📅' },
+    { id: 'cafes', label: 'My Cafés', icon: '🏪' },
+    { id: 'analytics', label: 'Analytics', icon: '📈' },
+  ];
+
+  return (
+    <div
+      style={{
+        minHeight: "100vh",
+        background: "#020617",
+        display: "flex",
+        fontFamily: fonts.body,
+        color: colors.textPrimary,
+      }}
+    >
+      {/* Sidebar Navigation */}
+      <aside
+        style={{
+          width: 260,
+          background: "linear-gradient(180deg, #0f172a 0%, #020617 100%)",
+          borderRight: `1px solid ${colors.border}`,
+          display: "flex",
+          flexDirection: "column",
+          position: "sticky",
+          top: 0,
+          height: "100vh",
+        }}
+      >
+        {/* Logo */}
+        <div
+          style={{
+            padding: "24px 20px",
+            borderBottom: `1px solid ${colors.border}`,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 10,
+                background: "linear-gradient(135deg, #22c55e, #16a34a)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: 20,
+              }}
+            >
+              🏪
+            </div>
+            <div>
+              <div
+                style={{
+                  fontSize: 14,
+                  fontWeight: 600,
+                  color: colors.textPrimary,
+                }}
+              >
+                Owner Portal
+              </div>
+              <div
+                style={{
+                  fontSize: 11,
+                  color: colors.textMuted,
+                }}
+              >
+                Gaming Café
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Navigation */}
+        <nav style={{ flex: 1, padding: "16px 12px" }}>
+          {navItems.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setActiveTab(item.id)}
+              style={{
+                width: "100%",
+                padding: "12px 16px",
+                marginBottom: 8,
+                borderRadius: 10,
+                border: "none",
+                background: activeTab === item.id
+                  ? "linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(37, 99, 235, 0.15))"
+                  : "transparent",
+                color: activeTab === item.id ? "#3b82f6" : colors.textSecondary,
+                fontSize: 14,
+                fontWeight: activeTab === item.id ? 600 : 500,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                transition: "all 0.2s ease",
+                textAlign: "left",
+              }}
+              onMouseEnter={(e) => {
+                if (activeTab !== item.id) {
+                  e.currentTarget.style.background = "rgba(51,65,85,0.3)";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (activeTab !== item.id) {
+                  e.currentTarget.style.background = "transparent";
+                }
+              }}
+            >
+              <span style={{ fontSize: 18 }}>{item.icon}</span>
+              {item.label}
+            </button>
+          ))}
+        </nav>
+
+        {/* Bottom actions */}
+        <div
+          style={{
+            padding: "16px",
+            borderTop: `1px solid ${colors.border}`,
+          }}
+        >
+          <button
+            onClick={() => router.push("/dashboard")}
+            style={{
+              width: "100%",
+              padding: "12px 16px",
+              borderRadius: 10,
+              border: `1px solid ${colors.border}`,
+              background: "rgba(51,65,85,0.3)",
+              color: colors.textSecondary,
+              fontSize: 13,
+              fontWeight: 500,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+              justifyContent: "center",
+            }}
+          >
+            <span>🕹</span>
+            Player View
+          </button>
+        </div>
+      </aside>
+
+      {/* Main Content */}
+      <main style={{ flex: 1, overflow: "auto" }}>
+        {/* Header */}
+        <header
+          style={{
+            padding: "24px 32px",
+            borderBottom: `1px solid ${colors.border}`,
+            background: "rgba(15,23,42,0.5)",
+            backdropFilter: "blur(10px)",
+            position: "sticky",
+            top: 0,
+            zIndex: 10,
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
+            <div>
+              <h1
+                style={{
+                  fontFamily: fonts.heading,
+                  fontSize: 24,
+                  margin: 0,
+                  marginBottom: 4,
+                }}
+              >
+                {activeTab === 'overview' && 'Dashboard Overview'}
+                {activeTab === 'bookings' && 'Manage Bookings'}
+                {activeTab === 'cafes' && 'My Cafés'}
+                {activeTab === 'analytics' && 'Analytics & Reports'}
+              </h1>
+              <p
+                style={{
+                  fontSize: 13,
+                  color: colors.textMuted,
+                  margin: 0,
+                }}
+              >
+                {activeTab === 'overview' && 'Track your café performance and bookings'}
+                {activeTab === 'bookings' && 'View and manage all customer bookings'}
+                {activeTab === 'cafes' && 'Manage your gaming café locations'}
+                {activeTab === 'analytics' && 'Detailed insights and statistics'}
+              </p>
+            </div>
+            <button
+              onClick={() => window.location.reload()}
+              style={{
+                padding: "10px 18px",
+                borderRadius: 10,
+                border: `1px solid ${colors.border}`,
+                background: "rgba(15,23,42,0.7)",
+                color: colors.textSecondary,
+                fontSize: 13,
+                fontWeight: 500,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+              }}
+            >
+              <span>🔄</span>
+              Refresh
+            </button>
+          </div>
+        </header>
+
+        {/* Content Area */}
+        <div style={{ padding: "32px" }}>
+          {error && (
+            <div
+              style={{
+                padding: "16px 20px",
+                borderRadius: 12,
+                background: "rgba(239, 68, 68, 0.1)",
+                border: "1px solid rgba(239, 68, 68, 0.3)",
+                color: "#ef4444",
+                marginBottom: 24,
+                fontSize: 14,
+              }}
+            >
+              {error}
+            </div>
+          )}
+
+          {/* Overview Tab */}
+          {activeTab === 'overview' && (
+            <div>
+              {/* Stats Grid */}
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+                  gap: 20,
+                  marginBottom: 32,
+                }}
+              >
+                <StatCard
+                  title="My Cafés"
+                  value={loadingData ? "..." : stats?.cafesCount ?? 0}
+                  subtitle="Active locations"
+                  icon="🏪"
+                  gradient="linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(79, 70, 229, 0.1))"
+                  color="#818cf8"
+                />
+                <StatCard
+                  title="Today's Bookings"
+                  value={loadingData ? "..." : stats?.bookingsToday ?? 0}
+                  subtitle="Sessions today"
+                  icon="📅"
+                  gradient="linear-gradient(135deg, rgba(251, 146, 60, 0.15), rgba(249, 115, 22, 0.1))"
+                  color="#fb923c"
+                />
+                <StatCard
+                  title="Total Bookings"
+                  value={loadingData ? "..." : stats?.totalBookings ?? 0}
+                  subtitle="All time"
+                  icon="📊"
+                  gradient="linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(147, 51, 234, 0.1))"
+                  color="#a855f7"
+                />
+                <StatCard
+                  title="Pending"
+                  value={loadingData ? "..." : stats?.pendingBookings ?? 0}
+                  subtitle="Awaiting confirmation"
+                  icon="⏳"
+                  gradient="linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(217, 119, 6, 0.1))"
+                  color="#f59e0b"
+                />
+                <StatCard
+                  title="Recent Revenue"
+                  value={loadingData ? "..." : `₹${stats?.recentRevenue ?? 0}`}
+                  subtitle="Last 20 bookings"
+                  icon="💰"
+                  gradient="linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(22, 163, 74, 0.1))"
+                  color="#22c55e"
+                />
+              </div>
+
+              {/* Recent Activity */}
+              <div
+                style={{
+                  background: "rgba(15,23,42,0.6)",
+                  borderRadius: 16,
+                  border: `1px solid ${colors.border}`,
+                  padding: "24px",
+                  marginBottom: 24,
+                }}
+              >
+                <h2
+                  style={{
+                    fontSize: 18,
+                    fontWeight: 600,
+                    marginBottom: 16,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                  }}
+                >
+                  <span>📈</span>
+                  Recent Bookings
+                </h2>
+                {bookings.length === 0 ? (
+                  <div
+                    style={{
+                      textAlign: "center",
+                      padding: "40px",
+                      color: colors.textMuted,
+                    }}
+                  >
+                    No bookings yet
+                  </div>
+                ) : (
+                  <div style={{ overflowX: "auto" }}>
+                    <table style={{ width: "100%", fontSize: 13 }}>
+                      <thead>
+                        <tr style={{ borderBottom: `1px solid ${colors.border}` }}>
+                          <th style={{ padding: "12px", textAlign: "left", color: colors.textMuted, fontWeight: 600 }}>Customer</th>
+                          <th style={{ padding: "12px", textAlign: "left", color: colors.textMuted, fontWeight: 600 }}>Café</th>
+                          <th style={{ padding: "12px", textAlign: "left", color: colors.textMuted, fontWeight: 600 }}>Date</th>
+                          <th style={{ padding: "12px", textAlign: "left", color: colors.textMuted, fontWeight: 600 }}>Status</th>
+                          <th style={{ padding: "12px", textAlign: "right", color: colors.textMuted, fontWeight: 600 }}>Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {bookings.slice(0, 5).map((booking) => (
+                          <tr
+                            key={booking.id}
+                            style={{
+                              borderBottom: `1px solid rgba(71, 85, 105, 0.2)`,
+                            }}
+                          >
+                            <td style={{ padding: "12px" }}>{booking.user_name || "Guest"}</td>
+                            <td style={{ padding: "12px", color: colors.textSecondary }}>{booking.cafe_name || "-"}</td>
+                            <td style={{ padding: "12px", color: colors.textSecondary }}>
+                              {booking.booking_date
+                                ? new Date(`${booking.booking_date}T00:00:00`).toLocaleDateString("en-IN", {
+                                    day: "2-digit",
+                                    month: "short",
+                                  })
+                                : "-"}
+                            </td>
+                            <td style={{ padding: "12px" }}>
+                              <StatusBadge status={booking.status || "pending"} />
+                            </td>
+                            <td style={{ padding: "12px", textAlign: "right", color: "#22c55e", fontWeight: 600 }}>
+                              ₹{booking.total_amount ?? 0}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                {bookings.length > 5 && (
+                  <button
+                    onClick={() => setActiveTab('bookings')}
+                    style={{
+                      marginTop: 16,
+                      padding: "10px 20px",
+                      borderRadius: 8,
+                      border: `1px solid ${colors.border}`,
+                      background: "rgba(59, 130, 246, 0.1)",
+                      color: "#3b82f6",
+                      fontSize: 13,
+                      fontWeight: 500,
+                      cursor: "pointer",
+                    }}
+                  >
+                    View All Bookings →
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Bookings Tab */}
+          {activeTab === 'bookings' && (
+            <div>
+              {/* Filters */}
+              <div
+                style={{
+                  background: "rgba(15,23,42,0.6)",
+                  borderRadius: 16,
+                  border: `1px solid ${colors.border}`,
+                  padding: "20px",
+                  marginBottom: 24,
+                }}
+              >
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                    gap: 16,
+                  }}
+                >
+                  {/* Search */}
+                  <div>
+                    <label
+                      style={{
+                        fontSize: 12,
+                        color: colors.textMuted,
+                        display: "block",
+                        marginBottom: 8,
+                      }}
+                    >
+                      Search
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Name, email, phone, ID..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      style={{
+                        width: "100%",
+                        padding: "10px 12px",
+                        borderRadius: 8,
+                        border: `1px solid ${colors.border}`,
+                        background: "rgba(30,41,59,0.5)",
+                        color: colors.textPrimary,
+                        fontSize: 14,
+                      }}
+                    />
+                  </div>
+
+                  {/* Status Filter */}
+                  <div>
+                    <label
+                      style={{
+                        fontSize: 12,
+                        color: colors.textMuted,
+                        display: "block",
+                        marginBottom: 8,
+                      }}
+                    >
+                      Status
+                    </label>
+                    <select
+                      value={statusFilter}
+                      onChange={(e) => setStatusFilter(e.target.value)}
+                      style={{
+                        width: "100%",
+                        padding: "10px 12px",
+                        borderRadius: 8,
+                        border: `1px solid ${colors.border}`,
+                        background: "rgba(30,41,59,0.5)",
+                        color: colors.textPrimary,
+                        fontSize: 14,
+                        cursor: "pointer",
+                      }}
+                    >
+                      <option value="all">All Status</option>
+                      <option value="pending">Pending</option>
+                      <option value="confirmed">Confirmed</option>
+                      <option value="completed">Completed</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+                  </div>
+
+                  {/* Source Filter */}
+                  <div>
+                    <label
+                      style={{
+                        fontSize: 12,
+                        color: colors.textMuted,
+                        display: "block",
+                        marginBottom: 8,
+                      }}
+                    >
+                      Source
+                    </label>
+                    <select
+                      value={sourceFilter}
+                      onChange={(e) => setSourceFilter(e.target.value)}
+                      style={{
+                        width: "100%",
+                        padding: "10px 12px",
+                        borderRadius: 8,
+                        border: `1px solid ${colors.border}`,
+                        background: "rgba(30,41,59,0.5)",
+                        color: colors.textPrimary,
+                        fontSize: 14,
+                        cursor: "pointer",
+                      }}
+                    >
+                      <option value="all">All Sources</option>
+                      <option value="online">Online</option>
+                      <option value="walk_in">Walk-in</option>
+                    </select>
+                  </div>
+
+                  {/* Cafe Filter */}
+                  <div>
+                    <label
+                      style={{
+                        fontSize: 12,
+                        color: colors.textMuted,
+                        display: "block",
+                        marginBottom: 8,
+                      }}
+                    >
+                      Café
+                    </label>
+                    <select
+                      value={cafeFilter}
+                      onChange={(e) => setCafeFilter(e.target.value)}
+                      style={{
+                        width: "100%",
+                        padding: "10px 12px",
+                        borderRadius: 8,
+                        border: `1px solid ${colors.border}`,
+                        background: "rgba(30,41,59,0.5)",
+                        color: colors.textPrimary,
+                        fontSize: 14,
+                        cursor: "pointer",
+                      }}
+                    >
+                      <option value="all">All Cafés</option>
+                      {cafes.map((cafe) => (
+                        <option key={cafe.id} value={cafe.id}>
+                          {cafe.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Date Filter */}
+                  <div>
+                    <label
+                      style={{
+                        fontSize: 12,
+                        color: colors.textMuted,
+                        display: "block",
+                        marginBottom: 8,
+                      }}
+                    >
+                      Date
+                    </label>
+                    <input
+                      type="date"
+                      value={dateFilter}
+                      onChange={(e) => setDateFilter(e.target.value)}
+                      style={{
+                        width: "100%",
+                        padding: "10px 12px",
+                        borderRadius: 8,
+                        border: `1px solid ${colors.border}`,
+                        background: "rgba(30,41,59,0.5)",
+                        color: colors.textPrimary,
+                        fontSize: 14,
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Clear Filters */}
+                {(statusFilter !== "all" || sourceFilter !== "all" || cafeFilter !== "all" || dateFilter || searchQuery) && (
+                  <button
+                    onClick={() => {
+                      setStatusFilter("all");
+                      setSourceFilter("all");
+                      setCafeFilter("all");
+                      setDateFilter("");
+                      setSearchQuery("");
+                    }}
+                    style={{
+                      marginTop: 16,
+                      padding: "8px 16px",
+                      borderRadius: 6,
+                      border: `1px solid ${colors.border}`,
+                      background: "transparent",
+                      color: colors.textSecondary,
+                      fontSize: 12,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Clear All Filters
+                  </button>
+                )}
+              </div>
+
+              {/* Results Count */}
+              <div
+                style={{
+                  marginBottom: 16,
+                  fontSize: 14,
+                  color: colors.textMuted,
+                }}
+              >
+                Showing {filteredBookings.length} of {bookings.length} bookings
+              </div>
+
+              {/* Bookings Table */}
+              <div
+                style={{
+                  background: "rgba(15,23,42,0.6)",
+                  borderRadius: 16,
+                  border: `1px solid ${colors.border}`,
+                  overflow: "hidden",
+                }}
+              >
+                {filteredBookings.length === 0 ? (
+                  <div
+                    style={{
+                      textAlign: "center",
+                      padding: "60px 20px",
+                      color: colors.textMuted,
+                    }}
+                  >
+                    <div style={{ fontSize: 48, marginBottom: 16 }}>📅</div>
+                    <div style={{ fontSize: 16 }}>No bookings found</div>
+                  </div>
+                ) : (
+                  <div style={{ overflowX: "auto" }}>
+                    <table style={{ width: "100%", fontSize: 13 }}>
+                      <thead>
+                        <tr
+                          style={{
+                            background: "rgba(30,41,59,0.5)",
+                            borderBottom: `1px solid ${colors.border}`,
+                          }}
+                        >
+                          <th style={{ padding: "14px 16px", textAlign: "left", color: colors.textMuted, fontSize: 11, textTransform: "uppercase", fontWeight: 600 }}>
+                            Booking ID
+                          </th>
+                          <th style={{ padding: "14px 16px", textAlign: "left", color: colors.textMuted, fontSize: 11, textTransform: "uppercase", fontWeight: 600 }}>
+                            Customer Name
+                          </th>
+                          <th style={{ padding: "14px 16px", textAlign: "left", color: colors.textMuted, fontSize: 11, textTransform: "uppercase", fontWeight: 600 }}>
+                            Phone Number
+                          </th>
+                          <th style={{ padding: "14px 16px", textAlign: "left", color: colors.textMuted, fontSize: 11, textTransform: "uppercase", fontWeight: 600 }}>
+                            Console
+                          </th>
+                          <th style={{ padding: "14px 16px", textAlign: "left", color: colors.textMuted, fontSize: 11, textTransform: "uppercase", fontWeight: 600 }}>
+                            Duration
+                          </th>
+                          <th style={{ padding: "14px 16px", textAlign: "left", color: colors.textMuted, fontSize: 11, textTransform: "uppercase", fontWeight: 600 }}>
+                            Source
+                          </th>
+                          <th style={{ padding: "14px 16px", textAlign: "left", color: colors.textMuted, fontSize: 11, textTransform: "uppercase", fontWeight: 600 }}>
+                            Status
+                          </th>
+                          <th style={{ padding: "14px 16px", textAlign: "right", color: colors.textMuted, fontSize: 11, textTransform: "uppercase", fontWeight: 600 }}>
+                            Amount
+                          </th>
+                          <th style={{ padding: "14px 16px", textAlign: "center", color: colors.textMuted, fontSize: 11, textTransform: "uppercase", fontWeight: 600 }}>
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredBookings.map((booking, index) => {
+                          const source = booking.source?.toLowerCase() === "walk_in" ? "Walk-in" : "Online";
+                          return (
+                            <tr
+                              key={booking.id}
+                              style={{
+                                borderBottom: index < filteredBookings.length - 1 ? `1px solid rgba(71, 85, 105, 0.2)` : "none",
+                                transition: "background 0.2s ease",
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background = "rgba(51,65,85,0.3)";
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = "transparent";
+                              }}
+                            >
+                              {/* Booking ID */}
+                              <td style={{ padding: "14px 16px" }}>
+                                <div style={{ fontFamily: "monospace", fontSize: 12, color: colors.textPrimary, fontWeight: 600 }}>
+                                  #{booking.id.slice(0, 8).toUpperCase()}
+                                </div>
+                              </td>
+
+                              {/* Customer Name */}
+                              <td style={{ padding: "14px 16px" }}>
+                                <div style={{ fontSize: 13, color: colors.textPrimary, fontWeight: 600 }}>
+                                  {booking.user_name || "Guest"}
+                                </div>
+                              </td>
+
+                              {/* Phone Number */}
+                              <td style={{ padding: "14px 16px" }}>
+                                <div style={{ fontSize: 13, color: colors.textSecondary }}>
+                                  {booking.user_phone || "-"}
+                                </div>
+                              </td>
+
+                              {/* Console */}
+                              <td style={{ padding: "14px 16px" }}>
+                                <div style={{ fontSize: 13, color: colors.textPrimary, fontWeight: 500 }}>
+                                  {(() => {
+                                    const items = booking.booking_items || [];
+                                    if (items.length === 0) return "-";
+
+                                    const consoles = items.map((item: any) => {
+                                      const consoleName = item.console || "Unknown";
+                                      const qty = item.quantity || 1;
+                                      return qty > 1 ? `${consoleName} (${qty})` : consoleName;
+                                    });
+
+                                    return consoles.join(", ");
+                                  })()}
+                                </div>
+                              </td>
+
+                              {/* Duration */}
+                              <td style={{ padding: "14px 16px" }}>
+                                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                                  <div style={{ fontSize: 12, color: colors.textSecondary }}>
+                                    {booking.booking_date
+                                      ? (() => {
+                                          const bookingDate = new Date(`${booking.booking_date}T00:00:00`);
+                                          const today = new Date();
+                                          const tomorrow = new Date(today);
+                                          tomorrow.setDate(tomorrow.getDate() + 1);
+
+                                          const isToday = bookingDate.toDateString() === today.toDateString();
+                                          const isTomorrow = bookingDate.toDateString() === tomorrow.toDateString();
+
+                                          if (isToday) return "Today";
+                                          if (isTomorrow) return "Tomorrow";
+
+                                          return bookingDate.toLocaleDateString("en-IN", {
+                                            day: "2-digit",
+                                            month: "short",
+                                          });
+                                        })()
+                                      : "-"}
+                                  </div>
+                                  <div style={{ fontSize: 13, color: colors.textPrimary, fontWeight: 600 }}>
+                                    {(() => {
+                                      if (!booking.start_time) return "-";
+
+                                      try {
+                                        // Parse start time and calculate end time (default 1 hour duration)
+                                        const startTime = booking.start_time;
+                                        const timeParts = startTime.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
+
+                                        if (!timeParts) return startTime;
+
+                                        let hours = parseInt(timeParts[1]);
+                                        const minutes = parseInt(timeParts[2]);
+                                        const period = timeParts[3]?.toLowerCase();
+
+                                        // Convert to 24-hour format
+                                        if (period === 'pm' && hours !== 12) {
+                                          hours += 12;
+                                        } else if (period === 'am' && hours === 12) {
+                                          hours = 0;
+                                        }
+
+                                        // Calculate end time (add 60 minutes)
+                                        let endMinutes = hours * 60 + minutes + 60;
+                                        let endHours = Math.floor(endMinutes / 60) % 24;
+                                        const endMins = endMinutes % 60;
+
+                                        // Convert back to 12-hour format
+                                        const endPeriod = endHours >= 12 ? 'pm' : 'am';
+                                        const endHours12 = endHours % 12 || 12;
+                                        const endTime = `${endHours12}:${endMins.toString().padStart(2, '0')} ${endPeriod}`;
+
+                                        return `${startTime} - ${endTime}`;
+                                      } catch (e) {
+                                        return booking.start_time;
+                                      }
+                                    })()}
+                                  </div>
+                                </div>
+                              </td>
+                              <td style={{ padding: "14px 16px" }}>
+                                <span
+                                  style={{
+                                    padding: "4px 10px",
+                                    borderRadius: 6,
+                                    fontSize: 11,
+                                    fontWeight: 500,
+                                    background: source === "Walk-in" ? "rgba(168, 85, 247, 0.15)" : "rgba(59, 130, 246, 0.15)",
+                                    color: source === "Walk-in" ? "#a855f7" : "#3b82f6",
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: 6,
+                                  }}
+                                >
+                                  {source === "Walk-in" ? "🚶" : "💻"}
+                                  {source}
+                                </span>
+                              </td>
+                              <td style={{ padding: "14px 16px" }}>
+                                <StatusBadge status={booking.status || "pending"} />
+                              </td>
+                              <td style={{ padding: "14px 16px", textAlign: "right" }}>
+                                <div style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: 4,
+                                  background: "rgba(34, 197, 94, 0.1)",
+                                  padding: "6px 12px",
+                                  borderRadius: 6,
+                                  border: "1px solid rgba(34, 197, 94, 0.2)"
+                                }}>
+                                  <span style={{ fontSize: 11, color: "#22c55e" }}>💰</span>
+                                  <span style={{ fontFamily: fonts.heading, fontSize: 15, color: "#22c55e", fontWeight: 700 }}>
+                                    ₹{booking.total_amount ?? 0}
+                                  </span>
+                                </div>
+                              </td>
+                              <td style={{ padding: "14px 16px", textAlign: "center" }}>
+                                {source === "Walk-in" && (
+                                  <button
+                                    onClick={() => handleEditBooking(booking)}
+                                    style={{
+                                      padding: "6px 12px",
+                                      borderRadius: 6,
+                                      border: `1px solid ${colors.border}`,
+                                      background: "rgba(59, 130, 246, 0.1)",
+                                      color: "#3b82f6",
+                                      fontSize: 11,
+                                      fontWeight: 500,
+                                      cursor: "pointer",
+                                      transition: "all 0.2s ease",
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      e.currentTarget.style.background = "rgba(59, 130, 246, 0.2)";
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      e.currentTarget.style.background = "rgba(59, 130, 246, 0.1)";
+                                    }}
+                                  >
+                                    ✏️ Edit
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Cafes Tab */}
+          {activeTab === 'cafes' && (
+            <div>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: 24,
+                }}
+              >
+                <div>
+                  <h2 style={{ fontSize: 20, margin: 0, marginBottom: 4 }}>
+                    My Cafés
+                  </h2>
+                  <p style={{ fontSize: 13, color: colors.textMuted, margin: 0 }}>
+                    {cafes.length} {cafes.length === 1 ? 'location' : 'locations'}
+                  </p>
+                </div>
+                <button
+                  onClick={() => router.push("/admin/cafes/new")}
+                  style={{
+                    padding: "12px 20px",
+                    borderRadius: 10,
+                    border: "none",
+                    background: "linear-gradient(135deg, #22c55e, #16a34a)",
+                    color: "#fff",
+                    fontSize: 14,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    boxShadow: "0 4px 16px rgba(34, 197, 94, 0.3)",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                  }}
+                >
+                  <span>+</span>
+                  Add New Café
+                </button>
+              </div>
+
+              {cafes.length === 0 ? (
+                <div
+                  style={{
+                    background: "rgba(15,23,42,0.6)",
+                    borderRadius: 16,
+                    border: `1px solid ${colors.border}`,
+                    padding: "60px 20px",
+                    textAlign: "center",
+                  }}
+                >
+                  <div style={{ fontSize: 64, marginBottom: 16, opacity: 0.3 }}>🏪</div>
+                  <p style={{ fontSize: 16, color: colors.textSecondary, marginBottom: 8, fontWeight: 500 }}>
+                    No cafés found
+                  </p>
+                  <p style={{ fontSize: 13, color: colors.textMuted, marginBottom: 20 }}>
+                    Add cafés and set their owner_id to your profile to see them here.
+                  </p>
+                  <button
+                    onClick={() => router.push("/admin/cafes/new")}
+                    style={{
+                      padding: "12px 24px",
+                      borderRadius: 10,
+                      border: "none",
+                      background: "linear-gradient(135deg, #22c55e, #16a34a)",
+                      color: "#fff",
+                      fontSize: 14,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Add Your First Café
+                  </button>
+                </div>
+              ) : (
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
+                    gap: 20,
+                  }}
+                >
+                  {cafes.map((cafe) => (
+                    <div
+                      key={cafe.id}
+                      style={{
+                        background: "linear-gradient(135deg, rgba(30,41,59,0.8), rgba(15,23,42,0.9))",
+                        borderRadius: 16,
+                        border: `1px solid rgba(71, 85, 105, 0.3)`,
+                        padding: "24px",
+                        transition: "all 0.3s ease",
+                        cursor: "pointer",
+                      }}
+                      onClick={() => router.push(`/admin/cafes/${cafe.id}`)}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = "rgba(99, 102, 241, 0.5)";
+                        e.currentTarget.style.transform = "translateY(-4px)";
+                        e.currentTarget.style.boxShadow = "0 12px 32px rgba(0,0,0,0.3)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = "rgba(71, 85, 105, 0.3)";
+                        e.currentTarget.style.transform = "translateY(0)";
+                        e.currentTarget.style.boxShadow = "none";
+                      }}
+                    >
+                      <div style={{ marginBottom: 16 }}>
+                        <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 8, color: colors.textPrimary }}>
+                          {cafe.name || "Untitled café"}
+                        </h3>
+                        {cafe.address && (
+                          <div style={{ fontSize: 13, color: colors.textSecondary, display: "flex", alignItems: "center", gap: 6 }}>
+                            <span>📍</span>
+                            {cafe.address}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Café Details */}
+                      {cafe.description && (
+                        <div style={{ fontSize: 12, color: colors.textSecondary, lineHeight: 1.5 }}>
+                          {cafe.description.length > 120 ? `${cafe.description.substring(0, 120)}...` : cafe.description}
+                        </div>
+                      )}
+
+                      {/* Click to Edit Hint */}
+                      <div style={{
+                        marginTop: 20,
+                        padding: "8px 12px",
+                        borderRadius: 8,
+                        background: "rgba(59, 130, 246, 0.1)",
+                        border: "1px solid rgba(59, 130, 246, 0.2)",
+                        fontSize: 12,
+                        color: "#3b82f6",
+                        textAlign: "center",
+                        fontWeight: 500
+                      }}>
+                        ⚙️ Click to view and edit café details
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Analytics Tab */}
+          {activeTab === 'analytics' && (
+            <div
+              style={{
+                background: "rgba(15,23,42,0.6)",
+                borderRadius: 16,
+                border: `1px solid ${colors.border}`,
+                padding: "60px 20px",
+                textAlign: "center",
+              }}
+            >
+              <div style={{ fontSize: 64, marginBottom: 16, opacity: 0.3 }}>📈</div>
+              <p style={{ fontSize: 18, color: colors.textSecondary, marginBottom: 8, fontWeight: 500 }}>
+                Analytics Coming Soon
+              </p>
+              <p style={{ fontSize: 14, color: colors.textMuted }}>
+                Detailed insights and reports will be available here.
+              </p>
+            </div>
+          )}
+        </div>
+      </main>
+
+      {/* Edit Booking Modal */}
+      {editingBooking && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(0, 0, 0, 0.7)",
+            backdropFilter: "blur(4px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+            padding: "20px",
+          }}
+          onClick={() => setEditingBooking(null)}
+        >
+          <div
+            style={{
+              background: "linear-gradient(135deg, #1e293b, #0f172a)",
+              borderRadius: 20,
+              border: `1px solid ${colors.border}`,
+              maxWidth: 600,
+              width: "100%",
+              maxHeight: "90vh",
+              overflowY: "auto",
+              padding: "32px",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ marginBottom: 24 }}>
+              <h2 style={{ fontFamily: fonts.heading, fontSize: 24, margin: "0 0 8px 0", color: colors.textPrimary }}>
+                Edit Walk-In Booking
+              </h2>
+              <p style={{ fontSize: 13, color: colors.textMuted, margin: 0 }}>
+                Booking ID: #{editingBooking.id.slice(0, 8).toUpperCase()}
+              </p>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+              {/* Customer Info */}
+              <div>
+                <label style={{ fontSize: 12, color: colors.textMuted, display: "block", marginBottom: 8 }}>
+                  Customer
+                </label>
+                <div
+                  style={{
+                    padding: "12px",
+                    background: "rgba(30,41,59,0.5)",
+                    borderRadius: 8,
+                    border: `1px solid ${colors.border}`,
+                  }}
+                >
+                  <div style={{ fontSize: 14, color: colors.textPrimary, marginBottom: 4 }}>
+                    {editingBooking.user_name || "Guest"}
+                  </div>
+                  {editingBooking.user_email && (
+                    <div style={{ fontSize: 12, color: colors.textSecondary }}>
+                      {editingBooking.user_email}
+                    </div>
+                  )}
+                  {editingBooking.user_phone && (
+                    <div style={{ fontSize: 12, color: colors.textSecondary }}>
+                      📞 {editingBooking.user_phone}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Date */}
+              <div>
+                <label style={{ fontSize: 12, color: colors.textMuted, display: "block", marginBottom: 8 }}>
+                  Booking Date *
+                </label>
+                <input
+                  type="date"
+                  value={editDate}
+                  onChange={(e) => setEditDate(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "12px",
+                    background: "rgba(30,41,59,0.5)",
+                    border: `1px solid ${colors.border}`,
+                    borderRadius: 8,
+                    color: colors.textPrimary,
+                    fontSize: 14,
+                    fontFamily: fonts.body,
+                  }}
+                />
+              </div>
+
+              {/* Start Time */}
+              <div>
+                <label style={{ fontSize: 12, color: colors.textMuted, display: "block", marginBottom: 8 }}>
+                  Start Time *
+                </label>
+                <input
+                  type="time"
+                  value={editStartTime}
+                  onChange={(e) => setEditStartTime(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "12px",
+                    background: "rgba(30,41,59,0.5)",
+                    border: `1px solid ${colors.border}`,
+                    borderRadius: 8,
+                    color: colors.textPrimary,
+                    fontSize: 14,
+                    fontFamily: fonts.body,
+                  }}
+                />
+              </div>
+
+              {/* Amount */}
+              <div>
+                <label style={{ fontSize: 12, color: colors.textMuted, display: "block", marginBottom: 8 }}>
+                  Total Amount (₹) *
+                </label>
+                <input
+                  type="number"
+                  value={editAmount}
+                  onChange={(e) => setEditAmount(e.target.value)}
+                  min="0"
+                  step="1"
+                  style={{
+                    width: "100%",
+                    padding: "12px",
+                    background: "rgba(30,41,59,0.5)",
+                    border: `1px solid ${colors.border}`,
+                    borderRadius: 8,
+                    color: colors.textPrimary,
+                    fontSize: 14,
+                    fontFamily: fonts.body,
+                  }}
+                />
+              </div>
+
+              {/* Status */}
+              <div>
+                <label style={{ fontSize: 12, color: colors.textMuted, display: "block", marginBottom: 8 }}>
+                  Status *
+                </label>
+                <select
+                  value={editStatus}
+                  onChange={(e) => setEditStatus(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "12px",
+                    background: "rgba(30,41,59,0.5)",
+                    border: `1px solid ${colors.border}`,
+                    borderRadius: 8,
+                    color: colors.textPrimary,
+                    fontSize: 14,
+                    fontFamily: fonts.body,
+                    cursor: "pointer",
+                  }}
+                >
+                  <option value="pending">Pending</option>
+                  <option value="confirmed">Confirmed</option>
+                  <option value="cancelled">Cancelled</option>
+                  <option value="completed">Completed</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div style={{ display: "flex", gap: 12, marginTop: 32 }}>
+              <button
+                onClick={() => setEditingBooking(null)}
+                disabled={saving}
+                style={{
+                  flex: 1,
+                  padding: "12px 24px",
+                  borderRadius: 10,
+                  border: `1px solid ${colors.border}`,
+                  background: "rgba(51,65,85,0.5)",
+                  color: colors.textSecondary,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: saving ? "not-allowed" : "pointer",
+                  opacity: saving ? 0.5 : 1,
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveBooking}
+                disabled={saving || !editAmount || !editDate || !editStartTime}
+                style={{
+                  flex: 1,
+                  padding: "12px 24px",
+                  borderRadius: 10,
+                  border: "none",
+                  background:
+                    saving || !editAmount || !editDate || !editStartTime
+                      ? "rgba(59, 130, 246, 0.3)"
+                      : "linear-gradient(135deg, #3b82f6, #2563eb)",
+                  color: "#fff",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: saving || !editAmount || !editDate || !editStartTime ? "not-allowed" : "pointer",
+                  boxShadow:
+                    saving || !editAmount || !editDate || !editStartTime
+                      ? "none"
+                      : "0 4px 16px rgba(59, 130, 246, 0.3)",
+                }}
+              >
+                {saving ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Helper Components
+function StatCard({
+  title,
+  value,
+  subtitle,
+  icon,
+  gradient,
+  color,
+}: {
+  title: string;
+  value: string | number;
+  subtitle: string;
+  icon: string;
+  gradient: string;
+  color: string;
+}) {
+  return (
+    <div
+      style={{
+        padding: "24px",
+        borderRadius: 16,
+        background: gradient,
+        border: `1px solid ${color}40`,
+        position: "relative",
+        overflow: "hidden",
+      }}
+    >
+      <div style={{ position: "absolute", top: -20, right: -20, fontSize: 80, opacity: 0.1 }}>
+        {icon}
+      </div>
+      <div style={{ position: "relative", zIndex: 1 }}>
+        <p
+          style={{
+            fontSize: 11,
+            color: `${color}E6`,
+            marginBottom: 8,
+            textTransform: "uppercase",
+            letterSpacing: 1.5,
+            fontWeight: 600,
+          }}
+        >
+          {title}
+        </p>
+        <p
+          style={{
+            fontFamily: fonts.heading,
+            fontSize: 36,
+            margin: "8px 0",
+            color: color,
+            lineHeight: 1,
+          }}
+        >
+          {value}
+        </p>
+        <p style={{ fontSize: 13, color: `${color}B3`, marginTop: 8 }}>{subtitle}</p>
+      </div>
+    </div>
+  );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const statusLower = status.toLowerCase();
+  let background = "rgba(245, 158, 11, 0.15)";
+  let color = "#f59e0b";
+
+  if (statusLower === "confirmed") {
+    background = "rgba(34, 197, 94, 0.15)";
+    color = "#22c55e";
+  } else if (statusLower === "cancelled") {
+    background = "rgba(239, 68, 68, 0.15)";
+    color = "#ef4444";
+  } else if (statusLower === "completed") {
+    background = "rgba(59, 130, 246, 0.15)";
+    color = "#3b82f6";
+  }
+
+  return (
+    <span
+      style={{
+        padding: "4px 10px",
+        borderRadius: 6,
+        fontSize: 11,
+        fontWeight: 500,
+        background,
+        color,
+        textTransform: "uppercase",
+      }}
+    >
+      {status}
+    </span>
+  );
+}

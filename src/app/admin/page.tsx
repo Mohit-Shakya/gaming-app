@@ -1,6 +1,9 @@
 // src/app/admin/page.tsx
 "use client";
 
+import CafesTable from "./_components/CafesTable";
+import AdminRecentBookings from "./_components/AdminRecentBookings";
+import ManageCafes from "./_components/ManageCafes";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
@@ -12,7 +15,7 @@ type AdminStats = {
   totalBookings: number;
   todayBookings: number;
   totalUsers: number;
-  totalRevenue: number;
+  totalRevenue: number; 
 };
 
 export default function AdminDashboardPage() {
@@ -24,6 +27,7 @@ export default function AdminDashboardPage() {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [loadingStats, setLoadingStats] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"overview" | "cafes" | "bookings" | "manage">("overview");
 
   // 1) Check if user is admin
   useEffect(() => {
@@ -44,13 +48,11 @@ export default function AdminDashboardPage() {
 
         if (profileError) {
           console.error("Admin check error:", profileError);
-          // If there's an error, just redirect - don't let them access admin
           setIsAdmin(false);
           router.push("/dashboard");
           return;
         }
 
-        // If no profile found, redirect to onboarding
         if (!profile) {
           console.log("No profile found, redirecting to onboarding");
           router.push("/onboarding");
@@ -64,7 +66,6 @@ export default function AdminDashboardPage() {
           role === "admin" || role === "super_admin" || is_admin === true;
 
         if (!isReallyAdmin) {
-          // Not admin – kick to normal dashboard
           router.push("/dashboard");
           return;
         }
@@ -187,9 +188,9 @@ export default function AdminDashboardPage() {
     >
       <div
         style={{
-          maxWidth: 960,
+          maxWidth: 1200,
           margin: "0 auto",
-          padding: "16px 16px 40px",
+          padding: "20px 20px 60px",
         }}
       >
         {/* Top bar */}
@@ -198,210 +199,422 @@ export default function AdminDashboardPage() {
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            marginBottom: 24,
+            marginBottom: 32,
+            flexWrap: "wrap",
+            gap: 16,
           }}
         >
           <div>
-            <p
-              style={{
-                fontSize: 11,
-                letterSpacing: 3,
-                textTransform: "uppercase",
-                color: colors.textMuted,
-                marginBottom: 4,
-              }}
-            >
-              Admin
-            </p>
-            <h1
-              style={{
-                fontFamily: fonts.heading,
-                fontSize: 22,
-                margin: 0,
-              }}
-            >
-              Platform Overview
-            </h1>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+              <div
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 12,
+                  background: "linear-gradient(135deg, #a855f7, #ec4899)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 20,
+                }}
+              >
+                ⚡
+              </div>
+              <div>
+                <p
+                  style={{
+                    fontSize: 10,
+                    letterSpacing: 2,
+                    textTransform: "uppercase",
+                    color: colors.textMuted,
+                    marginBottom: 2,
+                  }}
+                >
+                  Admin Dashboard
+                </p>
+                <h1
+                  style={{
+                    fontFamily: fonts.heading,
+                    fontSize: 24,
+                    margin: 0,
+                    background: "linear-gradient(135deg, #fff, #a855f7)",
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                  }}
+                >
+                  Platform Control
+                </h1>
+              </div>
+            </div>
           </div>
 
-          <button
-            onClick={() => router.push("/dashboard")}
-            style={{
-              padding: "8px 14px",
-              borderRadius: 999,
-              border: `1px solid ${colors.border}`,
-              background: "rgba(15,23,42,0.8)",
-              color: colors.textSecondary,
-              fontSize: 12,
-              cursor: "pointer",
-            }}
-          >
-            Go to user dashboard
-          </button>
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            <button
+              onClick={() => window.location.reload()}
+              style={{
+                padding: "10px 16px",
+                borderRadius: 10,
+                border: `1px solid ${colors.border}`,
+                background: "rgba(15,23,42,0.6)",
+                color: colors.textSecondary,
+                fontSize: 13,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                transition: "all 0.2s",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "rgba(15,23,42,0.9)";
+                e.currentTarget.style.borderColor = colors.cyan;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "rgba(15,23,42,0.6)";
+                e.currentTarget.style.borderColor = colors.border;
+              }}
+            >
+              🔄 Refresh
+            </button>
+            <button
+              onClick={() => router.push("/dashboard")}
+              style={{
+                padding: "10px 18px",
+                borderRadius: 10,
+                border: "none",
+                background: "linear-gradient(135deg, #a855f7, #ec4899)",
+                color: "#fff",
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: "pointer",
+                transition: "all 0.2s",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = "translateY(-2px)";
+                e.currentTarget.style.boxShadow = "0 8px 16px rgba(168,85,247,0.3)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "translateY(0)";
+                e.currentTarget.style.boxShadow = "none";
+              }}
+            >
+              👤 User Dashboard
+            </button>
+          </div>
         </header>
 
-        {/* Stats grid */}
-        <section
+        {/* Navigation Tabs */}
+        <div
           style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-            gap: 12,
-            marginBottom: 20,
+            display: "flex",
+            gap: 8,
+            marginBottom: 24,
+            padding: 6,
+            background: colors.darkerCard,
+            borderRadius: 12,
+            border: `1px solid ${colors.border}`,
           }}
         >
           {[
-            {
-              label: "Total Cafés",
-              value: stats?.totalCafes ?? 0,
-              hint: "Active gaming cafés",
-            },
-            {
-              label: "Total Bookings",
-              value: stats?.totalBookings ?? 0,
-              hint: "All-time",
-            },
-            {
-              label: "Today’s Bookings",
-              value: stats?.todayBookings ?? 0,
-              hint: "Today",
-            },
-            {
-              label: "Total Users",
-              value: stats?.totalUsers ?? 0,
-              hint: "Registered players",
-            },
-          ].map((card) => (
-            <div
-              key={card.label}
+            { id: "overview" as const, label: "📊 Overview", icon: "📊" },
+            { id: "cafes" as const, label: "🏪 Cafés", icon: "🏪" },
+            { id: "manage" as const, label: "⚙️ Manage Cafés", icon: "⚙️" },
+            { id: "bookings" as const, label: "📅 Bookings", icon: "📅" },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
               style={{
-                padding: "14px 14px",
-                borderRadius: 16,
-                background: colors.darkerCard,
-                border: `1px solid ${colors.border}`,
+                flex: 1,
+                padding: "12px 20px",
+                borderRadius: 8,
+                border: "none",
+                background: activeTab === tab.id
+                  ? "linear-gradient(135deg, rgba(168,85,247,0.3), rgba(236,72,153,0.3))"
+                  : "transparent",
+                color: activeTab === tab.id ? colors.textPrimary : colors.textSecondary,
+                fontSize: 14,
+                fontWeight: activeTab === tab.id ? 600 : 400,
+                cursor: "pointer",
+                transition: "all 0.2s",
+                borderLeft: activeTab === tab.id ? `3px solid ${colors.purple}` : "3px solid transparent",
+              }}
+              onMouseEnter={(e) => {
+                if (activeTab !== tab.id) {
+                  e.currentTarget.style.background = "rgba(148,163,184,0.1)";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (activeTab !== tab.id) {
+                  e.currentTarget.style.background = "transparent";
+                }
               }}
             >
-              <p
-                style={{
-                  fontSize: 11,
-                  color: colors.textMuted,
-                  marginBottom: 6,
-                  textTransform: "uppercase",
-                  letterSpacing: 1,
-                }}
-              >
-                {card.label}
-              </p>
-              <p
-                style={{
-                  fontFamily: fonts.heading,
-                  fontSize: 22,
-                  margin: 0,
-                }}
-              >
-                {loadingStats ? "…" : card.value}
-              </p>
-              <p
-                style={{
-                  marginTop: 4,
-                  fontSize: 11,
-                  color: colors.textSecondary,
-                }}
-              >
-                {card.hint}
-              </p>
-            </div>
+              {tab.label}
+            </button>
           ))}
+        </div>
 
-          {/* Revenue card */}
-          <div
-            style={{
-              padding: "14px 14px",
-              borderRadius: 16,
-              background:
-                "linear-gradient(135deg, rgba(34,197,94,0.18), rgba(15,23,42,0.9))",
-              border: `1px solid rgba(34,197,94,0.4)`,
-            }}
-          >
-            <p
-              style={{
-                fontSize: 11,
-                color: "rgba(209,250,229,0.9)",
-                marginBottom: 6,
-                textTransform: "uppercase",
-                letterSpacing: 1,
-              }}
-            >
-              Total Revenue (All cafés)
-            </p>
-            <p
-              style={{
-                fontFamily: fonts.heading,
-                fontSize: 22,
-                margin: 0,
-                color: "#bbf7d0",
-              }}
-            >
-              {loadingStats ? "…" : `₹${stats?.totalRevenue ?? 0}`}
-            </p>
-            <p
-              style={{
-                marginTop: 4,
-                fontSize: 11,
-                color: "rgba(209,250,229,0.8)",
-              }}
-            >
-              Simple sum of booking totals
-            </p>
-          </div>
-        </section>
-
-        {/* Placeholder sections for next steps */}
-        <section
-          style={{
-            marginTop: 12,
-            padding: "16px 14px",
-            borderRadius: 16,
-            background: colors.darkCard,
-            border: `1px dashed ${colors.border}`,
-          }}
-        >
-          <p
-            style={{
-              fontSize: 13,
-              fontWeight: 600,
-              marginBottom: 6,
-            }}
-          >
-            Next: Cafés list + booking table
-          </p>
-          <p
-            style={{
-              fontSize: 12,
-              color: colors.textSecondary,
-            }}
-          >
-            In the next step we’ll add:
-            <br />• Table of all cafés (name, city, status, owner)
-            <br />• Quick link to view bookings per café
-          </p>
-        </section>
-
+        {/* Error message (if stats failed) */}
         {error && (
           <div
             style={{
-              marginTop: 16,
-              padding: "10px 12px",
-              borderRadius: 10,
+              marginBottom: 20,
+              padding: "14px 16px",
+              borderRadius: 12,
               border: "1px solid rgba(248,113,113,0.6)",
               background: "rgba(248,113,113,0.08)",
-              fontSize: 12,
+              fontSize: 13,
               color: "#fecaca",
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
             }}
           >
+            <span style={{ fontSize: 18 }}>⚠️</span>
             {error}
           </div>
         )}
+
+        {/* Tab Content */}
+        {activeTab === "overview" && (
+          <>
+            {/* Stats grid */}
+            <section
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                gap: 16,
+                marginBottom: 32,
+              }}
+            >
+              {[
+                {
+                  label: "Total Cafés",
+                  value: stats?.totalCafes ?? 0,
+                  hint: "Active gaming cafés",
+                  icon: "🏪",
+                  color: colors.cyan,
+                },
+                {
+                  label: "Total Bookings",
+                  value: stats?.totalBookings ?? 0,
+                  hint: "All-time bookings",
+                  icon: "📅",
+                  color: colors.purple,
+                },
+                {
+                  label: "Today's Bookings",
+                  value: stats?.todayBookings ?? 0,
+                  hint: "Today",
+                  icon: "⚡",
+                  color: colors.orange,
+                },
+                {
+                  label: "Total Users",
+                  value: stats?.totalUsers ?? 0,
+                  hint: "Registered players",
+                  icon: "👥",
+                  color: colors.green,
+                },
+              ].map((card) => (
+                <div
+                  key={card.label}
+                  style={{
+                    padding: "20px",
+                    borderRadius: 16,
+                    background: colors.darkerCard,
+                    border: `1px solid ${colors.border}`,
+                    transition: "all 0.3s",
+                    cursor: "pointer",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = card.color;
+                    e.currentTarget.style.transform = "translateY(-4px)";
+                    e.currentTarget.style.boxShadow = `0 8px 24px rgba(0,0,0,0.3)`;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = colors.border;
+                    e.currentTarget.style.transform = "translateY(0)";
+                    e.currentTarget.style.boxShadow = "none";
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+                    <div>
+                      <p
+                        style={{
+                          fontSize: 11,
+                          color: colors.textMuted,
+                          marginBottom: 8,
+                          textTransform: "uppercase",
+                          letterSpacing: 1.5,
+                        }}
+                      >
+                        {card.label}
+                      </p>
+                      <p
+                        style={{
+                          fontFamily: fonts.heading,
+                          fontSize: 32,
+                          margin: 0,
+                          color: card.color,
+                          lineHeight: 1,
+                        }}
+                      >
+                        {loadingStats ? "…" : card.value}
+                      </p>
+                      <p
+                        style={{
+                          marginTop: 8,
+                          fontSize: 12,
+                          color: colors.textSecondary,
+                        }}
+                      >
+                        {card.hint}
+                      </p>
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 28,
+                        opacity: 0.6,
+                      }}
+                    >
+                      {card.icon}
+                    </div>
+                  </div>
+                </div>
+              ))}
+
+              {/* Revenue card */}
+              <div
+                style={{
+                  padding: "20px",
+                  borderRadius: 16,
+                  background:
+                    "linear-gradient(135deg, rgba(34,197,94,0.2), rgba(15,23,42,0.9))",
+                  border: `2px solid rgba(34,197,94,0.5)`,
+                  gridColumn: "span 1",
+                  transition: "all 0.3s",
+                  cursor: "pointer",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = "translateY(-4px)";
+                  e.currentTarget.style.boxShadow = "0 12px 28px rgba(34,197,94,0.3)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.boxShadow = "none";
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+                  <div>
+                    <p
+                      style={{
+                        fontSize: 11,
+                        color: "rgba(209,250,229,0.9)",
+                        marginBottom: 8,
+                        textTransform: "uppercase",
+                        letterSpacing: 1.5,
+                      }}
+                    >
+                      Total Revenue
+                    </p>
+                    <p
+                      style={{
+                        fontFamily: fonts.heading,
+                        fontSize: 32,
+                        margin: 0,
+                        color: "#bbf7d0",
+                        lineHeight: 1,
+                      }}
+                    >
+                      {loadingStats ? "…" : `₹${stats?.totalRevenue ?? 0}`}
+                    </p>
+                    <p
+                      style={{
+                        marginTop: 8,
+                        fontSize: 12,
+                        color: "rgba(209,250,229,0.8)",
+                      }}
+                    >
+                      All cafés combined
+                    </p>
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 28,
+                      opacity: 0.8,
+                    }}
+                  >
+                    💰
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* Quick Stats Summary */}
+            <div
+              style={{
+                padding: "20px",
+                borderRadius: 16,
+                background: colors.darkCard,
+                border: `1px solid ${colors.border}`,
+                marginBottom: 32,
+              }}
+            >
+              <h2
+                style={{
+                  fontFamily: fonts.heading,
+                  fontSize: 18,
+                  marginBottom: 16,
+                  color: colors.textPrimary,
+                }}
+              >
+                📈 Quick Insights
+              </h2>
+              <div style={{ display: "grid", gap: 12, fontSize: 14, color: colors.textSecondary }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ color: colors.green }}>✓</span>
+                  <span>
+                    Average of{" "}
+                    <strong style={{ color: colors.textPrimary }}>
+                      {stats?.totalCafes && stats?.totalBookings
+                        ? Math.round(stats.totalBookings / stats.totalCafes)
+                        : 0}
+                    </strong>{" "}
+                    bookings per café
+                  </span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ color: colors.cyan }}>✓</span>
+                  <span>
+                    Average revenue per booking:{" "}
+                    <strong style={{ color: colors.textPrimary }}>
+                      ₹
+                      {stats?.totalBookings && stats?.totalRevenue
+                        ? Math.round(stats.totalRevenue / stats.totalBookings)
+                        : 0}
+                    </strong>
+                  </span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ color: colors.orange }}>✓</span>
+                  <span>
+                    Platform has{" "}
+                    <strong style={{ color: colors.textPrimary }}>{stats?.todayBookings ?? 0}</strong>{" "}
+                    active bookings today
+                  </span>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+
+        {activeTab === "cafes" && <CafesTable />}
+
+        {activeTab === "manage" && <ManageCafes />}
+
+        {activeTab === "bookings" && <AdminRecentBookings />}
       </div>
     </div>
   );
-} 
+}

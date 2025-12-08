@@ -122,7 +122,8 @@ export default async function CafePage({ params }: CafePageProps) {
       processor_details,
       gpu_details,
       ram_details,
-      accessories_details
+      accessories_details,
+      show_tech_specs
     `
     )
     .eq("id", id)
@@ -769,6 +770,7 @@ export default async function CafePage({ params }: CafePageProps) {
           gpu_details={cafe.gpu_details}
           ram_details={cafe.ram_details}
           accessories_details={cafe.accessories_details}
+          show_tech_specs={cafe.show_tech_specs ?? true}
         />
 
         {/* Gallery Section */}

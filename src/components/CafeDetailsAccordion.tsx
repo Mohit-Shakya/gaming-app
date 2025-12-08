@@ -15,6 +15,7 @@ type CafeDetailsAccordionProps = {
   ssd_details?: string | null;
   accessories_details?: string | null;
   screen_size?: string | null;
+  show_tech_specs?: boolean;
 };
 
 type SectionId = "highlights" | "device" | null;
@@ -71,13 +72,14 @@ export default function CafeDetailsAccordion(props: CafeDetailsAccordionProps) {
     props.offers;
 
   const hasDeviceSpecs =
-    props.monitor_details ||
+    props.show_tech_specs !== false &&
+    (props.monitor_details ||
     props.processor_details ||
     props.gpu_details ||
     props.ram_details ||
     props.ssd_details ||
     props.accessories_details ||
-    props.screen_size;
+    props.screen_size);
 
   if (!hasHighlights && !hasDeviceSpecs) return null;
 
