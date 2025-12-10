@@ -27,7 +27,7 @@ const rajdhani = Rajdhani({
 });
 
 export const metadata: Metadata = {
-  title: "BOOKMYGAME",
+  title: "BOOKMYGAME:BOOK GAMING CAFÉS ACROSS INDIA",
   description: "Book gaming cafés across India",
 };
 
