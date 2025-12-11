@@ -67,9 +67,9 @@ const footerLinks = {
     { label: "FAQs", href: "/faqs" },
   ],
   legal: [
-    { label: "Terms of Service", href: "/terms" },
-    { label: "Privacy Policy", href: "/privacy" },
-    { label: "Refund Policy", href: "/refund" },
+    { label: "Terms of Service", href: "https://www.bookmygame.co.in/terms" },
+    { label: "Privacy Policy", href: "https://www.bookmygame.co.in/privacy" },
+    { label: "Refund Policy", href: "https://www.bookmygame.co.in/refund" },
   ],
 };
 
@@ -155,48 +155,6 @@ export default function Footer() {
             >
               India's premier gaming café booking platform. Find, book, and play at the best gaming cafés near you.
             </p>
-
-            {/* App Download Badges - Placeholder */}
-            <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
-              <div
-                style={{
-                  padding: "8px 16px",
-                  background: "rgba(255, 255, 255, 0.05)",
-                  border: `1px solid ${colors.border}`,
-                  borderRadius: "8px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  cursor: "pointer",
-                  transition: "all 0.2s ease",
-                }}
-              >
-                <span style={{ fontSize: "20px" }}>🍎</span>
-                <div>
-                  <p style={{ fontSize: "9px", color: colors.textMuted, margin: 0 }}>Coming soon on</p>
-                  <p style={{ fontSize: "12px", color: colors.textPrimary, margin: 0, fontWeight: 600 }}>App Store</p>
-                </div>
-              </div>
-              <div
-                style={{
-                  padding: "8px 16px",
-                  background: "rgba(255, 255, 255, 0.05)",
-                  border: `1px solid ${colors.border}`,
-                  borderRadius: "8px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  cursor: "pointer",
-                  transition: "all 0.2s ease",
-                }}
-              >
-                <span style={{ fontSize: "20px" }}>🤖</span>
-                <div>
-                  <p style={{ fontSize: "9px", color: colors.textMuted, margin: 0 }}>Coming soon on</p>
-                  <p style={{ fontSize: "12px", color: colors.textPrimary, margin: 0, fontWeight: 600 }}>Play Store</p>
-                </div>
-              </div>
-            </div>
           </div>
 
           {/* Links Sections */}
@@ -441,51 +399,26 @@ export default function Footer() {
             © {currentYear} BOOKMYGAME. All rights reserved.
           </p>
 
-          {/* Made with love */}
-          <p
-            style={{
-              fontSize: "13px",
-              color: colors.textMuted,
-              margin: 0,
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-            }}
-          >
-            Made with{" "}
-            <span
-              style={{
-                color: colors.red,
-                animation: "pulse 1.5s ease-in-out infinite",
-              }}
-            >
-              ❤️
-            </span>{" "}
-            for Gamers in India 🇮🇳
-          </p>
-
-          {/* Payment Methods */}
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-            }}
-          >
-            <span style={{ fontSize: "12px", color: colors.textMuted }}>We accept:</span>
-            <div
-              style={{
-                display: "flex",
-                gap: "6px",
-                padding: "4px 8px",
-                background: "rgba(255, 255, 255, 0.05)",
-                borderRadius: "6px",
-              }}
-            >
-              <span style={{ fontSize: "16px" }} title="UPI">💳</span>
-              <span style={{ fontSize: "16px" }} title="Cards">💰</span>
-              <span style={{ fontSize: "16px" }} title="Wallet">📱</span>
-            </div>
+          {/* Legal Links */}
+          <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
+            {footerLinks.legal.map((link) => (
+              <a
+                key={link.href}
+                href={link.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  fontSize: "13px",
+                  color: colors.textMuted,
+                  textDecoration: "none",
+                  transition: "color 0.2s ease",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.color = colors.cyan)}
+                onMouseLeave={(e) => (e.currentTarget.style.color = colors.textMuted)}
+              >
+                {link.label}
+              </a>
+            ))}
           </div>
         </div>
       </div>
