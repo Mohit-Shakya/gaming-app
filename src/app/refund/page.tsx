@@ -1,0 +1,434 @@
+// src/app/refund/page.tsx
+import Link from "next/link";
+import { colors, fonts } from "@/lib/constants";
+
+export const metadata = {
+  title: "Refund Policy - BookMyGame",
+  description: "Cancellation and refund policy for BookMyGame gaming cafe bookings",
+};
+
+export default function RefundPage() {
+  return (
+    <div
+      style={{
+        minHeight: "100vh",
+        background: `radial-gradient(circle at top, #1e1b4b 0%, #050509 45%)`,
+        fontFamily: fonts.body,
+        color: colors.textPrimary,
+      }}
+    >
+      <div
+        style={{
+          maxWidth: "900px",
+          margin: "0 auto",
+          padding: "40px 20px 80px",
+        }}
+      >
+        {/* Back to Home */}
+        <Link
+          href="/"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "8px",
+            fontSize: "14px",
+            color: colors.cyan,
+            textDecoration: "none",
+            marginBottom: "32px",
+            transition: "all 0.2s",
+          }}
+        >
+          ← Back to Home
+        </Link>
+
+        {/* Header */}
+        <header style={{ marginBottom: "48px" }}>
+          <h1
+            style={{
+              fontFamily: fonts.heading,
+              fontSize: "clamp(32px, 5vw, 48px)",
+              fontWeight: 800,
+              marginBottom: "16px",
+              background: `linear-gradient(135deg, ${colors.red} 0%, ${colors.cyan} 100%)`,
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              backgroundClip: "text",
+            }}
+          >
+            Refund Policy
+          </h1>
+          <p style={{ fontSize: "16px", color: colors.textMuted }}>
+            Last Updated: December 11, 2024
+          </p>
+        </header>
+
+        {/* Content */}
+        <div
+          style={{
+            background: colors.darkCard,
+            border: `1px solid ${colors.border}`,
+            borderRadius: "16px",
+            padding: "40px",
+          }}
+        >
+          <Section title="1. Overview">
+            <p>
+              At BookMyGame, we understand that plans can change. This Refund Policy explains the
+              cancellation and refund process for gaming café bookings made through our platform at{" "}
+              <a href="https://www.bookmygame.co.in" style={{ color: colors.cyan }}>
+                www.bookmygame.co.in
+              </a>
+              .
+            </p>
+            <p style={{ marginTop: "12px" }}>
+              Please read this policy carefully before making a booking, as refund eligibility
+              depends on when you cancel.
+            </p>
+          </Section>
+
+          <Section title="2. Cancellation Windows">
+            <div
+              style={{
+                display: "grid",
+                gap: "16px",
+                marginTop: "16px",
+              }}
+            >
+              {/* Full Refund */}
+              <div
+                style={{
+                  padding: "20px",
+                  background: "rgba(34, 197, 94, 0.1)",
+                  border: "2px solid rgba(34, 197, 94, 0.3)",
+                  borderRadius: "12px",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "8px" }}>
+                  <span style={{ fontSize: "24px" }}>✅</span>
+                  <h3 style={{ fontSize: "18px", fontWeight: 600, color: colors.green, margin: 0 }}>
+                    Full Refund (100%)
+                  </h3>
+                </div>
+                <p style={{ margin: "8px 0 0 36px", color: colors.textSecondary }}>
+                  Cancel <strong>24+ hours before</strong> your scheduled session
+                </p>
+                <p style={{ margin: "4px 0 0 36px", fontSize: "13px", color: colors.textMuted }}>
+                  Full booking amount refunded to your original payment method within 5-7 business days
+                </p>
+              </div>
+
+              {/* Partial Refund */}
+              <div
+                style={{
+                  padding: "20px",
+                  background: "rgba(255, 193, 7, 0.1)",
+                  border: "2px solid rgba(255, 193, 7, 0.3)",
+                  borderRadius: "12px",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "8px" }}>
+                  <span style={{ fontSize: "24px" }}>⚠️</span>
+                  <h3 style={{ fontSize: "18px", fontWeight: 600, color: colors.orange, margin: 0 }}>
+                    Partial Refund (50%)
+                  </h3>
+                </div>
+                <p style={{ margin: "8px 0 0 36px", color: colors.textSecondary }}>
+                  Cancel <strong>6-24 hours before</strong> your scheduled session
+                </p>
+                <p style={{ margin: "4px 0 0 36px", fontSize: "13px", color: colors.textMuted }}>
+                  50% of booking amount refunded; 50% charged as cancellation fee
+                </p>
+              </div>
+
+              {/* No Refund */}
+              <div
+                style={{
+                  padding: "20px",
+                  background: "rgba(239, 68, 68, 0.1)",
+                  border: "2px solid rgba(239, 68, 68, 0.3)",
+                  borderRadius: "12px",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "8px" }}>
+                  <span style={{ fontSize: "24px" }}>❌</span>
+                  <h3 style={{ fontSize: "18px", fontWeight: 600, color: colors.red, margin: 0 }}>
+                    No Refund (0%)
+                  </h3>
+                </div>
+                <p style={{ margin: "8px 0 0 36px", color: colors.textSecondary }}>
+                  Cancel <strong>less than 6 hours before</strong> or no-show
+                </p>
+                <p style={{ margin: "4px 0 0 36px", fontSize: "13px", color: colors.textMuted }}>
+                  Full amount forfeited; no refund provided
+                </p>
+              </div>
+            </div>
+          </Section>
+
+          <Section title="3. How to Cancel a Booking">
+            <h3 style={{ fontSize: "18px", fontWeight: 600, marginBottom: "12px", color: colors.textPrimary }}>
+              3.1 Online Cancellation
+            </h3>
+            <p>You can cancel your booking through your account:</p>
+            <ol style={{ paddingLeft: "20px", marginTop: "12px" }}>
+              <li>Log in to your BookMyGame account</li>
+              <li>Go to "My Bookings" in your dashboard</li>
+              <li>Find the booking you want to cancel</li>
+              <li>Click "Cancel Booking" and confirm</li>
+              <li>You'll receive an email confirmation with refund details</li>
+            </ol>
+
+            <h3 style={{ fontSize: "18px", fontWeight: 600, margin: "20px 0 12px", color: colors.textPrimary }}>
+              3.2 Customer Support Cancellation
+            </h3>
+            <p>If you're unable to cancel online, contact us immediately:</p>
+            <ul style={{ paddingLeft: "20px", marginTop: "12px" }}>
+              <li>
+                Email:{" "}
+                <a href="mailto:bookmygame169@gmail.com" style={{ color: colors.cyan }}>
+                  bookmygame169@gmail.com
+                </a>
+              </li>
+              <li>
+                Phone:{" "}
+                <a href="tel:+919910457855" style={{ color: colors.cyan }}>
+                  +91 99104 57855
+                </a>
+              </li>
+            </ul>
+            <p style={{ marginTop: "12px", fontSize: "14px", color: colors.textMuted }}>
+              Include your booking ID and reason for cancellation in your request.
+            </p>
+          </Section>
+
+          <Section title="4. Refund Processing">
+            <h3 style={{ fontSize: "18px", fontWeight: 600, marginBottom: "12px", color: colors.textPrimary }}>
+              4.1 Refund Method
+            </h3>
+            <p>
+              Refunds are processed to your original payment method:
+            </p>
+            <ul style={{ paddingLeft: "20px", marginTop: "12px" }}>
+              <li><strong>UPI/Digital Wallets:</strong> 3-5 business days</li>
+              <li><strong>Credit/Debit Cards:</strong> 5-7 business days</li>
+              <li><strong>Net Banking:</strong> 5-7 business days</li>
+            </ul>
+
+            <h3 style={{ fontSize: "18px", fontWeight: 600, margin: "20px 0 12px", color: colors.textPrimary }}>
+              4.2 Refund Confirmation
+            </h3>
+            <p>
+              You'll receive an email confirmation when:
+            </p>
+            <ul style={{ paddingLeft: "20px", marginTop: "12px" }}>
+              <li>Your cancellation is processed</li>
+              <li>Refund amount is calculated</li>
+              <li>Refund is initiated to your payment method</li>
+            </ul>
+            <p style={{ marginTop: "12px", padding: "12px", background: colors.darkerCard, borderRadius: "8px" }}>
+              <strong>Note:</strong> The actual time for the refund to appear in your account depends
+              on your bank or payment provider's processing time.
+            </p>
+          </Section>
+
+          <Section title="5. Special Circumstances">
+            <h3 style={{ fontSize: "18px", fontWeight: 600, marginBottom: "12px", color: colors.textPrimary }}>
+              5.1 Gaming Café Cancellations
+            </h3>
+            <p>
+              If a gaming café cancels your booking or is unable to provide the booked service:
+            </p>
+            <ul style={{ paddingLeft: "20px", marginTop: "12px" }}>
+              <li><strong>Full refund (100%)</strong> regardless of timing</li>
+              <li>Refund processed within 3-5 business days</li>
+              <li>We'll help you find an alternative café if needed</li>
+            </ul>
+
+            <h3 style={{ fontSize: "18px", fontWeight: 600, margin: "20px 0 12px", color: colors.textPrimary }}>
+              5.2 Technical Issues
+            </h3>
+            <p>
+              If you experience technical issues at the café (equipment malfunction, internet outage):
+            </p>
+            <ul style={{ paddingLeft: "20px", marginTop: "12px" }}>
+              <li>Report the issue to café staff immediately</li>
+              <li>Contact BookMyGame support within 24 hours</li>
+              <li>We'll investigate and issue a partial or full refund if appropriate</li>
+            </ul>
+
+            <h3 style={{ fontSize: "18px", fontWeight: 600, margin: "20px 0 12px", color: colors.textPrimary }}>
+              5.3 Medical Emergencies
+            </h3>
+            <p>
+              In case of genuine medical emergencies with valid documentation:
+            </p>
+            <ul style={{ paddingLeft: "20px", marginTop: "12px" }}>
+              <li>Contact support within 48 hours with medical proof</li>
+              <li>We may offer a full refund or reschedule option</li>
+              <li>Each case is reviewed individually</li>
+            </ul>
+
+            <h3 style={{ fontSize: "18px", fontWeight: 600, margin: "20px 0 12px", color: colors.textPrimary }}>
+              5.4 Natural Disasters / Force Majeure
+            </h3>
+            <p>
+              For cancellations due to natural disasters, severe weather, or other force majeure events:
+            </p>
+            <ul style={{ paddingLeft: "20px", marginTop: "12px" }}>
+              <li>Full refund or free rescheduling option</li>
+              <li>Applies to both user and café-initiated cancellations</li>
+            </ul>
+          </Section>
+
+          <Section title="6. Rescheduling Policy">
+            <h3 style={{ fontSize: "18px", fontWeight: 600, marginBottom: "12px", color: colors.textPrimary }}>
+              6.1 Free Rescheduling
+            </h3>
+            <p>
+              You can reschedule your booking <strong>once for free</strong> if done at least{" "}
+              <strong>12 hours before</strong> your scheduled session.
+            </p>
+
+            <h3 style={{ fontSize: "18px", fontWeight: 600, margin: "20px 0 12px", color: colors.textPrimary }}>
+              6.2 How to Reschedule
+            </h3>
+            <ol style={{ paddingLeft: "20px", marginTop: "12px" }}>
+              <li>Go to "My Bookings" in your dashboard</li>
+              <li>Select the booking you want to reschedule</li>
+              <li>Click "Reschedule" and choose a new date/time</li>
+              <li>Subject to availability at the gaming café</li>
+            </ol>
+            <p style={{ marginTop: "12px", fontSize: "14px", color: colors.textMuted }}>
+              Multiple rescheduling attempts may be subject to cancellation fees.
+            </p>
+          </Section>
+
+          <Section title="7. Non-Refundable Scenarios">
+            <p>The following situations are <strong>not eligible for refunds</strong>:</p>
+            <ul style={{ paddingLeft: "20px", marginTop: "12px" }}>
+              <li>
+                <strong>No-shows:</strong> Failing to show up for your booking without cancellation
+              </li>
+              <li>
+                <strong>Late arrivals:</strong> Arriving significantly late (gaming time cannot be extended)
+              </li>
+              <li>
+                <strong>Violations:</strong> Cancellations due to policy violations or inappropriate behavior
+              </li>
+              <li>
+                <strong>Partial usage:</strong> Leaving early after your session has started
+              </li>
+              <li>
+                <strong>Personal preferences:</strong> Dissatisfaction with game selection, café ambiance, etc.
+              </li>
+              <li>
+                <strong>Special promotions:</strong> Some promotional bookings may have different refund terms
+              </li>
+            </ul>
+          </Section>
+
+          <Section title="8. Dispute Resolution">
+            <p>
+              If you disagree with a refund decision or have concerns:
+            </p>
+            <ol style={{ paddingLeft: "20px", marginTop: "12px" }}>
+              <li>
+                Contact our support team at{" "}
+                <a href="mailto:bookmygame169@gmail.com" style={{ color: colors.cyan }}>
+                  bookmygame169@gmail.com
+                </a>
+              </li>
+              <li>Provide your booking ID and detailed explanation</li>
+              <li>We'll review your case within 2-3 business days</li>
+              <li>Our decision will be communicated via email</li>
+            </ol>
+            <p style={{ marginTop: "12px" }}>
+              For unresolved disputes, refer to our{" "}
+              <a href="/terms" style={{ color: colors.cyan }}>
+                Terms of Service
+              </a>{" "}
+              for arbitration procedures.
+            </p>
+          </Section>
+
+          <Section title="9. Payment Gateway Charges">
+            <p>
+              Please note that payment gateway processing fees (if any) are non-refundable. Only the
+              booking amount is refunded according to the cancellation window.
+            </p>
+          </Section>
+
+          <Section title="10. Policy Changes">
+            <p>
+              We may update this Refund Policy from time to time. Changes will be effective
+              immediately upon posting. Bookings made before policy changes remain subject to the
+              policy in effect at the time of booking.
+            </p>
+          </Section>
+
+          <Section title="11. Contact Information">
+            <p>For questions about refunds or cancellations, reach out to us:</p>
+            <div style={{ marginTop: "16px", padding: "16px", background: colors.darkerCard, borderRadius: "8px" }}>
+              <p style={{ margin: "4px 0" }}>
+                <strong>Email:</strong>{" "}
+                <a href="mailto:bookmygame169@gmail.com" style={{ color: colors.cyan }}>
+                  bookmygame169@gmail.com
+                </a>
+              </p>
+              <p style={{ margin: "4px 0" }}>
+                <strong>Phone:</strong>{" "}
+                <a href="tel:+919910457855" style={{ color: colors.cyan }}>
+                  +91 99104 57855
+                </a>
+              </p>
+              <p style={{ margin: "4px 0" }}>
+                <strong>Support Hours:</strong> Monday-Sunday, 10:00 AM - 10:00 PM IST
+              </p>
+            </div>
+          </Section>
+
+          <div
+            style={{
+              marginTop: "40px",
+              padding: "20px",
+              background: "rgba(0, 240, 255, 0.1)",
+              border: `1px solid ${colors.cyan}`,
+              borderRadius: "12px",
+            }}
+          >
+            <p style={{ fontSize: "14px", color: colors.textSecondary, margin: "0 0 8px 0" }}>
+              <strong>Pro Tip:</strong> To avoid cancellation fees, we recommend:
+            </p>
+            <ul style={{ paddingLeft: "20px", margin: "8px 0 0 0", fontSize: "14px", color: colors.textSecondary }}>
+              <li>Book only when you're certain about your plans</li>
+              <li>Cancel as early as possible if plans change</li>
+              <li>Use the free rescheduling option if you need flexibility</li>
+              <li>Set reminders for your gaming sessions</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section style={{ marginBottom: "40px" }}>
+      <h2
+        style={{
+          fontSize: "22px",
+          fontWeight: 700,
+          marginBottom: "16px",
+          color: colors.textPrimary,
+          fontFamily: fonts.heading,
+        }}
+      >
+        {title}
+      </h2>
+      <div style={{ fontSize: "15px", lineHeight: 1.7, color: colors.textSecondary }}>
+        {children}
+      </div>
+    </section>
+  );
+}
