@@ -82,10 +82,19 @@ export default function CafesTable() {
 
       if (error) throw error;
 
-      // Update local state
+      // Verify the update by fetching the updated cafe
+      const { data: updatedCafe, error: fetchError } = await supabase
+        .from("cafes")
+        .select("*")
+        .eq("id", cafeId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Update local state with verified data
       setCafes(prev =>
         prev.map(cafe =>
-          cafe.id === cafeId ? { ...cafe, is_active: newIsActive } : cafe
+          cafe.id === cafeId ? (updatedCafe as CafeRow) : cafe
         )
       );
 
@@ -93,6 +102,9 @@ export default function CafesTable() {
     } catch (err: any) {
       console.error("Error toggling status:", err);
       alert(`Failed to ${newIsActive ? "activate" : "deactivate"} café: ${err.message}`);
+
+      // Reload cafes on error to ensure UI matches database
+      window.location.reload();
     } finally {
       setActionLoading(null);
     }
