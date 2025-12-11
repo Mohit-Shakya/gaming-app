@@ -67,9 +67,9 @@ const footerLinks = {
     { label: "FAQs", href: "/faqs" },
   ],
   legal: [
-    { label: "Terms of Service", href: "https://www.bookmygame.co.in/terms" },
-    { label: "Privacy Policy", href: "https://www.bookmygame.co.in/privacy" },
-    { label: "Refund Policy", href: "https://www.bookmygame.co.in/refund" },
+    { label: "Terms of Service", href: "/terms" },
+    { label: "Privacy Policy", href: "/privacy" },
+    { label: "Refund Policy", href: "/refund" },
   ],
 };
 
@@ -270,7 +270,40 @@ export default function Footer() {
               </ul>
             </div>
 
-            
+            {/* Legal */}
+            <div>
+              <h3
+                style={{
+                  fontSize: "13px",
+                  fontWeight: 600,
+                  color: colors.textPrimary,
+                  textTransform: "uppercase",
+                  letterSpacing: "1px",
+                  marginBottom: "16px",
+                }}
+              >
+                Legal
+              </h3>
+              <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+                {footerLinks.legal.map((link) => (
+                  <li key={link.href} style={{ marginBottom: "10px" }}>
+                    <Link
+                      href={link.href}
+                      style={{
+                        fontSize: "14px",
+                        color: colors.textMuted,
+                        textDecoration: "none",
+                        transition: "color 0.2s ease",
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.color = colors.cyan)}
+                      onMouseLeave={(e) => (e.currentTarget.style.color = colors.textMuted)}
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         </div>
 
@@ -399,27 +432,28 @@ export default function Footer() {
             © {currentYear} BOOKMYGAME. All rights reserved.
           </p>
 
-          {/* Legal Links */}
-          <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
-            {footerLinks.legal.map((link) => (
-              <a
-                key={link.href}
-                href={link.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                  fontSize: "13px",
-                  color: colors.textMuted,
-                  textDecoration: "none",
-                  transition: "color 0.2s ease",
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.color = colors.cyan)}
-                onMouseLeave={(e) => (e.currentTarget.style.color = colors.textMuted)}
-              >
-                {link.label}
-              </a>
-            ))}
-          </div>
+          {/* Made with love */}
+          <p
+            style={{
+              fontSize: "13px",
+              color: colors.textMuted,
+              margin: 0,
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+            }}
+          >
+            Made with{" "}
+            <span
+              style={{
+                color: colors.red,
+                animation: "pulse 1.5s ease-in-out infinite",
+              }}
+            >
+              ❤️
+            </span>{" "}
+            for Gamers in India 🇮🇳
+          </p>
         </div>
       </div>
 
