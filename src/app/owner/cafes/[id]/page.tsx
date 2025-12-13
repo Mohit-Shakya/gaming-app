@@ -35,6 +35,31 @@ type CafeFormData = {
   show_tech_specs: boolean;
 };
 
+type ConsolePricing = {
+  console_type: string;
+  quantity: number;
+  duration_minutes: number;
+  price: number;
+};
+
+type CafeImage = {
+  id: string;
+  image_url: string;
+  cafe_id: string;
+};
+
+const CONSOLE_TYPES = [
+  { id: "ps5", label: "PS5", icon: "🎮", maxQty: 4 },
+  { id: "ps4", label: "PS4", icon: "🎮", maxQty: 4 },
+  { id: "xbox", label: "Xbox", icon: "🎮", maxQty: 4 },
+  { id: "pc", label: "PC", icon: "💻", maxQty: 4 },
+  { id: "pool", label: "Pool", icon: "🎱", maxQty: 2 },
+  { id: "snooker", label: "Snooker", icon: "🎱", maxQty: 2 },
+  { id: "arcade", label: "Arcade", icon: "🕹️", maxQty: 4 },
+  { id: "vr", label: "VR", icon: "🥽", maxQty: 4 },
+  { id: "steering_wheel", label: "Racing", icon: "🏎️", maxQty: 4 },
+];
+
 export default function OwnerCafeEditPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
@@ -47,6 +72,7 @@ export default function OwnerCafeEditPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"details" | "pricing" | "photos">("details");
 
   const [formData, setFormData] = useState<CafeFormData>({
     name: "",
@@ -76,6 +102,10 @@ export default function OwnerCafeEditPage() {
     show_tech_specs: false,
   });
 
+  const [consolePricing, setConsolePricing] = useState<ConsolePricing[]>([]);
+  const [cafeImages, setCafeImages] = useState<CafeImage[]>([]);
+  const [newImageUrl, setNewImageUrl] = useState("");
+
   // Check if user owns this cafe
   useEffect(() => {
     async function checkAccess() {
@@ -87,7 +117,6 @@ export default function OwnerCafeEditPage() {
       }
 
       try {
-        // Check if user owns this cafe
         const { data: cafe, error } = await supabase
           .from("cafes")
           .select("owner_id")
@@ -118,18 +147,19 @@ export default function OwnerCafeEditPage() {
   useEffect(() => {
     if (!hasAccess || !cafeId) return;
 
-    async function loadCafe() {
+    async function loadData() {
       try {
         setLoading(true);
         setError(null);
 
-        const { data: cafe, error } = await supabase
+        // Load cafe details
+        const { data: cafe, error: cafeError } = await supabase
           .from("cafes")
           .select("*")
           .eq("id", cafeId)
           .single();
 
-        if (error) throw error;
+        if (cafeError) throw cafeError;
 
         if (cafe) {
           setFormData({
@@ -160,19 +190,40 @@ export default function OwnerCafeEditPage() {
             show_tech_specs: cafe.show_tech_specs || false,
           });
         }
+
+        // Load console pricing
+        const { data: pricing, error: pricingError } = await supabase
+          .from("console_pricing")
+          .select("*")
+          .eq("cafe_id", cafeId);
+
+        if (!pricingError && pricing) {
+          setConsolePricing(pricing as ConsolePricing[]);
+        }
+
+        // Load cafe images
+        const { data: images, error: imagesError } = await supabase
+          .from("cafe_images")
+          .select("*")
+          .eq("cafe_id", cafeId)
+          .order("id", { ascending: true });
+
+        if (!imagesError && images) {
+          setCafeImages(images as CafeImage[]);
+        }
       } catch (err: any) {
-        console.error("Error loading cafe:", err);
+        console.error("Error loading data:", err);
         setError(err.message || "Could not load café details");
       } finally {
         setLoading(false);
       }
     }
 
-    loadCafe();
+    loadData();
   }, [hasAccess, cafeId]);
 
-  // Handle form submission
-  async function handleSave() {
+  // Save cafe details
+  async function handleSaveDetails() {
     if (!cafeId) return;
 
     try {
@@ -194,6 +245,104 @@ export default function OwnerCafeEditPage() {
       setError(err.message || "Failed to save changes");
     } finally {
       setSaving(false);
+    }
+  }
+
+  // Get pricing value
+  function getPricingValue(consoleType: string, quantity: number, duration: number): number {
+    const pricing = consolePricing.find(
+      (p) => p.console_type === consoleType && p.quantity === quantity && p.duration_minutes === duration
+    );
+    return pricing?.price || 0;
+  }
+
+  // Update pricing
+  async function updatePricing(consoleType: string, quantity: number, duration: number, price: number) {
+    const existing = consolePricing.find(
+      (p) => p.console_type === consoleType && p.quantity === quantity && p.duration_minutes === duration
+    );
+
+    try {
+      if (existing) {
+        // Update existing
+        const { error } = await supabase
+          .from("console_pricing")
+          .update({ price })
+          .eq("cafe_id", cafeId)
+          .eq("console_type", consoleType)
+          .eq("quantity", quantity)
+          .eq("duration_minutes", duration);
+
+        if (error) throw error;
+
+        setConsolePricing((prev) =>
+          prev.map((p) =>
+            p.console_type === consoleType && p.quantity === quantity && p.duration_minutes === duration
+              ? { ...p, price }
+              : p
+          )
+        );
+      } else {
+        // Insert new
+        const { error } = await supabase.from("console_pricing").insert({
+          cafe_id: cafeId,
+          console_type: consoleType,
+          quantity,
+          duration_minutes: duration,
+          price,
+        });
+
+        if (error) throw error;
+
+        setConsolePricing((prev) => [...prev, { console_type: consoleType, quantity, duration_minutes: duration, price }]);
+      }
+
+      setSuccessMessage("Pricing updated!");
+      setTimeout(() => setSuccessMessage(null), 2000);
+    } catch (err: any) {
+      console.error("Error updating pricing:", err);
+      setError(err.message || "Failed to update pricing");
+    }
+  }
+
+  // Add image
+  async function handleAddImage() {
+    if (!newImageUrl || !cafeId) return;
+
+    try {
+      const { data, error } = await supabase
+        .from("cafe_images")
+        .insert({ cafe_id: cafeId, image_url: newImageUrl })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setCafeImages((prev) => [...prev, data as CafeImage]);
+      setNewImageUrl("");
+      setSuccessMessage("Image added successfully!");
+      setTimeout(() => setSuccessMessage(null), 2000);
+    } catch (err: any) {
+      console.error("Error adding image:", err);
+      setError(err.message || "Failed to add image");
+    }
+  }
+
+  // Delete image
+  async function handleDeleteImage(imageId: string) {
+    if (!confirm("Are you sure you want to delete this image?")) return;
+
+    try {
+      const { error } = await supabase.from("cafe_images").delete().eq("id", imageId);
+
+      if (error) throw error;
+
+      setCafeImages((prev) => prev.filter((img) => img.id !== imageId));
+      setSuccessMessage("Image deleted successfully!");
+      setTimeout(() => setSuccessMessage(null), 2000);
+    } catch (err: any) {
+      console.error("Error deleting image:", err);
+      setError(err.message || "Failed to delete image");
     }
   }
 
@@ -298,13 +447,46 @@ export default function OwnerCafeEditPage() {
               marginBottom: 8,
             }}
           >
-            Edit Café Details
+            Edit Café - {formData.name}
           </h1>
           <p style={{ fontSize: 14, color: colors.textMuted, margin: 0 }}>
-            Update your gaming café information and settings
+            Manage your gaming café information, pricing, and photos
           </p>
         </div>
       </header>
+
+      {/* Tab Navigation */}
+      <div style={{ background: "rgba(15,23,42,0.5)", borderBottom: `1px solid ${colors.border}` }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto", padding: "0 32px", display: "flex", gap: 8 }}>
+          {[
+            { id: "details" as const, label: "Café Details", icon: "ℹ️" },
+            { id: "pricing" as const, label: "Console Pricing", icon: "💰" },
+            { id: "photos" as const, label: "Photo Gallery", icon: "📸" },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              style={{
+                padding: "16px 24px",
+                border: "none",
+                borderBottom: activeTab === tab.id ? `3px solid ${colors.cyan}` : "3px solid transparent",
+                background: activeTab === tab.id ? "rgba(0, 240, 255, 0.05)" : "transparent",
+                color: activeTab === tab.id ? colors.cyan : colors.textSecondary,
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: "pointer",
+                transition: "all 0.2s",
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+              }}
+            >
+              <span>{tab.icon}</span>
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* Main Content */}
       <main style={{ maxWidth: 1200, margin: "0 auto", padding: "32px" }}>
@@ -346,344 +528,519 @@ export default function OwnerCafeEditPage() {
           </div>
         )}
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-          {/* Basic Information */}
-          <Section title="Basic Information" icon="ℹ️">
-            <FormField label="Café Name *" required>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Enter café name"
-                style={inputStyle}
-              />
-            </FormField>
-
-            <FormField label="Address *" required>
-              <textarea
-                value={formData.address}
-                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                placeholder="Enter full address"
-                rows={3}
-                style={{ ...inputStyle, resize: "vertical" }}
-              />
-            </FormField>
-
-            <FormField label="Description">
-              <textarea
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Describe your gaming café"
-                rows={4}
-                style={{ ...inputStyle, resize: "vertical" }}
-              />
-            </FormField>
-
-            <FormField label="Google Maps URL">
-              <input
-                type="url"
-                value={formData.google_maps_url}
-                onChange={(e) => setFormData({ ...formData, google_maps_url: e.target.value })}
-                placeholder="https://maps.google.com/..."
-                style={inputStyle}
-              />
-            </FormField>
-
-            <FormField label="Cover Image URL">
-              <input
-                type="url"
-                value={formData.cover_url}
-                onChange={(e) => setFormData({ ...formData, cover_url: e.target.value })}
-                placeholder="https://example.com/cover.jpg"
-                style={inputStyle}
-              />
-            </FormField>
-          </Section>
-
-          {/* Pricing & Hours */}
-          <Section title="Pricing & Operating Hours" icon="⏰">
-            <FormField label="Hourly Price (₹) *" required>
-              <input
-                type="number"
-                value={formData.hourly_price}
-                onChange={(e) => setFormData({ ...formData, hourly_price: parseInt(e.target.value) || 0 })}
-                min="0"
-                step="10"
-                style={inputStyle}
-              />
-            </FormField>
-
-            <FormField label="Opening Hours">
-              <input
-                type="text"
-                value={formData.opening_hours}
-                onChange={(e) => setFormData({ ...formData, opening_hours: e.target.value })}
-                placeholder="e.g., 10:00 AM - 11:00 PM"
-                style={inputStyle}
-              />
-            </FormField>
-
-            <FormField label="Peak Hours">
-              <input
-                type="text"
-                value={formData.peak_hours}
-                onChange={(e) => setFormData({ ...formData, peak_hours: e.target.value })}
-                placeholder="e.g., 6:00 PM - 10:00 PM"
-                style={inputStyle}
-              />
-            </FormField>
-          </Section>
-
-          {/* Gaming Equipment */}
-          <Section title="Gaming Equipment" icon="🎮">
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
-              <FormField label="PS5 Consoles">
+        {/* Cafe Details Tab */}
+        {activeTab === "details" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+            {/* Basic Information */}
+            <Section title="Basic Information" icon="ℹ️">
+              <FormField label="Café Name *" required>
                 <input
-                  type="number"
-                  value={formData.ps5_count}
-                  onChange={(e) => setFormData({ ...formData, ps5_count: parseInt(e.target.value) || 0 })}
-                  min="0"
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="Enter café name"
                   style={inputStyle}
                 />
               </FormField>
 
-              <FormField label="PS4 Consoles">
+              <FormField label="Address *" required>
+                <textarea
+                  value={formData.address}
+                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  placeholder="Enter full address"
+                  rows={3}
+                  style={{ ...inputStyle, resize: "vertical" }}
+                />
+              </FormField>
+
+              <FormField label="Description">
+                <textarea
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Describe your gaming café"
+                  rows={4}
+                  style={{ ...inputStyle, resize: "vertical" }}
+                />
+              </FormField>
+
+              <FormField label="Google Maps URL">
                 <input
-                  type="number"
-                  value={formData.ps4_count}
-                  onChange={(e) => setFormData({ ...formData, ps4_count: parseInt(e.target.value) || 0 })}
-                  min="0"
+                  type="url"
+                  value={formData.google_maps_url}
+                  onChange={(e) => setFormData({ ...formData, google_maps_url: e.target.value })}
+                  placeholder="https://maps.google.com/..."
                   style={inputStyle}
                 />
               </FormField>
 
-              <FormField label="Xbox Consoles">
+              <FormField label="Cover Image URL">
+                <input
+                  type="url"
+                  value={formData.cover_url}
+                  onChange={(e) => setFormData({ ...formData, cover_url: e.target.value })}
+                  placeholder="https://example.com/cover.jpg"
+                  style={inputStyle}
+                />
+              </FormField>
+            </Section>
+
+            {/* Pricing & Hours */}
+            <Section title="Operating Hours" icon="⏰">
+              <FormField label="Default Hourly Price (₹) *" required>
                 <input
                   type="number"
-                  value={formData.xbox_count}
-                  onChange={(e) => setFormData({ ...formData, xbox_count: parseInt(e.target.value) || 0 })}
+                  value={formData.hourly_price}
+                  onChange={(e) => setFormData({ ...formData, hourly_price: parseInt(e.target.value) || 0 })}
                   min="0"
+                  step="10"
+                  style={inputStyle}
+                />
+                <p style={{ fontSize: 12, color: colors.textMuted, margin: "4px 0 0 0" }}>
+                  This is used as fallback when specific console pricing is not set
+                </p>
+              </FormField>
+
+              <FormField label="Opening Hours">
+                <input
+                  type="text"
+                  value={formData.opening_hours}
+                  onChange={(e) => setFormData({ ...formData, opening_hours: e.target.value })}
+                  placeholder="e.g., 10:00 AM - 11:00 PM"
                   style={inputStyle}
                 />
               </FormField>
 
-              <FormField label="PC Gaming Stations">
+              <FormField label="Peak Hours">
                 <input
-                  type="number"
-                  value={formData.pc_count}
-                  onChange={(e) => setFormData({ ...formData, pc_count: parseInt(e.target.value) || 0 })}
-                  min="0"
+                  type="text"
+                  value={formData.peak_hours}
+                  onChange={(e) => setFormData({ ...formData, peak_hours: e.target.value })}
+                  placeholder="e.g., 6:00 PM - 10:00 PM"
+                  style={inputStyle}
+                />
+              </FormField>
+            </Section>
+
+            {/* Gaming Equipment */}
+            <Section title="Gaming Equipment" icon="🎮">
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
+                <FormField label="PS5 Consoles">
+                  <input
+                    type="number"
+                    value={formData.ps5_count}
+                    onChange={(e) => setFormData({ ...formData, ps5_count: parseInt(e.target.value) || 0 })}
+                    min="0"
+                    style={inputStyle}
+                  />
+                </FormField>
+
+                <FormField label="PS4 Consoles">
+                  <input
+                    type="number"
+                    value={formData.ps4_count}
+                    onChange={(e) => setFormData({ ...formData, ps4_count: parseInt(e.target.value) || 0 })}
+                    min="0"
+                    style={inputStyle}
+                  />
+                </FormField>
+
+                <FormField label="Xbox Consoles">
+                  <input
+                    type="number"
+                    value={formData.xbox_count}
+                    onChange={(e) => setFormData({ ...formData, xbox_count: parseInt(e.target.value) || 0 })}
+                    min="0"
+                    style={inputStyle}
+                  />
+                </FormField>
+
+                <FormField label="PC Gaming Stations">
+                  <input
+                    type="number"
+                    value={formData.pc_count}
+                    onChange={(e) => setFormData({ ...formData, pc_count: parseInt(e.target.value) || 0 })}
+                    min="0"
+                    style={inputStyle}
+                  />
+                </FormField>
+
+                <FormField label="Pool Tables">
+                  <input
+                    type="number"
+                    value={formData.pool_count}
+                    onChange={(e) => setFormData({ ...formData, pool_count: parseInt(e.target.value) || 0 })}
+                    min="0"
+                    style={inputStyle}
+                  />
+                </FormField>
+
+                <FormField label="Snooker Tables">
+                  <input
+                    type="number"
+                    value={formData.snooker_count}
+                    onChange={(e) => setFormData({ ...formData, snooker_count: parseInt(e.target.value) || 0 })}
+                    min="0"
+                    style={inputStyle}
+                  />
+                </FormField>
+
+                <FormField label="Arcade Machines">
+                  <input
+                    type="number"
+                    value={formData.arcade_count}
+                    onChange={(e) => setFormData({ ...formData, arcade_count: parseInt(e.target.value) || 0 })}
+                    min="0"
+                    style={inputStyle}
+                  />
+                </FormField>
+
+                <FormField label="VR Stations">
+                  <input
+                    type="number"
+                    value={formData.vr_count}
+                    onChange={(e) => setFormData({ ...formData, vr_count: parseInt(e.target.value) || 0 })}
+                    min="0"
+                    style={inputStyle}
+                  />
+                </FormField>
+
+                <FormField label="Racing Simulators">
+                  <input
+                    type="number"
+                    value={formData.steering_wheel_count}
+                    onChange={(e) => setFormData({ ...formData, steering_wheel_count: parseInt(e.target.value) || 0 })}
+                    min="0"
+                    style={inputStyle}
+                  />
+                </FormField>
+              </div>
+            </Section>
+
+            {/* Additional Details */}
+            <Section title="Additional Details" icon="📝">
+              <FormField label="Popular Games">
+                <textarea
+                  value={formData.popular_games}
+                  onChange={(e) => setFormData({ ...formData, popular_games: e.target.value })}
+                  placeholder="List popular games available (comma-separated)"
+                  rows={3}
+                  style={{ ...inputStyle, resize: "vertical" }}
+                />
+              </FormField>
+
+              <FormField label="Special Offers">
+                <textarea
+                  value={formData.offers}
+                  onChange={(e) => setFormData({ ...formData, offers: e.target.value })}
+                  placeholder="Enter any special offers or promotions"
+                  rows={3}
+                  style={{ ...inputStyle, resize: "vertical" }}
+                />
+              </FormField>
+            </Section>
+
+            {/* Technical Specifications */}
+            <Section title="Technical Specifications" icon="⚙️">
+              <FormField label="Show Tech Specs on Café Page">
+                <label style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={formData.show_tech_specs}
+                    onChange={(e) => setFormData({ ...formData, show_tech_specs: e.target.checked })}
+                    style={{ width: 20, height: 20, cursor: "pointer" }}
+                  />
+                  <span style={{ fontSize: 14, color: colors.textSecondary }}>
+                    Display technical specifications to customers
+                  </span>
+                </label>
+              </FormField>
+
+              <FormField label="Monitor Details">
+                <input
+                  type="text"
+                  value={formData.monitor_details}
+                  onChange={(e) => setFormData({ ...formData, monitor_details: e.target.value })}
+                  placeholder="e.g., 27-inch 144Hz Gaming Monitor"
                   style={inputStyle}
                 />
               </FormField>
 
-              <FormField label="Pool Tables">
+              <FormField label="Processor Details">
                 <input
-                  type="number"
-                  value={formData.pool_count}
-                  onChange={(e) => setFormData({ ...formData, pool_count: parseInt(e.target.value) || 0 })}
-                  min="0"
+                  type="text"
+                  value={formData.processor_details}
+                  onChange={(e) => setFormData({ ...formData, processor_details: e.target.value })}
+                  placeholder="e.g., Intel Core i7-12700K"
                   style={inputStyle}
                 />
               </FormField>
 
-              <FormField label="Snooker Tables">
+              <FormField label="GPU Details">
                 <input
-                  type="number"
-                  value={formData.snooker_count}
-                  onChange={(e) => setFormData({ ...formData, snooker_count: parseInt(e.target.value) || 0 })}
-                  min="0"
+                  type="text"
+                  value={formData.gpu_details}
+                  onChange={(e) => setFormData({ ...formData, gpu_details: e.target.value })}
+                  placeholder="e.g., NVIDIA RTX 4070"
                   style={inputStyle}
                 />
               </FormField>
 
-              <FormField label="Arcade Machines">
+              <FormField label="RAM Details">
                 <input
-                  type="number"
-                  value={formData.arcade_count}
-                  onChange={(e) => setFormData({ ...formData, arcade_count: parseInt(e.target.value) || 0 })}
-                  min="0"
+                  type="text"
+                  value={formData.ram_details}
+                  onChange={(e) => setFormData({ ...formData, ram_details: e.target.value })}
+                  placeholder="e.g., 32GB DDR5"
                   style={inputStyle}
                 />
               </FormField>
 
-              <FormField label="VR Stations">
+              <FormField label="Accessories">
                 <input
-                  type="number"
-                  value={formData.vr_count}
-                  onChange={(e) => setFormData({ ...formData, vr_count: parseInt(e.target.value) || 0 })}
-                  min="0"
+                  type="text"
+                  value={formData.accessories_details}
+                  onChange={(e) => setFormData({ ...formData, accessories_details: e.target.value })}
+                  placeholder="e.g., Mechanical Keyboard, Gaming Mouse"
                   style={inputStyle}
                 />
               </FormField>
+            </Section>
 
-              <FormField label="Racing Simulators">
-                <input
-                  type="number"
-                  value={formData.steering_wheel_count}
-                  onChange={(e) => setFormData({ ...formData, steering_wheel_count: parseInt(e.target.value) || 0 })}
-                  min="0"
-                  style={inputStyle}
-                />
-              </FormField>
-            </div>
-          </Section>
-
-          {/* Additional Details */}
-          <Section title="Additional Details" icon="📝">
-            <FormField label="Popular Games">
-              <textarea
-                value={formData.popular_games}
-                onChange={(e) => setFormData({ ...formData, popular_games: e.target.value })}
-                placeholder="List popular games available (comma-separated)"
-                rows={3}
-                style={{ ...inputStyle, resize: "vertical" }}
-              />
-            </FormField>
-
-            <FormField label="Special Offers">
-              <textarea
-                value={formData.offers}
-                onChange={(e) => setFormData({ ...formData, offers: e.target.value })}
-                placeholder="Enter any special offers or promotions"
-                rows={3}
-                style={{ ...inputStyle, resize: "vertical" }}
-              />
-            </FormField>
-          </Section>
-
-          {/* Technical Specifications */}
-          <Section title="Technical Specifications" icon="⚙️">
-            <FormField label="Show Tech Specs on Café Page">
-              <label style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer" }}>
-                <input
-                  type="checkbox"
-                  checked={formData.show_tech_specs}
-                  onChange={(e) => setFormData({ ...formData, show_tech_specs: e.target.checked })}
-                  style={{ width: 20, height: 20, cursor: "pointer" }}
-                />
-                <span style={{ fontSize: 14, color: colors.textSecondary }}>
-                  Display technical specifications to customers
-                </span>
-              </label>
-            </FormField>
-
-            <FormField label="Monitor Details">
-              <input
-                type="text"
-                value={formData.monitor_details}
-                onChange={(e) => setFormData({ ...formData, monitor_details: e.target.value })}
-                placeholder="e.g., 27-inch 144Hz Gaming Monitor"
-                style={inputStyle}
-              />
-            </FormField>
-
-            <FormField label="Processor Details">
-              <input
-                type="text"
-                value={formData.processor_details}
-                onChange={(e) => setFormData({ ...formData, processor_details: e.target.value })}
-                placeholder="e.g., Intel Core i7-12700K"
-                style={inputStyle}
-              />
-            </FormField>
-
-            <FormField label="GPU Details">
-              <input
-                type="text"
-                value={formData.gpu_details}
-                onChange={(e) => setFormData({ ...formData, gpu_details: e.target.value })}
-                placeholder="e.g., NVIDIA RTX 4070"
-                style={inputStyle}
-              />
-            </FormField>
-
-            <FormField label="RAM Details">
-              <input
-                type="text"
-                value={formData.ram_details}
-                onChange={(e) => setFormData({ ...formData, ram_details: e.target.value })}
-                placeholder="e.g., 32GB DDR5"
-                style={inputStyle}
-              />
-            </FormField>
-
-            <FormField label="Accessories">
-              <input
-                type="text"
-                value={formData.accessories_details}
-                onChange={(e) => setFormData({ ...formData, accessories_details: e.target.value })}
-                placeholder="e.g., Mechanical Keyboard, Gaming Mouse"
-                style={inputStyle}
-              />
-            </FormField>
-          </Section>
-
-          {/* Action Buttons */}
-          <div
-            style={{
-              display: "flex",
-              gap: 16,
-              justifyContent: "flex-end",
-              padding: "24px 0",
-              borderTop: `1px solid ${colors.border}`,
-            }}
-          >
-            <button
-              onClick={() => router.push("/owner")}
-              disabled={saving}
+            {/* Action Buttons */}
+            <div
               style={{
-                padding: "14px 28px",
-                borderRadius: 10,
-                border: `1px solid ${colors.border}`,
-                background: "rgba(51,65,85,0.5)",
-                color: colors.textSecondary,
-                fontSize: 14,
-                fontWeight: 600,
-                cursor: saving ? "not-allowed" : "pointer",
-                opacity: saving ? 0.5 : 1,
-              }}
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={saving || !formData.name || !formData.address}
-              style={{
-                padding: "14px 28px",
-                borderRadius: 10,
-                border: "none",
-                background:
-                  saving || !formData.name || !formData.address
-                    ? "rgba(34, 197, 94, 0.3)"
-                    : "linear-gradient(135deg, #22c55e, #16a34a)",
-                color: "#fff",
-                fontSize: 14,
-                fontWeight: 600,
-                cursor: saving || !formData.name || !formData.address ? "not-allowed" : "pointer",
-                boxShadow:
-                  saving || !formData.name || !formData.address
-                    ? "none"
-                    : "0 4px 16px rgba(34, 197, 94, 0.3)",
                 display: "flex",
-                alignItems: "center",
-                gap: 8,
+                gap: 16,
+                justifyContent: "flex-end",
+                padding: "24px 0",
+                borderTop: `1px solid ${colors.border}`,
               }}
             >
-              {saving ? (
-                <>
-                  <span style={{ animation: "spin 1s linear infinite" }}>⏳</span>
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <span>💾</span>
-                  Save Changes
-                </>
-              )}
-            </button>
+              <button
+                onClick={() => router.push("/owner")}
+                disabled={saving}
+                style={{
+                  padding: "14px 28px",
+                  borderRadius: 10,
+                  border: `1px solid ${colors.border}`,
+                  background: "rgba(51,65,85,0.5)",
+                  color: colors.textSecondary,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: saving ? "not-allowed" : "pointer",
+                  opacity: saving ? 0.5 : 1,
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveDetails}
+                disabled={saving || !formData.name || !formData.address}
+                style={{
+                  padding: "14px 28px",
+                  borderRadius: 10,
+                  border: "none",
+                  background:
+                    saving || !formData.name || !formData.address
+                      ? "rgba(34, 197, 94, 0.3)"
+                      : "linear-gradient(135deg, #22c55e, #16a34a)",
+                  color: "#fff",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: saving || !formData.name || !formData.address ? "not-allowed" : "pointer",
+                  boxShadow:
+                    saving || !formData.name || !formData.address
+                      ? "none"
+                      : "0 4px 16px rgba(34, 197, 94, 0.3)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+              >
+                {saving ? (
+                  <>
+                    <span style={{ animation: "spin 1s linear infinite" }}>⏳</span>
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <span>💾</span>
+                    Save Changes
+                  </>
+                )}
+              </button>
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Console Pricing Tab */}
+        {activeTab === "pricing" && (
+          <div>
+            <Section title="Console Pricing Management" icon="💰">
+              <p style={{ fontSize: 14, color: colors.textMuted, marginBottom: 20 }}>
+                Set custom pricing for each console type, quantity, and duration. Prices are automatically saved when you change them.
+              </p>
+
+              {CONSOLE_TYPES.map((console) => (
+                <div
+                  key={console.id}
+                  style={{
+                    padding: "20px",
+                    background: "rgba(30,41,59,0.5)",
+                    borderRadius: 12,
+                    border: `1px solid ${colors.border}`,
+                    marginBottom: 16,
+                  }}
+                >
+                  <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 16, display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 24 }}>{console.icon}</span>
+                    {console.label}
+                  </h3>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
+                    {[30, 60].map((duration) => (
+                      <div key={duration} style={{ background: "rgba(15,23,42,0.5)", padding: "16px", borderRadius: 8 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: colors.cyan, marginBottom: 12 }}>
+                          {duration === 30 ? "30 Minutes" : "1 Hour"}
+                        </div>
+                        {Array.from({ length: console.maxQty }, (_, i) => i + 1).map((qty) => (
+                          <div key={qty} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
+                            <label style={{ fontSize: 13, color: colors.textSecondary, minWidth: 80 }}>
+                              {qty} Console{qty > 1 ? "s" : ""}:
+                            </label>
+                            <div style={{ position: "relative", flex: 1 }}>
+                              <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", fontSize: 14, color: colors.textMuted }}>
+                                ₹
+                              </span>
+                              <input
+                                type="number"
+                                value={getPricingValue(console.id, qty, duration)}
+                                onChange={(e) => updatePricing(console.id, qty, duration, parseInt(e.target.value) || 0)}
+                                min="0"
+                                step="10"
+                                placeholder="0"
+                                style={{
+                                  ...inputStyle,
+                                  paddingLeft: "28px",
+                                  fontSize: 13,
+                                }}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </Section>
+          </div>
+        )}
+
+        {/* Photo Gallery Tab */}
+        {activeTab === "photos" && (
+          <div>
+            <Section title="Photo Gallery" icon="📸">
+              <p style={{ fontSize: 14, color: colors.textMuted, marginBottom: 20 }}>
+                Add photos of your gaming café to showcase to customers. Enter image URLs below.
+              </p>
+
+              {/* Add New Image */}
+              <div style={{ display: "flex", gap: 12, marginBottom: 24 }}>
+                <input
+                  type="url"
+                  value={newImageUrl}
+                  onChange={(e) => setNewImageUrl(e.target.value)}
+                  placeholder="Enter image URL (e.g., https://example.com/image.jpg)"
+                  style={{ ...inputStyle, flex: 1 }}
+                />
+                <button
+                  onClick={handleAddImage}
+                  disabled={!newImageUrl}
+                  style={{
+                    padding: "12px 24px",
+                    borderRadius: 8,
+                    border: "none",
+                    background: newImageUrl ? "linear-gradient(135deg, #3b82f6, #2563eb)" : "rgba(59, 130, 246, 0.3)",
+                    color: "#fff",
+                    fontSize: 14,
+                    fontWeight: 600,
+                    cursor: newImageUrl ? "pointer" : "not-allowed",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  + Add Photo
+                </button>
+              </div>
+
+              {/* Image Grid */}
+              {cafeImages.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "60px 20px", color: colors.textMuted }}>
+                  <div style={{ fontSize: 64, marginBottom: 16, opacity: 0.3 }}>📸</div>
+                  <p>No photos yet. Add some to showcase your café!</p>
+                </div>
+              ) : (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))", gap: 16 }}>
+                  {cafeImages.map((image) => (
+                    <div
+                      key={image.id}
+                      style={{
+                        position: "relative",
+                        borderRadius: 12,
+                        overflow: "hidden",
+                        border: `1px solid ${colors.border}`,
+                        background: "rgba(30,41,59,0.5)",
+                      }}
+                    >
+                      <img
+                        src={image.image_url}
+                        alt="Cafe"
+                        style={{
+                          width: "100%",
+                          height: 200,
+                          objectFit: "cover",
+                        }}
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = "https://via.placeholder.com/400x300?text=Image+Not+Found";
+                        }}
+                      />
+                      <button
+                        onClick={() => handleDeleteImage(image.id)}
+                        style={{
+                          position: "absolute",
+                          top: 8,
+                          right: 8,
+                          padding: "8px 12px",
+                          borderRadius: 6,
+                          border: "none",
+                          background: "rgba(239, 68, 68, 0.9)",
+                          color: "#fff",
+                          fontSize: 12,
+                          fontWeight: 600,
+                          cursor: "pointer",
+                        }}
+                      >
+                        🗑️ Delete
+                      </button>
+                      <div
+                        style={{
+                          padding: "12px",
+                          fontSize: 11,
+                          color: colors.textMuted,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {image.image_url}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Section>
+          </div>
+        )}
       </main>
 
       <style>{`
