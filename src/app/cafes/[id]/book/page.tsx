@@ -825,35 +825,47 @@ export default function BookingPage() {
           <h1
             style={{
               fontFamily: fonts.heading,
-              fontSize: "20px",
-              fontWeight: 700,
-              color: colors.textPrimary,
+              fontSize: "24px",
+              fontWeight: 800,
+              background: `linear-gradient(135deg, ${colors.textPrimary} 0%, ${colors.cyan} 100%)`,
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              backgroundClip: "text",
               margin: 0,
+              marginBottom: "8px",
             }}
             className="booking-title"
           >
             {step === 1 ? "Select Date & Time" : "Choose Your Setup"}
           </h1>
 
-          {/* Progress indicator */}
-          <div style={{ display: "flex", gap: "8px", marginTop: "16px" }}>
-            <div
-              style={{
-                flex: 1,
-                height: "3px",
-                borderRadius: "2px",
-                background: colors.red,
-              }}
-            />
-            <div
-              style={{
-                flex: 1,
-                height: "3px",
-                borderRadius: "2px",
-                background: step === 2 ? colors.red : "rgba(255, 255, 255, 0.1)",
-                transition: "background 0.3s ease",
-              }}
-            />
+          {/* Step indicator with labels */}
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", marginTop: "16px" }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: "10px", color: colors.textMuted, marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                Step 1: Date & Time
+              </div>
+              <div
+                style={{
+                  height: "4px",
+                  borderRadius: "4px",
+                  background: `linear-gradient(90deg, ${colors.red} 0%, ${colors.cyan} 100%)`,
+                }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: "10px", color: step === 2 ? colors.cyan : colors.textMuted, marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                Step 2: Consoles
+              </div>
+              <div
+                style={{
+                  height: "4px",
+                  borderRadius: "4px",
+                  background: step === 2 ? `linear-gradient(90deg, ${colors.cyan} 0%, ${colors.red} 100%)` : "rgba(255, 255, 255, 0.1)",
+                  transition: "background 0.3s ease",
+                }}
+              />
+            </div>
           </div>
         </header>
 
@@ -1070,121 +1082,156 @@ export default function BookingPage() {
         {/* ========== STEP 2: TICKETS ========== */}
         {step === 2 && (
           <>
-            {/* Selected Date/Time Summary */}
+            {/* Selected Date/Time Summary - Redesigned */}
             <div
               style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "14px 16px",
-                background: colors.darkCard,
-                borderRadius: "12px",
-                border: `1px solid ${colors.border}`,
-                marginBottom: "20px",
+                padding: "18px 20px",
+                background: `linear-gradient(135deg, rgba(0, 240, 255, 0.08) 0%, rgba(255, 7, 58, 0.08) 100%)`,
+                borderRadius: "16px",
+                border: `2px solid rgba(0, 240, 255, 0.2)`,
+                marginBottom: "24px",
+                position: "relative",
+                overflow: "hidden",
               }}
             >
-              <div>
-                <div style={{ fontSize: "14px", fontWeight: 600, color: colors.textPrimary }}>
-                  {dateLabel}
+              {/* Decorative glow */}
+              <div style={{
+                position: "absolute",
+                top: 0,
+                right: 0,
+                width: "100px",
+                height: "100px",
+                background: `radial-gradient(circle, rgba(0, 240, 255, 0.15) 0%, transparent 70%)`,
+                pointerEvents: "none",
+              }} />
+
+              <div style={{ position: "relative", zIndex: 1 }}>
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: "12px" }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: "11px", color: colors.textMuted, textTransform: "uppercase", letterSpacing: "1px", marginBottom: "6px" }}>
+                      📅 Your Booking
+                    </div>
+                    <div style={{ fontSize: "16px", fontWeight: 700, color: colors.textPrimary, fontFamily: fonts.heading, marginBottom: "4px" }}>
+                      {dateLabel}
+                    </div>
+                    <div style={{ fontSize: "15px", color: colors.cyan, fontWeight: 600, display: "flex", alignItems: "center", gap: "6px" }}>
+                      <span>⏰</span>
+                      {selectedTime} - {getEndTime(selectedTime, selectedDuration)}
+                    </div>
+                  </div>
+                  {!isWalkIn && (
+                    <button
+                      onClick={handleBackToDateTime}
+                      style={{
+                        padding: "8px 16px",
+                        background: `linear-gradient(135deg, rgba(0, 240, 255, 0.15) 0%, rgba(0, 240, 255, 0.25) 100%)`,
+                        border: `1px solid ${colors.cyan}`,
+                        borderRadius: "10px",
+                        color: colors.cyan,
+                        fontSize: "12px",
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.5px",
+                      }}
+                    >
+                      Change
+                    </button>
+                  )}
                 </div>
-                <div style={{ fontSize: "13px", color: colors.cyan, marginTop: "2px" }}>
-                  {selectedTime} - {getEndTime(selectedTime, selectedDuration)}
-                  <span style={{ color: colors.textMuted, marginLeft: "8px" }}>
-                    ({selectedDuration === 30 ? "30 minutes" : "1 hour"} session)
-                  </span>
-                </div>
-                {/* Online / Walk-in pill */}
-                <div
-                  style={{
-                    marginTop: "6px",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: "6px",
-                    padding: "4px 10px",
-                    borderRadius: "999px",
-                    background: isWalkIn
-                      ? "rgba(245, 158, 11, 0.12)"
-                      : "rgba(34, 197, 94, 0.12)",
-                    border: isWalkIn
-                      ? "1px solid rgba(245, 158, 11, 0.4)"
-                      : "1px solid rgba(34, 197, 94, 0.4)",
-                    fontSize: "11px",
-                    fontWeight: 600,
-                    color: isWalkIn ? colors.orange : colors.green,
-                    textTransform: "uppercase",
-                    letterSpacing: "0.5px",
-                  }}
-                >
-                  <span>{isWalkIn ? "🚶‍♂️" : "🌐"}</span>
-                  <span>{isWalkIn ? "Walk-in Booking" : "Online Booking"}</span>
+
+                <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                  <div
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      padding: "6px 12px",
+                      borderRadius: "999px",
+                      background: isWalkIn ? "rgba(245, 158, 11, 0.2)" : "rgba(34, 197, 94, 0.2)",
+                      border: isWalkIn ? `1px solid ${colors.orange}` : `1px solid ${colors.green}`,
+                      fontSize: "11px",
+                      fontWeight: 700,
+                      color: isWalkIn ? colors.orange : colors.green,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.5px",
+                    }}
+                  >
+                    <span>{isWalkIn ? "🚶‍♂️" : "🌐"}</span>
+                    <span>{isWalkIn ? "Walk-in" : "Online"}</span>
+                  </div>
+                  <div
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      padding: "6px 12px",
+                      borderRadius: "999px",
+                      background: "rgba(0, 240, 255, 0.15)",
+                      border: `1px solid ${colors.cyan}`,
+                      fontSize: "11px",
+                      fontWeight: 700,
+                      color: colors.cyan,
+                    }}
+                  >
+                    <span>⏱️</span>
+                    <span>{selectedDuration === 30 ? "30 min" : "1 hour"}</span>
+                  </div>
                 </div>
               </div>
-              {!isWalkIn && (
-                <button
-                  onClick={handleBackToDateTime}
-                  style={{
-                    padding: "8px 14px",
-                    background: "rgba(255, 255, 255, 0.05)",
-                    border: `1px solid ${colors.border}`,
-                    borderRadius: "8px",
-                    color: colors.textSecondary,
-                    fontSize: "12px",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                  }}
-                >
-                  Change
-                </button>
-              )}
             </div>
 
-            {/* Duration Selector */}
-            <div style={{ marginBottom: "20px" }}>
+            {/* Duration Selector - Improved */}
+            <div style={{ marginBottom: "24px" }}>
               <h2
                 style={{
-                  fontSize: "13px",
-                  fontWeight: 600,
-                  color: colors.textSecondary,
-                  marginBottom: "12px",
-                  textTransform: "uppercase",
-                  letterSpacing: "1px",
+                  fontSize: "14px",
+                  fontWeight: 700,
+                  color: colors.textPrimary,
+                  marginBottom: "14px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
                 }}
                 className="section-heading"
               >
-                ⏱️ Select Duration
+                <span style={{ fontSize: "18px" }}>⏱️</span>
+                <span>Select Duration</span>
               </h2>
-              <div style={{ display: "flex", gap: "12px" }}>
+              <div style={{ display: "flex", gap: "14px" }}>
                 <button
                   onClick={() => { setSelectedDuration(30); setQuantities({}); }}
                   style={{
                     flex: 1,
-                    padding: "14px 12px",
-                    minHeight: "48px",
-                    borderRadius: "12px",
+                    padding: "20px 16px",
+                    minHeight: "88px",
+                    borderRadius: "16px",
                     border: selectedDuration === 30
-                      ? `2px solid ${colors.cyan}`
-                      : `1px solid ${colors.border}`,
+                      ? `3px solid ${colors.cyan}`
+                      : `2px solid ${colors.border}`,
                     background: selectedDuration === 30
-                      ? `linear-gradient(135deg, rgba(0, 240, 255, 0.2) 0%, rgba(0, 240, 255, 0.1) 100%)`
-                      : colors.darkCard,
+                      ? `linear-gradient(135deg, rgba(0, 240, 255, 0.25) 0%, rgba(0, 240, 255, 0.12) 100%)`
+                      : `linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%)`,
                     cursor: "pointer",
-                    transition: "all 0.2s ease",
-                    boxShadow: selectedDuration === 30 ? `0 0 20px rgba(0, 240, 255, 0.3)` : "none",
+                    transition: "all 0.3s ease",
+                    boxShadow: selectedDuration === 30 ? `0 8px 24px rgba(0, 240, 255, 0.35)` : "0 2px 8px rgba(0, 0, 0, 0.2)",
+                    transform: selectedDuration === 30 ? "translateY(-2px)" : "none",
                   }}
                   className="duration-button"
                 >
                   <div
                     style={{
-                      fontSize: "24px",
-                      fontWeight: 700,
+                      fontSize: "32px",
+                      fontWeight: 900,
                       fontFamily: fonts.heading,
                       color: selectedDuration === 30 ? colors.cyan : colors.textPrimary,
-                      marginBottom: "4px",
+                      marginBottom: "6px",
+                      letterSpacing: "-0.5px",
                     }}
                   >
                     30 min
                   </div>
-                  <div style={{ fontSize: "12px", color: colors.textMuted }}>
+                  <div style={{ fontSize: "13px", color: selectedDuration === 30 ? colors.cyan : colors.textMuted, fontWeight: 600 }}>
                     Quick Session
                   </div>
                 </button>
@@ -1192,33 +1239,35 @@ export default function BookingPage() {
                   onClick={() => { setSelectedDuration(60); setQuantities({}); }}
                   style={{
                     flex: 1,
-                    padding: "14px 12px",
-                    minHeight: "48px",
-                    borderRadius: "12px",
+                    padding: "20px 16px",
+                    minHeight: "88px",
+                    borderRadius: "16px",
                     border: selectedDuration === 60
-                      ? `2px solid ${colors.cyan}`
-                      : `1px solid ${colors.border}`,
+                      ? `3px solid ${colors.cyan}`
+                      : `2px solid ${colors.border}`,
                     background: selectedDuration === 60
-                      ? `linear-gradient(135deg, rgba(0, 240, 255, 0.2) 0%, rgba(0, 240, 255, 0.1) 100%)`
-                      : colors.darkCard,
+                      ? `linear-gradient(135deg, rgba(0, 240, 255, 0.25) 0%, rgba(0, 240, 255, 0.12) 100%)`
+                      : `linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%)`,
                     cursor: "pointer",
-                    transition: "all 0.2s ease",
-                    boxShadow: selectedDuration === 60 ? `0 0 20px rgba(0, 240, 255, 0.3)` : "none",
+                    transition: "all 0.3s ease",
+                    boxShadow: selectedDuration === 60 ? `0 8px 24px rgba(0, 240, 255, 0.35)` : "0 2px 8px rgba(0, 0, 0, 0.2)",
+                    transform: selectedDuration === 60 ? "translateY(-2px)" : "none",
                   }}
                   className="duration-button"
                 >
                   <div
                     style={{
-                      fontSize: "24px",
-                      fontWeight: 700,
+                      fontSize: "32px",
+                      fontWeight: 900,
                       fontFamily: fonts.heading,
                       color: selectedDuration === 60 ? colors.cyan : colors.textPrimary,
-                      marginBottom: "4px",
+                      marginBottom: "6px",
+                      letterSpacing: "-0.5px",
                     }}
                   >
                     1 hour
                   </div>
-                  <div style={{ fontSize: "12px", color: colors.textMuted }}>
+                  <div style={{ fontSize: "13px", color: selectedDuration === 60 ? colors.cyan : colors.textMuted, fontWeight: 600 }}>
                     Full Session
                   </div>
                 </button>
@@ -1299,16 +1348,20 @@ export default function BookingPage() {
             <section style={{ marginBottom: "24px" }}>
               <h2
                 style={{
-                  fontSize: "13px",
-                  fontWeight: 600,
-                  color: colors.textSecondary,
+                  fontSize: "14px",
+                  fontWeight: 700,
+                  color: colors.textPrimary,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
                   marginBottom: "12px",
                   textTransform: "uppercase",
                   letterSpacing: "1px",
                 }}
                 className="section-heading"
               >
-                🎮 Select Console
+                <span style={{ fontSize: "18px" }}>🎮</span>
+                <span>Select Console</span>
               </h2>
 
               <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
