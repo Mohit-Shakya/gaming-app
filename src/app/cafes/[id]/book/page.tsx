@@ -1364,7 +1364,18 @@ export default function BookingPage() {
                 <span>Select Console</span>
               </h2>
 
-              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              {/* Horizontal scrollable console cards */}
+              <div
+                style={{
+                  display: "flex",
+                  gap: "12px",
+                  overflowX: "auto",
+                  paddingBottom: "12px",
+                  scrollSnapType: "x mandatory",
+                  WebkitOverflowScrolling: "touch",
+                }}
+                className="console-scroll-container"
+              >
                 {availableConsoles.map((consoleId) => {
                   const console = CONSOLES.find((c) => c.id === consoleId);
                   if (!console) return null;
@@ -1384,132 +1395,158 @@ export default function BookingPage() {
                       onClick={() => !isSoldOut && setSelectedConsole(consoleId)}
                       disabled={isSoldOut}
                       style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        padding: "14px 16px",
-                        borderRadius: "14px",
+                        minWidth: "280px",
+                        maxWidth: "280px",
+                        padding: "18px",
+                        borderRadius: "18px",
                         border: isActive
-                          ? `2px solid ${console.color}`
+                          ? `3px solid ${console.color}`
                           : isSoldOut
-                          ? `1px solid rgba(255, 255, 255, 0.04)`
-                          : `1px solid ${colors.border}`,
+                          ? `2px solid rgba(255, 255, 255, 0.04)`
+                          : `2px solid ${colors.border}`,
                         background: isActive
-                          ? `linear-gradient(135deg, ${console.color}20 0%, ${console.color}10 100%)`
+                          ? `linear-gradient(135deg, ${console.color}30 0%, ${console.color}15 100%)`
                           : isSoldOut
                           ? "rgba(255, 255, 255, 0.02)"
-                          : colors.darkCard,
+                          : `linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.02) 100%)`,
                         cursor: isSoldOut ? "not-allowed" : "pointer",
-                        transition: "all 0.2s ease",
-                        boxShadow: isActive ? `0 0 20px ${console.color}30` : "none",
-                        opacity: isSoldOut ? 0.6 : 1,
-                        width: "100%",
+                        transition: "all 0.3s ease",
+                        boxShadow: isActive ? `0 8px 24px ${console.color}40` : "0 2px 8px rgba(0, 0, 0, 0.2)",
+                        opacity: isSoldOut ? 0.5 : 1,
                         textAlign: "left",
+                        scrollSnapAlign: "start",
+                        transform: isActive ? "translateY(-4px)" : "none",
+                        position: "relative",
+                        overflow: "hidden",
                       }}
+                      className="console-card"
                     >
-                      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                        <span style={{ fontSize: "24px" }}>{console.icon}</span>
-                        <div>
+                      {/* Decorative gradient overlay */}
+                      {isActive && (
+                        <div style={{
+                          position: "absolute",
+                          top: 0,
+                          right: 0,
+                          width: "80px",
+                          height: "80px",
+                          background: `radial-gradient(circle, ${console.color}20 0%, transparent 70%)`,
+                          pointerEvents: "none",
+                        }} />
+                      )}
+
+                      <div style={{ position: "relative", zIndex: 1 }}>
+                        {/* Console icon and name */}
+                        <div style={{ marginBottom: "12px" }}>
+                          <div style={{
+                            fontSize: "40px",
+                            marginBottom: "8px",
+                            filter: isSoldOut ? "grayscale(1)" : "none",
+                          }}>
+                            {console.icon}
+                          </div>
                           <div
                             style={{
-                              fontSize: "15px",
-                              fontWeight: 600,
+                              fontSize: "18px",
+                              fontWeight: 800,
+                              fontFamily: fonts.heading,
                               color: isActive ? console.color : colors.textPrimary,
+                              marginBottom: "4px",
+                              letterSpacing: "-0.3px",
                             }}
                           >
                             {console.label}
                           </div>
-                          <div style={{ fontSize: "12px", color: colors.textMuted }}>
-                            ₹{consolePricing[consoleId]?.[`qty1_${selectedDuration}min` as keyof ConsolePricingTier] ?? (selectedDuration === 30 ? cafePrice * 0.5 : cafePrice)} for 1 console
+                          <div style={{ fontSize: "13px", color: colors.textMuted, fontWeight: 600 }}>
+                            ₹{consolePricing[consoleId]?.[`qty1_${selectedDuration}min` as keyof ConsolePricingTier] ?? (selectedDuration === 30 ? cafePrice * 0.5 : cafePrice)} / console
                           </div>
-                          {nextAvailableAt && (isSoldOut || isLowStock) && (
-                            <div
-                              style={{
-                                fontSize: "11px",
-                                color: colors.cyan,
-                                marginTop: "2px",
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "4px",
-                              }}
-                            >
-                              <span>🕐</span>
-                              <span>
-                                {isSoldOut
-                                  ? `Free at ${nextAvailableAt}`
-                                  : `+1 free at ${nextAvailableAt}`}
-                              </span>
-                            </div>
-                          )}
                         </div>
-                      </div>
 
-                      <div
-                        style={{
-                          display: "flex",
-                          flexDirection: "column",
-                          alignItems: "flex-end",
-                          gap: "4px",
-                        }}
-                      >
-                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                          {mySelection > 0 && (
-                            <span
-                              style={{
-                                padding: "4px 8px",
-                                background: `${console.color}30`,
-                                borderRadius: "6px",
-                                fontSize: "11px",
-                                fontWeight: 600,
-                                color: console.color,
-                              }}
-                            >
-                              {mySelection} selected
-                            </span>
-                          )}
+                        {/* Availability badge */}
+                        <div
+                          style={{
+                            padding: "8px 12px",
+                            background: isSoldOut
+                              ? "rgba(239, 68, 68, 0.2)"
+                              : isLowStock
+                              ? "rgba(245, 158, 11, 0.2)"
+                              : "rgba(34, 197, 94, 0.2)",
+                            borderRadius: "10px",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
+                            marginBottom: nextAvailableAt && (isSoldOut || isLowStock) ? "8px" : "0",
+                          }}
+                        >
                           <div
                             style={{
-                              padding: "6px 12px",
+                              width: "8px",
+                              height: "8px",
+                              borderRadius: "50%",
                               background: isSoldOut
-                                ? "rgba(239, 68, 68, 0.15)"
+                                ? "#ef4444"
                                 : isLowStock
-                                ? "rgba(245, 158, 11, 0.15)"
-                                : "rgba(34, 197, 94, 0.15)",
-                              borderRadius: "8px",
+                                ? colors.orange
+                                : colors.green,
+                              animation: !isSoldOut ? "pulse 2s ease-in-out infinite" : "none",
+                            }}
+                          />
+                          <span
+                            style={{
+                              fontSize: "13px",
+                              fontWeight: 700,
+                              color: isSoldOut
+                                ? "#ef4444"
+                                : isLowStock
+                                ? colors.orange
+                                : colors.green,
+                            }}
+                          >
+                            {isSoldOut
+                              ? "Sold Out"
+                              : `${availableSlots}/${totalSlots} Available`}
+                          </span>
+                        </div>
+
+                        {/* Next available time */}
+                        {nextAvailableAt && (isSoldOut || isLowStock) && (
+                          <div
+                            style={{
+                              fontSize: "11px",
+                              color: colors.cyan,
                               display: "flex",
                               alignItems: "center",
                               gap: "6px",
+                              padding: "6px 10px",
+                              background: "rgba(0, 240, 255, 0.1)",
+                              borderRadius: "8px",
                             }}
                           >
-                            <div
-                              style={{
-                                width: "6px",
-                                height: "6px",
-                                borderRadius: "50%",
-                                background: isSoldOut
-                                  ? "#ef4444"
-                                  : isLowStock
-                                  ? colors.orange
-                                  : colors.green,
-                              }}
-                            />
-                            <span
-                              style={{
-                                fontSize: "12px",
-                                fontWeight: 600,
-                                color: isSoldOut
-                                  ? "#ef4444"
-                                  : isLowStock
-                                  ? colors.orange
-                                  : colors.green,
-                              }}
-                            >
+                            <span>🕐</span>
+                            <span>
                               {isSoldOut
-                                ? "Sold Out"
-                                : `${availableSlots}/${totalSlots} left`}
+                                ? `Free at ${nextAvailableAt}`
+                                : `+1 free at ${nextAvailableAt}`}
                             </span>
                           </div>
-                        </div>
+                        )}
+
+                        {/* Selected indicator */}
+                        {mySelection > 0 && (
+                          <div
+                            style={{
+                              marginTop: "10px",
+                              padding: "6px 10px",
+                              background: `${console.color}40`,
+                              borderRadius: "8px",
+                              fontSize: "12px",
+                              fontWeight: 700,
+                              color: console.color,
+                              textAlign: "center",
+                            }}
+                          >
+                            ✓ {mySelection} Selected
+                          </div>
+                        )}
                       </div>
                     </button>
                   );
@@ -1915,6 +1952,15 @@ export default function BookingPage() {
 
       {/* Animations & Responsive styles */}
       <style>{`
+        /* Hide scrollbar but keep functionality */}
+        .console-scroll-container::-webkit-scrollbar {
+          display: none;
+        }
+        .console-scroll-container {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+
         @keyframes spin {
           to { transform: rotate(360deg); }
         }
