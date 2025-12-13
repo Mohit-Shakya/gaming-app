@@ -1368,7 +1368,7 @@ export default function BookingPage() {
               <div
                 style={{
                   display: "flex",
-                  gap: "10px",
+                  gap: "8px",
                   overflowX: "auto",
                   paddingBottom: "10px",
                   scrollSnapType: "x mandatory",
@@ -1395,10 +1395,10 @@ export default function BookingPage() {
                       onClick={() => !isSoldOut && setSelectedConsole(consoleId)}
                       disabled={isSoldOut}
                       style={{
-                        minWidth: "160px",
-                        maxWidth: "160px",
-                        padding: "14px 12px",
-                        borderRadius: "14px",
+                        minWidth: "110px",
+                        maxWidth: "110px",
+                        padding: "12px 8px",
+                        borderRadius: "12px",
                         border: isActive
                           ? `2px solid ${console.color}`
                           : isSoldOut
@@ -1421,8 +1421,8 @@ export default function BookingPage() {
                     >
                       {/* Console icon */}
                       <div style={{
-                        fontSize: "32px",
-                        marginBottom: "8px",
+                        fontSize: "28px",
+                        marginBottom: "6px",
                         filter: isSoldOut ? "grayscale(1)" : "none",
                       }}>
                         {console.icon}
@@ -1431,11 +1431,11 @@ export default function BookingPage() {
                       {/* Console name */}
                       <div
                         style={{
-                          fontSize: "15px",
+                          fontSize: "13px",
                           fontWeight: 800,
                           fontFamily: fonts.heading,
                           color: isActive ? console.color : colors.textPrimary,
-                          marginBottom: "4px",
+                          marginBottom: "3px",
                           letterSpacing: "-0.2px",
                         }}
                       >
@@ -1443,7 +1443,7 @@ export default function BookingPage() {
                       </div>
 
                       {/* Price */}
-                      <div style={{ fontSize: "12px", color: colors.textMuted, fontWeight: 600, marginBottom: "10px" }}>
+                      <div style={{ fontSize: "11px", color: colors.textMuted, fontWeight: 600, marginBottom: "8px" }}>
                         ₹{consolePricing[consoleId]?.[`qty1_${selectedDuration}min` as keyof ConsolePricingTier] ?? (selectedDuration === 30 ? cafePrice * 0.5 : cafePrice)}
                       </div>
 
