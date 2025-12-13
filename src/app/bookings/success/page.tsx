@@ -822,8 +822,8 @@ function BookingSuccessContent() {
               boxShadow: `0 8px 32px ${colors.cyan}40`,
             }}
           >
-            <span>📊</span>
-            View Dashboard
+            <span>🎫</span>
+            View Booking
           </button>
 
           <button
