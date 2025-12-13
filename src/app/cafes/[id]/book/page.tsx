@@ -267,6 +267,8 @@ export default function BookingPage() {
   // Cafe data
   const [cafeName, setCafeName] = useState<string>("Gaming Café");
   const [cafePrice, setCafePrice] = useState<number>(150);
+  const [googleMapsUrl, setGoogleMapsUrl] = useState<string>("");
+  const [instagramUrl, setInstagramUrl] = useState<string>("");
 
   type ConsolePricingTier = {
     qty1_30min: number | null;
@@ -303,7 +305,7 @@ export default function BookingPage() {
         const { data, error } = await supabase
           .from("cafes")
           .select(
-            "name, hourly_price, ps5_count, ps4_count, xbox_count, pc_count, pool_count, arcade_count, snooker_count, vr_count, steering_wheel_count"
+            "name, hourly_price, google_maps_url, instagram_url, ps5_count, ps4_count, xbox_count, pc_count, pool_count, arcade_count, snooker_count, vr_count, steering_wheel_count"
           )
           .eq("id", cafeId)
           .maybeSingle();
@@ -315,6 +317,8 @@ export default function BookingPage() {
 
         setCafeName(data.name || "Gaming Café");
         setCafePrice(data.hourly_price || 150);
+        setGoogleMapsUrl(data.google_maps_url || "");
+        setInstagramUrl(data.instagram_url || "");
 
         const limits: Partial<Record<ConsoleId, number>> = {};
         const available: ConsoleId[] = [];
@@ -810,17 +814,84 @@ export default function BookingPage() {
             {step === 2 && !isWalkIn ? "Change Date & Time" : "Back"}
           </button>
 
-          <p
-            style={{
-              fontSize: "12px",
-              color: colors.cyan,
-              textTransform: "uppercase",
-              letterSpacing: "2px",
-              marginBottom: "4px",
-            }}
-          >
-            {cafeName}
-          </p>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "4px" }}>
+            <p
+              style={{
+                fontSize: "12px",
+                color: colors.cyan,
+                textTransform: "uppercase",
+                letterSpacing: "2px",
+                margin: 0,
+              }}
+            >
+              {cafeName}
+            </p>
+
+            {/* Social Links */}
+            {(googleMapsUrl || instagramUrl) && (
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                {googleMapsUrl && (
+                  <a
+                    href={googleMapsUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      width: "32px",
+                      height: "32px",
+                      borderRadius: "8px",
+                      background: "linear-gradient(135deg, rgba(66, 133, 244, 0.2) 0%, rgba(66, 133, 244, 0.1) 100%)",
+                      border: "1px solid rgba(66, 133, 244, 0.3)",
+                      transition: "all 0.2s ease",
+                      textDecoration: "none",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = "scale(1.1)";
+                      e.currentTarget.style.boxShadow = "0 4px 12px rgba(66, 133, 244, 0.3)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = "scale(1)";
+                      e.currentTarget.style.boxShadow = "none";
+                    }}
+                  >
+                    <span style={{ fontSize: "16px" }}>📍</span>
+                  </a>
+                )}
+
+                {instagramUrl && (
+                  <a
+                    href={instagramUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      width: "32px",
+                      height: "32px",
+                      borderRadius: "8px",
+                      background: "linear-gradient(135deg, rgba(225, 48, 108, 0.2) 0%, rgba(193, 53, 132, 0.1) 100%)",
+                      border: "1px solid rgba(225, 48, 108, 0.3)",
+                      transition: "all 0.2s ease",
+                      textDecoration: "none",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = "scale(1.1)";
+                      e.currentTarget.style.boxShadow = "0 4px 12px rgba(225, 48, 108, 0.3)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = "scale(1)";
+                      e.currentTarget.style.boxShadow = "none";
+                    }}
+                  >
+                    <span style={{ fontSize: "16px" }}>📷</span>
+                  </a>
+                )}
+              </div>
+            )}
+          </div>
 
           <h1
             style={{

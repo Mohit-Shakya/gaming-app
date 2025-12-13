@@ -13,6 +13,7 @@ type CafeFormData = {
   description: string;
   hourly_price: number;
   google_maps_url: string;
+  instagram_url: string;
   cover_url: string;
   ps5_count: number;
   ps4_count: number;
@@ -80,6 +81,7 @@ export default function OwnerCafeEditPage() {
     description: "",
     hourly_price: 150,
     google_maps_url: "",
+    instagram_url: "",
     cover_url: "",
     ps5_count: 0,
     ps4_count: 0,
@@ -169,6 +171,7 @@ export default function OwnerCafeEditPage() {
             description: cafe.description || "",
             hourly_price: cafe.hourly_price || 150,
             google_maps_url: cafe.google_maps_url || "",
+            instagram_url: cafe.instagram_url || "",
             cover_url: cafe.cover_url || "",
             ps5_count: cafe.ps5_count || 0,
             ps4_count: cafe.ps4_count || 0,
@@ -653,6 +656,16 @@ export default function OwnerCafeEditPage() {
                   value={formData.google_maps_url}
                   onChange={(e) => setFormData({ ...formData, google_maps_url: e.target.value })}
                   placeholder="https://maps.google.com/..."
+                  style={inputStyle}
+                />
+              </FormField>
+
+              <FormField label="Instagram URL">
+                <input
+                  type="url"
+                  value={formData.instagram_url}
+                  onChange={(e) => setFormData({ ...formData, instagram_url: e.target.value })}
+                  placeholder="https://instagram.com/your_cafe"
                   style={inputStyle}
                 />
               </FormField>
