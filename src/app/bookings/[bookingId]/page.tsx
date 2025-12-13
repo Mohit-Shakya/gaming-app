@@ -476,76 +476,147 @@ export default function BookingDetailsPage() {
 
           <div style={{
             display: "flex",
-            alignItems: "center",
+            alignItems: "flex-start",
             gap: "16px",
           }}>
             <div style={{
-              width: "64px",
-              height: "64px",
-              background: `linear-gradient(135deg, ${colors.red}20 0%, ${colors.red}10 100%)`,
-              borderRadius: "16px",
+              width: "72px",
+              height: "72px",
+              background: `linear-gradient(135deg, ${colors.red}30 0%, ${colors.cyan}20 100%)`,
+              borderRadius: "18px",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              fontSize: "32px",
+              fontSize: "36px",
+              boxShadow: `0 8px 24px ${colors.red}25`,
             }}>
               🎮
             </div>
             <div style={{ flex: 1 }}>
               <p style={{
                 fontSize: "11px",
-                color: colors.textMuted,
+                color: colors.cyan,
                 textTransform: "uppercase",
-                letterSpacing: "1px",
-                marginBottom: "4px",
+                letterSpacing: "1.5px",
+                marginBottom: "6px",
+                fontWeight: 700,
               }}>
-                Gaming Venue
+                🏢 Gaming Venue
               </p>
+              <p style={{
+                fontSize: "22px",
+                fontWeight: 800,
+                color: colors.textPrimary,
+                margin: 0,
+                marginBottom: "16px",
+                fontFamily: fonts.heading,
+              }}>
+                {data.cafe?.name ?? "Gaming Café"}
+              </p>
+
               <div style={{
                 display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                marginBottom: "12px",
+                flexWrap: "wrap",
+                gap: "12px",
+                marginBottom: "20px",
               }}>
-                <p style={{
-                  fontSize: "18px",
-                  fontWeight: 600,
-                  color: colors.textPrimary,
-                  margin: 0,
+                <span style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  fontSize: "14px",
+                  color: colors.textSecondary,
+                  background: "rgba(255, 255, 255, 0.05)",
+                  padding: "6px 12px",
+                  borderRadius: "8px",
                 }}>
-                  {data.cafe?.name ?? "Gaming Café"}
-                </p>
+                  <span>📅</span>
+                  {formattedDate}
+                </span>
+                <span style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  fontSize: "14px",
+                  color: colors.cyan,
+                  fontWeight: 700,
+                  background: `linear-gradient(135deg, ${colors.cyan}20 0%, ${colors.cyan}10 100%)`,
+                  padding: "6px 12px",
+                  borderRadius: "8px",
+                  border: `1px solid ${colors.cyan}30`,
+                }}>
+                  <span>⏰</span>
+                  {data.start_time || "Time not set"}
+                </span>
+              </div>
 
-                {/* Social Links */}
-                {data.cafe && (data.cafe.google_maps_url || data.cafe.instagram_url) && (
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              {/* Social Links CTA Section */}
+              {data.cafe && (data.cafe.google_maps_url || data.cafe.instagram_url) && (
+                <div style={{
+                  background: "rgba(0, 0, 0, 0.3)",
+                  borderRadius: "14px",
+                  padding: "16px",
+                  border: `1px solid ${colors.border}`,
+                }}>
+                  <p style={{
+                    fontSize: "13px",
+                    color: colors.textMuted,
+                    marginBottom: "12px",
+                    fontWeight: 600,
+                  }}>
+                    💫 Stay connected & share your experience!
+                  </p>
+                  <div style={{
+                    display: "flex",
+                    gap: "12px",
+                    flexWrap: "wrap",
+                  }}>
                     {data.cafe.google_maps_url && (
                       <a
                         href={data.cafe.google_maps_url}
                         target="_blank"
                         rel="noopener noreferrer"
                         style={{
+                          flex: 1,
+                          minWidth: "140px",
                           display: "flex",
+                          flexDirection: "column",
                           alignItems: "center",
-                          justifyContent: "center",
-                          width: "32px",
-                          height: "32px",
-                          borderRadius: "8px",
-                          background: "linear-gradient(135deg, rgba(66, 133, 244, 0.2) 0%, rgba(66, 133, 244, 0.1) 100%)",
-                          border: "1px solid rgba(66, 133, 244, 0.3)",
-                          transition: "all 0.2s ease",
+                          gap: "8px",
+                          padding: "14px 16px",
+                          borderRadius: "12px",
+                          background: "linear-gradient(135deg, rgba(66, 133, 244, 0.25) 0%, rgba(66, 133, 244, 0.15) 100%)",
+                          border: "2px solid rgba(66, 133, 244, 0.4)",
                           textDecoration: "none",
+                          transition: "all 0.3s ease",
+                          cursor: "pointer",
                         }}
                         onMouseEnter={(e) => {
-                          e.currentTarget.style.transform = "scale(1.1)";
-                          e.currentTarget.style.boxShadow = "0 4px 12px rgba(66, 133, 244, 0.3)";
+                          e.currentTarget.style.transform = "translateY(-2px)";
+                          e.currentTarget.style.boxShadow = "0 8px 20px rgba(66, 133, 244, 0.4)";
                         }}
                         onMouseLeave={(e) => {
-                          e.currentTarget.style.transform = "scale(1)";
+                          e.currentTarget.style.transform = "translateY(0)";
                           e.currentTarget.style.boxShadow = "none";
                         }}
                       >
-                        <span style={{ fontSize: "16px" }}>📍</span>
+                        <span style={{ fontSize: "28px" }}>📍</span>
+                        <div style={{ textAlign: "center" }}>
+                          <div style={{
+                            fontSize: "12px",
+                            fontWeight: 700,
+                            color: "#4285F4",
+                            marginBottom: "2px",
+                          }}>
+                            View Location
+                          </div>
+                          <div style={{
+                            fontSize: "10px",
+                            color: colors.textMuted,
+                          }}>
+                            Get directions
+                          </div>
+                        </div>
                       </a>
                     )}
 
@@ -555,60 +626,73 @@ export default function BookingDetailsPage() {
                         target="_blank"
                         rel="noopener noreferrer"
                         style={{
+                          flex: 1,
+                          minWidth: "140px",
                           display: "flex",
+                          flexDirection: "column",
                           alignItems: "center",
-                          justifyContent: "center",
-                          width: "32px",
-                          height: "32px",
-                          borderRadius: "8px",
-                          background: "linear-gradient(135deg, rgba(225, 48, 108, 0.2) 0%, rgba(193, 53, 132, 0.1) 100%)",
-                          border: "1px solid rgba(225, 48, 108, 0.3)",
-                          transition: "all 0.2s ease",
+                          gap: "8px",
+                          padding: "14px 16px",
+                          borderRadius: "12px",
+                          background: "linear-gradient(135deg, rgba(225, 48, 108, 0.25) 0%, rgba(193, 53, 132, 0.15) 100%)",
+                          border: "2px solid rgba(225, 48, 108, 0.4)",
                           textDecoration: "none",
+                          transition: "all 0.3s ease",
+                          cursor: "pointer",
                         }}
                         onMouseEnter={(e) => {
-                          e.currentTarget.style.transform = "scale(1.1)";
-                          e.currentTarget.style.boxShadow = "0 4px 12px rgba(225, 48, 108, 0.3)";
+                          e.currentTarget.style.transform = "translateY(-2px)";
+                          e.currentTarget.style.boxShadow = "0 8px 20px rgba(225, 48, 108, 0.4)";
                         }}
                         onMouseLeave={(e) => {
-                          e.currentTarget.style.transform = "scale(1)";
+                          e.currentTarget.style.transform = "translateY(0)";
                           e.currentTarget.style.boxShadow = "none";
                         }}
                       >
-                        <span style={{ fontSize: "16px" }}>📷</span>
+                        <span style={{ fontSize: "28px" }}>📷</span>
+                        <div style={{ textAlign: "center" }}>
+                          <div style={{
+                            fontSize: "12px",
+                            fontWeight: 700,
+                            color: "#E1306C",
+                            marginBottom: "2px",
+                          }}>
+                            Follow Us
+                          </div>
+                          <div style={{
+                            fontSize: "10px",
+                            color: colors.textMuted,
+                          }}>
+                            Tag & share photos
+                          </div>
+                        </div>
                       </a>
                     )}
                   </div>
-                )}
-              </div>
 
-              <div style={{
-                display: "flex",
-                flexWrap: "wrap",
-                gap: "12px",
-              }}>
-                <span style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  fontSize: "13px",
-                  color: colors.textSecondary,
-                }}>
-                  <span>📅</span>
-                  {formattedDate}
-                </span>
-                <span style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                  fontSize: "13px",
-                  color: colors.cyan,
-                  fontWeight: 600,
-                }}>
-                  <span>⏰</span>
-                  {data.start_time || "Time not set"}
-                </span>
-              </div>
+                  {/* Review reminder */}
+                  <div style={{
+                    marginTop: "12px",
+                    padding: "10px 12px",
+                    background: `linear-gradient(135deg, ${colors.green}15 0%, ${colors.green}08 100%)`,
+                    borderRadius: "8px",
+                    border: `1px solid ${colors.green}30`,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                  }}>
+                    <span style={{ fontSize: "16px" }}>⭐</span>
+                    <p style={{
+                      fontSize: "11px",
+                      color: colors.textMuted,
+                      margin: 0,
+                      lineHeight: 1.4,
+                    }}>
+                      <strong style={{ color: colors.green }}>Love your experience?</strong> Leave a review on Google Maps to help others discover this venue!
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </section>
