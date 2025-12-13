@@ -1364,17 +1364,15 @@ export default function BookingPage() {
                 <span>Select Console</span>
               </h2>
 
-              {/* Compact horizontal console cards */}
+              {/* Compact console cards grid */}
               <div
                 style={{
                   display: "flex",
-                  gap: "6px",
-                  overflowX: "auto",
-                  paddingBottom: "10px",
-                  scrollSnapType: "x mandatory",
-                  WebkitOverflowScrolling: "touch",
+                  flexWrap: "wrap",
+                  gap: "8px",
+                  justifyContent: "flex-start",
                 }}
-                className="console-scroll-container"
+                className="console-grid-container"
               >
                 {availableConsoles.map((consoleId) => {
                   const console = CONSOLES.find((c) => c.id === consoleId);
@@ -1414,7 +1412,6 @@ export default function BookingPage() {
                         boxShadow: isActive ? `0 4px 16px ${console.color}35` : "none",
                         opacity: isSoldOut ? 0.5 : 1,
                         textAlign: "center",
-                        scrollSnapAlign: "start",
                         transform: isActive ? "scale(1.02)" : "none",
                       }}
                       className="console-card"
