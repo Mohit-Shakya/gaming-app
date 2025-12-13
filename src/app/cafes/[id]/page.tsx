@@ -42,6 +42,8 @@ const CONSOLE_CONFIG: {
 ];
 
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const fetchCache = "force-no-store";
 
 export default async function CafePage({ params }: CafePageProps) {
   const { id } = await params;
@@ -687,7 +689,6 @@ export default async function CafePage({ params }: CafePageProps) {
               }}
             >
               {availableConsoles.map(({ key, icon, label, color }) => {
-                const count = (cafe as any)[key] as number;
                 return (
                   <div
                     key={key}
@@ -713,20 +714,6 @@ export default async function CafePage({ params }: CafePageProps) {
                       {icon}
                     </span>
                     <span>{label}</span>
-                    {count > 1 && (
-                      <span
-                        style={{
-                          fontFamily: fonts.heading,
-                          fontSize: "11px",
-                          padding: "2px 6px",
-                          borderRadius: "6px",
-                          background: "rgba(255, 255, 255, 0.1)",
-                          color: colors.cyan,
-                        }}
-                      >
-                        ×{count}
-                      </span>
-                    )}
                   </div>
                 );
               })}
