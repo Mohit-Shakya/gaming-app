@@ -105,22 +105,17 @@ export default function Footer() {
 
       {/* Main Footer Content */}
       <div
+        className="px-4 py-8 sm:px-6 sm:py-10 md:px-8 md:py-12 lg:px-10 relative z-10"
         style={{
           maxWidth: "1200px",
           margin: "0 auto",
-          padding: "48px 20px 24px",
-          position: "relative",
-          zIndex: 1,
         }}
       >
         {/* Top Section - Logo & Newsletter */}
         <div
+          className="grid gap-6 sm:gap-8 md:gap-10 mb-6 sm:mb-8 md:mb-10 pb-6 sm:pb-8 md:pb-10"
           style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-            gap: "40px",
-            marginBottom: "40px",
-            paddingBottom: "40px",
+            gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
             borderBottom: `1px solid ${colors.border}`,
           }}
         >
@@ -128,29 +123,22 @@ export default function Footer() {
           <div>
             <Link href="/" style={{ textDecoration: "none" }}>
               <h2
+                className="text-xl sm:text-2xl font-extrabold tracking-wide mb-2 sm:mb-3 inline-block"
                 style={{
                   fontFamily: fonts.heading,
-                  fontSize: "24px",
-                  fontWeight: 800,
-                  letterSpacing: "1px",
-                  marginBottom: "12px",
                   background: `linear-gradient(135deg, ${colors.red} 0%, ${colors.cyan} 100%)`,
                   WebkitBackgroundClip: "text",
                   WebkitTextFillColor: "transparent",
                   backgroundClip: "text",
-                  display: "inline-block",
                 }}
               >
                 BOOKMYGAME
               </h2>
             </Link>
             <p
+              className="text-xs sm:text-sm leading-relaxed mb-4 sm:mb-5 max-w-xs"
               style={{
-                fontSize: "14px",
                 color: colors.textMuted,
-                lineHeight: 1.6,
-                marginBottom: "20px",
-                maxWidth: "300px",
               }}
             >
               India's premier gaming café booking platform. Find, book, and play at the best gaming cafés near you.
@@ -159,39 +147,28 @@ export default function Footer() {
 
           {/* Links Sections */}
           <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
-              gap: "24px",
-            }}
+            className="grid grid-cols-2 sm:grid-cols-4 gap-6 sm:gap-5"
           >
             {/* Explore */}
             <div>
               <h3
+                className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider mb-3 sm:mb-4"
                 style={{
-                  fontSize: "13px",
-                  fontWeight: 600,
                   color: colors.textPrimary,
-                  textTransform: "uppercase",
-                  letterSpacing: "1px",
-                  marginBottom: "16px",
                 }}
               >
                 Explore
               </h3>
-              <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+              <ul className="list-none p-0 m-0 space-y-2 sm:space-y-2.5">
                 {footerLinks.explore.map((link) => (
-                  <li key={link.href} style={{ marginBottom: "10px" }}>
+                  <li key={link.href}>
                     <Link
                       href={link.href}
+                      className="text-xs sm:text-sm transition-colors hover:text-[#00f0ff]"
                       style={{
-                        fontSize: "14px",
                         color: colors.textMuted,
                         textDecoration: "none",
-                        transition: "color 0.2s ease",
                       }}
-                      onMouseEnter={(e) => (e.currentTarget.style.color = colors.cyan)}
-                      onMouseLeave={(e) => (e.currentTarget.style.color = colors.textMuted)}
                     >
                       {link.label}
                     </Link>
@@ -203,30 +180,23 @@ export default function Footer() {
             {/* Account */}
             <div>
               <h3
+                className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider mb-3 sm:mb-4"
                 style={{
-                  fontSize: "13px",
-                  fontWeight: 600,
                   color: colors.textPrimary,
-                  textTransform: "uppercase",
-                  letterSpacing: "1px",
-                  marginBottom: "16px",
                 }}
               >
                 Account
               </h3>
-              <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+              <ul className="list-none p-0 m-0 space-y-2 sm:space-y-2.5">
                 {footerLinks.account.map((link) => (
-                  <li key={link.href} style={{ marginBottom: "10px" }}>
+                  <li key={link.href}>
                     <Link
                       href={link.href}
+                      className="text-xs sm:text-sm transition-colors hover:text-[#00f0ff]"
                       style={{
-                        fontSize: "14px",
                         color: colors.textMuted,
                         textDecoration: "none",
-                        transition: "color 0.2s ease",
                       }}
-                      onMouseEnter={(e) => (e.currentTarget.style.color = colors.cyan)}
-                      onMouseLeave={(e) => (e.currentTarget.style.color = colors.textMuted)}
                     >
                       {link.label}
                     </Link>
@@ -238,30 +208,23 @@ export default function Footer() {
             {/* Support */}
             <div>
               <h3
+                className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider mb-3 sm:mb-4"
                 style={{
-                  fontSize: "13px",
-                  fontWeight: 600,
                   color: colors.textPrimary,
-                  textTransform: "uppercase",
-                  letterSpacing: "1px",
-                  marginBottom: "16px",
                 }}
               >
                 Support
               </h3>
-              <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+              <ul className="list-none p-0 m-0 space-y-2 sm:space-y-2.5">
                 {footerLinks.support.map((link) => (
-                  <li key={link.href} style={{ marginBottom: "10px" }}>
+                  <li key={link.href}>
                     <Link
                       href={link.href}
+                      className="text-xs sm:text-sm transition-colors hover:text-[#00f0ff]"
                       style={{
-                        fontSize: "14px",
                         color: colors.textMuted,
                         textDecoration: "none",
-                        transition: "color 0.2s ease",
                       }}
-                      onMouseEnter={(e) => (e.currentTarget.style.color = colors.cyan)}
-                      onMouseLeave={(e) => (e.currentTarget.style.color = colors.textMuted)}
                     >
                       {link.label}
                     </Link>
@@ -273,30 +236,23 @@ export default function Footer() {
             {/* Legal */}
             <div>
               <h3
+                className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider mb-3 sm:mb-4"
                 style={{
-                  fontSize: "13px",
-                  fontWeight: 600,
                   color: colors.textPrimary,
-                  textTransform: "uppercase",
-                  letterSpacing: "1px",
-                  marginBottom: "16px",
                 }}
               >
                 Legal
               </h3>
-              <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+              <ul className="list-none p-0 m-0 space-y-2 sm:space-y-2.5">
                 {footerLinks.legal.map((link) => (
-                  <li key={link.href} style={{ marginBottom: "10px" }}>
+                  <li key={link.href}>
                     <Link
                       href={link.href}
+                      className="text-xs sm:text-sm transition-colors hover:text-[#00f0ff]"
                       style={{
-                        fontSize: "14px",
                         color: colors.textMuted,
                         textDecoration: "none",
-                        transition: "color 0.2s ease",
                       }}
-                      onMouseEnter={(e) => (e.currentTarget.style.color = colors.cyan)}
-                      onMouseLeave={(e) => (e.currentTarget.style.color = colors.textMuted)}
                     >
                       {link.label}
                     </Link>
@@ -309,69 +265,48 @@ export default function Footer() {
 
         {/* Contact & Social Section */}
         <div
+          className="flex flex-col sm:flex-row flex-wrap justify-between items-start sm:items-center gap-5 sm:gap-6 mb-6 sm:mb-8 pb-6 sm:pb-8"
           style={{
-            display: "flex",
-            flexWrap: "wrap",
-            justifyContent: "space-between",
-            alignItems: "center",
-            gap: "24px",
-            marginBottom: "32px",
-            paddingBottom: "32px",
             borderBottom: `1px solid ${colors.border}`,
           }}
         >
           {/* Contact Info */}
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "24px" }}>
+          <div className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-5 md:gap-6 w-full sm:w-auto">
             <a
               href="mailto:bookmygame169@gmail.com"
+              className="flex items-center gap-2 text-xs sm:text-sm transition-colors hover:text-[#00f0ff] break-all"
               style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                fontSize: "14px",
                 color: colors.textSecondary,
                 textDecoration: "none",
-                transition: "color 0.2s ease",
               }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = colors.cyan)}
-              onMouseLeave={(e) => (e.currentTarget.style.color = colors.textSecondary)}
             >
-              <span style={{ fontSize: "16px" }}>📧</span>
-              bookmygame169@gmail.com
+              <span className="text-sm sm:text-base">📧</span>
+              <span className="break-all">bookmygame169@gmail.com</span>
             </a>
             <a
               href="tel:+919910457855"
+              className="flex items-center gap-2 text-xs sm:text-sm transition-colors hover:text-[#00f0ff]"
               style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                fontSize: "14px",
                 color: colors.textSecondary,
                 textDecoration: "none",
-                transition: "color 0.2s ease",
               }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = colors.cyan)}
-              onMouseLeave={(e) => (e.currentTarget.style.color = colors.textSecondary)}
             >
-              <span style={{ fontSize: "16px" }}>📞</span>
+              <span className="text-sm sm:text-base">📞</span>
               +91 99104 57855
             </a>
             <span
+              className="flex items-center gap-2 text-xs sm:text-sm"
               style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                fontSize: "14px",
                 color: colors.textSecondary,
               }}
             >
-              <span style={{ fontSize: "16px" }}>📍</span>
+              <span className="text-sm sm:text-base">📍</span>
               Delhi, India
             </span>
           </div>
 
           {/* Social Links */}
-          <div style={{ display: "flex", gap: "12px" }}>
+          <div className="flex gap-2.5 sm:gap-3">
             {socialLinks.map((social) => (
               <a
                 key={social.name}
@@ -379,30 +314,22 @@ export default function Footer() {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label={social.name}
+                className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center transition-all hover:-translate-y-0.5"
                 style={{
-                  width: "40px",
-                  height: "40px",
-                  borderRadius: "10px",
                   background: "rgba(255, 255, 255, 0.05)",
                   border: `1px solid ${colors.border}`,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
                   color: colors.textMuted,
                   textDecoration: "none",
-                  transition: "all 0.2s ease",
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.background = `${social.color}20`;
                   e.currentTarget.style.borderColor = social.color;
                   e.currentTarget.style.color = social.color;
-                  e.currentTarget.style.transform = "translateY(-2px)";
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.background = "rgba(255, 255, 255, 0.05)";
                   e.currentTarget.style.borderColor = colors.border;
                   e.currentTarget.style.color = colors.textMuted;
-                  e.currentTarget.style.transform = "translateY(0)";
                 }}
               >
                 {social.icon}
@@ -413,20 +340,13 @@ export default function Footer() {
 
         {/* Bottom Bar */}
         <div
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            justifyContent: "space-between",
-            alignItems: "center",
-            gap: "16px",
-          }}
+          className="flex flex-col sm:flex-row flex-wrap justify-between items-start sm:items-center gap-3 sm:gap-4"
         >
           {/* Copyright */}
           <p
+            className="text-[11px] sm:text-xs m-0"
             style={{
-              fontSize: "13px",
               color: colors.textMuted,
-              margin: 0,
             }}
           >
             © {currentYear} BOOKMYGAME. All rights reserved.
@@ -434,13 +354,9 @@ export default function Footer() {
 
           {/* Made with love */}
           <p
+            className="text-[11px] sm:text-xs m-0 flex items-center gap-1.5"
             style={{
-              fontSize: "13px",
               color: colors.textMuted,
-              margin: 0,
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
             }}
           >
             Made with{" "}

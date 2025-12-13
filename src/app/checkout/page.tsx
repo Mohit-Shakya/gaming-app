@@ -215,10 +215,11 @@ export default function CheckoutPage() {
         style={{
           maxWidth: "720px",
           margin: "0 auto",
-          padding: "20px 16px 140px",
+          padding: "16px 16px 140px",
           position: "relative",
           zIndex: 1,
         }}
+        className="checkout-container"
       >
         {/* Top bar */}
         <header
@@ -280,14 +281,14 @@ export default function CheckoutPage() {
         </header>
 
         {/* Title */}
-        <div style={{ marginBottom: 20 }}>
+        <div style={{ marginBottom: "16px" }}>
           <p
             style={{
-              fontSize: 11,
-              letterSpacing: 3,
+              fontSize: "11px",
+              letterSpacing: "2px",
               textTransform: "uppercase",
               color: colors.textMuted,
-              marginBottom: 6,
+              marginBottom: "6px",
             }}
           >
             Checkout
@@ -295,10 +296,11 @@ export default function CheckoutPage() {
           <h1
             style={{
               fontFamily: fonts.heading,
-              fontSize: 24,
+              fontSize: "20px",
               fontWeight: 700,
               margin: 0,
             }}
+            className="checkout-title"
           >
             Order Summary
           </h1>
@@ -309,55 +311,58 @@ export default function CheckoutPage() {
           style={{
             background:
               "linear-gradient(135deg, rgba(15,23,42,0.95), rgba(17,24,39,0.95))",
-            borderRadius: 20,
+            borderRadius: "16px",
             border: `1px solid ${colors.border}`,
-            padding: "16px 18px",
-            marginBottom: 18,
+            padding: "14px 16px",
+            marginBottom: "16px",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            gap: 16,
+            gap: "12px",
           }}
+          className="cafe-card"
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
             <div
               style={{
-                width: 52,
-                height: 52,
-                borderRadius: 16,
+                width: "48px",
+                height: "48px",
+                minWidth: "48px",
+                borderRadius: "14px",
                 background:
                   "radial-gradient(circle at 0 0, #38bdf8 0, #020617 55%)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                fontSize: 26,
+                fontSize: "24px",
               }}
+              className="cafe-icon"
             >
               🎮
             </div>
-            <div>
+            <div style={{ minWidth: 0, flex: 1 }}>
               <div
                 style={{
-                  fontSize: 14,
+                  fontSize: "14px",
                   fontWeight: 600,
-                  marginBottom: 4,
+                  marginBottom: "4px",
                 }}
               >
                 {draft.cafeName}
               </div>
               <div
                 style={{
-                  fontSize: 12,
+                  fontSize: "12px",
                   color: colors.textSecondary,
                   display: "flex",
                   flexDirection: "column",
-                  gap: 2,
+                  gap: "2px",
                 }}
               >
-                <span>{dateLabel}</span>
+                <span className="date-text">{dateLabel}</span>
                 <span>
                   {draft.timeSlot} – {endTime}{" "}
-                  <span style={{ color: colors.textMuted }}>
+                  <span style={{ color: colors.textMuted }} className="session-duration">
                     (1 hour session)
                   </span>
                 </span>
@@ -398,12 +403,13 @@ export default function CheckoutPage() {
         {/* Tickets list */}
         <section
           style={{
-            marginTop: 10,
-            borderRadius: 18,
+            marginTop: "12px",
+            borderRadius: "16px",
             background: colors.darkerCard,
             border: `1px solid ${colors.border}`,
             overflow: "hidden",
           }}
+          className="tickets-section"
         >
           <div
             style={{
@@ -629,13 +635,14 @@ export default function CheckoutPage() {
             onClick={handlePlaceOrder}
             style={{
               flexShrink: 0,
-              padding: "12px 22px",
-              borderRadius: 999,
+              padding: "14px 20px",
+              minHeight: "48px",
+              borderRadius: "999px",
               border: "none",
               fontFamily: fonts.heading,
-              fontSize: 12,
+              fontSize: "12px",
               fontWeight: 600,
-              letterSpacing: 1,
+              letterSpacing: "1px",
               textTransform: "uppercase",
               cursor: placing ? "not-allowed" : "pointer",
               background: placing
@@ -644,9 +651,10 @@ export default function CheckoutPage() {
                 ? `linear-gradient(135deg, ${colors.orange} 0, #f97316 100%)`
                 : `linear-gradient(135deg, ${colors.green} 0, #16a34a 100%)`,
               color: "white",
-              minWidth: 190,
+              minWidth: "160px",
               textAlign: "center",
             }}
+            className="place-order-button"
           >
             {placing
               ? "Processing..."
@@ -656,6 +664,45 @@ export default function CheckoutPage() {
           </button>
         </div>
       </div>
+
+      {/* Responsive styles */}
+      <style>{`
+        @media (min-width: 640px) {
+          .checkout-container {
+            padding: 20px 16px 140px !important;
+          }
+          .checkout-title {
+            font-size: 24px !important;
+          }
+          .cafe-card {
+            padding: 16px 18px !important;
+            border-radius: 20px !important;
+            gap: 16px !important;
+          }
+          .cafe-icon {
+            width: 52px !important;
+            height: 52px !important;
+            min-width: 52px !important;
+            font-size: 26px !important;
+          }
+          .tickets-section {
+            border-radius: 18px !important;
+          }
+          .place-order-button {
+            padding: 12px 22px !important;
+            min-width: 190px !important;
+          }
+        }
+
+        @media (max-width: 400px) {
+          .date-text {
+            font-size: 11px !important;
+          }
+          .session-duration {
+            display: none;
+          }
+        }
+      `}</style>
     </div>
   );
 }

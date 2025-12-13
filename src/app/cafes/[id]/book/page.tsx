@@ -782,10 +782,11 @@ export default function BookingPage() {
         style={{
           maxWidth: "600px",
           margin: "0 auto",
-          padding: "20px 16px 140px",
+          padding: "16px 16px 140px",
           position: "relative",
           zIndex: 1,
         }}
+        className="booking-container"
       >
         {/* Header */}
         <header style={{ marginBottom: "24px" }}>
@@ -823,11 +824,12 @@ export default function BookingPage() {
           <h1
             style={{
               fontFamily: fonts.heading,
-              fontSize: "22px",
+              fontSize: "20px",
               fontWeight: 700,
               color: colors.textPrimary,
               margin: 0,
             }}
+            className="booking-title"
           >
             {step === 1 ? "Select Date & Time" : "Choose Your Setup"}
           </h1>
@@ -858,16 +860,17 @@ export default function BookingPage() {
         {step === 1 && !isWalkIn && (
           <>
             {/* Date Selection */}
-            <section style={{ marginBottom: "28px" }}>
+            <section style={{ marginBottom: "20px" }}>
               <h2
                 style={{
-                  fontSize: "14px",
+                  fontSize: "13px",
                   fontWeight: 600,
                   color: colors.textSecondary,
                   marginBottom: "12px",
                   textTransform: "uppercase",
                   letterSpacing: "1px",
                 }}
+                className="section-heading"
               >
                 📅 Select Date
               </h2>
@@ -889,9 +892,9 @@ export default function BookingPage() {
                       onClick={() => setSelectedDate(day.key)}
                       style={{
                         flexShrink: 0,
-                        width: "72px",
-                        padding: "12px 8px",
-                        borderRadius: "12px",
+                        width: "68px",
+                        padding: "10px 6px",
+                        borderRadius: "10px",
                         border: isActive
                           ? `2px solid ${colors.red}`
                           : `1px solid ${colors.border}`,
@@ -902,7 +905,9 @@ export default function BookingPage() {
                         textAlign: "center",
                         transition: "all 0.2s ease",
                         boxShadow: isActive ? `0 0 20px rgba(255, 7, 58, 0.3)` : "none",
+                        minHeight: "48px",
                       }}
+                      className="date-button"
                     >
                       <div
                         style={{
@@ -943,13 +948,14 @@ export default function BookingPage() {
             <section>
               <h2
                 style={{
-                  fontSize: "14px",
+                  fontSize: "13px",
                   fontWeight: 600,
                   color: colors.textSecondary,
                   marginBottom: "12px",
                   textTransform: "uppercase",
                   letterSpacing: "1px",
                 }}
+                className="section-heading"
               >
                 ⏰ Select Time
               </h2>
@@ -977,9 +983,10 @@ export default function BookingPage() {
                   <div
                     style={{
                       display: "grid",
-                      gridTemplateColumns: "repeat(4, 1fr)",
+                      gridTemplateColumns: "repeat(3, 1fr)",
                       gap: "8px",
                     }}
+                    className="time-grid"
                   >
                     {filteredTimeSlots.map((slot) => {
                       const isActive = slot.label === selectedTime;
@@ -988,8 +995,9 @@ export default function BookingPage() {
                           key={slot.label}
                           onClick={() => setSelectedTime(slot.label)}
                           style={{
-                            padding: "12px 8px",
-                            borderRadius: "10px",
+                            padding: "10px 6px",
+                            minHeight: "44px",
+                            borderRadius: "8px",
                             border: isActive
                               ? `2px solid ${colors.red}`
                               : `1px solid ${colors.border}`,
@@ -1002,6 +1010,7 @@ export default function BookingPage() {
                             position: "relative",
                             boxShadow: isActive ? `0 0 20px rgba(255, 7, 58, 0.3)` : "none",
                           }}
+                          className="time-button"
                         >
                           <div
                             style={{
@@ -1132,13 +1141,14 @@ export default function BookingPage() {
             <div style={{ marginBottom: "20px" }}>
               <h2
                 style={{
-                  fontSize: "14px",
+                  fontSize: "13px",
                   fontWeight: 600,
                   color: colors.textSecondary,
                   marginBottom: "12px",
                   textTransform: "uppercase",
                   letterSpacing: "1px",
                 }}
+                className="section-heading"
               >
                 ⏱️ Select Duration
               </h2>
@@ -1147,8 +1157,9 @@ export default function BookingPage() {
                   onClick={() => { setSelectedDuration(30); setQuantities({}); }}
                   style={{
                     flex: 1,
-                    padding: "16px",
-                    borderRadius: "14px",
+                    padding: "14px 12px",
+                    minHeight: "48px",
+                    borderRadius: "12px",
                     border: selectedDuration === 30
                       ? `2px solid ${colors.cyan}`
                       : `1px solid ${colors.border}`,
@@ -1159,6 +1170,7 @@ export default function BookingPage() {
                     transition: "all 0.2s ease",
                     boxShadow: selectedDuration === 30 ? `0 0 20px rgba(0, 240, 255, 0.3)` : "none",
                   }}
+                  className="duration-button"
                 >
                   <div
                     style={{
@@ -1179,8 +1191,9 @@ export default function BookingPage() {
                   onClick={() => { setSelectedDuration(60); setQuantities({}); }}
                   style={{
                     flex: 1,
-                    padding: "16px",
-                    borderRadius: "14px",
+                    padding: "14px 12px",
+                    minHeight: "48px",
+                    borderRadius: "12px",
                     border: selectedDuration === 60
                       ? `2px solid ${colors.cyan}`
                       : `1px solid ${colors.border}`,
@@ -1191,6 +1204,7 @@ export default function BookingPage() {
                     transition: "all 0.2s ease",
                     boxShadow: selectedDuration === 60 ? `0 0 20px rgba(0, 240, 255, 0.3)` : "none",
                   }}
+                  className="duration-button"
                 >
                   <div
                     style={{
@@ -1284,13 +1298,14 @@ export default function BookingPage() {
             <section style={{ marginBottom: "24px" }}>
               <h2
                 style={{
-                  fontSize: "14px",
+                  fontSize: "13px",
                   fontWeight: 600,
                   color: colors.textSecondary,
                   marginBottom: "12px",
                   textTransform: "uppercase",
                   letterSpacing: "1px",
                 }}
+                className="section-heading"
               >
                 🎮 Select Console
               </h2>
@@ -1460,12 +1475,13 @@ export default function BookingPage() {
               >
                 <h2
                   style={{
-                    fontSize: "14px",
+                    fontSize: "13px",
                     fontWeight: 600,
                     color: colors.textSecondary,
                     textTransform: "uppercase",
                     letterSpacing: "1px",
                   }}
+                  className="section-heading"
                 >
                   🎟️ Select Tickets
                 </h2>
@@ -1625,6 +1641,7 @@ export default function BookingPage() {
                               onClick={() => canAdd && setQty(ticket.id, 1)}
                               style={{
                                 padding: "10px 20px",
+                                minHeight: "44px",
                                 background: canAdd
                                   ? `linear-gradient(135deg, ${colors.red} 0%, #ff3366 100%)`
                                   : "rgba(255, 255, 255, 0.05)",
@@ -1636,6 +1653,7 @@ export default function BookingPage() {
                                 cursor: canAdd ? "pointer" : "not-allowed",
                                 transition: "all 0.2s ease",
                               }}
+                              className="add-button"
                             >
                               Add
                             </button>
@@ -1825,7 +1843,7 @@ export default function BookingPage() {
         </div>
       </div>
 
-      {/* Animations */}
+      {/* Animations & Responsive styles */}
       <style>{`
         @keyframes spin {
           to { transform: rotate(360deg); }
@@ -1833,6 +1851,32 @@ export default function BookingPage() {
         @keyframes pulse {
           0%, 100% { opacity: 1; }
           50% { opacity: 0.5; }
+        }
+
+        /* Mobile-first responsive styles */
+        @media (min-width: 480px) {
+          .time-grid {
+            grid-template-columns: repeat(4, 1fr) !important;
+          }
+          .date-button {
+            width: 72px !important;
+            padding: 12px 8px !important;
+          }
+        }
+
+        @media (min-width: 640px) {
+          .booking-container {
+            padding: 20px 16px 140px !important;
+          }
+          .booking-title {
+            font-size: 22px !important;
+          }
+          .section-heading {
+            font-size: 14px !important;
+          }
+          .duration-button {
+            padding: 16px !important;
+          }
         }
       `}</style>
     </div>

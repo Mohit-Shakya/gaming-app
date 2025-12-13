@@ -21,34 +21,28 @@ export default function PrivacyPage() {
         style={{
           maxWidth: "900px",
           margin: "0 auto",
-          padding: "40px 20px 80px",
+          padding: "16px",
         }}
+        className="sm:px-6 sm:py-10 md:px-8 md:py-12 lg:py-16"
       >
         {/* Back to Home */}
         <Link
           href="/"
+          className="inline-flex items-center gap-2 text-xs sm:text-sm mb-6 sm:mb-8 md:mb-10 transition-all hover:gap-3"
           style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: "8px",
-            fontSize: "14px",
             color: colors.cyan,
             textDecoration: "none",
-            marginBottom: "32px",
-            transition: "all 0.2s",
           }}
         >
           ← Back to Home
         </Link>
 
         {/* Header */}
-        <header style={{ marginBottom: "48px" }}>
+        <header className="mb-8 sm:mb-10 md:mb-12">
           <h1
+            className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold mb-3 sm:mb-4"
             style={{
               fontFamily: fonts.heading,
-              fontSize: "clamp(32px, 5vw, 48px)",
-              fontWeight: 800,
-              marginBottom: "16px",
               background: `linear-gradient(135deg, ${colors.red} 0%, ${colors.cyan} 100%)`,
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
@@ -57,18 +51,17 @@ export default function PrivacyPage() {
           >
             Privacy Policy
           </h1>
-          <p style={{ fontSize: "16px", color: colors.textMuted }}>
+          <p className="text-sm sm:text-base" style={{ color: colors.textMuted }}>
             Last Updated: December 11, 2024
           </p>
         </header>
 
         {/* Content */}
         <div
+          className="p-4 sm:p-6 md:p-8 lg:p-10 rounded-lg sm:rounded-xl md:rounded-2xl"
           style={{
             background: colors.darkCard,
             border: `1px solid ${colors.border}`,
-            borderRadius: "16px",
-            padding: "40px",
           }}
         >
           <Section title="1. Introduction">
@@ -81,35 +74,35 @@ export default function PrivacyPage() {
               </a>
               .
             </p>
-            <p style={{ marginTop: "12px" }}>
+            <p className="mt-3">
               By using BookMyGame, you consent to the practices described in this policy.
             </p>
           </Section>
 
           <Section title="2. Information We Collect">
-            <h3 style={{ fontSize: "18px", fontWeight: 600, marginBottom: "12px", color: colors.textPrimary }}>
+            <h3 className="text-base sm:text-lg font-semibold mb-2 sm:mb-3" style={{ color: colors.textPrimary }}>
               2.1 Personal Information
             </h3>
             <p>When you create an account or make a booking, we collect:</p>
-            <ul style={{ paddingLeft: "20px", marginTop: "12px" }}>
+            <ul className="pl-4 sm:pl-5 mt-3 space-y-1.5 sm:space-y-2">
               <li><strong>Account Information:</strong> Name, email address, phone number</li>
               <li><strong>Profile Data:</strong> Username, profile picture (if using Google login)</li>
               <li><strong>Payment Information:</strong> Billing details, transaction history</li>
               <li><strong>Booking Details:</strong> Gaming café preferences, session times, special requests</li>
             </ul>
 
-            <h3 style={{ fontSize: "18px", fontWeight: 600, margin: "20px 0 12px", color: colors.textPrimary }}>
+            <h3 className="text-base sm:text-lg font-semibold mt-4 sm:mt-5 mb-2 sm:mb-3" style={{ color: colors.textPrimary }}>
               2.2 Automatically Collected Information
             </h3>
             <p>When you use our platform, we automatically collect:</p>
-            <ul style={{ paddingLeft: "20px", marginTop: "12px" }}>
+            <ul className="pl-4 sm:pl-5 mt-3 space-y-1.5 sm:space-y-2">
               <li><strong>Device Information:</strong> IP address, browser type, operating system</li>
               <li><strong>Usage Data:</strong> Pages visited, features used, time spent on platform</li>
               <li><strong>Location Data:</strong> Approximate location based on IP address (for showing nearby cafés)</li>
               <li><strong>Cookies:</strong> Small data files stored on your device for authentication and preferences</li>
             </ul>
 
-            <h3 style={{ fontSize: "18px", fontWeight: 600, margin: "20px 0 12px", color: colors.textPrimary }}>
+            <h3 className="text-base sm:text-lg font-semibold mt-4 sm:mt-5 mb-2 sm:mb-3" style={{ color: colors.textPrimary }}>
               2.3 Third-Party Authentication
             </h3>
             <p>
@@ -120,7 +113,7 @@ export default function PrivacyPage() {
 
           <Section title="3. How We Use Your Information">
             <p>We use your information for the following purposes:</p>
-            <ul style={{ paddingLeft: "20px", marginTop: "12px" }}>
+            <ul className="pl-4 sm:pl-5 mt-3 space-y-1.5 sm:space-y-2">
               <li><strong>Service Delivery:</strong> Process bookings, manage reservations, send confirmations</li>
               <li><strong>Account Management:</strong> Create and maintain your user account</li>
               <li><strong>Payment Processing:</strong> Handle transactions and generate receipts</li>
@@ -134,7 +127,7 @@ export default function PrivacyPage() {
           </Section>
 
           <Section title="4. Information Sharing and Disclosure">
-            <h3 style={{ fontSize: "18px", fontWeight: 600, marginBottom: "12px", color: colors.textPrimary }}>
+            <h3 className="text-base sm:text-lg font-semibold mb-2 sm:mb-3" style={{ color: colors.textPrimary }}>
               4.1 Gaming Cafés
             </h3>
             <p>
@@ -142,18 +135,18 @@ export default function PrivacyPage() {
               preferences) with the gaming café to fulfill your reservation.
             </p>
 
-            <h3 style={{ fontSize: "18px", fontWeight: 600, margin: "20px 0 12px", color: colors.textPrimary }}>
+            <h3 className="text-base sm:text-lg font-semibold mt-4 sm:mt-5 mb-2 sm:mb-3" style={{ color: colors.textPrimary }}>
               4.2 Service Providers
             </h3>
             <p>We share data with trusted third-party providers who help us operate the platform:</p>
-            <ul style={{ paddingLeft: "20px", marginTop: "12px" }}>
+            <ul className="pl-4 sm:pl-5 mt-3 space-y-1.5 sm:space-y-2">
               <li><strong>Supabase:</strong> Database and authentication services</li>
               <li><strong>Payment Processors:</strong> Secure payment gateway partners</li>
               <li><strong>Email Services:</strong> For sending booking confirmations and notifications</li>
               <li><strong>Hosting Providers:</strong> Vercel for platform hosting</li>
             </ul>
 
-            <h3 style={{ fontSize: "18px", fontWeight: 600, margin: "20px 0 12px", color: colors.textPrimary }}>
+            <h3 className="text-base sm:text-lg font-semibold mt-4 sm:mt-5 mb-2 sm:mb-3" style={{ color: colors.textPrimary }}>
               4.3 Legal Requirements
             </h3>
             <p>
@@ -161,7 +154,7 @@ export default function PrivacyPage() {
               regulation, or to protect our rights, property, or safety.
             </p>
 
-            <h3 style={{ fontSize: "18px", fontWeight: 600, margin: "20px 0 12px", color: colors.textPrimary }}>
+            <h3 className="text-base sm:text-lg font-semibold mt-4 sm:mt-5 mb-2 sm:mb-3" style={{ color: colors.textPrimary }}>
               4.4 Business Transfers
             </h3>
             <p>
@@ -174,14 +167,14 @@ export default function PrivacyPage() {
             <p>
               We implement industry-standard security measures to protect your information:
             </p>
-            <ul style={{ paddingLeft: "20px", marginTop: "12px" }}>
+            <ul className="pl-4 sm:pl-5 mt-3 space-y-1.5 sm:space-y-2">
               <li>Encrypted data transmission using HTTPS/SSL</li>
               <li>Secure authentication through Supabase</li>
               <li>Regular security audits and updates</li>
               <li>Access controls and password protection</li>
               <li>Payment data handled by PCI-compliant processors</li>
             </ul>
-            <p style={{ marginTop: "12px", padding: "12px", background: "rgba(255, 107, 0, 0.1)", borderRadius: "8px", border: `1px solid rgba(255, 107, 0, 0.3)` }}>
+            <p className="mt-3 p-3 sm:p-4 rounded-lg" style={{ background: "rgba(255, 107, 0, 0.1)", border: `1px solid rgba(255, 107, 0, 0.3)` }}>
               <strong>Note:</strong> No method of transmission over the internet is 100% secure.
               While we strive to protect your information, we cannot guarantee absolute security.
             </p>
@@ -189,7 +182,7 @@ export default function PrivacyPage() {
 
           <Section title="6. Your Privacy Rights">
             <p>You have the following rights regarding your personal information:</p>
-            <ul style={{ paddingLeft: "20px", marginTop: "12px" }}>
+            <ul className="pl-4 sm:pl-5 mt-3 space-y-1.5 sm:space-y-2">
               <li>
                 <strong>Access:</strong> Request a copy of the personal information we hold about you
               </li>
@@ -209,7 +202,7 @@ export default function PrivacyPage() {
                 <strong>Withdraw Consent:</strong> Revoke consent for data processing (may limit service access)
               </li>
             </ul>
-            <p style={{ marginTop: "12px" }}>
+            <p className="mt-3">
               To exercise these rights, contact us at{" "}
               <a href="mailto:bookmygame169@gmail.com" style={{ color: colors.cyan }}>
                 bookmygame169@gmail.com
@@ -218,7 +211,7 @@ export default function PrivacyPage() {
           </Section>
 
           <Section title="7. Cookies and Tracking">
-            <h3 style={{ fontSize: "18px", fontWeight: 600, marginBottom: "12px", color: colors.textPrimary }}>
+            <h3 className="text-base sm:text-lg font-semibold mb-2 sm:mb-3" style={{ color: colors.textPrimary }}>
               7.1 What Are Cookies?
             </h3>
             <p>
@@ -226,16 +219,16 @@ export default function PrivacyPage() {
               remember your preferences.
             </p>
 
-            <h3 style={{ fontSize: "18px", fontWeight: 600, margin: "20px 0 12px", color: colors.textPrimary }}>
+            <h3 className="text-base sm:text-lg font-semibold mt-4 sm:mt-5 mb-2 sm:mb-3" style={{ color: colors.textPrimary }}>
               7.2 Types of Cookies We Use
             </h3>
-            <ul style={{ paddingLeft: "20px" }}>
+            <ul className="pl-4 sm:pl-5 mt-3 space-y-1.5 sm:space-y-2">
               <li><strong>Essential Cookies:</strong> Required for login and basic functionality</li>
               <li><strong>Preference Cookies:</strong> Remember your settings and choices</li>
               <li><strong>Analytics Cookies:</strong> Help us understand how users interact with the platform</li>
             </ul>
 
-            <h3 style={{ fontSize: "18px", fontWeight: 600, margin: "20px 0 12px", color: colors.textPrimary }}>
+            <h3 className="text-base sm:text-lg font-semibold mt-4 sm:mt-5 mb-2 sm:mb-3" style={{ color: colors.textPrimary }}>
               7.3 Managing Cookies
             </h3>
             <p>
@@ -250,7 +243,7 @@ export default function PrivacyPage() {
               information from children under 13. If you believe we have inadvertently collected such
               information, please contact us immediately.
             </p>
-            <p style={{ marginTop: "12px" }}>
+            <p className="mt-3">
               Users aged 13-17 should obtain parental consent before using our services.
             </p>
           </Section>
@@ -260,7 +253,7 @@ export default function PrivacyPage() {
               We retain your personal information for as long as necessary to provide our services
               and comply with legal obligations:
             </p>
-            <ul style={{ paddingLeft: "20px", marginTop: "12px" }}>
+            <ul className="pl-4 sm:pl-5 mt-3 space-y-1.5 sm:space-y-2">
               <li><strong>Account Data:</strong> Retained while your account is active</li>
               <li><strong>Booking History:</strong> Stored for 3 years for accounting purposes</li>
               <li><strong>Payment Records:</strong> Retained as required by Indian tax laws</li>
@@ -282,7 +275,7 @@ export default function PrivacyPage() {
               or legal requirements. The "Last Updated" date at the top indicates when the policy was
               last modified.
             </p>
-            <p style={{ marginTop: "12px" }}>
+            <p className="mt-3">
               Significant changes will be communicated via email or prominent notice on the platform.
               Continued use after changes constitutes acceptance.
             </p>
@@ -293,35 +286,33 @@ export default function PrivacyPage() {
               If you have questions, concerns, or requests regarding this Privacy Policy or your
               personal information, please contact us:
             </p>
-            <div style={{ marginTop: "16px", padding: "16px", background: colors.darkerCard, borderRadius: "8px" }}>
-              <p style={{ margin: "4px 0" }}>
+            <div className="mt-3 sm:mt-4 p-3 sm:p-4 rounded-lg" style={{ background: colors.darkerCard }}>
+              <p className="my-1">
                 <strong>Email:</strong>{" "}
-                <a href="mailto:bookmygame169@gmail.com" style={{ color: colors.cyan }}>
+                <a href="mailto:bookmygame169@gmail.com" className="break-all" style={{ color: colors.cyan }}>
                   bookmygame169@gmail.com
                 </a>
               </p>
-              <p style={{ margin: "4px 0" }}>
+              <p className="my-1">
                 <strong>Phone:</strong>{" "}
                 <a href="tel:+919910457855" style={{ color: colors.cyan }}>
                   +91 99104 57855
                 </a>
               </p>
-              <p style={{ margin: "4px 0" }}>
+              <p className="my-1">
                 <strong>Location:</strong> Delhi, India
               </p>
             </div>
           </Section>
 
           <div
+            className="mt-6 sm:mt-8 md:mt-10 p-4 sm:p-5 rounded-lg sm:rounded-xl"
             style={{
-              marginTop: "40px",
-              padding: "20px",
               background: "rgba(0, 240, 255, 0.1)",
               border: `1px solid ${colors.cyan}`,
-              borderRadius: "12px",
             }}
           >
-            <p style={{ fontSize: "14px", color: colors.textSecondary, margin: 0 }}>
+            <p className="text-xs sm:text-sm m-0" style={{ color: colors.textSecondary }}>
               Your privacy matters to us. We are committed to protecting your personal information
               and being transparent about how we use it. Thank you for trusting BookMyGame with your
               gaming experiences.
@@ -335,19 +326,17 @@ export default function PrivacyPage() {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section style={{ marginBottom: "40px" }}>
+    <section className="mb-6 sm:mb-8 md:mb-10">
       <h2
+        className="text-lg sm:text-xl md:text-2xl font-bold mb-3 sm:mb-4"
         style={{
-          fontSize: "22px",
-          fontWeight: 700,
-          marginBottom: "16px",
           color: colors.textPrimary,
           fontFamily: fonts.heading,
         }}
       >
         {title}
       </h2>
-      <div style={{ fontSize: "15px", lineHeight: 1.7, color: colors.textSecondary }}>
+      <div className="text-sm sm:text-base leading-relaxed" style={{ color: colors.textSecondary }}>
         {children}
       </div>
     </section>

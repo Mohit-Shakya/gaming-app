@@ -404,34 +404,36 @@ export default function DashboardPage() {
   }
 
   // Section Component
-  function BookingSection({ 
-    title, 
-    icon, 
-    items, 
-    emptyText, 
+  function BookingSection({
+    title,
+    icon,
+    items,
+    emptyText,
     emptyIcon,
-    showCancel 
-  }: { 
-    title: string; 
+    showCancel
+  }: {
+    title: string;
     icon: string;
-    items: BookingWithCafe[]; 
+    items: BookingWithCafe[];
     emptyText: string;
     emptyIcon: string;
     showCancel?: boolean;
   }) {
     return (
-      <section style={{ marginBottom: "28px" }}>
+      <section style={{ marginBottom: "24px" }}>
         <h2 style={{
-          fontSize: "13px",
+          fontSize: "12px",
           fontWeight: 600,
           color: colors.textSecondary,
           textTransform: "uppercase",
           letterSpacing: "1.5px",
-          marginBottom: "14px",
+          marginBottom: "12px",
           display: "flex",
           alignItems: "center",
           gap: "8px",
-        }}>
+        }}
+        className="section-heading"
+        >
           <span>{icon}</span> {title}
           {items.length > 0 && (
             <span style={{
@@ -553,10 +555,12 @@ export default function DashboardPage() {
       <div style={{
         maxWidth: "600px",
         margin: "0 auto",
-        padding: "20px 16px 40px",
+        padding: "16px 16px 40px",
         position: "relative",
         zIndex: 1,
-      }}>
+      }}
+      className="dashboard-container"
+      >
         {/* Header */}
         <header style={{ marginBottom: "24px" }}>
           <p style={{
@@ -570,11 +574,13 @@ export default function DashboardPage() {
           </p>
           <h1 style={{
             fontFamily: fonts.heading,
-            fontSize: "24px",
+            fontSize: "20px",
             fontWeight: 700,
             color: colors.textPrimary,
             margin: "0 0 8px 0",
-          }}>
+          }}
+          className="dashboard-title"
+          >
             Hey, {userName}! 👋
           </h1>
           <p style={{
@@ -590,81 +596,101 @@ export default function DashboardPage() {
           <div style={{
             display: "grid",
             gridTemplateColumns: "repeat(3, 1fr)",
-            gap: "12px",
-            marginBottom: "28px",
-          }}>
+            gap: "8px",
+            marginBottom: "20px",
+          }}
+          className="stats-grid"
+          >
             <div style={{
               background: colors.darkCard,
               border: `1px solid ${colors.border}`,
-              borderRadius: "14px",
-              padding: "16px",
+              borderRadius: "12px",
+              padding: "12px 8px",
               textAlign: "center",
-            }}>
+            }}
+            className="stat-card"
+            >
               <p style={{
                 fontFamily: fonts.heading,
-                fontSize: "24px",
+                fontSize: "20px",
                 fontWeight: 700,
                 color: colors.cyan,
                 marginBottom: "4px",
-              }}>
+              }}
+              className="stat-number"
+              >
                 {stats.total}
               </p>
               <p style={{
-                fontSize: "11px",
+                fontSize: "10px",
                 color: colors.textMuted,
                 textTransform: "uppercase",
                 letterSpacing: "0.5px",
-              }}>
+              }}
+              className="stat-label"
+              >
                 Total
               </p>
             </div>
             <div style={{
               background: colors.darkCard,
               border: `1px solid ${colors.border}`,
-              borderRadius: "14px",
-              padding: "16px",
+              borderRadius: "12px",
+              padding: "12px 8px",
               textAlign: "center",
-            }}>
+            }}
+            className="stat-card"
+            >
               <p style={{
                 fontFamily: fonts.heading,
-                fontSize: "24px",
+                fontSize: "20px",
                 fontWeight: 700,
                 color: colors.green,
                 marginBottom: "4px",
-              }}>
+              }}
+              className="stat-number"
+              >
                 {upcoming.length}
               </p>
               <p style={{
-                fontSize: "11px",
+                fontSize: "10px",
                 color: colors.textMuted,
                 textTransform: "uppercase",
                 letterSpacing: "0.5px",
-              }}>
+              }}
+              className="stat-label"
+              >
                 Upcoming
               </p>
             </div>
             <div style={{
               background: colors.darkCard,
               border: `1px solid ${colors.border}`,
-              borderRadius: "14px",
-              padding: "16px",
+              borderRadius: "12px",
+              padding: "12px 8px",
               textAlign: "center",
-            }}>
+            }}
+            className="stat-card"
+            >
               <p style={{
                 fontFamily: fonts.heading,
-                fontSize: "24px",
+                fontSize: "20px",
                 fontWeight: 700,
                 color: colors.red,
                 marginBottom: "4px",
-              }}>
+              }}
+              className="stat-number"
+              >
                 ₹{stats.totalSpent}
               </p>
               <p style={{
-                fontSize: "11px",
+                fontSize: "10px",
                 color: colors.textMuted,
                 textTransform: "uppercase",
                 letterSpacing: "0.5px",
-              }}>
+              }}
+              className="stat-label"
+              >
                 Spent
               </p>
             </div>
@@ -700,9 +726,10 @@ export default function DashboardPage() {
           style={{
             width: "100%",
             padding: "16px 20px",
+            minHeight: "48px",
             background: `linear-gradient(135deg, ${colors.red} 0%, #ff3366 100%)`,
             border: "none",
-            borderRadius: "14px",
+            borderRadius: "12px",
             color: "white",
             fontFamily: fonts.heading,
             fontSize: "14px",
@@ -714,9 +741,10 @@ export default function DashboardPage() {
             alignItems: "center",
             justifyContent: "center",
             gap: "10px",
-            marginBottom: "28px",
+            marginBottom: "20px",
             boxShadow: `0 8px 32px ${colors.red}40`,
           }}
+          className="book-button"
         >
           <span style={{ fontSize: "18px" }}>🎮</span>
           Book New Session
@@ -784,6 +812,40 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
+
+      {/* Responsive styles */}
+      <style>{`
+        @media (min-width: 640px) {
+          .dashboard-container {
+            padding: 20px 16px 40px !important;
+          }
+          .dashboard-title {
+            font-size: 24px !important;
+          }
+          .stats-grid {
+            gap: 12px !important;
+            margin-bottom: 28px !important;
+          }
+          .stat-card {
+            padding: 16px !important;
+            border-radius: 14px !important;
+          }
+          .stat-number {
+            font-size: 24px !important;
+          }
+          .stat-label {
+            font-size: 11px !important;
+          }
+          .book-button {
+            border-radius: 14px !important;
+            margin-bottom: 28px !important;
+          }
+          .section-heading {
+            font-size: 13px !important;
+            margin-bottom: 14px !important;
+          }
+        }
+      `}</style>
     </div>
   );
 } 

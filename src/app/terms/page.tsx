@@ -21,34 +21,28 @@ export default function TermsPage() {
         style={{
           maxWidth: "900px",
           margin: "0 auto",
-          padding: "40px 20px 80px",
+          padding: "16px",
         }}
+        className="sm:px-6 sm:py-10 md:px-8 md:py-12 lg:py-16"
       >
         {/* Back to Home */}
         <Link
           href="/"
+          className="inline-flex items-center gap-2 text-xs sm:text-sm mb-6 sm:mb-8 md:mb-10 transition-all hover:gap-3"
           style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: "8px",
-            fontSize: "14px",
             color: colors.cyan,
             textDecoration: "none",
-            marginBottom: "32px",
-            transition: "all 0.2s",
           }}
         >
           ← Back to Home
         </Link>
 
         {/* Header */}
-        <header style={{ marginBottom: "48px" }}>
+        <header className="mb-8 sm:mb-10 md:mb-12">
           <h1
+            className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold mb-3 sm:mb-4"
             style={{
               fontFamily: fonts.heading,
-              fontSize: "clamp(32px, 5vw, 48px)",
-              fontWeight: 800,
-              marginBottom: "16px",
               background: `linear-gradient(135deg, ${colors.red} 0%, ${colors.cyan} 100%)`,
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
@@ -57,18 +51,17 @@ export default function TermsPage() {
           >
             Terms of Service
           </h1>
-          <p style={{ fontSize: "16px", color: colors.textMuted }}>
+          <p className="text-sm sm:text-base" style={{ color: colors.textMuted }}>
             Last Updated: December 11, 2024
           </p>
         </header>
 
         {/* Content */}
         <div
+          className="p-4 sm:p-6 md:p-8 lg:p-10 rounded-lg sm:rounded-xl md:rounded-2xl"
           style={{
             background: colors.darkCard,
             border: `1px solid ${colors.border}`,
-            borderRadius: "16px",
-            padding: "40px",
           }}
         >
           <Section title="1. Acceptance of Terms">
@@ -86,7 +79,7 @@ export default function TermsPage() {
             <p>
               BookMyGame is India's premier gaming café booking platform that allows users to:
             </p>
-            <ul style={{ paddingLeft: "20px", marginTop: "12px" }}>
+            <ul className="pl-4 sm:pl-5 mt-3 space-y-1.5 sm:space-y-2">
               <li>Search and discover gaming cafés across India</li>
               <li>Book gaming sessions at partner cafés</li>
               <li>View café facilities, equipment, and pricing</li>
@@ -96,7 +89,7 @@ export default function TermsPage() {
           </Section>
 
           <Section title="3. User Accounts">
-            <h3 style={{ fontSize: "18px", fontWeight: 600, marginBottom: "12px", color: colors.textPrimary }}>
+            <h3 className="text-base sm:text-lg font-semibold mb-2 sm:mb-3" style={{ color: colors.textPrimary }}>
               3.1 Registration
             </h3>
             <p>
@@ -104,7 +97,7 @@ export default function TermsPage() {
               information. You may register using Google authentication or email.
             </p>
 
-            <h3 style={{ fontSize: "18px", fontWeight: 600, margin: "20px 0 12px", color: colors.textPrimary }}>
+            <h3 className="text-base sm:text-lg font-semibold mt-4 sm:mt-5 mb-2 sm:mb-3" style={{ color: colors.textPrimary }}>
               3.2 Account Security
             </h3>
             <p>
@@ -113,7 +106,7 @@ export default function TermsPage() {
               unauthorized access.
             </p>
 
-            <h3 style={{ fontSize: "18px", fontWeight: 600, margin: "20px 0 12px", color: colors.textPrimary }}>
+            <h3 className="text-base sm:text-lg font-semibold mt-4 sm:mt-5 mb-2 sm:mb-3" style={{ color: colors.textPrimary }}>
               3.3 Age Requirement
             </h3>
             <p>
@@ -123,7 +116,7 @@ export default function TermsPage() {
           </Section>
 
           <Section title="4. Booking and Payment">
-            <h3 style={{ fontSize: "18px", fontWeight: 600, marginBottom: "12px", color: colors.textPrimary }}>
+            <h3 className="text-base sm:text-lg font-semibold mb-2 sm:mb-3" style={{ color: colors.textPrimary }}>
               4.1 Booking Process
             </h3>
             <p>
@@ -131,7 +124,7 @@ export default function TermsPage() {
               for the gaming session. All bookings are subject to café availability.
             </p>
 
-            <h3 style={{ fontSize: "18px", fontWeight: 600, margin: "20px 0 12px", color: colors.textPrimary }}>
+            <h3 className="text-base sm:text-lg font-semibold mt-4 sm:mt-5 mb-2 sm:mb-3" style={{ color: colors.textPrimary }}>
               4.2 Payment
             </h3>
             <p>
@@ -139,7 +132,7 @@ export default function TermsPage() {
               wallets. All payments are processed securely through our payment partners.
             </p>
 
-            <h3 style={{ fontSize: "18px", fontWeight: 600, margin: "20px 0 12px", color: colors.textPrimary }}>
+            <h3 className="text-base sm:text-lg font-semibold mt-4 sm:mt-5 mb-2 sm:mb-3" style={{ color: colors.textPrimary }}>
               4.3 Pricing
             </h3>
             <p>
@@ -160,7 +153,7 @@ export default function TermsPage() {
 
           <Section title="6. User Conduct">
             <p>You agree NOT to:</p>
-            <ul style={{ paddingLeft: "20px", marginTop: "12px" }}>
+            <ul className="pl-4 sm:pl-5 mt-3 space-y-1.5 sm:space-y-2">
               <li>Provide false or misleading information</li>
               <li>Use the platform for any illegal or unauthorized purpose</li>
               <li>Interfere with or disrupt the platform's functionality</li>
@@ -176,13 +169,13 @@ export default function TermsPage() {
               Gaming cafés listed on BookMyGame are independent businesses. While we facilitate
               bookings, the cafés are responsible for:
             </p>
-            <ul style={{ paddingLeft: "20px", marginTop: "12px" }}>
+            <ul className="pl-4 sm:pl-5 mt-3 space-y-1.5 sm:space-y-2">
               <li>Providing the gaming equipment and facilities as advertised</li>
               <li>Maintaining a safe and clean environment</li>
               <li>Honoring confirmed bookings</li>
               <li>Resolving on-site issues and disputes</li>
             </ul>
-            <p style={{ marginTop: "12px" }}>
+            <p className="mt-3">
               BookMyGame acts as a booking platform and is not responsible for the quality of
               services provided by individual cafés.
             </p>
@@ -211,14 +204,14 @@ export default function TermsPage() {
               BookMyGame provides the platform "as is" without warranties of any kind. We are not
               liable for:
             </p>
-            <ul style={{ paddingLeft: "20px", marginTop: "12px" }}>
+            <ul className="pl-4 sm:pl-5 mt-3 space-y-1.5 sm:space-y-2">
               <li>Direct or indirect damages arising from platform use</li>
               <li>Loss of data, bookings, or account access</li>
               <li>Issues arising at gaming café premises</li>
               <li>Service interruptions or technical difficulties</li>
               <li>Actions or omissions of third-party cafés</li>
             </ul>
-            <p style={{ marginTop: "12px" }}>
+            <p className="mt-3">
               Our total liability shall not exceed the amount paid for the specific booking in
               question.
             </p>
@@ -232,7 +225,7 @@ export default function TermsPage() {
               </a>
               . We will work with you and the gaming café to resolve issues amicably.
             </p>
-            <p style={{ marginTop: "12px" }}>
+            <p className="mt-3">
               Any legal disputes shall be governed by the laws of India and subject to the
               jurisdiction of courts in Delhi, India.
             </p>
@@ -256,35 +249,33 @@ export default function TermsPage() {
 
           <Section title="14. Contact Information">
             <p>For questions or concerns about these Terms of Service, please contact us:</p>
-            <div style={{ marginTop: "16px", padding: "16px", background: colors.darkerCard, borderRadius: "8px" }}>
-              <p style={{ margin: "4px 0" }}>
+            <div className="mt-3 sm:mt-4 p-3 sm:p-4 rounded-lg" style={{ background: colors.darkerCard }}>
+              <p className="my-1">
                 <strong>Email:</strong>{" "}
-                <a href="mailto:bookmygame169@gmail.com" style={{ color: colors.cyan }}>
+                <a href="mailto:bookmygame169@gmail.com" className="break-all" style={{ color: colors.cyan }}>
                   bookmygame169@gmail.com
                 </a>
               </p>
-              <p style={{ margin: "4px 0" }}>
+              <p className="my-1">
                 <strong>Phone:</strong>{" "}
                 <a href="tel:+919910457855" style={{ color: colors.cyan }}>
                   +91 99104 57855
                 </a>
               </p>
-              <p style={{ margin: "4px 0" }}>
+              <p className="my-1">
                 <strong>Location:</strong> Delhi, India
               </p>
             </div>
           </Section>
 
           <div
+            className="mt-6 sm:mt-8 md:mt-10 p-4 sm:p-5 rounded-lg sm:rounded-xl"
             style={{
-              marginTop: "40px",
-              padding: "20px",
               background: "rgba(0, 240, 255, 0.1)",
               border: `1px solid ${colors.cyan}`,
-              borderRadius: "12px",
             }}
           >
-            <p style={{ fontSize: "14px", color: colors.textSecondary, margin: 0 }}>
+            <p className="text-xs sm:text-sm m-0" style={{ color: colors.textSecondary }}>
               By using BookMyGame, you acknowledge that you have read, understood, and agree to be
               bound by these Terms of Service.
             </p>
@@ -297,19 +288,17 @@ export default function TermsPage() {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section style={{ marginBottom: "40px" }}>
+    <section className="mb-6 sm:mb-8 md:mb-10">
       <h2
+        className="text-lg sm:text-xl md:text-2xl font-bold mb-3 sm:mb-4"
         style={{
-          fontSize: "22px",
-          fontWeight: 700,
-          marginBottom: "16px",
           color: colors.textPrimary,
           fontFamily: fonts.heading,
         }}
       >
         {title}
       </h2>
-      <div style={{ fontSize: "15px", lineHeight: 1.7, color: colors.textSecondary }}>
+      <div className="text-sm sm:text-base leading-relaxed" style={{ color: colors.textSecondary }}>
         {children}
       </div>
     </section>

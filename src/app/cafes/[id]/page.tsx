@@ -194,21 +194,21 @@ export default async function CafePage({ params }: CafePageProps) {
     background: `linear-gradient(145deg, rgba(18, 18, 24, 0.8) 0%, rgba(14, 14, 18, 0.9) 100%)`,
     backdropFilter: "blur(10px)",
     border: `1px solid ${colors.border}`,
-    borderRadius: "16px",
-    padding: "20px",
+    borderRadius: "12px",
+    padding: "16px",
   };
 
   const sectionTitleStyle: React.CSSProperties = {
     fontFamily: fonts.heading,
-    fontSize: "14px",
+    fontSize: "13px",
     fontWeight: 600,
     color: colors.red,
     textTransform: "uppercase",
-    letterSpacing: "2px",
-    marginBottom: "16px",
+    letterSpacing: "1.5px",
+    marginBottom: "12px",
     display: "flex",
     alignItems: "center",
-    gap: "10px",
+    gap: "8px",
   };
 
   return (
@@ -247,13 +247,14 @@ export default async function CafePage({ params }: CafePageProps) {
         style={{
           maxWidth: "1024px",
           margin: "0 auto",
-          padding: "24px 16px",
+          padding: "16px",
           position: "relative",
           zIndex: 1,
           display: "flex",
           flexDirection: "column",
-          gap: "24px",
+          gap: "16px",
         }}
+        className="cafe-detail-container"
       >
         {/* Hero Section */}
         <section
@@ -300,19 +301,20 @@ export default async function CafePage({ params }: CafePageProps) {
                   bottom: 0,
                   left: 0,
                   right: 0,
-                  padding: "20px",
+                  padding: "16px",
                   zIndex: 2,
                 }}
               >
                 <h1
                   style={{
                     fontFamily: fonts.heading,
-                    fontSize: "clamp(20px, 4vw, 32px)",
+                    fontSize: "20px",
                     fontWeight: 700,
                     color: colors.textPrimary,
                     textShadow: "0 2px 20px rgba(0, 0, 0, 0.5)",
                     marginBottom: "8px",
                   }}
+                  className="cafe-title"
                 >
                   {cafe.name}
                 </h1>
@@ -425,11 +427,12 @@ export default async function CafePage({ params }: CafePageProps) {
               background: `linear-gradient(145deg, rgba(20, 20, 28, 0.95) 0%, rgba(16, 16, 22, 0.98) 100%)`,
               backdropFilter: "blur(20px)",
               border: `1px solid rgba(255, 7, 58, 0.2)`,
-              borderRadius: "20px",
-              padding: "20px",
+              borderRadius: "16px",
+              padding: "16px",
               position: "relative",
               overflow: "hidden",
             }}
+            className="booking-card"
           >
             {/* Top accent line */}
             <div
@@ -447,11 +450,12 @@ export default async function CafePage({ params }: CafePageProps) {
             <h2
               style={{
                 fontFamily: fonts.heading,
-                fontSize: "18px",
+                fontSize: "16px",
                 fontWeight: 600,
                 color: colors.textPrimary,
-                marginBottom: "16px",
+                marginBottom: "12px",
               }}
+              className="booking-card-title"
             >
               {cafe.name}
             </h2>
@@ -614,7 +618,8 @@ export default async function CafePage({ params }: CafePageProps) {
               <button
                 style={{
                   width: "100%",
-                  padding: "14px 24px",
+                  padding: "16px 24px",
+                  minHeight: "48px",
                   background: `linear-gradient(135deg, ${colors.red} 0%, #ff3366 50%, ${colors.red} 100%)`,
                   border: "none",
                   borderRadius: "12px",
@@ -626,6 +631,7 @@ export default async function CafePage({ params }: CafePageProps) {
                   letterSpacing: "1px",
                   cursor: "pointer",
                 }}
+                className="book-button"
               >
                 🎮 Book Your Session
               </button>
@@ -868,6 +874,31 @@ export default async function CafePage({ params }: CafePageProps) {
         {/* Bottom spacing for mobile */}
         <div style={{ height: "80px" }} />
       </div>
+
+      {/* Responsive styles */}
+      <style>{`
+        @media (min-width: 640px) {
+          .cafe-detail-container {
+            padding: 24px !important;
+            gap: 24px !important;
+          }
+          .cafe-title {
+            font-size: 28px !important;
+          }
+          .booking-card {
+            padding: 20px !important;
+            border-radius: 20px !important;
+          }
+          .booking-card-title {
+            font-size: 18px !important;
+          }
+        }
+        @media (min-width: 768px) {
+          .cafe-title {
+            font-size: 32px !important;
+          }
+        }
+      `}</style>
     </main>
   );
 }

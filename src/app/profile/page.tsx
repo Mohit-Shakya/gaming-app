@@ -223,10 +223,12 @@ export default function ProfilePage() {
       <div style={{
         maxWidth: "500px",
         margin: "0 auto",
-        padding: "20px 16px 40px",
+        padding: "16px 16px 40px",
         position: "relative",
         zIndex: 1,
-      }}>
+      }}
+      className="profile-container"
+      >
         {/* Back Button */}
         <button
           onClick={() => router.back()}
@@ -251,13 +253,15 @@ export default function ProfilePage() {
         <section style={{
           background: `linear-gradient(135deg, rgba(255, 7, 58, 0.1) 0%, ${colors.darkCard} 50%, rgba(0, 240, 255, 0.1) 100%)`,
           border: `1px solid ${colors.border}`,
-          borderRadius: "24px",
-          padding: "32px 24px",
-          marginBottom: "20px",
+          borderRadius: "20px",
+          padding: "24px 16px",
+          marginBottom: "16px",
           position: "relative",
           overflow: "hidden",
           textAlign: "center",
-        }}>
+        }}
+        className="profile-header"
+        >
           {/* Decorative elements */}
           <div style={{
             position: "absolute",
@@ -270,13 +274,15 @@ export default function ProfilePage() {
 
           {/* Avatar */}
           <div style={{
-            width: "100px",
-            height: "100px",
-            margin: "0 auto 16px",
+            width: "80px",
+            height: "80px",
+            margin: "0 auto 12px",
             borderRadius: "50%",
             background: `linear-gradient(135deg, ${colors.red} 0%, ${colors.purple} 50%, ${colors.cyan} 100%)`,
             padding: "3px",
-          }}>
+          }}
+          className="avatar-wrapper"
+          >
             <div style={{
               width: "100%",
               height: "100%",
@@ -288,13 +294,15 @@ export default function ProfilePage() {
             }}>
               <span style={{
                 fontFamily: fonts.heading,
-                fontSize: "32px",
+                fontSize: "28px",
                 fontWeight: 700,
                 background: `linear-gradient(135deg, ${colors.red} 0%, ${colors.cyan} 100%)`,
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
                 backgroundClip: "text",
-              }}>
+              }}
+              className="avatar-initials"
+              >
                 {initials}
               </span>
             </div>
@@ -303,11 +311,13 @@ export default function ProfilePage() {
           {/* Name */}
           <h1 style={{
             fontFamily: fonts.heading,
-            fontSize: "24px",
+            fontSize: "20px",
             fontWeight: 700,
             color: colors.textPrimary,
-            marginBottom: "8px",
-          }}>
+            marginBottom: "6px",
+          }}
+          className="profile-name"
+          >
             {displayName}
           </h1>
 
@@ -344,26 +354,32 @@ export default function ProfilePage() {
         <div style={{
           display: "grid",
           gridTemplateColumns: "1fr 1fr",
-          gap: "12px",
-          marginBottom: "20px",
-        }}>
+          gap: "10px",
+          marginBottom: "16px",
+        }}
+        className="stats-grid"
+        >
           <Link href="/dashboard" style={{ textDecoration: "none" }}>
             <div style={{
               background: colors.darkCard,
               border: `1px solid ${colors.border}`,
-              borderRadius: "16px",
-              padding: "20px",
+              borderRadius: "14px",
+              padding: "16px",
               textAlign: "center",
               transition: "all 0.2s ease",
               cursor: "pointer",
-            }}>
+            }}
+            className="stat-card"
+            >
               <p style={{
                 fontFamily: fonts.heading,
-                fontSize: "32px",
+                fontSize: "28px",
                 fontWeight: 700,
                 color: colors.cyan,
                 marginBottom: "4px",
-              }}>
+              }}
+              className="stat-number"
+              >
                 {bookingStats.total}
               </p>
               <p style={{
@@ -381,19 +397,23 @@ export default function ProfilePage() {
             <div style={{
               background: colors.darkCard,
               border: `1px solid ${colors.border}`,
-              borderRadius: "16px",
-              padding: "20px",
+              borderRadius: "14px",
+              padding: "16px",
               textAlign: "center",
               transition: "all 0.2s ease",
               cursor: "pointer",
-            }}>
+            }}
+            className="stat-card"
+            >
               <p style={{
                 fontFamily: fonts.heading,
-                fontSize: "32px",
+                fontSize: "28px",
                 fontWeight: 700,
                 color: colors.green,
                 marginBottom: "4px",
-              }}>
+              }}
+              className="stat-number"
+              >
                 {bookingStats.upcoming}
               </p>
               <p style={{
@@ -449,10 +469,12 @@ export default function ProfilePage() {
         <section style={{
           background: colors.darkCard,
           border: `1px solid ${colors.border}`,
-          borderRadius: "20px",
-          padding: "20px",
+          borderRadius: "16px",
+          padding: "16px",
           marginBottom: "16px",
-        }}>
+        }}
+        className="details-section"
+        >
           <div style={{
             display: "flex",
             alignItems: "center",
@@ -713,10 +735,12 @@ export default function ProfilePage() {
         <section style={{
           background: colors.darkCard,
           border: `1px solid ${colors.border}`,
-          borderRadius: "20px",
-          padding: "20px",
+          borderRadius: "16px",
+          padding: "16px",
           marginBottom: "16px",
-        }}>
+        }}
+        className="actions-section"
+        >
           <h2 style={{
             fontSize: "14px",
             fontWeight: 600,
@@ -836,9 +860,11 @@ export default function ProfilePage() {
         <section style={{
           background: "rgba(239, 68, 68, 0.08)",
           border: `1px solid rgba(239, 68, 68, 0.2)`,
-          borderRadius: "20px",
-          padding: "20px",
-        }}>
+          borderRadius: "16px",
+          padding: "16px",
+        }}
+        className="logout-section"
+        >
           <div style={{
             display: "flex",
             alignItems: "center",
@@ -876,6 +902,7 @@ export default function ProfilePage() {
               onClick={handleLogout}
               style={{
                 padding: "10px 20px",
+                minHeight: "44px",
                 background: "rgba(239, 68, 68, 0.2)",
                 border: `1px solid rgba(239, 68, 68, 0.4)`,
                 borderRadius: "10px",
@@ -884,6 +911,7 @@ export default function ProfilePage() {
                 fontWeight: 600,
                 cursor: "pointer",
               }}
+              className="logout-button"
             >
               Log Out
             </button>
@@ -900,6 +928,45 @@ export default function ProfilePage() {
         }
         input:focus {
           border-color: ${colors.cyan} !important;
+        }
+
+        /* Mobile-first responsive styles */
+        @media (min-width: 640px) {
+          .profile-container {
+            padding: 20px 16px 40px !important;
+          }
+          .profile-header {
+            border-radius: 24px !important;
+            padding: 32px 24px !important;
+            margin-bottom: 20px !important;
+          }
+          .avatar-wrapper {
+            width: 100px !important;
+            height: 100px !important;
+            margin-bottom: 16px !important;
+          }
+          .avatar-initials {
+            font-size: 32px !important;
+          }
+          .profile-name {
+            font-size: 24px !important;
+            margin-bottom: 8px !important;
+          }
+          .stats-grid {
+            gap: 12px !important;
+            margin-bottom: 20px !important;
+          }
+          .stat-card {
+            padding: 20px !important;
+            border-radius: 16px !important;
+          }
+          .stat-number {
+            font-size: 32px !important;
+          }
+          .details-section, .actions-section, .logout-section {
+            border-radius: 20px !important;
+            padding: 20px !important;
+          }
         }
       `}</style>
     </main>

@@ -21,34 +21,28 @@ export default function RefundPage() {
         style={{
           maxWidth: "900px",
           margin: "0 auto",
-          padding: "40px 20px 80px",
+          padding: "16px",
         }}
+        className="sm:px-6 sm:py-10 md:px-8 md:py-12 lg:py-16"
       >
         {/* Back to Home */}
         <Link
           href="/"
+          className="inline-flex items-center gap-2 text-xs sm:text-sm mb-6 sm:mb-8 md:mb-10 transition-all hover:gap-3"
           style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: "8px",
-            fontSize: "14px",
             color: colors.cyan,
             textDecoration: "none",
-            marginBottom: "32px",
-            transition: "all 0.2s",
           }}
         >
           ← Back to Home
         </Link>
 
         {/* Header */}
-        <header style={{ marginBottom: "48px" }}>
+        <header className="mb-8 sm:mb-10 md:mb-12">
           <h1
+            className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold mb-3 sm:mb-4"
             style={{
               fontFamily: fonts.heading,
-              fontSize: "clamp(32px, 5vw, 48px)",
-              fontWeight: 800,
-              marginBottom: "16px",
               background: `linear-gradient(135deg, ${colors.red} 0%, ${colors.cyan} 100%)`,
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
@@ -57,18 +51,17 @@ export default function RefundPage() {
           >
             Refund Policy
           </h1>
-          <p style={{ fontSize: "16px", color: colors.textMuted }}>
+          <p className="text-sm sm:text-base" style={{ color: colors.textMuted }}>
             Last Updated: December 11, 2024
           </p>
         </header>
 
         {/* Content */}
         <div
+          className="p-4 sm:p-6 md:p-8 lg:p-10 rounded-lg sm:rounded-xl md:rounded-2xl"
           style={{
             background: colors.darkCard,
             border: `1px solid ${colors.border}`,
-            borderRadius: "16px",
-            padding: "40px",
           }}
         >
           <Section title="1. Overview">
@@ -80,85 +73,76 @@ export default function RefundPage() {
               </a>
               .
             </p>
-            <p style={{ marginTop: "12px" }}>
+            <p className="mt-3">
               Please read this policy carefully before making a booking, as refund eligibility
               depends on when you cancel.
             </p>
           </Section>
 
           <Section title="2. Cancellation Windows">
-            <div
-              style={{
-                display: "grid",
-                gap: "16px",
-                marginTop: "16px",
-              }}
-            >
+            <div className="grid gap-3 sm:gap-4 mt-3 sm:mt-4">
               {/* Full Refund */}
               <div
+                className="p-4 sm:p-5 rounded-lg sm:rounded-xl"
                 style={{
-                  padding: "20px",
                   background: "rgba(34, 197, 94, 0.1)",
                   border: "2px solid rgba(34, 197, 94, 0.3)",
-                  borderRadius: "12px",
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "8px" }}>
-                  <span style={{ fontSize: "24px" }}>✅</span>
-                  <h3 style={{ fontSize: "18px", fontWeight: 600, color: colors.green, margin: 0 }}>
+                <div className="flex items-center gap-2 sm:gap-3 mb-2">
+                  <span className="text-xl sm:text-2xl">✅</span>
+                  <h3 className="text-base sm:text-lg font-semibold m-0" style={{ color: colors.green }}>
                     Full Refund (100%)
                   </h3>
                 </div>
-                <p style={{ margin: "8px 0 0 36px", color: colors.textSecondary }}>
+                <p className="mt-2 ml-7 sm:ml-9" style={{ color: colors.textSecondary }}>
                   Cancel <strong>24+ hours before</strong> your scheduled session
                 </p>
-                <p style={{ margin: "4px 0 0 36px", fontSize: "13px", color: colors.textMuted }}>
+                <p className="mt-1 ml-7 sm:ml-9 text-xs sm:text-sm" style={{ color: colors.textMuted }}>
                   Full booking amount refunded to your original payment method within 5-7 business days
                 </p>
               </div>
 
               {/* Partial Refund */}
               <div
+                className="p-4 sm:p-5 rounded-lg sm:rounded-xl"
                 style={{
-                  padding: "20px",
                   background: "rgba(255, 193, 7, 0.1)",
                   border: "2px solid rgba(255, 193, 7, 0.3)",
-                  borderRadius: "12px",
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "8px" }}>
-                  <span style={{ fontSize: "24px" }}>⚠️</span>
-                  <h3 style={{ fontSize: "18px", fontWeight: 600, color: colors.orange, margin: 0 }}>
+                <div className="flex items-center gap-2 sm:gap-3 mb-2">
+                  <span className="text-xl sm:text-2xl">⚠️</span>
+                  <h3 className="text-base sm:text-lg font-semibold m-0" style={{ color: colors.orange }}>
                     Partial Refund (50%)
                   </h3>
                 </div>
-                <p style={{ margin: "8px 0 0 36px", color: colors.textSecondary }}>
+                <p className="mt-2 ml-7 sm:ml-9" style={{ color: colors.textSecondary }}>
                   Cancel <strong>6-24 hours before</strong> your scheduled session
                 </p>
-                <p style={{ margin: "4px 0 0 36px", fontSize: "13px", color: colors.textMuted }}>
+                <p className="mt-1 ml-7 sm:ml-9 text-xs sm:text-sm" style={{ color: colors.textMuted }}>
                   50% of booking amount refunded; 50% charged as cancellation fee
                 </p>
               </div>
 
               {/* No Refund */}
               <div
+                className="p-4 sm:p-5 rounded-lg sm:rounded-xl"
                 style={{
-                  padding: "20px",
                   background: "rgba(239, 68, 68, 0.1)",
                   border: "2px solid rgba(239, 68, 68, 0.3)",
-                  borderRadius: "12px",
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "8px" }}>
-                  <span style={{ fontSize: "24px" }}>❌</span>
-                  <h3 style={{ fontSize: "18px", fontWeight: 600, color: colors.red, margin: 0 }}>
+                <div className="flex items-center gap-2 sm:gap-3 mb-2">
+                  <span className="text-xl sm:text-2xl">❌</span>
+                  <h3 className="text-base sm:text-lg font-semibold m-0" style={{ color: colors.red }}>
                     No Refund (0%)
                   </h3>
                 </div>
-                <p style={{ margin: "8px 0 0 36px", color: colors.textSecondary }}>
+                <p className="mt-2 ml-7 sm:ml-9" style={{ color: colors.textSecondary }}>
                   Cancel <strong>less than 6 hours before</strong> or no-show
                 </p>
-                <p style={{ margin: "4px 0 0 36px", fontSize: "13px", color: colors.textMuted }}>
+                <p className="mt-1 ml-7 sm:ml-9 text-xs sm:text-sm" style={{ color: colors.textMuted }}>
                   Full amount forfeited; no refund provided
                 </p>
               </div>
@@ -166,11 +150,11 @@ export default function RefundPage() {
           </Section>
 
           <Section title="3. How to Cancel a Booking">
-            <h3 style={{ fontSize: "18px", fontWeight: 600, marginBottom: "12px", color: colors.textPrimary }}>
+            <h3 className="text-base sm:text-lg font-semibold mb-2 sm:mb-3" style={{ color: colors.textPrimary }}>
               3.1 Online Cancellation
             </h3>
             <p>You can cancel your booking through your account:</p>
-            <ol style={{ paddingLeft: "20px", marginTop: "12px" }}>
+            <ol className="pl-4 sm:pl-5 mt-3 space-y-1.5 sm:space-y-2">
               <li>Log in to your BookMyGame account</li>
               <li>Go to "My Bookings" in your dashboard</li>
               <li>Find the booking you want to cancel</li>
@@ -178,11 +162,11 @@ export default function RefundPage() {
               <li>You'll receive an email confirmation with refund details</li>
             </ol>
 
-            <h3 style={{ fontSize: "18px", fontWeight: 600, margin: "20px 0 12px", color: colors.textPrimary }}>
+            <h3 className="text-base sm:text-lg font-semibold mt-4 sm:mt-5 mb-2 sm:mb-3" style={{ color: colors.textPrimary }}>
               3.2 Customer Support Cancellation
             </h3>
             <p>If you're unable to cancel online, contact us immediately:</p>
-            <ul style={{ paddingLeft: "20px", marginTop: "12px" }}>
+            <ul className="pl-4 sm:pl-5 mt-3 space-y-1.5 sm:space-y-2">
               <li>
                 Email:{" "}
                 <a href="mailto:bookmygame169@gmail.com" style={{ color: colors.cyan }}>
@@ -196,92 +180,92 @@ export default function RefundPage() {
                 </a>
               </li>
             </ul>
-            <p style={{ marginTop: "12px", fontSize: "14px", color: colors.textMuted }}>
+            <p className="mt-3 text-xs sm:text-sm" style={{ color: colors.textMuted }}>
               Include your booking ID and reason for cancellation in your request.
             </p>
           </Section>
 
           <Section title="4. Refund Processing">
-            <h3 style={{ fontSize: "18px", fontWeight: 600, marginBottom: "12px", color: colors.textPrimary }}>
+            <h3 className="text-base sm:text-lg font-semibold mb-2 sm:mb-3" style={{ color: colors.textPrimary }}>
               4.1 Refund Method
             </h3>
             <p>
               Refunds are processed to your original payment method:
             </p>
-            <ul style={{ paddingLeft: "20px", marginTop: "12px" }}>
+            <ul className="pl-4 sm:pl-5 mt-3 space-y-1.5 sm:space-y-2">
               <li><strong>UPI/Digital Wallets:</strong> 3-5 business days</li>
               <li><strong>Credit/Debit Cards:</strong> 5-7 business days</li>
               <li><strong>Net Banking:</strong> 5-7 business days</li>
             </ul>
 
-            <h3 style={{ fontSize: "18px", fontWeight: 600, margin: "20px 0 12px", color: colors.textPrimary }}>
+            <h3 className="text-base sm:text-lg font-semibold mt-4 sm:mt-5 mb-2 sm:mb-3" style={{ color: colors.textPrimary }}>
               4.2 Refund Confirmation
             </h3>
             <p>
               You'll receive an email confirmation when:
             </p>
-            <ul style={{ paddingLeft: "20px", marginTop: "12px" }}>
+            <ul className="pl-4 sm:pl-5 mt-3 space-y-1.5 sm:space-y-2">
               <li>Your cancellation is processed</li>
               <li>Refund amount is calculated</li>
               <li>Refund is initiated to your payment method</li>
             </ul>
-            <p style={{ marginTop: "12px", padding: "12px", background: colors.darkerCard, borderRadius: "8px" }}>
+            <p className="mt-3 p-3 sm:p-4 rounded-lg" style={{ background: colors.darkerCard }}>
               <strong>Note:</strong> The actual time for the refund to appear in your account depends
               on your bank or payment provider's processing time.
             </p>
           </Section>
 
           <Section title="5. Special Circumstances">
-            <h3 style={{ fontSize: "18px", fontWeight: 600, marginBottom: "12px", color: colors.textPrimary }}>
+            <h3 className="text-base sm:text-lg font-semibold mb-2 sm:mb-3" style={{ color: colors.textPrimary }}>
               5.1 Gaming Café Cancellations
             </h3>
             <p>
               If a gaming café cancels your booking or is unable to provide the booked service:
             </p>
-            <ul style={{ paddingLeft: "20px", marginTop: "12px" }}>
+            <ul className="pl-4 sm:pl-5 mt-3 space-y-1.5 sm:space-y-2">
               <li><strong>Full refund (100%)</strong> regardless of timing</li>
               <li>Refund processed within 3-5 business days</li>
               <li>We'll help you find an alternative café if needed</li>
             </ul>
 
-            <h3 style={{ fontSize: "18px", fontWeight: 600, margin: "20px 0 12px", color: colors.textPrimary }}>
+            <h3 className="text-base sm:text-lg font-semibold mt-4 sm:mt-5 mb-2 sm:mb-3" style={{ color: colors.textPrimary }}>
               5.2 Technical Issues
             </h3>
             <p>
               If you experience technical issues at the café (equipment malfunction, internet outage):
             </p>
-            <ul style={{ paddingLeft: "20px", marginTop: "12px" }}>
+            <ul className="pl-4 sm:pl-5 mt-3 space-y-1.5 sm:space-y-2">
               <li>Report the issue to café staff immediately</li>
               <li>Contact BookMyGame support within 24 hours</li>
               <li>We'll investigate and issue a partial or full refund if appropriate</li>
             </ul>
 
-            <h3 style={{ fontSize: "18px", fontWeight: 600, margin: "20px 0 12px", color: colors.textPrimary }}>
+            <h3 className="text-base sm:text-lg font-semibold mt-4 sm:mt-5 mb-2 sm:mb-3" style={{ color: colors.textPrimary }}>
               5.3 Medical Emergencies
             </h3>
             <p>
               In case of genuine medical emergencies with valid documentation:
             </p>
-            <ul style={{ paddingLeft: "20px", marginTop: "12px" }}>
+            <ul className="pl-4 sm:pl-5 mt-3 space-y-1.5 sm:space-y-2">
               <li>Contact support within 48 hours with medical proof</li>
               <li>We may offer a full refund or reschedule option</li>
               <li>Each case is reviewed individually</li>
             </ul>
 
-            <h3 style={{ fontSize: "18px", fontWeight: 600, margin: "20px 0 12px", color: colors.textPrimary }}>
+            <h3 className="text-base sm:text-lg font-semibold mt-4 sm:mt-5 mb-2 sm:mb-3" style={{ color: colors.textPrimary }}>
               5.4 Natural Disasters / Force Majeure
             </h3>
             <p>
               For cancellations due to natural disasters, severe weather, or other force majeure events:
             </p>
-            <ul style={{ paddingLeft: "20px", marginTop: "12px" }}>
+            <ul className="pl-4 sm:pl-5 mt-3 space-y-1.5 sm:space-y-2">
               <li>Full refund or free rescheduling option</li>
               <li>Applies to both user and café-initiated cancellations</li>
             </ul>
           </Section>
 
           <Section title="6. Rescheduling Policy">
-            <h3 style={{ fontSize: "18px", fontWeight: 600, marginBottom: "12px", color: colors.textPrimary }}>
+            <h3 className="text-base sm:text-lg font-semibold mb-2 sm:mb-3" style={{ color: colors.textPrimary }}>
               6.1 Free Rescheduling
             </h3>
             <p>
@@ -289,23 +273,23 @@ export default function RefundPage() {
               <strong>12 hours before</strong> your scheduled session.
             </p>
 
-            <h3 style={{ fontSize: "18px", fontWeight: 600, margin: "20px 0 12px", color: colors.textPrimary }}>
+            <h3 className="text-base sm:text-lg font-semibold mt-4 sm:mt-5 mb-2 sm:mb-3" style={{ color: colors.textPrimary }}>
               6.2 How to Reschedule
             </h3>
-            <ol style={{ paddingLeft: "20px", marginTop: "12px" }}>
+            <ol className="pl-4 sm:pl-5 mt-3 space-y-1.5 sm:space-y-2">
               <li>Go to "My Bookings" in your dashboard</li>
               <li>Select the booking you want to reschedule</li>
               <li>Click "Reschedule" and choose a new date/time</li>
               <li>Subject to availability at the gaming café</li>
             </ol>
-            <p style={{ marginTop: "12px", fontSize: "14px", color: colors.textMuted }}>
+            <p className="mt-3 text-xs sm:text-sm" style={{ color: colors.textMuted }}>
               Multiple rescheduling attempts may be subject to cancellation fees.
             </p>
           </Section>
 
           <Section title="7. Non-Refundable Scenarios">
             <p>The following situations are <strong>not eligible for refunds</strong>:</p>
-            <ul style={{ paddingLeft: "20px", marginTop: "12px" }}>
+            <ul className="pl-4 sm:pl-5 mt-3 space-y-1.5 sm:space-y-2">
               <li>
                 <strong>No-shows:</strong> Failing to show up for your booking without cancellation
               </li>
@@ -331,7 +315,7 @@ export default function RefundPage() {
             <p>
               If you disagree with a refund decision or have concerns:
             </p>
-            <ol style={{ paddingLeft: "20px", marginTop: "12px" }}>
+            <ol className="pl-4 sm:pl-5 mt-3 space-y-1.5 sm:space-y-2">
               <li>
                 Contact our support team at{" "}
                 <a href="mailto:bookmygame169@gmail.com" style={{ color: colors.cyan }}>
@@ -342,7 +326,7 @@ export default function RefundPage() {
               <li>We'll review your case within 2-3 business days</li>
               <li>Our decision will be communicated via email</li>
             </ol>
-            <p style={{ marginTop: "12px" }}>
+            <p className="mt-3">
               For unresolved disputes, refer to our{" "}
               <a href="/terms" style={{ color: colors.cyan }}>
                 Terms of Service
@@ -368,38 +352,36 @@ export default function RefundPage() {
 
           <Section title="11. Contact Information">
             <p>For questions about refunds or cancellations, reach out to us:</p>
-            <div style={{ marginTop: "16px", padding: "16px", background: colors.darkerCard, borderRadius: "8px" }}>
-              <p style={{ margin: "4px 0" }}>
+            <div className="mt-3 sm:mt-4 p-3 sm:p-4 rounded-lg" style={{ background: colors.darkerCard }}>
+              <p className="my-1">
                 <strong>Email:</strong>{" "}
-                <a href="mailto:bookmygame169@gmail.com" style={{ color: colors.cyan }}>
+                <a href="mailto:bookmygame169@gmail.com" className="break-all" style={{ color: colors.cyan }}>
                   bookmygame169@gmail.com
                 </a>
               </p>
-              <p style={{ margin: "4px 0" }}>
+              <p className="my-1">
                 <strong>Phone:</strong>{" "}
                 <a href="tel:+919910457855" style={{ color: colors.cyan }}>
                   +91 99104 57855
                 </a>
               </p>
-              <p style={{ margin: "4px 0" }}>
+              <p className="my-1">
                 <strong>Support Hours:</strong> Monday-Sunday, 10:00 AM - 10:00 PM IST
               </p>
             </div>
           </Section>
 
           <div
+            className="mt-6 sm:mt-8 md:mt-10 p-4 sm:p-5 rounded-lg sm:rounded-xl"
             style={{
-              marginTop: "40px",
-              padding: "20px",
               background: "rgba(0, 240, 255, 0.1)",
               border: `1px solid ${colors.cyan}`,
-              borderRadius: "12px",
             }}
           >
-            <p style={{ fontSize: "14px", color: colors.textSecondary, margin: "0 0 8px 0" }}>
+            <p className="text-xs sm:text-sm m-0 mb-2" style={{ color: colors.textSecondary }}>
               <strong>Pro Tip:</strong> To avoid cancellation fees, we recommend:
             </p>
-            <ul style={{ paddingLeft: "20px", margin: "8px 0 0 0", fontSize: "14px", color: colors.textSecondary }}>
+            <ul className="pl-4 sm:pl-5 mt-2 space-y-1 text-xs sm:text-sm" style={{ color: colors.textSecondary }}>
               <li>Book only when you're certain about your plans</li>
               <li>Cancel as early as possible if plans change</li>
               <li>Use the free rescheduling option if you need flexibility</li>
@@ -414,19 +396,17 @@ export default function RefundPage() {
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section style={{ marginBottom: "40px" }}>
+    <section className="mb-6 sm:mb-8 md:mb-10">
       <h2
+        className="text-lg sm:text-xl md:text-2xl font-bold mb-3 sm:mb-4"
         style={{
-          fontSize: "22px",
-          fontWeight: 700,
-          marginBottom: "16px",
           color: colors.textPrimary,
           fontFamily: fonts.heading,
         }}
       >
         {title}
       </h2>
-      <div style={{ fontSize: "15px", lineHeight: 1.7, color: colors.textSecondary }}>
+      <div className="text-sm sm:text-base leading-relaxed" style={{ color: colors.textSecondary }}>
         {children}
       </div>
     </section>
