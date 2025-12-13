@@ -150,7 +150,17 @@ function minutesToTimeString(totalMinutes: number): string {
   return `${displayHours}:${mins.toString().padStart(2, "0")} ${period}`;
 }
 
-function generateTickets(consoleId: ConsoleId, pricingTier: { qty1: number | null; qty2: number | null; qty3: number | null; qty4: number | null } | null, fallbackPrice: number): TicketOption[] {
+function generateTickets(
+  consoleId: ConsoleId,
+  pricingTier: {
+    qty1_30min: number | null; qty1_60min: number | null;
+    qty2_30min: number | null; qty2_60min: number | null;
+    qty3_30min: number | null; qty3_60min: number | null;
+    qty4_30min: number | null; qty4_60min: number | null;
+  } | null,
+  fallbackPrice: number,
+  duration: 30 | 60
+): TicketOption[] {
   const consoleName = CONSOLES.find((c) => c.id === consoleId)?.label || consoleId;
   const tickets: TicketOption[] = [];
 
@@ -165,11 +175,20 @@ function generateTickets(consoleId: ConsoleId, pricingTier: { qty1: number | nul
 
     // Use tier-based pricing if available, otherwise fallback to simple multiplication
     if (pricingTier) {
-      const qtyKey = `qty${qty}` as 'qty1' | 'qty2' | 'qty3' | 'qty4';
-      price = pricingTier[qtyKey] ?? (fallbackPrice * qty);
+      const qtyKey = `qty${qty}_${duration}min` as keyof typeof pricingTier;
+      const tierPrice = pricingTier[qtyKey];
+
+      if (tierPrice !== null && tierPrice !== undefined) {
+        price = tierPrice;
+      } else {
+        // Fallback: calculate based on duration ratio
+        price = duration === 30 ? (fallbackPrice * qty * 0.5) : (fallbackPrice * qty);
+      }
     } else {
-      price = fallbackPrice * qty;
+      price = duration === 30 ? (fallbackPrice * qty * 0.5) : (fallbackPrice * qty);
     }
+
+    const durationText = duration === 30 ? "30 minutes" : "1 hour";
 
     tickets.push({
       id: `${consoleId}_${qty}`,
@@ -177,7 +196,7 @@ function generateTickets(consoleId: ConsoleId, pricingTier: { qty1: number | nul
       title: `${consoleName} | ${qty} Console${qty > 1 ? "s" : ""}`,
       players: qty,
       price: price,
-      description: `${qty} ${consoleName} console${qty > 1 ? "s" : ""} for 60 minutes.`,
+      description: `${qty} ${consoleName} console${qty > 1 ? "s" : ""} for ${durationText}.`,
     });
   }
   return tickets;
@@ -250,13 +269,18 @@ export default function BookingPage() {
   const [cafePrice, setCafePrice] = useState<number>(150);
 
   type ConsolePricingTier = {
-    qty1: number | null;
-    qty2: number | null;
-    qty3: number | null;
-    qty4: number | null;
+    qty1_30min: number | null;
+    qty1_60min: number | null;
+    qty2_30min: number | null;
+    qty2_60min: number | null;
+    qty3_30min: number | null;
+    qty3_60min: number | null;
+    qty4_30min: number | null;
+    qty4_60min: number | null;
   };
 
   const [consolePricing, setConsolePricing] = useState<Partial<Record<ConsoleId, ConsolePricingTier>>>({});
+  const [selectedDuration, setSelectedDuration] = useState<30 | 60>(60);
   const [consoleLimits, setConsoleLimits] = useState<Partial<Record<ConsoleId, number>>>({});
   const [availableConsoles, setAvailableConsoles] = useState<ConsoleId[]>([]);
   const [loading, setLoading] = useState(true);
@@ -310,10 +334,10 @@ export default function BookingPage() {
           setSelectedConsole(available[0]);
         }
 
-        // Load console pricing from database
+        // Load console pricing from database (both 30min and 60min)
         const { data: pricingData, error: pricingError } = await supabase
           .from("console_pricing")
-          .select("console_type, quantity, hourly_price")
+          .select("console_type, quantity, duration_minutes, price")
           .eq("cafe_id", cafeId);
 
         if (!pricingError && pricingData) {
@@ -329,14 +353,20 @@ export default function BookingPage() {
 
             // Initialize tier object if not exists
             if (!pricing[consoleId]) {
-              pricing[consoleId] = { qty1: null, qty2: null, qty3: null, qty4: null };
+              pricing[consoleId] = {
+                qty1_30min: null, qty1_60min: null,
+                qty2_30min: null, qty2_60min: null,
+                qty3_30min: null, qty3_60min: null,
+                qty4_30min: null, qty4_60min: null,
+              };
             }
 
-            // Set the price for the specific quantity
+            // Set the price for the specific quantity and duration
             const qty = item.quantity;
-            if (qty >= 1 && qty <= 4) {
-              const qtyKey = `qty${qty}` as keyof ConsolePricingTier;
-              pricing[consoleId]![qtyKey] = item.hourly_price;
+            const duration = item.duration_minutes;
+            if (qty >= 1 && qty <= 4 && (duration === 30 || duration === 60)) {
+              const qtyKey = `qty${qty}_${duration}min` as keyof ConsolePricingTier;
+              pricing[consoleId]![qtyKey] = item.price;
             }
           });
 
@@ -412,7 +442,7 @@ export default function BookingPage() {
         const bookingStartMinutes = timeStringToMinutes(booking.start_time || "");
         const bookingEndMinutes = bookingStartMinutes + BOOKING_DURATION_MINUTES;
 
-        if (doTimeSlotsOverlap(selectedTimeMinutes, bookingStartMinutes, BOOKING_DURATION_MINUTES)) {
+        if (doTimeSlotsOverlap(selectedTimeMinutes, bookingStartMinutes, selectedDuration)) {
           (booking.booking_items ?? []).forEach((item: any) => {
             const consoleId = item.console as ConsoleId;
             if (consoleId && availability[consoleId]) {
@@ -456,7 +486,7 @@ export default function BookingPage() {
     } finally {
       setLoadingAvailability(false);
     }
-  }, [cafeId, selectedDate, selectedTime, availableConsoles, consoleLimits]);
+  }, [cafeId, selectedDate, selectedTime, availableConsoles, consoleLimits, selectedDuration]);
 
   useEffect(() => {
     fetchLiveAvailability();
@@ -505,8 +535,8 @@ export default function BookingPage() {
 
   const tickets = useMemo(() => {
     const pricingTier = consolePricing[selectedConsole] ?? null;
-    return generateTickets(selectedConsole, pricingTier, cafePrice);
-  }, [selectedConsole, consolePricing, cafePrice]);
+    return generateTickets(selectedConsole, pricingTier, cafePrice, selectedDuration);
+  }, [selectedConsole, consolePricing, cafePrice, selectedDuration]);
 
   const usedPerConsole = useMemo(() => {
     const map: Partial<Record<ConsoleId, number>> = {};
@@ -525,7 +555,7 @@ export default function BookingPage() {
       if (qty <= 0) return;
       const consoleId = ticketId.split("_")[0] as ConsoleId;
       const pricingTier = consolePricing[consoleId] ?? null;
-      const consoleTickets = generateTickets(consoleId, pricingTier, cafePrice);
+      const consoleTickets = generateTickets(consoleId, pricingTier, cafePrice, selectedDuration);
       const ticket = consoleTickets.find((t) => t.id === ticketId);
       if (ticket) {
         totalTickets += qty;
@@ -534,7 +564,7 @@ export default function BookingPage() {
     });
 
     return { totalTickets, totalAmount };
-  }, [quantities, consolePricing, cafePrice]);
+  }, [quantities, consolePricing, cafePrice, selectedDuration]);
 
   const getRealAvailable = useCallback(
     (consoleId: ConsoleId) => {
@@ -635,7 +665,7 @@ export default function BookingPage() {
         .map(([ticketId, qty]) => {
           const consoleId = ticketId.split("_")[0] as ConsoleId;
           const pricingTier = consolePricing[consoleId] ?? null;
-          const consoleTickets = generateTickets(consoleId, pricingTier, cafePrice);
+          const consoleTickets = generateTickets(consoleId, pricingTier, cafePrice, selectedDuration);
           const ticket = consoleTickets.find((t) => t.id === ticketId);
           return {
             ticketId,
@@ -661,6 +691,7 @@ export default function BookingPage() {
           console: t.console,
           quantity: t.quantity,
         })),
+        durationMinutes: selectedDuration,
       });
 
       if (!capacityResult.ok) {
@@ -677,6 +708,7 @@ export default function BookingPage() {
         timeSlot: selectedTime,
         tickets: selectedTickets,
         totalAmount: summary.totalAmount,
+        durationMinutes: selectedDuration,
         // mark walk-in vs online
         source: isWalkIn ? "walk_in" : "online",
       };
@@ -1046,9 +1078,9 @@ export default function BookingPage() {
                   {dateLabel}
                 </div>
                 <div style={{ fontSize: "13px", color: colors.cyan, marginTop: "2px" }}>
-                  {selectedTime} - {getEndTime(selectedTime)}
+                  {selectedTime} - {getEndTime(selectedTime, selectedDuration)}
                   <span style={{ color: colors.textMuted, marginLeft: "8px" }}>
-                    (1 hour session)
+                    ({selectedDuration === 30 ? "30 minutes" : "1 hour"} session)
                   </span>
                 </div>
                 {/* Online / Walk-in pill */}
@@ -1094,6 +1126,88 @@ export default function BookingPage() {
                   Change
                 </button>
               )}
+            </div>
+
+            {/* Duration Selector */}
+            <div style={{ marginBottom: "20px" }}>
+              <h2
+                style={{
+                  fontSize: "14px",
+                  fontWeight: 600,
+                  color: colors.textSecondary,
+                  marginBottom: "12px",
+                  textTransform: "uppercase",
+                  letterSpacing: "1px",
+                }}
+              >
+                ⏱️ Select Duration
+              </h2>
+              <div style={{ display: "flex", gap: "12px" }}>
+                <button
+                  onClick={() => { setSelectedDuration(30); setQuantities({}); }}
+                  style={{
+                    flex: 1,
+                    padding: "16px",
+                    borderRadius: "14px",
+                    border: selectedDuration === 30
+                      ? `2px solid ${colors.cyan}`
+                      : `1px solid ${colors.border}`,
+                    background: selectedDuration === 30
+                      ? `linear-gradient(135deg, rgba(0, 240, 255, 0.2) 0%, rgba(0, 240, 255, 0.1) 100%)`
+                      : colors.darkCard,
+                    cursor: "pointer",
+                    transition: "all 0.2s ease",
+                    boxShadow: selectedDuration === 30 ? `0 0 20px rgba(0, 240, 255, 0.3)` : "none",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: "24px",
+                      fontWeight: 700,
+                      fontFamily: fonts.heading,
+                      color: selectedDuration === 30 ? colors.cyan : colors.textPrimary,
+                      marginBottom: "4px",
+                    }}
+                  >
+                    30 min
+                  </div>
+                  <div style={{ fontSize: "12px", color: colors.textMuted }}>
+                    Quick Session
+                  </div>
+                </button>
+                <button
+                  onClick={() => { setSelectedDuration(60); setQuantities({}); }}
+                  style={{
+                    flex: 1,
+                    padding: "16px",
+                    borderRadius: "14px",
+                    border: selectedDuration === 60
+                      ? `2px solid ${colors.cyan}`
+                      : `1px solid ${colors.border}`,
+                    background: selectedDuration === 60
+                      ? `linear-gradient(135deg, rgba(0, 240, 255, 0.2) 0%, rgba(0, 240, 255, 0.1) 100%)`
+                      : colors.darkCard,
+                    cursor: "pointer",
+                    transition: "all 0.2s ease",
+                    boxShadow: selectedDuration === 60 ? `0 0 20px rgba(0, 240, 255, 0.3)` : "none",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: "24px",
+                      fontWeight: 700,
+                      fontFamily: fonts.heading,
+                      color: selectedDuration === 60 ? colors.cyan : colors.textPrimary,
+                      marginBottom: "4px",
+                    }}
+                  >
+                    1 hour
+                  </div>
+                  <div style={{ fontSize: "12px", color: colors.textMuted }}>
+                    Full Session
+                  </div>
+                </button>
+              </div>
             </div>
 
             {/* Live Availability Banner */}
@@ -1237,7 +1351,7 @@ export default function BookingPage() {
                             {console.label}
                           </div>
                           <div style={{ fontSize: "12px", color: colors.textMuted }}>
-                            ₹{consolePricing[consoleId]?.qty1 ?? cafePrice}/hr for 1 console
+                            ₹{consolePricing[consoleId]?.[`qty1_${selectedDuration}min` as keyof ConsolePricingTier] ?? (selectedDuration === 30 ? cafePrice * 0.5 : cafePrice)} for 1 console
                           </div>
                           {nextAvailableAt && (isSoldOut || isLowStock) && (
                             <div
@@ -1726,11 +1840,11 @@ export default function BookingPage() {
 }
 
 /**
- * Helper to calculate end time (1 hour after start)
+ * Helper to calculate end time based on duration
  */
-function getEndTime(startTime: string): string {
+function getEndTime(startTime: string, durationMinutes: number = BOOKING_DURATION_MINUTES): string {
   const startMinutes = timeStringToMinutes(startTime);
-  const endMinutes = startMinutes + BOOKING_DURATION_MINUTES;
+  const endMinutes = startMinutes + durationMinutes;
 
   let hours = Math.floor(endMinutes / 60);
   const mins = endMinutes % 60;
@@ -1750,8 +1864,9 @@ async function checkBookingCapacityWithOverlap(options: {
   bookingDate: string;
   timeSlot: string;
   tickets: SelectedTicketForCheck[];
+  durationMinutes: number;
 }): Promise<{ ok: boolean; message?: string }> {
-  const { cafeId, bookingDate, timeSlot, tickets } = options;
+  const { cafeId, bookingDate, timeSlot, tickets, durationMinutes } = options;
 
   const requested: Partial<Record<ConsoleId, number>> = {};
   for (const t of tickets) {
@@ -1809,7 +1924,7 @@ async function checkBookingCapacityWithOverlap(options: {
   (bookings ?? []).forEach((booking: any) => {
     const bookingStartMinutes = timeStringToMinutes(booking.start_time || "");
 
-    if (doTimeSlotsOverlap(selectedTimeMinutes, bookingStartMinutes, BOOKING_DURATION_MINUTES)) {
+    if (doTimeSlotsOverlap(selectedTimeMinutes, bookingStartMinutes, durationMinutes)) {
       (booking.booking_items ?? []).forEach((item: any) => {
         const consoleId = item.console as ConsoleId;
         if (!consoleId) return;
