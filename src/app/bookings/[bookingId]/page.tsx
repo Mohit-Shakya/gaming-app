@@ -454,115 +454,146 @@ export default function BookingDetailsPage() {
           </div>
         )}
 
-        {/* Venue Card - Redesigned */}
+        {/* Ticket-Style Card */}
         <section style={{
-          background: colors.darkCard,
-          borderRadius: "24px",
+          background: `linear-gradient(180deg, #1a1a1a 0%, ${colors.darkCard} 100%)`,
+          borderRadius: "12px",
           marginBottom: "16px",
           position: "relative",
           overflow: "hidden",
-          border: `1px solid ${colors.border}`,
+          border: `2px dashed ${colors.border}`,
+          boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
         }}>
-          {/* Animated gradient header */}
+          {/* Ticket Header Bar */}
           <div style={{
-            background: `linear-gradient(135deg, ${colors.red} 0%, ${colors.cyan} 100%)`,
-            padding: "20px",
+            background: `linear-gradient(90deg, ${colors.red} 0%, ${colors.cyan} 100%)`,
+            padding: "4px 0",
             position: "relative",
-          }}>
-            <div style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              background: "url('data:image/svg+xml,%3Csvg width=\"20\" height=\"20\" xmlns=\"http://www.w3.org/2000/svg\"%3E%3Cpath d=\"M0 0h20v20H0z\" fill=\"none\"/%3E%3Cpath d=\"M0 0h10v10H0zm10 10h10v10H10z\" fill=\"%23000\" fill-opacity=\".05\"/%3E%3C/svg%3E')",
-              opacity: 0.3,
-            }} />
-            <div style={{ position: "relative", zIndex: 1, textAlign: "center" }}>
-              <div style={{
-                fontSize: "48px",
-                marginBottom: "8px",
-                filter: "drop-shadow(0 4px 8px rgba(0,0,0,0.3))",
-              }}>🎮</div>
+          }} />
+
+          {/* Main Ticket Body */}
+          <div style={{ padding: "24px 20px" }}>
+            {/* Venue Name & Icon */}
+            <div style={{ textAlign: "center", marginBottom: "24px" }}>
+              <div style={{ fontSize: "56px", marginBottom: "12px" }}>🎮</div>
               <h2 style={{
-                fontSize: "24px",
-                fontWeight: 900,
-                color: "white",
-                margin: 0,
+                fontSize: "20px",
+                fontWeight: 800,
+                color: colors.textPrimary,
+                margin: "0 0 8px 0",
                 fontFamily: fonts.heading,
-                textShadow: "0 2px 8px rgba(0,0,0,0.3)",
-                letterSpacing: "0.5px",
+                letterSpacing: "1px",
               }}>
                 {data.cafe?.name ?? "Gaming Café"}
               </h2>
+              <div style={{
+                display: "inline-block",
+                padding: "4px 12px",
+                background: `linear-gradient(135deg, ${colors.red}30 0%, ${colors.cyan}30 100%)`,
+                borderRadius: "20px",
+                fontSize: "11px",
+                color: colors.cyan,
+                fontWeight: 700,
+                textTransform: "uppercase",
+                letterSpacing: "1px",
+              }}>
+                Gaming Session
+              </div>
             </div>
-          </div>
 
-          {/* Body content */}
-          <div style={{ padding: "20px" }}>
-            {/* Date & Time - Big and Bold */}
+            {/* Divider with circles */}
             <div style={{
-              background: `linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)`,
-              borderRadius: "16px",
-              padding: "16px",
-              marginBottom: "16px",
-              border: `1px solid ${colors.border}`,
+              position: "relative",
+              height: "1px",
+              background: `linear-gradient(90deg, ${colors.border} 0%, ${colors.border} 100%)`,
+              margin: "0 -20px 24px -20px",
             }}>
               <div style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: "12px",
-              }}>
-                {/* Date */}
-                <div style={{ textAlign: "center" }}>
-                  <div style={{
-                    fontSize: "36px",
-                    marginBottom: "4px",
-                  }}>📅</div>
-                  <div style={{
-                    fontSize: "11px",
-                    color: colors.textMuted,
-                    marginBottom: "4px",
-                    textTransform: "uppercase",
-                    letterSpacing: "1px",
-                  }}>Date</div>
-                  <div style={{
-                    fontSize: "15px",
-                    fontWeight: 700,
-                    color: colors.textPrimary,
-                  }}>{formattedDate}</div>
-                </div>
+                position: "absolute",
+                left: "-10px",
+                top: "-9px",
+                width: "18px",
+                height: "18px",
+                borderRadius: "50%",
+                background: colors.dark,
+                border: `1px solid ${colors.border}`,
+              }} />
+              <div style={{
+                position: "absolute",
+                right: "-10px",
+                top: "-9px",
+                width: "18px",
+                height: "18px",
+                borderRadius: "50%",
+                background: colors.dark,
+                border: `1px solid ${colors.border}`,
+              }} />
+            </div>
 
-                {/* Time */}
-                <div style={{ textAlign: "center" }}>
-                  <div style={{
-                    fontSize: "36px",
-                    marginBottom: "4px",
-                  }}>⏰</div>
-                  <div style={{
-                    fontSize: "11px",
-                    color: colors.textMuted,
-                    marginBottom: "4px",
-                    textTransform: "uppercase",
-                    letterSpacing: "1px",
-                  }}>Time</div>
-                  <div style={{
-                    fontSize: "15px",
-                    fontWeight: 700,
-                    color: colors.cyan,
-                  }}>{data.start_time || "Time not set"}</div>
+            {/* Ticket Details Grid */}
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: "20px",
+              marginBottom: "24px",
+            }}>
+              {/* Date */}
+              <div>
+                <div style={{
+                  fontSize: "10px",
+                  color: colors.textMuted,
+                  textTransform: "uppercase",
+                  letterSpacing: "1.5px",
+                  marginBottom: "6px",
+                  fontWeight: 600,
+                }}>📅 Date</div>
+                <div style={{
+                  fontSize: "16px",
+                  fontWeight: 700,
+                  color: colors.textPrimary,
+                }}>
+                  {formattedDate}
+                </div>
+              </div>
+
+              {/* Time */}
+              <div>
+                <div style={{
+                  fontSize: "10px",
+                  color: colors.textMuted,
+                  textTransform: "uppercase",
+                  letterSpacing: "1.5px",
+                  marginBottom: "6px",
+                  fontWeight: 600,
+                }}>⏰ Time</div>
+                <div style={{
+                  fontSize: "16px",
+                  fontWeight: 700,
+                  color: colors.cyan,
+                }}>
+                  {data.start_time || "Time not set"}
                 </div>
               </div>
             </div>
 
-            {/* Social Links - Clean & Prominent */}
+            {/* Social Links */}
             {data.cafe && (data.cafe.google_maps_url || data.cafe.instagram_url) && (
-              <>
+              <div style={{ marginBottom: "20px" }}>
+                <div style={{
+                  fontSize: "10px",
+                  color: colors.textMuted,
+                  textTransform: "uppercase",
+                  letterSpacing: "1.5px",
+                  marginBottom: "12px",
+                  fontWeight: 600,
+                  textAlign: "center",
+                }}>
+                  Stay Connected
+                </div>
                 <div style={{
                   display: "grid",
                   gridTemplateColumns: data.cafe.google_maps_url && data.cafe.instagram_url ? "1fr 1fr" : "1fr",
-                  gap: "12px",
-                  marginBottom: "16px",
+                  gap: "10px",
                 }}>
                   {data.cafe.google_maps_url && (
                     <a
@@ -571,40 +602,30 @@ export default function BookingDetailsPage() {
                       rel="noopener noreferrer"
                       style={{
                         display: "flex",
-                        flexDirection: "column",
                         alignItems: "center",
                         justifyContent: "center",
-                        padding: "20px 16px",
-                        borderRadius: "16px",
-                        background: "linear-gradient(135deg, #4285F4 0%, #357AE8 100%)",
+                        gap: "6px",
+                        padding: "12px",
+                        borderRadius: "10px",
+                        background: "#4285F4",
                         textDecoration: "none",
-                        transition: "all 0.3s ease",
-                        boxShadow: "0 4px 12px rgba(66, 133, 244, 0.3)",
+                        transition: "all 0.2s ease",
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = "translateY(-3px)";
-                        e.currentTarget.style.boxShadow = "0 8px 24px rgba(66, 133, 244, 0.5)";
+                        e.currentTarget.style.transform = "scale(1.05)";
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = "translateY(0)";
-                        e.currentTarget.style.boxShadow = "0 4px 12px rgba(66, 133, 244, 0.3)";
+                        e.currentTarget.style.transform = "scale(1)";
                       }}
                     >
-                      <div style={{ fontSize: "40px", marginBottom: "8px" }}>📍</div>
-                      <div style={{
-                        fontSize: "14px",
+                      <span style={{ fontSize: "20px" }}>📍</span>
+                      <span style={{
+                        fontSize: "12px",
                         fontWeight: 700,
                         color: "white",
-                        marginBottom: "2px",
                       }}>
-                        View Location
-                      </div>
-                      <div style={{
-                        fontSize: "11px",
-                        color: "rgba(255,255,255,0.8)",
-                      }}>
-                        Get directions
-                      </div>
+                        Location
+                      </span>
                     </a>
                   )}
 
@@ -615,71 +636,53 @@ export default function BookingDetailsPage() {
                       rel="noopener noreferrer"
                       style={{
                         display: "flex",
-                        flexDirection: "column",
                         alignItems: "center",
                         justifyContent: "center",
-                        padding: "20px 16px",
-                        borderRadius: "16px",
-                        background: "linear-gradient(135deg, #E1306C 0%, #C13584 100%)",
+                        gap: "6px",
+                        padding: "12px",
+                        borderRadius: "10px",
+                        background: "#E1306C",
                         textDecoration: "none",
-                        transition: "all 0.3s ease",
-                        boxShadow: "0 4px 12px rgba(225, 48, 108, 0.3)",
+                        transition: "all 0.2s ease",
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = "translateY(-3px)";
-                        e.currentTarget.style.boxShadow = "0 8px 24px rgba(225, 48, 108, 0.5)";
+                        e.currentTarget.style.transform = "scale(1.05)";
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = "translateY(0)";
-                        e.currentTarget.style.boxShadow = "0 4px 12px rgba(225, 48, 108, 0.3)";
+                        e.currentTarget.style.transform = "scale(1)";
                       }}
                     >
-                      <div style={{ fontSize: "40px", marginBottom: "8px" }}>📷</div>
-                      <div style={{
-                        fontSize: "14px",
+                      <span style={{ fontSize: "20px" }}>📷</span>
+                      <span style={{
+                        fontSize: "12px",
                         fontWeight: 700,
                         color: "white",
-                        marginBottom: "2px",
                       }}>
-                        Follow Us
-                      </div>
-                      <div style={{
-                        fontSize: "11px",
-                        color: "rgba(255,255,255,0.8)",
-                      }}>
-                        Tag & share
-                      </div>
+                        Follow
+                      </span>
                     </a>
                   )}
                 </div>
-
-                {/* Review CTA */}
-                <div style={{
-                  padding: "14px 16px",
-                  background: `linear-gradient(135deg, ${colors.green}20 0%, ${colors.green}10 100%)`,
-                  borderRadius: "12px",
-                  border: `2px solid ${colors.green}40`,
-                  textAlign: "center",
-                }}>
-                  <div style={{ fontSize: "24px", marginBottom: "6px" }}>⭐⭐⭐⭐⭐</div>
-                  <div style={{
-                    fontSize: "13px",
-                    fontWeight: 700,
-                    color: colors.green,
-                    marginBottom: "4px",
-                  }}>
-                    Enjoyed your session?
-                  </div>
-                  <div style={{
-                    fontSize: "11px",
-                    color: colors.textMuted,
-                    lineHeight: 1.4,
-                  }}>
-                    Leave a 5-star review and help others discover this venue!
-                  </div>
-                </div>
-              </>
+              </div>
             )}
+
+            {/* Review Banner */}
+            <div style={{
+              padding: "12px",
+              background: `linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(34, 197, 94, 0.05) 100%)`,
+              borderRadius: "10px",
+              border: `1px solid ${colors.green}30`,
+              textAlign: "center",
+            }}>
+              <div style={{ fontSize: "16px", marginBottom: "4px" }}>⭐⭐⭐⭐⭐</div>
+              <div style={{
+                fontSize: "11px",
+                color: colors.textMuted,
+                lineHeight: 1.4,
+              }}>
+                <strong style={{ color: colors.green }}>Love it?</strong> Leave a review!
+              </div>
+            </div>
           </div>
         </section>
 
