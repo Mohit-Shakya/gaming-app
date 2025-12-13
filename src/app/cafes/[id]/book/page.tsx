@@ -633,6 +633,9 @@ export default function BookingPage() {
   async function handleConfirmBooking() {
     if (summary.totalTickets === 0 || !cafeId) return;
 
+    // Set loading state immediately for instant feedback
+    setIsSubmitting(true);
+
     if (!user && !userLoading) {
       sessionStorage.setItem("redirectAfterLogin", window.location.pathname);
       router.push("/login");
@@ -656,8 +659,6 @@ export default function BookingPage() {
         console.error("Error checking profile:", err);
       }
     }
-
-    setIsSubmitting(true);
 
     try {
       const selectedTickets = Object.entries(quantities)
