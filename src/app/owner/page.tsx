@@ -1333,7 +1333,7 @@ export default function OwnerDashboardPage() {
                         transition: "all 0.3s ease",
                         cursor: "pointer",
                       }}
-                      onClick={() => router.push(`/admin/cafes/${cafe.id}`)}
+                      onClick={() => router.push(`/owner/cafes/${cafe.id}`)}
                       onMouseEnter={(e) => {
                         e.currentTarget.style.borderColor = "rgba(99, 102, 241, 0.5)";
                         e.currentTarget.style.transform = "translateY(-4px)";
