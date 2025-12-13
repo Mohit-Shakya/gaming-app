@@ -652,10 +652,25 @@ export default function CheckoutPage() {
                 : `linear-gradient(135deg, ${colors.green} 0, #16a34a 100%)`,
               color: "white",
               minWidth: "160px",
-              textAlign: "center",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "8px",
             }}
             className="place-order-button"
           >
+            {placing && (
+              <div
+                style={{
+                  width: "14px",
+                  height: "14px",
+                  border: "2px solid rgba(255, 255, 255, 0.3)",
+                  borderTopColor: "white",
+                  borderRadius: "50%",
+                  animation: "spin 0.6s linear infinite",
+                }}
+              />
+            )}
             {placing
               ? "Processing..."
               : isWalkIn
@@ -667,6 +682,10 @@ export default function CheckoutPage() {
 
       {/* Responsive styles */}
       <style>{`
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+
         @media (min-width: 640px) {
           .checkout-container {
             padding: 20px 16px 140px !important;

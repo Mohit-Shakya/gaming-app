@@ -33,6 +33,7 @@ export default function ProfilePage() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [bookingStats, setBookingStats] = useState({ total: 0, upcoming: 0 });
+  const [loggingOut, setLoggingOut] = useState(false);
 
   // Redirect if not logged in
   useEffect(() => {
@@ -157,11 +158,14 @@ export default function ProfilePage() {
 
   async function handleLogout() {
     try {
+      setLoggingOut(true);
       await supabase.auth.signOut();
       router.push("/");
     } catch (err) {
       console.error("Logout error:", err);
       router.push("/");
+    } finally {
+      setLoggingOut(false);
     }
   }
 
@@ -900,6 +904,7 @@ export default function ProfilePage() {
             </div>
             <button
               onClick={handleLogout}
+              disabled={loggingOut}
               style={{
                 padding: "10px 20px",
                 minHeight: "44px",
@@ -909,11 +914,28 @@ export default function ProfilePage() {
                 color: "#ef4444",
                 fontSize: "13px",
                 fontWeight: 600,
-                cursor: "pointer",
+                cursor: loggingOut ? "not-allowed" : "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "8px",
+                opacity: loggingOut ? 0.6 : 1,
               }}
               className="logout-button"
             >
-              Log Out
+              {loggingOut && (
+                <div
+                  style={{
+                    width: "14px",
+                    height: "14px",
+                    border: "2px solid rgba(239, 68, 68, 0.3)",
+                    borderTopColor: "#ef4444",
+                    borderRadius: "50%",
+                    animation: "spin 0.6s linear infinite",
+                  }}
+                />
+              )}
+              {loggingOut ? "Logging Out..." : "Log Out"}
             </button>
           </div>
         </section>

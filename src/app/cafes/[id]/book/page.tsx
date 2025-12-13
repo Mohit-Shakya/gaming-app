@@ -1830,8 +1830,24 @@ export default function BookingPage() {
                   cursor: summary.totalTickets > 0 && !isSubmitting ? "pointer" : "not-allowed",
                   transition: "all 0.2s ease",
                   minWidth: "140px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "8px",
                 }}
               >
+                {isSubmitting && (
+                  <div
+                    style={{
+                      width: "14px",
+                      height: "14px",
+                      border: "2px solid rgba(255, 255, 255, 0.3)",
+                      borderTopColor: "white",
+                      borderRadius: "50%",
+                      animation: "spin 0.6s linear infinite",
+                    }}
+                  />
+                )}
                 {isSubmitting
                   ? "Processing..."
                   : summary.totalTickets > 0

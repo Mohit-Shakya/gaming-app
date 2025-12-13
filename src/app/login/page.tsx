@@ -138,6 +138,10 @@ export default function LoginPage() {
           0%, 100% { opacity: 1; }
           50% { opacity: 0.5; }
         }
+
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
       `}</style>
 
       <main className="min-h-screen login-bg text-white">
@@ -320,7 +324,20 @@ export default function LoginPage() {
                   className="btn-google w-full flex items-center justify-center gap-3 rounded-xl py-3.5 text-sm font-semibold text-zinc-800"
                   style={{ fontFamily: 'Rajdhani, sans-serif' }}
                 >
-                  <GoogleIcon />
+                  {loading ? (
+                    <div
+                      style={{
+                        width: "16px",
+                        height: "16px",
+                        border: "2px solid rgba(0, 0, 0, 0.1)",
+                        borderTopColor: "#ff073a",
+                        borderRadius: "50%",
+                        animation: "spin 0.6s linear infinite",
+                      }}
+                    />
+                  ) : (
+                    <GoogleIcon />
+                  )}
                   <span>{loading ? "Connecting..." : "Continue with Google"}</span>
                 </button>
 
