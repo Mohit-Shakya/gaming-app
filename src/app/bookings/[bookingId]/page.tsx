@@ -31,6 +31,8 @@ type BookingItemRow = {
 type CafeRow = {
   id: string;
   name: string;
+  google_maps_url?: string | null;
+  instagram_url?: string | null;
 };
 
 type BookingWithRelations = BookingRow & {
@@ -104,7 +106,7 @@ export default function BookingDetailsPage() {
         if (booking.cafe_id) {
           const { data: cafeRow, error: cafeError } = await supabase
             .from("cafes")
-            .select("id, name")
+            .select("id, name, google_maps_url, instagram_url")
             .eq("id", booking.cafe_id)
             .maybeSingle<CafeRow>();
 
@@ -499,14 +501,87 @@ export default function BookingDetailsPage() {
               }}>
                 Gaming Venue
               </p>
-              <p style={{
-                fontSize: "18px",
-                fontWeight: 600,
-                color: colors.textPrimary,
-                marginBottom: "8px",
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: "12px",
               }}>
-                {data.cafe?.name ?? "Gaming Café"}
-              </p>
+                <p style={{
+                  fontSize: "18px",
+                  fontWeight: 600,
+                  color: colors.textPrimary,
+                  margin: 0,
+                }}>
+                  {data.cafe?.name ?? "Gaming Café"}
+                </p>
+
+                {/* Social Links */}
+                {data.cafe && (data.cafe.google_maps_url || data.cafe.instagram_url) && (
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    {data.cafe.google_maps_url && (
+                      <a
+                        href={data.cafe.google_maps_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          width: "32px",
+                          height: "32px",
+                          borderRadius: "8px",
+                          background: "linear-gradient(135deg, rgba(66, 133, 244, 0.2) 0%, rgba(66, 133, 244, 0.1) 100%)",
+                          border: "1px solid rgba(66, 133, 244, 0.3)",
+                          transition: "all 0.2s ease",
+                          textDecoration: "none",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = "scale(1.1)";
+                          e.currentTarget.style.boxShadow = "0 4px 12px rgba(66, 133, 244, 0.3)";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = "scale(1)";
+                          e.currentTarget.style.boxShadow = "none";
+                        }}
+                      >
+                        <span style={{ fontSize: "16px" }}>📍</span>
+                      </a>
+                    )}
+
+                    {data.cafe.instagram_url && (
+                      <a
+                        href={data.cafe.instagram_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          width: "32px",
+                          height: "32px",
+                          borderRadius: "8px",
+                          background: "linear-gradient(135deg, rgba(225, 48, 108, 0.2) 0%, rgba(193, 53, 132, 0.1) 100%)",
+                          border: "1px solid rgba(225, 48, 108, 0.3)",
+                          transition: "all 0.2s ease",
+                          textDecoration: "none",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.transform = "scale(1.1)";
+                          e.currentTarget.style.boxShadow = "0 4px 12px rgba(225, 48, 108, 0.3)";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.transform = "scale(1)";
+                          e.currentTarget.style.boxShadow = "none";
+                        }}
+                      >
+                        <span style={{ fontSize: "16px" }}>📷</span>
+                      </a>
+                    )}
+                  </div>
+                )}
+              </div>
+
               <div style={{
                 display: "flex",
                 flexWrap: "wrap",
