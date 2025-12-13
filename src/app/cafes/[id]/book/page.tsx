@@ -1368,7 +1368,7 @@ export default function BookingPage() {
               <div
                 style={{
                   display: "flex",
-                  gap: "8px",
+                  gap: "6px",
                   overflowX: "auto",
                   paddingBottom: "10px",
                   scrollSnapType: "x mandatory",
@@ -1395,10 +1395,10 @@ export default function BookingPage() {
                       onClick={() => !isSoldOut && setSelectedConsole(consoleId)}
                       disabled={isSoldOut}
                       style={{
-                        minWidth: "110px",
-                        maxWidth: "110px",
-                        padding: "12px 8px",
-                        borderRadius: "12px",
+                        minWidth: "85px",
+                        maxWidth: "85px",
+                        padding: "10px 6px",
+                        borderRadius: "10px",
                         border: isActive
                           ? `2px solid ${console.color}`
                           : isSoldOut
@@ -1421,8 +1421,8 @@ export default function BookingPage() {
                     >
                       {/* Console icon */}
                       <div style={{
-                        fontSize: "28px",
-                        marginBottom: "6px",
+                        fontSize: "24px",
+                        marginBottom: "4px",
                         filter: isSoldOut ? "grayscale(1)" : "none",
                       }}>
                         {console.icon}
@@ -1431,11 +1431,11 @@ export default function BookingPage() {
                       {/* Console name */}
                       <div
                         style={{
-                          fontSize: "13px",
+                          fontSize: "11px",
                           fontWeight: 800,
                           fontFamily: fonts.heading,
                           color: isActive ? console.color : colors.textPrimary,
-                          marginBottom: "3px",
+                          marginBottom: "2px",
                           letterSpacing: "-0.2px",
                         }}
                       >
@@ -1443,28 +1443,28 @@ export default function BookingPage() {
                       </div>
 
                       {/* Price */}
-                      <div style={{ fontSize: "11px", color: colors.textMuted, fontWeight: 600, marginBottom: "8px" }}>
+                      <div style={{ fontSize: "10px", color: colors.textMuted, fontWeight: 600, marginBottom: "6px" }}>
                         ₹{consolePricing[consoleId]?.[`qty1_${selectedDuration}min` as keyof ConsolePricingTier] ?? (selectedDuration === 30 ? cafePrice * 0.5 : cafePrice)}
                       </div>
 
                       {/* Availability badge - compact */}
                       <div
                         style={{
-                          padding: "6px 10px",
+                          padding: "4px 8px",
                           background: isSoldOut
                             ? "rgba(239, 68, 68, 0.2)"
                             : isLowStock
                             ? "rgba(245, 158, 11, 0.2)"
                             : "rgba(34, 197, 94, 0.2)",
-                          borderRadius: "8px",
-                          fontSize: "11px",
+                          borderRadius: "6px",
+                          fontSize: "9px",
                           fontWeight: 700,
                           color: isSoldOut
                             ? "#ef4444"
                             : isLowStock
                             ? colors.orange
                             : colors.green,
-                          marginBottom: mySelection > 0 ? "8px" : "0",
+                          marginBottom: mySelection > 0 ? "6px" : "0",
                         }}
                       >
                         {isSoldOut ? "Sold Out" : `${availableSlots}/${totalSlots}`}
@@ -1474,10 +1474,10 @@ export default function BookingPage() {
                       {mySelection > 0 && (
                         <div
                           style={{
-                            padding: "4px 8px",
+                            padding: "3px 6px",
                             background: `${console.color}30`,
-                            borderRadius: "6px",
-                            fontSize: "11px",
+                            borderRadius: "5px",
+                            fontSize: "9px",
                             fontWeight: 700,
                             color: console.color,
                           }}
