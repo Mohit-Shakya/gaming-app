@@ -105,6 +105,7 @@ export default function OwnerCafeEditPage() {
   const [consolePricing, setConsolePricing] = useState<ConsolePricing[]>([]);
   const [cafeImages, setCafeImages] = useState<CafeImage[]>([]);
   const [newImageUrl, setNewImageUrl] = useState("");
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   // Check if user owns this cafe
   useEffect(() => {
@@ -305,7 +306,69 @@ export default function OwnerCafeEditPage() {
     }
   }
 
-  // Add image
+  // Upload image file to storage
+  async function handleImageUpload(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file || !cafeId) return;
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+      setError("Please select an image file");
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setError("Image size must be less than 5MB");
+      return;
+    }
+
+    try {
+      setUploadingImage(true);
+      setError(null);
+
+      // Create unique filename
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${cafeId}/${Date.now()}.${fileExt}`;
+
+      // Upload to Supabase storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from("cafe-images")
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from("cafe-images")
+        .getPublicUrl(fileName);
+
+      const imageUrl = urlData.publicUrl;
+
+      // Save to database
+      const { data, error } = await supabase
+        .from("cafe_images")
+        .insert({ cafe_id: cafeId, image_url: imageUrl })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setCafeImages((prev) => [...prev, data as CafeImage]);
+      setSuccessMessage("Image uploaded successfully!");
+      setTimeout(() => setSuccessMessage(null), 2000);
+
+      // Reset file input
+      event.target.value = "";
+    } catch (err: any) {
+      console.error("Error uploading image:", err);
+      setError(err.message || "Failed to upload image");
+    } finally {
+      setUploadingImage(false);
+    }
+  }
+
+  // Add image via URL
   async function handleAddImage() {
     if (!newImageUrl || !cafeId) return;
 
@@ -325,6 +388,27 @@ export default function OwnerCafeEditPage() {
     } catch (err: any) {
       console.error("Error adding image:", err);
       setError(err.message || "Failed to add image");
+    }
+  }
+
+  // Update cover photo
+  async function handleUpdateCoverPhoto(imageUrl: string) {
+    if (!cafeId) return;
+
+    try {
+      const { error } = await supabase
+        .from("cafes")
+        .update({ cover_url: imageUrl })
+        .eq("id", cafeId);
+
+      if (error) throw error;
+
+      setFormData((prev) => ({ ...prev, cover_url: imageUrl }));
+      setSuccessMessage("Cover photo updated!");
+      setTimeout(() => setSuccessMessage(null), 2000);
+    } catch (err: any) {
+      console.error("Error updating cover photo:", err);
+      setError(err.message || "Failed to update cover photo");
     }
   }
 
@@ -939,45 +1023,168 @@ export default function OwnerCafeEditPage() {
 
         {/* Photo Gallery Tab */}
         {activeTab === "photos" && (
-          <div>
-            <Section title="Photo Gallery" icon="📸">
-              <p style={{ fontSize: 14, color: colors.textMuted, marginBottom: 20 }}>
-                Add photos of your gaming café to showcase to customers. Enter image URLs below.
+          <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+            {/* Cover/Profile Photo Section */}
+            <Section title="Cover Photo" icon="🖼️">
+              <p style={{ fontSize: 14, color: colors.textMuted, marginBottom: 16 }}>
+                This is the main photo displayed on your café page. Choose a high-quality image that represents your gaming café.
               </p>
 
-              {/* Add New Image */}
-              <div style={{ display: "flex", gap: 12, marginBottom: 24 }}>
-                <input
-                  type="url"
-                  value={newImageUrl}
-                  onChange={(e) => setNewImageUrl(e.target.value)}
-                  placeholder="Enter image URL (e.g., https://example.com/image.jpg)"
-                  style={{ ...inputStyle, flex: 1 }}
-                />
-                <button
-                  onClick={handleAddImage}
-                  disabled={!newImageUrl}
-                  style={{
-                    padding: "12px 24px",
-                    borderRadius: 8,
-                    border: "none",
-                    background: newImageUrl ? "linear-gradient(135deg, #3b82f6, #2563eb)" : "rgba(59, 130, 246, 0.3)",
-                    color: "#fff",
-                    fontSize: 14,
-                    fontWeight: 600,
-                    cursor: newImageUrl ? "pointer" : "not-allowed",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  + Add Photo
-                </button>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+                {/* Current Cover Photo */}
+                <div>
+                  <label style={{ fontSize: 13, fontWeight: 500, color: colors.textSecondary, marginBottom: 8, display: "block" }}>
+                    Current Cover Photo
+                  </label>
+                  {formData.cover_url ? (
+                    <div style={{ position: "relative", borderRadius: 12, overflow: "hidden", border: `1px solid ${colors.border}` }}>
+                      <img
+                        src={formData.cover_url}
+                        alt="Cover"
+                        style={{ width: "100%", height: 200, objectFit: "cover" }}
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = "https://via.placeholder.com/600x300?text=Cover+Photo";
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <div
+                      style={{
+                        height: 200,
+                        borderRadius: 12,
+                        border: `2px dashed ${colors.border}`,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: colors.textMuted,
+                        fontSize: 14,
+                      }}
+                    >
+                      No cover photo set
+                    </div>
+                  )}
+                </div>
+
+                {/* Update Cover Photo URL */}
+                <div>
+                  <label style={{ fontSize: 13, fontWeight: 500, color: colors.textSecondary, marginBottom: 8, display: "block" }}>
+                    Update Cover Photo URL
+                  </label>
+                  <input
+                    type="url"
+                    value={formData.cover_url}
+                    onChange={(e) => setFormData({ ...formData, cover_url: e.target.value })}
+                    placeholder="https://example.com/cover.jpg"
+                    style={{ ...inputStyle, marginBottom: 12 }}
+                  />
+                  <p style={{ fontSize: 12, color: colors.textMuted, marginBottom: 12 }}>
+                    Or select from your gallery photos below to set as cover
+                  </p>
+                </div>
+              </div>
+            </Section>
+
+            {/* Gallery Photos Section */}
+            <Section title="Photo Gallery" icon="📸">
+              <p style={{ fontSize: 14, color: colors.textMuted, marginBottom: 20 }}>
+                Upload photos or add image URLs to showcase your gaming café to customers. These photos will appear in your café's gallery.
+              </p>
+
+              {/* Upload Options */}
+              <div style={{ marginBottom: 24 }}>
+                <div style={{ display: "flex", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
+                  {/* File Upload */}
+                  <div style={{ flex: "1", minWidth: "250px" }}>
+                    <label
+                      htmlFor="image-upload"
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 8,
+                        padding: "12px 24px",
+                        borderRadius: 8,
+                        border: `2px dashed ${colors.border}`,
+                        background: uploadingImage ? "rgba(59, 130, 246, 0.1)" : "rgba(30,41,59,0.5)",
+                        color: uploadingImage ? colors.cyan : colors.textSecondary,
+                        fontSize: 14,
+                        fontWeight: 600,
+                        cursor: uploadingImage ? "not-allowed" : "pointer",
+                        transition: "all 0.2s",
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!uploadingImage) {
+                          e.currentTarget.style.borderColor = colors.cyan;
+                          e.currentTarget.style.background = "rgba(0, 240, 255, 0.05)";
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = colors.border;
+                        e.currentTarget.style.background = "rgba(30,41,59,0.5)";
+                      }}
+                    >
+                      {uploadingImage ? (
+                        <>
+                          <span style={{ animation: "spin 1s linear infinite" }}>⏳</span>
+                          Uploading...
+                        </>
+                      ) : (
+                        <>
+                          <span>📤</span>
+                          Upload Photo (Max 5MB)
+                        </>
+                      )}
+                    </label>
+                    <input
+                      id="image-upload"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      disabled={uploadingImage}
+                      style={{ display: "none" }}
+                    />
+                  </div>
+
+                  {/* URL Input */}
+                  <div style={{ flex: "2", minWidth: "300px", display: "flex", gap: 12 }}>
+                    <input
+                      type="url"
+                      value={newImageUrl}
+                      onChange={(e) => setNewImageUrl(e.target.value)}
+                      placeholder="Or enter image URL (e.g., https://example.com/image.jpg)"
+                      style={{ ...inputStyle, flex: 1 }}
+                    />
+                    <button
+                      onClick={handleAddImage}
+                      disabled={!newImageUrl}
+                      style={{
+                        padding: "12px 24px",
+                        borderRadius: 8,
+                        border: "none",
+                        background: newImageUrl ? "linear-gradient(135deg, #3b82f6, #2563eb)" : "rgba(59, 130, 246, 0.3)",
+                        color: "#fff",
+                        fontSize: 14,
+                        fontWeight: 600,
+                        cursor: newImageUrl ? "pointer" : "not-allowed",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      + Add URL
+                    </button>
+                  </div>
+                </div>
+
+                <p style={{ fontSize: 12, color: colors.textMuted, fontStyle: "italic" }}>
+                  💡 Tip: Upload high-quality photos showing your gaming stations, ambiance, and facilities for best results.
+                </p>
               </div>
 
               {/* Image Grid */}
               {cafeImages.length === 0 ? (
                 <div style={{ textAlign: "center", padding: "60px 20px", color: colors.textMuted }}>
                   <div style={{ fontSize: 64, marginBottom: 16, opacity: 0.3 }}>📸</div>
-                  <p>No photos yet. Add some to showcase your café!</p>
+                  <p style={{ fontSize: 16, marginBottom: 8 }}>No photos yet</p>
+                  <p style={{ fontSize: 14 }}>Upload or add photos to showcase your café!</p>
                 </div>
               ) : (
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))", gap: 16 }}>
@@ -994,7 +1201,7 @@ export default function OwnerCafeEditPage() {
                     >
                       <img
                         src={image.image_url}
-                        alt="Cafe"
+                        alt="Cafe Gallery"
                         style={{
                           width: "100%",
                           height: 200,
@@ -1004,24 +1211,50 @@ export default function OwnerCafeEditPage() {
                           (e.target as HTMLImageElement).src = "https://via.placeholder.com/400x300?text=Image+Not+Found";
                         }}
                       />
-                      <button
-                        onClick={() => handleDeleteImage(image.id)}
-                        style={{
-                          position: "absolute",
-                          top: 8,
-                          right: 8,
-                          padding: "8px 12px",
-                          borderRadius: 6,
-                          border: "none",
-                          background: "rgba(239, 68, 68, 0.9)",
-                          color: "#fff",
-                          fontSize: 12,
-                          fontWeight: 600,
-                          cursor: "pointer",
-                        }}
-                      >
-                        🗑️ Delete
-                      </button>
+
+                      {/* Action Buttons */}
+                      <div style={{ position: "absolute", top: 8, right: 8, display: "flex", gap: 8 }}>
+                        {/* Set as Cover Button */}
+                        <button
+                          onClick={() => handleUpdateCoverPhoto(image.image_url)}
+                          style={{
+                            padding: "6px 10px",
+                            borderRadius: 6,
+                            border: "none",
+                            background: formData.cover_url === image.image_url ? "rgba(34, 197, 94, 0.9)" : "rgba(59, 130, 246, 0.9)",
+                            color: "#fff",
+                            fontSize: 11,
+                            fontWeight: 600,
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 4,
+                          }}
+                          title={formData.cover_url === image.image_url ? "Current cover photo" : "Set as cover photo"}
+                        >
+                          {formData.cover_url === image.image_url ? "✓ Cover" : "🖼️ Set Cover"}
+                        </button>
+
+                        {/* Delete Button */}
+                        <button
+                          onClick={() => handleDeleteImage(image.id)}
+                          style={{
+                            padding: "6px 10px",
+                            borderRadius: 6,
+                            border: "none",
+                            background: "rgba(239, 68, 68, 0.9)",
+                            color: "#fff",
+                            fontSize: 11,
+                            fontWeight: 600,
+                            cursor: "pointer",
+                          }}
+                          title="Delete photo"
+                        >
+                          🗑️
+                        </button>
+                      </div>
+
+                      {/* Image URL */}
                       <div
                         style={{
                           padding: "12px",
