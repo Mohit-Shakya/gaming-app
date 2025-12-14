@@ -121,48 +121,62 @@ export default function CafesTable() {
     try {
       setActionLoading(cafeId);
 
-      // Delete related records first to avoid foreign key constraints
+      console.log("Starting deletion process for cafe:", cafeId);
 
-      // 1. Delete cafe images
-      const { error: imagesError } = await supabase
-        .from("cafe_images")
-        .delete()
-        .eq("cafe_id", cafeId);
+      // Try using the RPC function first (if it exists)
+      const { data: rpcResult, error: rpcError } = await supabase
+        .rpc('delete_cafe_cascade', { cafe_uuid: cafeId });
 
-      if (imagesError) {
-        console.error("Error deleting cafe images:", imagesError);
-        // Continue anyway as this might not exist
+      if (rpcError) {
+        console.error("RPC function not available, falling back to manual deletion:", rpcError);
+
+        // Fallback: Manual deletion in correct order
+        // 1. Delete bookings first
+        console.log("Deleting bookings...");
+        const { error: bookingsError } = await supabase
+          .from("bookings")
+          .delete()
+          .eq("cafe_id", cafeId);
+
+        if (bookingsError) {
+          console.error("Error deleting bookings:", bookingsError);
+          throw new Error(`Failed to delete bookings: ${bookingsError.message}`);
+        }
+
+        // 2. Delete console pricing
+        console.log("Deleting console pricing...");
+        await supabase
+          .from("console_pricing")
+          .delete()
+          .eq("cafe_id", cafeId);
+
+        // 3. Delete cafe images
+        console.log("Deleting cafe images...");
+        await supabase
+          .from("cafe_images")
+          .delete()
+          .eq("cafe_id", cafeId);
+
+        // 4. Finally delete the cafe
+        console.log("Deleting cafe...");
+        const { error: cafeError } = await supabase
+          .from("cafes")
+          .delete()
+          .eq("id", cafeId);
+
+        if (cafeError) {
+          console.error("Error deleting cafe:", cafeError);
+          throw new Error(`Failed to delete café: ${cafeError.message}`);
+        }
+
+        console.log("Manual deletion completed successfully!");
+      } else {
+        console.log("RPC deletion result:", rpcResult);
+
+        if (rpcResult && !rpcResult.success) {
+          throw new Error(rpcResult.error || "Database function reported failure");
+        }
       }
-
-      // 2. Delete console pricing
-      const { error: pricingError } = await supabase
-        .from("console_pricing")
-        .delete()
-        .eq("cafe_id", cafeId);
-
-      if (pricingError) {
-        console.error("Error deleting console pricing:", pricingError);
-        // Continue anyway
-      }
-
-      // 3. Delete bookings (this is critical)
-      const { error: bookingsError } = await supabase
-        .from("bookings")
-        .delete()
-        .eq("cafe_id", cafeId);
-
-      if (bookingsError) {
-        console.error("Error deleting bookings:", bookingsError);
-        throw new Error("Failed to delete bookings. Cannot proceed with cafe deletion.");
-      }
-
-      // 4. Finally delete the cafe
-      const { error: cafeError } = await supabase
-        .from("cafes")
-        .delete()
-        .eq("id", cafeId);
-
-      if (cafeError) throw cafeError;
 
       // Remove from local state
       setCafes(prev => prev.filter(cafe => cafe.id !== cafeId));
@@ -170,7 +184,18 @@ export default function CafesTable() {
       alert("Café and all related data deleted successfully!");
     } catch (err: any) {
       console.error("Error deleting café:", err);
-      alert(`Failed to delete café: ${err.message}\n\nPlease try again or contact support if the issue persists.`);
+
+      // Show detailed error message
+      const errorMsg = err.message || "Unknown error occurred";
+
+      alert(
+        `Failed to delete café!\n\n` +
+        `Error: ${errorMsg}\n\n` +
+        `Possible solutions:\n` +
+        `1. Make sure you have the delete_cafe_cascade function installed\n` +
+        `2. Check DELETE_CAFE_SETUP.md for instructions\n` +
+        `3. Contact support if the issue persists`
+      );
 
       // Reload to ensure UI matches database state
       window.location.reload();
