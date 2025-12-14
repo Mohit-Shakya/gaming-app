@@ -121,7 +121,6 @@ export default function CafeList({ cafes }: Props) {
                     className="object-cover"
                     loading={index === 0 ? "eager" : "lazy"}
                     priority={index === 0}
-                    fetchPriority={index === 0 ? "high" : "auto"}
                     quality={index === 0 ? 85 : index < 3 ? 75 : 60}
                   />
                   {/* Gradient overlay */}
