@@ -113,7 +113,7 @@ export default function CafesTable() {
   // Delete café
   const handleDelete = async (cafeId: string, cafeName: string | null) => {
     const confirmed = confirm(
-      `Are you sure you want to delete "${cafeName || "this café"}"?\n\nThis action cannot be undone and will also delete all associated bookings.`
+      `Are you sure you want to delete "${cafeName || "this café"}"?\n\nThis action cannot be undone and will also delete:\n- All bookings\n- All gallery images\n- All console pricing data\n- All related records`
     );
 
     if (!confirmed) return;
@@ -121,20 +121,59 @@ export default function CafesTable() {
     try {
       setActionLoading(cafeId);
 
-      const { error } = await supabase
+      // Delete related records first to avoid foreign key constraints
+
+      // 1. Delete cafe images
+      const { error: imagesError } = await supabase
+        .from("cafe_images")
+        .delete()
+        .eq("cafe_id", cafeId);
+
+      if (imagesError) {
+        console.error("Error deleting cafe images:", imagesError);
+        // Continue anyway as this might not exist
+      }
+
+      // 2. Delete console pricing
+      const { error: pricingError } = await supabase
+        .from("console_pricing")
+        .delete()
+        .eq("cafe_id", cafeId);
+
+      if (pricingError) {
+        console.error("Error deleting console pricing:", pricingError);
+        // Continue anyway
+      }
+
+      // 3. Delete bookings (this is critical)
+      const { error: bookingsError } = await supabase
+        .from("bookings")
+        .delete()
+        .eq("cafe_id", cafeId);
+
+      if (bookingsError) {
+        console.error("Error deleting bookings:", bookingsError);
+        throw new Error("Failed to delete bookings. Cannot proceed with cafe deletion.");
+      }
+
+      // 4. Finally delete the cafe
+      const { error: cafeError } = await supabase
         .from("cafes")
         .delete()
         .eq("id", cafeId);
 
-      if (error) throw error;
+      if (cafeError) throw cafeError;
 
       // Remove from local state
       setCafes(prev => prev.filter(cafe => cafe.id !== cafeId));
 
-      alert("Café deleted successfully!");
+      alert("Café and all related data deleted successfully!");
     } catch (err: any) {
       console.error("Error deleting café:", err);
-      alert(`Failed to delete café: ${err.message}`);
+      alert(`Failed to delete café: ${err.message}\n\nPlease try again or contact support if the issue persists.`);
+
+      // Reload to ensure UI matches database state
+      window.location.reload();
     } finally {
       setActionLoading(null);
     }
