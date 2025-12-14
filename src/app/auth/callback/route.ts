@@ -1,16 +1,20 @@
 // app/auth/callback/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabaseClient";
+import { createClient } from "@supabase/supabase-js";
 
 export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get("code");
 
   if (code) {
+    // Create a server-side Supabase client for the auth exchange
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+
     await supabase.auth.exchangeCodeForSession(code);
   }
 
-  // Check if there's a redirect path in the query params (sent from login page)
-  const redirectTo = req.nextUrl.searchParams.get("redirect") || "/";
-
-  return NextResponse.redirect(new URL(redirectTo, req.url));
+  // Redirect to a client-side page that can read sessionStorage
+  return NextResponse.redirect(new URL("/auth/callback/finish", req.url));
 }

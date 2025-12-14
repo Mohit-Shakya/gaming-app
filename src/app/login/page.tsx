@@ -40,22 +40,13 @@ export default function LoginPage() {
     try {
       setLoading(true);
 
-      // Check if there's a redirect URL saved (from booking flow)
-      const savedRedirect = typeof window !== "undefined"
-        ? sessionStorage.getItem("redirectAfterLogin")
-        : null;
-
-      // Build the callback URL with redirect parameter
-      const callbackUrl = new URL(`${window.location.origin}/auth/callback`);
-      if (savedRedirect) {
-        callbackUrl.searchParams.set("redirect", savedRedirect);
-        sessionStorage.removeItem("redirectAfterLogin");
-      }
+      // Keep redirect URL in sessionStorage - it will be read by auth callback
+      // after OAuth completes
 
       await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: callbackUrl.toString(),
+          redirectTo: `${window.location.origin}/auth/callback`,
         },
       });
     } catch (err) {
