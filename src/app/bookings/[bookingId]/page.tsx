@@ -624,7 +624,7 @@ export default function BookingDetailsPage() {
                         fontWeight: 700,
                         color: "white",
                       }}>
-                        Location
+                        Google Maps
                       </span>
                     </a>
                   )}
@@ -658,7 +658,7 @@ export default function BookingDetailsPage() {
                         fontWeight: 700,
                         color: "white",
                       }}>
-                        Follow
+                        Instagram
                       </span>
                     </a>
                   )}
