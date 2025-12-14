@@ -119,7 +119,10 @@ export default function CafeList({ cafes }: Props) {
                     fill
                     sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                     className="object-cover"
-                    loading="lazy"
+                    loading={index === 0 ? "eager" : "lazy"}
+                    priority={index === 0}
+                    fetchPriority={index === 0 ? "high" : "auto"}
+                    quality={index < 3 ? 90 : 75}
                   />
                   {/* Gradient overlay */}
                   <div className="absolute inset-0 bg-gradient-to-t from-[#101016] via-transparent to-transparent" />
