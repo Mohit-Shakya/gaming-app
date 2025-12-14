@@ -2,6 +2,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import type { Cafe } from "@/types/cafe";
 
 type Props = {
@@ -16,8 +17,6 @@ export default function CafeList({ cafes }: Props) {
   return (
     <>
       <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;600;700&family=Rajdhani:wght@400;500;600;700&display=swap');
-
         .cafe-card {
           background: rgba(16, 16, 22, 0.8);
           border: 1px solid rgba(255, 255, 255, 0.04);
@@ -114,11 +113,12 @@ export default function CafeList({ cafes }: Props) {
             <div className="relative">
               {cafe.cover_url ? (
                 <div className="relative h-36 sm:h-44 md:h-52 w-full overflow-hidden bg-zinc-900">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
+                  <Image
                     src={cafe.cover_url}
                     alt={cafe.name}
-                    className="h-full w-full object-cover"
+                    fill
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                    className="object-cover"
                     loading="lazy"
                   />
                   {/* Gradient overlay */}

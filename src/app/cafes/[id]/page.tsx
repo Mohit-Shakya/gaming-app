@@ -1,9 +1,18 @@
 // src/app/cafes/[id]/page.tsx
 
 import { supabase } from "@/lib/supabaseClient";
-import CafeGallery from "@/components/CafeGallery";
-import CafeDetailsAccordion from "@/components/CafeDetailsAccordion";
+import Image from "next/image";
+import dynamicImport from "next/dynamic";
 import Link from "next/link";
+
+// Lazy load heavy components
+const CafeGallery = dynamicImport(() => import("@/components/CafeGallery"), {
+  loading: () => <div style={{ padding: "20px", textAlign: "center", color: "#666" }}>Loading gallery...</div>,
+});
+
+const CafeDetailsAccordion = dynamicImport(() => import("@/components/CafeDetailsAccordion"), {
+  loading: () => <div style={{ padding: "20px", textAlign: "center", color: "#666" }}>Loading details...</div>,
+});
 
 type CafePageProps = {
   params: Promise<{ id: string }>;
@@ -75,10 +84,6 @@ export default async function CafePage({ params }: CafePageProps) {
           fontFamily: fonts.body,
         }}
       >
-        <link
-          href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&display=swap"
-          rel="stylesheet"
-        />
         <h1
           style={{
             fontFamily: fonts.heading,
@@ -143,10 +148,6 @@ export default async function CafePage({ params }: CafePageProps) {
           fontFamily: fonts.body,
         }}
       >
-        <link
-          href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&display=swap"
-          rel="stylesheet"
-        />
         <h1
           style={{
             fontFamily: fonts.heading,
@@ -220,12 +221,6 @@ export default async function CafePage({ params }: CafePageProps) {
         position: "relative",
       }}
     >
-      {/* Google Fonts */}
-      <link
-        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&display=swap"
-        rel="stylesheet"
-      />
-
       {/* Background ambient glow */}
       <div
         style={{
@@ -275,15 +270,13 @@ export default async function CafePage({ params }: CafePageProps) {
                 borderRadius: "16px",
               }}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <Image
                 src={cafe.cover_url}
                 alt={cafe.name}
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                }}
+                fill
+                sizes="(max-width: 1024px) 100vw, 1024px"
+                className="object-cover"
+                priority
               />
               {/* Gradient overlay */}
               <div
