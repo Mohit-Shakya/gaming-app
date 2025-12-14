@@ -9,5 +9,8 @@ export async function GET(req: NextRequest) {
     await supabase.auth.exchangeCodeForSession(code);
   }
 
-  return NextResponse.redirect(new URL("/", req.url)); // go home after login
+  // Check if there's a redirect path in the query params (sent from login page)
+  const redirectTo = req.nextUrl.searchParams.get("redirect") || "/";
+
+  return NextResponse.redirect(new URL(redirectTo, req.url));
 }
