@@ -78,6 +78,13 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
         <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
+        <link rel="preconnect" href="https://zlwqbmcgrrqrbyxdpqgn.supabase.co" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://zlwqbmcgrrqrbyxdpqgn.supabase.co" />
+        <style dangerouslySetInnerHTML={{__html: `
+          body{background:#08080c;color:#fff;margin:0;padding:0}
+          *{box-sizing:border-box}
+          img{max-width:100%;height:auto;display:block}
+        `}} />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${orbitron.variable} ${rajdhani.variable} bg-black text-white`}
