@@ -18,17 +18,19 @@ const geistMono = Roboto_Mono({
 const orbitron = Orbitron({
   variable: "--font-orbitron",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800", "900"],
-  display: "swap", // Optimize font loading
-  preload: true,
+  weight: ["700", "800"], // Only load heavy weights needed
+  display: "swap",
+  preload: false, // Don't preload - let it load async
+  fallback: ["Arial", "sans-serif"],
 });
 
 const rajdhani = Rajdhani({
   variable: "--font-rajdhani",
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  display: "swap", // Optimize font loading
-  preload: true,
+  weight: ["400", "600"], // Only load weights actually used
+  display: "swap",
+  preload: false, // Don't preload - let it load async
+  fallback: ["Arial", "sans-serif"],
 });
 
 export const metadata: Metadata = {
@@ -74,12 +76,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
-        <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
-        <link rel="preconnect" href="https://zlwqbmcgrrqrbyxdpqgn.supabase.co" crossOrigin="anonymous" />
-        <link rel="dns-prefetch" href="https://zlwqbmcgrrqrbyxdpqgn.supabase.co" />
+        <link rel="preconnect" href="https://zlwqbmcgrrqrbyxdpqgn.supabase.co" />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${orbitron.variable} ${rajdhani.variable} bg-black text-white`}
