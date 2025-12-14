@@ -123,8 +123,6 @@ export default function CafeList({ cafes }: Props) {
                     priority={index === 0}
                     fetchPriority={index === 0 ? "high" : "auto"}
                     quality={index === 0 ? 85 : index < 3 ? 75 : 60}
-                    placeholder="blur"
-                    blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDABQODxIPDRQSEBIXFRQYHjIhHhwcHj0sLiQySUBMS0dARkVQWnNiUFVtVkVGZIhlbXd7gYKBTmCNl4x9lnN+gXz/2wBDARUXFx4aHjshITt8U0ZTfHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHx8fHz/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwA3gA/f/9k="
                   />
                   {/* Gradient overlay */}
                   <div className="absolute inset-0 bg-gradient-to-t from-[#101016] via-transparent to-transparent" />
