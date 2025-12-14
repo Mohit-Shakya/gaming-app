@@ -37,23 +37,6 @@ img, picture, video, canvas, svg {
   max-width: 100%;
 }
 
-/* GPU acceleration for transforms and opacity */
-[class*="animate-"],
-[class*="transition-"] {
-  will-change: transform, opacity;
-}
-
-/* Optimize scrolling */
-* {
-  scroll-behavior: smooth;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  html {
-    scroll-behavior: smooth;
-  }
-}
-
 /* Reduce motion for accessibility and performance */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
