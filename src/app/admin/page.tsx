@@ -28,6 +28,7 @@ export default function AdminDashboardPage() {
   const [loadingStats, setLoadingStats] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"overview" | "cafes" | "bookings" | "manage">("overview");
+  const [triggerNewCafe, setTriggerNewCafe] = useState(false);
 
   // 1) Check if user is admin
   useEffect(() => {
@@ -248,7 +249,38 @@ export default function AdminDashboardPage() {
             </div>
           </div>
 
-          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+            <button
+              onClick={() => {
+                setActiveTab("manage");
+                setTriggerNewCafe(true);
+                setTimeout(() => setTriggerNewCafe(false), 100);
+              }}
+              style={{
+                padding: "10px 18px",
+                borderRadius: 10,
+                border: "none",
+                background: "linear-gradient(135deg, #10b981, #059669)",
+                color: "#fff",
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: "pointer",
+                transition: "all 0.2s",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = "translateY(-2px)";
+                e.currentTarget.style.boxShadow = "0 8px 16px rgba(16,185,129,0.3)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "translateY(0)";
+                e.currentTarget.style.boxShadow = "none";
+              }}
+            >
+              ➕ Add New Café
+            </button>
             <button
               onClick={() => window.location.reload()}
               style={{
@@ -611,7 +643,7 @@ export default function AdminDashboardPage() {
 
         {activeTab === "cafes" && <CafesTable />}
 
-        {activeTab === "manage" && <ManageCafes />}
+        {activeTab === "manage" && <ManageCafes openNewCafe={triggerNewCafe} />}
 
         {activeTab === "bookings" && <AdminRecentBookings />}
       </div>

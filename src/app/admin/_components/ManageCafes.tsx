@@ -66,12 +66,16 @@ type CafeRow = {
   description: string | null;
 };
 
-export default function ManageCafes() {
+type ManageCafesProps = {
+  openNewCafe?: boolean;
+};
+
+export default function ManageCafes({ openNewCafe = false }: ManageCafesProps = {}) {
   const { user } = useUser();
   const [cafes, setCafes] = useState<CafeRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCafe, setSelectedCafe] = useState<string | null>(null);
-  const [isCreating, setIsCreating] = useState(false);
+  const [isCreating, setIsCreating] = useState(openNewCafe);
   const [saving, setSaving] = useState(false);
   const [galleryImages, setGalleryImages] = useState<Array<{ id: string; image_url: string }>>([]);
   const [uploading, setUploading] = useState(false);
@@ -119,6 +123,13 @@ export default function ManageCafes() {
   useEffect(() => {
     loadCafes();
   }, []);
+
+  // Handle openNewCafe prop
+  useEffect(() => {
+    if (openNewCafe) {
+      handleNewCafe();
+    }
+  }, [openNewCafe]);
 
   async function loadCafes() {
     try {
