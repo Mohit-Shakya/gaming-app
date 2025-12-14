@@ -110,10 +110,12 @@ export default function CafesTable() {
     }
   };
 
-  // Delete café
+  // Delete café - Actually just deactivates it to avoid FK constraint issues
   const handleDelete = async (cafeId: string, cafeName: string | null) => {
     const confirmed = confirm(
-      `Are you sure you want to delete "${cafeName || "this café"}"?\n\nThis action cannot be undone and will also delete:\n- All bookings\n- All gallery images\n- All console pricing data\n- All related records`
+      `Are you sure you want to delete "${cafeName || "this café"}"?\n\n` +
+      `Note: Due to database constraints, this will deactivate the café instead of permanently deleting it.\n` +
+      `The café will be hidden from users but all data will be preserved.`
     );
 
     if (!confirmed) return;
@@ -121,81 +123,29 @@ export default function CafesTable() {
     try {
       setActionLoading(cafeId);
 
-      console.log("Starting deletion process for cafe:", cafeId);
+      console.log("Deactivating cafe (soft delete):", cafeId);
 
-      // Try using the RPC function first (if it exists)
-      const { data: rpcResult, error: rpcError } = await supabase
-        .rpc('delete_cafe_cascade', { cafe_uuid: cafeId });
+      // Instead of deleting, mark as inactive and hide from users
+      const { error } = await supabase
+        .from("cafes")
+        .update({
+          is_active: false,
+          name: `[DELETED] ${cafeName || 'Untitled'}` // Mark as deleted
+        })
+        .eq("id", cafeId);
 
-      if (rpcError) {
-        console.error("RPC function not available, falling back to manual deletion:", rpcError);
-
-        // Fallback: Manual deletion in correct order
-        // 1. Delete bookings first
-        console.log("Deleting bookings...");
-        const { error: bookingsError } = await supabase
-          .from("bookings")
-          .delete()
-          .eq("cafe_id", cafeId);
-
-        if (bookingsError) {
-          console.error("Error deleting bookings:", bookingsError);
-          throw new Error(`Failed to delete bookings: ${bookingsError.message}`);
-        }
-
-        // 2. Delete console pricing
-        console.log("Deleting console pricing...");
-        await supabase
-          .from("console_pricing")
-          .delete()
-          .eq("cafe_id", cafeId);
-
-        // 3. Delete cafe images
-        console.log("Deleting cafe images...");
-        await supabase
-          .from("cafe_images")
-          .delete()
-          .eq("cafe_id", cafeId);
-
-        // 4. Finally delete the cafe
-        console.log("Deleting cafe...");
-        const { error: cafeError } = await supabase
-          .from("cafes")
-          .delete()
-          .eq("id", cafeId);
-
-        if (cafeError) {
-          console.error("Error deleting cafe:", cafeError);
-          throw new Error(`Failed to delete café: ${cafeError.message}`);
-        }
-
-        console.log("Manual deletion completed successfully!");
-      } else {
-        console.log("RPC deletion result:", rpcResult);
-
-        if (rpcResult && !rpcResult.success) {
-          throw new Error(rpcResult.error || "Database function reported failure");
-        }
+      if (error) {
+        console.error("Error deactivating cafe:", error);
+        throw new Error(`Failed to deactivate café: ${error.message}`);
       }
 
       // Remove from local state
       setCafes(prev => prev.filter(cafe => cafe.id !== cafeId));
 
-      alert("Café and all related data deleted successfully!");
+      alert("Café has been deactivated and hidden from users!");
     } catch (err: any) {
-      console.error("Error deleting café:", err);
-
-      // Show detailed error message
-      const errorMsg = err.message || "Unknown error occurred";
-
-      alert(
-        `Failed to delete café!\n\n` +
-        `Error: ${errorMsg}\n\n` +
-        `Possible solutions:\n` +
-        `1. Make sure you have the delete_cafe_cascade function installed\n` +
-        `2. Check DELETE_CAFE_SETUP.md for instructions\n` +
-        `3. Contact support if the issue persists`
-      );
+      console.error("Error deactivating café:", err);
+      alert(`Failed to deactivate café: ${err.message || "Unknown error"}`);
 
       // Reload to ensure UI matches database state
       window.location.reload();
