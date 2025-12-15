@@ -607,7 +607,7 @@ export default async function CafePage({ params }: CafePageProps) {
             )}
 
             {/* Book Now Button */}
-            <Link href={`/cafes/${cafe.id}/book`} style={{ display: "block" }}>
+            <Link href={`/cafes/${cafe.id}/booking-mode`} style={{ display: "block" }}>
               <button
                 style={{
                   width: "100%",
