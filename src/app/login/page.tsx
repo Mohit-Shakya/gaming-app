@@ -40,8 +40,9 @@ export default function LoginPage() {
     try {
       setLoading(true);
 
-      // Keep redirect URL in sessionStorage - it will be read by auth callback
-      // after OAuth completes
+      // Preserve any existing redirect URL in sessionStorage
+      // This is set by the booking page or other pages before redirecting to login
+      // The auth callback will read this and redirect back to the original page
 
       await supabase.auth.signInWithOAuth({
         provider: "google",

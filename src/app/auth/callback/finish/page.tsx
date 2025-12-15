@@ -8,7 +8,7 @@ export default function AuthCallbackFinish() {
   const router = useRouter();
 
   useEffect(() => {
-    // Read the redirect URL from sessionStorage
+    // Read the redirect URL from sessionStorage (includes query params like ?mode=walkin)
     const redirectTo = sessionStorage.getItem("redirectAfterLogin") || "/";
 
     // Clear the stored redirect

@@ -640,28 +640,36 @@ export default function BookingPage() {
     // Set loading state immediately for instant feedback
     setIsSubmitting(true);
 
-    if (!user && !userLoading) {
-      sessionStorage.setItem("redirectAfterLogin", window.location.pathname);
+    // Wait for auth check to complete before redirecting
+    if (userLoading) {
+      // Still checking auth status, wait a bit
+      return;
+    }
+
+    if (!user) {
+      // User is not logged in, save current page and redirect to login
+      sessionStorage.setItem("redirectAfterLogin", window.location.pathname + window.location.search);
       router.push("/login");
       return;
     }
 
-    if (user) {
-      try {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("onboarding_complete")
-          .eq("id", user.id)
-          .maybeSingle();
+    // User is logged in, check if onboarding is complete
+    try {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("onboarding_complete")
+        .eq("id", user.id)
+        .maybeSingle();
 
-        if (!profile?.onboarding_complete) {
-          sessionStorage.setItem("redirectAfterOnboarding", window.location.pathname);
-          router.push("/onboarding");
-          return;
-        }
-      } catch (err) {
-        console.error("Error checking profile:", err);
+      if (!profile?.onboarding_complete) {
+        sessionStorage.setItem("redirectAfterOnboarding", window.location.pathname + window.location.search);
+        router.push("/onboarding");
+        return;
       }
+    } catch (err) {
+      console.error("Error checking profile:", err);
+      setIsSubmitting(false);
+      return;
     }
 
     try {
