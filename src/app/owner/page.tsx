@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import useUser from "@/hooks/useUser";
 import { colors, fonts } from "@/lib/constants";
+import { getEndTime } from "@/lib/timeUtils";
 
 type OwnerStats = {
   cafesCount: number;
@@ -51,6 +52,34 @@ type BookingRow = {
 };
 
 type NavTab = 'overview' | 'bookings' | 'cafes' | 'analytics';
+
+// Helper functions for time conversion
+function convertTo24Hour(time12h: string): string {
+  const match = time12h.match(/(\d{1,2}):(\d{2})\s*(am|pm)/i);
+  if (!match) return "";
+
+  let hours = parseInt(match[1]);
+  const minutes = match[2];
+  const period = match[3].toLowerCase();
+
+  if (period === "pm" && hours !== 12) {
+    hours += 12;
+  } else if (period === "am" && hours === 12) {
+    hours = 0;
+  }
+
+  return `${hours.toString().padStart(2, "0")}:${minutes}`;
+}
+
+function convertTo12Hour(time24h: string): string {
+  const [hoursStr, minutes] = time24h.split(":");
+  let hours = parseInt(hoursStr);
+
+  const period = hours >= 12 ? "pm" : "am";
+  hours = hours % 12 || 12;
+
+  return `${hours}:${minutes} ${period}`;
+}
 
 export default function OwnerDashboardPage() {
   const router = useRouter();
@@ -279,7 +308,8 @@ export default function OwnerDashboardPage() {
     setEditAmount(booking.total_amount?.toString() || "");
     setEditStatus(booking.status || "confirmed");
     setEditDate(booking.booking_date || "");
-    setEditStartTime(booking.start_time || "");
+    // Convert 12-hour format (from DB) to 24-hour format (for input)
+    setEditStartTime(booking.start_time ? convertTo24Hour(booking.start_time) : "");
   }
 
   // Handle save booking
@@ -288,13 +318,16 @@ export default function OwnerDashboardPage() {
 
     try {
       setSaving(true);
+      // Convert 24-hour format (from input) back to 12-hour format (for DB)
+      const startTime12h = editStartTime ? convertTo12Hour(editStartTime) : editingBooking.start_time;
+
       const { error } = await supabase
         .from("bookings")
         .update({
           total_amount: parseFloat(editAmount),
           status: editStatus,
           booking_date: editDate,
-          start_time: editStartTime,
+          start_time: startTime12h,
         })
         .eq("id", editingBooking.id);
 
@@ -308,7 +341,7 @@ export default function OwnerDashboardPage() {
                 total_amount: parseFloat(editAmount),
                 status: editStatus,
                 booking_date: editDate,
-                start_time: editStartTime,
+                start_time: startTime12h,
               }
             : b
         )
@@ -1519,6 +1552,30 @@ export default function OwnerDashboardPage() {
                     color: colors.textPrimary,
                     fontSize: 14,
                     fontFamily: fonts.body,
+                  }}
+                />
+              </div>
+
+              {/* End Time */}
+              <div>
+                <label style={{ fontSize: 12, color: colors.textMuted, display: "block", marginBottom: 8 }}>
+                  End Time
+                </label>
+                <input
+                  type="text"
+                  value={editStartTime ? getEndTime(convertTo12Hour(editStartTime), editingBooking?.duration || 60) : ""}
+                  readOnly
+                  disabled
+                  style={{
+                    width: "100%",
+                    padding: "12px",
+                    background: "rgba(30,41,59,0.3)",
+                    border: `1px solid ${colors.border}`,
+                    borderRadius: 8,
+                    color: colors.textMuted,
+                    fontSize: 14,
+                    fontFamily: fonts.body,
+                    cursor: "not-allowed",
                   }}
                 />
               </div>
