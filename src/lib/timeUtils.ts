@@ -51,11 +51,13 @@ export function doTimeSlotsOverlap(
 }
 
 /**
- * Calculate end time (1 hour after start)
+ * Calculate end time based on duration
+ * @param startTime - Start time string (e.g., "2:30 pm")
+ * @param durationMinutes - Duration in minutes (default: BOOKING_DURATION_MINUTES from constants)
  */
-export function getEndTime(startTime: string): string {
+export function getEndTime(startTime: string, durationMinutes: number = BOOKING_DURATION_MINUTES): string {
   const startMinutes = timeStringToMinutes(startTime);
-  const endMinutes = startMinutes + BOOKING_DURATION_MINUTES;
+  const endMinutes = startMinutes + durationMinutes;
 
   let hours = Math.floor(endMinutes / 60);
   const mins = endMinutes % 60;
