@@ -94,15 +94,14 @@ export default function BookingModePage() {
 
       <div
         style={{
-          maxWidth: "600px",
+          maxWidth: "480px",
           margin: "0 auto",
-          padding: "24px 16px",
+          padding: "20px 16px 32px",
           position: "relative",
           zIndex: 1,
           minHeight: "100vh",
           display: "flex",
           flexDirection: "column",
-          justifyContent: "center",
         }}
       >
         {/* Back Button */}
@@ -117,26 +116,25 @@ export default function BookingModePage() {
             color: colors.textSecondary,
             fontSize: "14px",
             cursor: "pointer",
-            padding: "0",
-            marginBottom: "32px",
-            position: "absolute",
-            top: "24px",
-            left: "16px",
+            padding: "12px 0",
+            marginBottom: "20px",
+            minHeight: "44px",
           }}
         >
-          <span style={{ fontSize: "18px" }}>←</span>
+          <span style={{ fontSize: "20px" }}>←</span>
           Back
         </button>
 
         {/* Header */}
-        <div style={{ textAlign: "center", marginBottom: "48px" }}>
+        <div style={{ textAlign: "center", marginBottom: "32px" }}>
           <p
             style={{
-              fontSize: "12px",
+              fontSize: "11px",
               color: colors.cyan,
               textTransform: "uppercase",
-              letterSpacing: "2px",
-              marginBottom: "12px",
+              letterSpacing: "1.5px",
+              marginBottom: "10px",
+              fontWeight: 600,
             }}
           >
             {loading ? "Loading..." : cafeName}
@@ -144,22 +142,25 @@ export default function BookingModePage() {
           <h1
             style={{
               fontFamily: fonts.heading,
-              fontSize: "28px",
+              fontSize: "24px",
               fontWeight: 800,
               background: `linear-gradient(135deg, ${colors.textPrimary} 0%, ${colors.cyan} 100%)`,
               WebkitBackgroundClip: "text",
               WebkitTextFillColor: "transparent",
               backgroundClip: "text",
-              marginBottom: "12px",
+              marginBottom: "10px",
+              lineHeight: "1.3",
             }}
           >
             Choose Booking Type
           </h1>
           <p
             style={{
-              fontSize: "14px",
+              fontSize: "13px",
               color: colors.textSecondary,
-              lineHeight: "1.6",
+              lineHeight: "1.5",
+              maxWidth: "320px",
+              margin: "0 auto",
             }}
           >
             Select how you'd like to book your gaming session
@@ -167,148 +168,37 @@ export default function BookingModePage() {
         </div>
 
         {/* Booking Mode Cards */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-          {/* Advance Booking Card */}
-          <button
-            onClick={() => handleModeSelect("advance")}
-            style={{
-              padding: "32px 24px",
-              background: `linear-gradient(135deg, rgba(0, 240, 255, 0.1) 0%, rgba(0, 240, 255, 0.05) 100%)`,
-              border: `2px solid rgba(0, 240, 255, 0.3)`,
-              borderRadius: "20px",
-              cursor: "pointer",
-              transition: "all 0.3s ease",
-              textAlign: "left",
-              position: "relative",
-              overflow: "hidden",
-            }}
-            className="booking-card"
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "translateY(-4px)";
-              e.currentTarget.style.boxShadow = `0 12px 32px rgba(0, 240, 255, 0.3)`;
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "translateY(0)";
-              e.currentTarget.style.boxShadow = "none";
-            }}
-          >
-            {/* Icon */}
-            <div
-              style={{
-                width: "56px",
-                height: "56px",
-                background: `linear-gradient(135deg, ${colors.cyan} 0%, #0088cc 100%)`,
-                borderRadius: "16px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: "28px",
-                marginBottom: "20px",
-                boxShadow: `0 8px 24px rgba(0, 240, 255, 0.3)`,
-              }}
-            >
-              📅
-            </div>
-
-            {/* Title */}
-            <h2
-              style={{
-                fontFamily: fonts.heading,
-                fontSize: "22px",
-                fontWeight: 700,
-                color: colors.cyan,
-                marginBottom: "12px",
-              }}
-            >
-              Advance Booking
-            </h2>
-
-            {/* Description */}
-            <p
-              style={{
-                fontSize: "14px",
-                color: colors.textSecondary,
-                lineHeight: "1.6",
-                marginBottom: "16px",
-              }}
-            >
-              Book your slot in advance. Perfect for planning your gaming sessions ahead of time.
-            </p>
-
-            {/* Features */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <span style={{ color: colors.cyan }}>✓</span>
-                <span style={{ fontSize: "13px", color: colors.textMuted }}>
-                  Choose any date & time
-                </span>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <span style={{ color: colors.cyan }}>✓</span>
-                <span style={{ fontSize: "13px", color: colors.textMuted }}>
-                  Guaranteed slot reservation
-                </span>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <span style={{ color: colors.cyan }}>✓</span>
-                <span style={{ fontSize: "13px", color: colors.textMuted }}>
-                  Plan ahead for weekends
-                </span>
-              </div>
-            </div>
-
-            {/* Arrow */}
-            <div
-              style={{
-                position: "absolute",
-                right: "24px",
-                top: "50%",
-                transform: "translateY(-50%)",
-                fontSize: "24px",
-                color: colors.cyan,
-              }}
-            >
-              →
-            </div>
-          </button>
-
-          {/* Walk-in Booking Card */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+          {/* Walk-in Booking Card - PRIMARY OPTION */}
           <button
             onClick={() => handleModeSelect("walkin")}
             style={{
-              padding: "32px 24px",
-              background: `linear-gradient(135deg, rgba(255, 7, 58, 0.1) 0%, rgba(255, 7, 58, 0.05) 100%)`,
-              border: `2px solid rgba(255, 7, 58, 0.3)`,
-              borderRadius: "20px",
+              padding: "24px 20px",
+              background: `linear-gradient(135deg, rgba(255, 7, 58, 0.12) 0%, rgba(255, 7, 58, 0.06) 100%)`,
+              border: `2px solid rgba(255, 7, 58, 0.35)`,
+              borderRadius: "18px",
               cursor: "pointer",
-              transition: "all 0.3s ease",
+              transition: "all 0.2s ease",
               textAlign: "left",
               position: "relative",
               overflow: "hidden",
+              minHeight: "200px",
             }}
-            className="booking-card"
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "translateY(-4px)";
-              e.currentTarget.style.boxShadow = `0 12px 32px rgba(255, 7, 58, 0.3)`;
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "translateY(0)";
-              e.currentTarget.style.boxShadow = "none";
-            }}
+            className="booking-card-primary"
           >
             {/* Icon */}
             <div
               style={{
-                width: "56px",
-                height: "56px",
+                width: "52px",
+                height: "52px",
                 background: `linear-gradient(135deg, ${colors.red} 0%, #cc0033 100%)`,
-                borderRadius: "16px",
+                borderRadius: "14px",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                fontSize: "28px",
-                marginBottom: "20px",
-                boxShadow: `0 8px 24px rgba(255, 7, 58, 0.3)`,
+                fontSize: "26px",
+                marginBottom: "16px",
+                boxShadow: `0 6px 20px rgba(255, 7, 58, 0.35)`,
               }}
             >
               🚶‍♂️
@@ -318,10 +208,12 @@ export default function BookingModePage() {
             <h2
               style={{
                 fontFamily: fonts.heading,
-                fontSize: "22px",
+                fontSize: "20px",
                 fontWeight: 700,
                 color: colors.red,
-                marginBottom: "12px",
+                marginBottom: "10px",
+                paddingRight: "80px",
+                lineHeight: "1.3",
               }}
             >
               Walk-in Booking
@@ -330,33 +222,34 @@ export default function BookingModePage() {
             {/* Description */}
             <p
               style={{
-                fontSize: "14px",
+                fontSize: "13px",
                 color: colors.textSecondary,
                 lineHeight: "1.6",
-                marginBottom: "16px",
+                marginBottom: "14px",
+                paddingRight: "40px",
               }}
             >
-              Already at the café? Book instantly for immediate play. Perfect for spontaneous gaming.
+              Already at the café? Book instantly and start playing now
             </p>
 
             {/* Features */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "7px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <span style={{ color: colors.red }}>✓</span>
-                <span style={{ fontSize: "13px", color: colors.textMuted }}>
-                  Instant booking (today only)
+                <span style={{ color: colors.red, fontSize: "14px" }}>✓</span>
+                <span style={{ fontSize: "12px", color: colors.textMuted }}>
+                  Instant booking
                 </span>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <span style={{ color: colors.red }}>✓</span>
-                <span style={{ fontSize: "13px", color: colors.textMuted }}>
-                  Start playing immediately
+                <span style={{ color: colors.red, fontSize: "14px" }}>✓</span>
+                <span style={{ fontSize: "12px", color: colors.textMuted }}>
+                  Play immediately
                 </span>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <span style={{ color: colors.red }}>✓</span>
-                <span style={{ fontSize: "13px", color: colors.textMuted }}>
-                  No date/time selection needed
+                <span style={{ color: colors.red, fontSize: "14px" }}>✓</span>
+                <span style={{ fontSize: "12px", color: colors.textMuted }}>
+                  No wait time
                 </span>
               </div>
             </div>
@@ -365,29 +258,124 @@ export default function BookingModePage() {
             <div
               style={{
                 position: "absolute",
-                top: "20px",
-                right: "20px",
-                padding: "4px 12px",
+                top: "16px",
+                right: "16px",
+                padding: "6px 12px",
                 background: colors.red,
                 borderRadius: "999px",
-                fontSize: "11px",
+                fontSize: "10px",
                 fontWeight: 700,
                 color: "white",
                 textTransform: "uppercase",
                 letterSpacing: "0.5px",
               }}
             >
-              Quick
+              Instant
             </div>
 
             {/* Arrow */}
             <div
               style={{
                 position: "absolute",
-                right: "24px",
-                bottom: "24px",
+                right: "20px",
+                bottom: "20px",
                 fontSize: "24px",
                 color: colors.red,
+              }}
+            >
+              →
+            </div>
+          </button>
+
+          {/* Advance Booking Card - SECONDARY OPTION */}
+          <button
+            onClick={() => handleModeSelect("advance")}
+            style={{
+              padding: "20px 18px",
+              background: `linear-gradient(135deg, rgba(0, 240, 255, 0.08) 0%, rgba(0, 240, 255, 0.03) 100%)`,
+              border: `1.5px solid rgba(0, 240, 255, 0.25)`,
+              borderRadius: "16px",
+              cursor: "pointer",
+              transition: "all 0.2s ease",
+              textAlign: "left",
+              position: "relative",
+              overflow: "hidden",
+              minHeight: "160px",
+            }}
+            className="booking-card-secondary"
+          >
+            {/* Icon */}
+            <div
+              style={{
+                width: "44px",
+                height: "44px",
+                background: `linear-gradient(135deg, ${colors.cyan} 0%, #0088cc 100%)`,
+                borderRadius: "11px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "22px",
+                marginBottom: "14px",
+                boxShadow: `0 4px 16px rgba(0, 240, 255, 0.25)`,
+              }}
+            >
+              📅
+            </div>
+
+            {/* Title */}
+            <h2
+              style={{
+                fontFamily: fonts.heading,
+                fontSize: "18px",
+                fontWeight: 700,
+                color: colors.cyan,
+                marginBottom: "9px",
+                paddingRight: "60px",
+                lineHeight: "1.3",
+              }}
+            >
+              Advance Booking
+            </h2>
+
+            {/* Description */}
+            <p
+              style={{
+                fontSize: "12px",
+                color: colors.textSecondary,
+                lineHeight: "1.6",
+                marginBottom: "12px",
+                paddingRight: "40px",
+              }}
+            >
+              Plan ahead and book for any future date & time
+            </p>
+
+            {/* Features - Compact */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <span style={{ color: colors.cyan, fontSize: "12px" }}>✓</span>
+                <span style={{ fontSize: "11px", color: colors.textMuted }}>
+                  Choose future dates
+                </span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <span style={{ color: colors.cyan, fontSize: "12px" }}>✓</span>
+                <span style={{ fontSize: "11px", color: colors.textMuted }}>
+                  Guaranteed slot
+                </span>
+              </div>
+            </div>
+
+            {/* Arrow */}
+            <div
+              style={{
+                position: "absolute",
+                right: "18px",
+                top: "50%",
+                transform: "translateY(-50%)",
+                fontSize: "18px",
+                color: colors.cyan,
+                opacity: 0.6,
               }}
             >
               →
@@ -398,29 +386,66 @@ export default function BookingModePage() {
         {/* Help Text */}
         <div
           style={{
-            marginTop: "32px",
-            padding: "16px",
+            marginTop: "24px",
+            padding: "14px 16px",
             background: "rgba(255, 255, 255, 0.03)",
             border: `1px solid ${colors.border}`,
             borderRadius: "12px",
             textAlign: "center",
           }}
         >
-          <p style={{ fontSize: "13px", color: colors.textMuted, lineHeight: "1.6" }}>
-            💡 <strong style={{ color: colors.textSecondary }}>Tip:</strong> Use Advance Booking for planning ahead, or Walk-in Booking if you're already at the café
+          <p style={{ fontSize: "12px", color: colors.textMuted, lineHeight: "1.6" }}>
+            💡 <strong style={{ color: colors.textSecondary }}>Tip:</strong> Walk-in for instant play, Advance for planning ahead
           </p>
         </div>
       </div>
 
-      {/* Animations */}
+      {/* Mobile-First Responsive Styles */}
       <style>{`
-        .booking-card {
-          box-shadow: none;
+        /* Mobile touch optimization */
+        @media (hover: none) {
+          .booking-card-primary:active {
+            transform: scale(0.98);
+            opacity: 0.95;
+          }
+
+          .booking-card-secondary:active {
+            transform: scale(0.98);
+            opacity: 0.95;
+          }
         }
 
-        @media (max-width: 640px) {
-          .booking-card {
-            padding: 24px 20px !important;
+        /* Desktop hover effects */
+        @media (hover: hover) {
+          .booking-card-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 28px rgba(255, 7, 58, 0.35);
+          }
+
+          .booking-card-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 22px rgba(0, 240, 255, 0.25);
+            border-color: rgba(0, 240, 255, 0.4);
+          }
+        }
+
+        /* Smooth transitions */
+        .booking-card-primary,
+        .booking-card-secondary {
+          -webkit-tap-highlight-color: transparent;
+          touch-action: manipulation;
+        }
+
+        /* Small mobile adjustments */
+        @media (max-width: 380px) {
+          .booking-card-primary {
+            padding: 20px 16px !important;
+            min-height: 180px !important;
+          }
+
+          .booking-card-secondary {
+            padding: 18px 16px !important;
+            min-height: 150px !important;
           }
         }
       `}</style>
