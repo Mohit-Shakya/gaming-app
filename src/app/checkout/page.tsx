@@ -23,6 +23,7 @@ type CheckoutDraft = {
   timeSlot: string;    // "2:04 pm" or "2:30 pm"
   tickets: CheckoutTicket[];
   totalAmount: number;
+  durationMinutes: 30 | 60 | 90; // Session duration
   source: "walk_in" | "online";
 };
 
@@ -37,6 +38,38 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(true);
   const [placing, setPlacing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Function to remove a ticket from the cart
+  const removeTicket = (ticketId: string) => {
+    if (!draft) return;
+
+    const updatedTickets = draft.tickets.filter((t) => t.ticketId !== ticketId);
+    const newTotal = updatedTickets.reduce((sum, t) => sum + t.price * t.quantity, 0);
+
+    const updatedDraft = {
+      ...draft,
+      tickets: updatedTickets,
+      totalAmount: newTotal,
+    };
+
+    setDraft(updatedDraft);
+
+    // Update sessionStorage
+    if (typeof window !== "undefined") {
+      if (updatedTickets.length === 0) {
+        // If no tickets left, remove the draft entirely
+        window.sessionStorage.removeItem("checkoutDraft");
+        router.back(); // Go back to booking page
+      } else {
+        window.sessionStorage.setItem("checkoutDraft", JSON.stringify(updatedDraft));
+      }
+    }
+  };
+
+  // Function to go back and edit the booking
+  const editBooking = () => {
+    router.back();
+  };
 
   // Load draft from sessionStorage
   useEffect(() => {
@@ -185,7 +218,14 @@ export default function CheckoutPage() {
   });
 
   const totalTickets = draft.tickets.reduce((sum, t) => sum + t.quantity, 0);
-  const endTime = getEndTime(draft.timeSlot);
+  const durationMinutes = draft.durationMinutes || 60; // Default to 60 if not set
+  const endTime = getEndTime(draft.timeSlot, durationMinutes);
+
+  // Format duration text
+  const durationText =
+    durationMinutes === 30 ? "30 min" :
+    durationMinutes === 60 ? "1 hour" :
+    durationMinutes === 90 ? "1.5 hours" : `${durationMinutes} min`;
 
   return (
     <div
@@ -363,7 +403,7 @@ export default function CheckoutPage() {
                 <span>
                   {draft.timeSlot} – {endTime}{" "}
                   <span style={{ color: colors.textMuted }} className="session-duration">
-                    (1 hour session)
+                    ({durationText} session)
                   </span>
                 </span>
               </div>
@@ -417,31 +457,60 @@ export default function CheckoutPage() {
               borderBottom: `1px solid ${colors.border}`,
               display: "flex",
               alignItems: "center",
+              justifyContent: "space-between",
               gap: 8,
             }}
           >
-            <span style={{ fontSize: 16 }}>🎟️</span>
-            <div>
-              <div
-                style={{
-                  fontSize: 13,
-                  fontWeight: 600,
-                  textTransform: "uppercase",
-                  letterSpacing: 1,
-                }}
-              >
-                Your Tickets
-              </div>
-              <div
-                style={{
-                  fontSize: 11,
-                  color: colors.textMuted,
-                }}
-              >
-                {totalTickets} ticket
-                {totalTickets > 1 ? "s" : ""} · {draft.timeSlot} – {endTime}
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 16 }}>🎟️</span>
+              <div>
+                <div
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 600,
+                    textTransform: "uppercase",
+                    letterSpacing: 1,
+                  }}
+                >
+                  Your Tickets
+                </div>
+                <div
+                  style={{
+                    fontSize: 11,
+                    color: colors.textMuted,
+                  }}
+                >
+                  {totalTickets} ticket
+                  {totalTickets > 1 ? "s" : ""} · {durationText}
+                </div>
               </div>
             </div>
+            <button
+              onClick={editBooking}
+              style={{
+                background: "rgba(0, 240, 255, 0.1)",
+                border: "1px solid rgba(0, 240, 255, 0.3)",
+                borderRadius: "8px",
+                padding: "6px 12px",
+                cursor: "pointer",
+                fontSize: "11px",
+                fontWeight: 600,
+                color: colors.cyan,
+                textTransform: "uppercase",
+                letterSpacing: "0.5px",
+                transition: "all 0.2s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "rgba(0, 240, 255, 0.18)";
+                e.currentTarget.style.transform = "translateY(-1px)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "rgba(0, 240, 255, 0.1)";
+                e.currentTarget.style.transform = "translateY(0)";
+              }}
+            >
+              Edit
+            </button>
           </div>
 
           <div
@@ -465,9 +534,10 @@ export default function CheckoutPage() {
                     padding: "10px 8px",
                     borderRadius: 12,
                     background: "rgba(15,23,42,0.9)",
+                    position: "relative",
                   }}
                 >
-                  <div>
+                  <div style={{ flex: 1 }}>
                     <div
                       style={{
                         fontSize: 13,
@@ -486,13 +556,40 @@ export default function CheckoutPage() {
                       {t.quantity} x ₹{t.price} • {CONSOLE_LABELS[t.console]}
                     </div>
                   </div>
-                  <div
-                    style={{
-                      fontFamily: fonts.heading,
-                      fontSize: 14,
-                    }}
-                  >
-                    ₹{lineTotal}
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                    <div
+                      style={{
+                        fontFamily: fonts.heading,
+                        fontSize: 14,
+                        fontWeight: 600,
+                      }}
+                    >
+                      ₹{lineTotal}
+                    </div>
+                    <button
+                      onClick={() => removeTicket(t.ticketId)}
+                      style={{
+                        background: "rgba(239, 68, 68, 0.15)",
+                        border: "1px solid rgba(239, 68, 68, 0.3)",
+                        borderRadius: "8px",
+                        padding: "6px 8px",
+                        cursor: "pointer",
+                        fontSize: "16px",
+                        lineHeight: "1",
+                        transition: "all 0.2s ease",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = "rgba(239, 68, 68, 0.25)";
+                        e.currentTarget.style.transform = "scale(1.05)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "rgba(239, 68, 68, 0.15)";
+                        e.currentTarget.style.transform = "scale(1)";
+                      }}
+                      title="Remove ticket"
+                    >
+                      🗑️
+                    </button>
                   </div>
                 </div>
               );
