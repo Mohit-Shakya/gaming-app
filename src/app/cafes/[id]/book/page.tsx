@@ -159,7 +159,7 @@ function generateTickets(
     qty4_30min: number | null; qty4_60min: number | null;
   } | null,
   fallbackPrice: number,
-  duration: 30 | 60
+  duration: 30 | 60 | 90
 ): TicketOption[] {
   const consoleName = CONSOLES.find((c) => c.id === consoleId)?.label || consoleId;
   const tickets: TicketOption[] = [];
@@ -175,20 +175,32 @@ function generateTickets(
 
     // Use tier-based pricing if available, otherwise fallback to simple multiplication
     if (pricingTier) {
-      const qtyKey = `qty${qty}_${duration}min` as keyof typeof pricingTier;
-      const tierPrice = pricingTier[qtyKey];
-
-      if (tierPrice !== null && tierPrice !== undefined) {
-        price = tierPrice;
+      if (duration === 90) {
+        // 90min = 60min + 30min pricing
+        const price60 = pricingTier[`qty${qty}_60min` as keyof typeof pricingTier] ?? (fallbackPrice * qty);
+        const price30 = pricingTier[`qty${qty}_30min` as keyof typeof pricingTier] ?? (fallbackPrice * qty * 0.5);
+        price = price60 + price30;
       } else {
-        // Fallback: calculate based on duration ratio
-        price = duration === 30 ? (fallbackPrice * qty * 0.5) : (fallbackPrice * qty);
+        const qtyKey = `qty${qty}_${duration}min` as keyof typeof pricingTier;
+        const tierPrice = pricingTier[qtyKey];
+
+        if (tierPrice !== null && tierPrice !== undefined) {
+          price = tierPrice;
+        } else {
+          // Fallback: calculate based on duration ratio
+          price = duration === 30 ? (fallbackPrice * qty * 0.5) : (fallbackPrice * qty);
+        }
       }
     } else {
-      price = duration === 30 ? (fallbackPrice * qty * 0.5) : (fallbackPrice * qty);
+      if (duration === 90) {
+        // 90min = 1.5 hours
+        price = fallbackPrice * qty * 1.5;
+      } else {
+        price = duration === 30 ? (fallbackPrice * qty * 0.5) : (fallbackPrice * qty);
+      }
     }
 
-    const durationText = duration === 30 ? "30 minutes" : "1 hour";
+    const durationText = duration === 30 ? "30 minutes" : duration === 60 ? "1 hour" : "1.5 hours";
 
     tickets.push({
       id: `${consoleId}_${qty}`,
@@ -262,7 +274,8 @@ export default function BookingPage() {
   const [selectedDate, setSelectedDate] = useState<string>(DAY_OPTIONS[0]?.key ?? "");
   const [selectedTime, setSelectedTime] = useState<string>("");
   const [selectedConsole, setSelectedConsole] = useState<ConsoleId>("ps5");
-  const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const [quantities, setQuantities] = useState<Record<string, number>>({}); // ticketId -> quantity
+  // ticketId format: "ps5_2" (console_quantity) OR "ps5_2_30" / "ps5_2_60" (console_quantity_duration)
 
   // Cafe data
   const [cafeName, setCafeName] = useState<string>("Gaming Café");
@@ -282,7 +295,7 @@ export default function BookingPage() {
   };
 
   const [consolePricing, setConsolePricing] = useState<Partial<Record<ConsoleId, ConsolePricingTier>>>({});
-  const [selectedDuration, setSelectedDuration] = useState<30 | 60>(60);
+  const [selectedDuration, setSelectedDuration] = useState<30 | 60 | 90>(60);
   const [consoleLimits, setConsoleLimits] = useState<Partial<Record<ConsoleId, number>>>({});
   const [availableConsoles, setAvailableConsoles] = useState<ConsoleId[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1254,7 +1267,7 @@ export default function BookingPage() {
                     }}
                   >
                     <span>⏱️</span>
-                    <span>{selectedDuration === 30 ? "30 min" : "1 hour"}</span>
+                    <span>{selectedDuration === 30 ? "30 min" : selectedDuration === 60 ? "1 hour" : "1.5 hours"}</span>
                   </div>
                 </div>
               </div>
@@ -1277,77 +1290,124 @@ export default function BookingPage() {
                 <span style={{ fontSize: "18px" }}>⏱️</span>
                 <span>Select Duration</span>
               </h2>
-              <div style={{ display: "flex", gap: "14px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "10px" }}>
                 <button
                   onClick={() => { setSelectedDuration(30); setQuantities({}); }}
                   style={{
-                    flex: 1,
-                    padding: "20px 16px",
-                    minHeight: "88px",
-                    borderRadius: "16px",
+                    padding: "16px 12px",
+                    minHeight: "80px",
+                    borderRadius: "14px",
                     border: selectedDuration === 30
-                      ? `3px solid ${colors.cyan}`
-                      : `2px solid ${colors.border}`,
+                      ? `2.5px solid ${colors.cyan}`
+                      : `1.5px solid ${colors.border}`,
                     background: selectedDuration === 30
-                      ? `linear-gradient(135deg, rgba(0, 240, 255, 0.25) 0%, rgba(0, 240, 255, 0.12) 100%)`
+                      ? `linear-gradient(135deg, rgba(0, 240, 255, 0.22) 0%, rgba(0, 240, 255, 0.10) 100%)`
                       : `linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%)`,
                     cursor: "pointer",
-                    transition: "all 0.3s ease",
-                    boxShadow: selectedDuration === 30 ? `0 8px 24px rgba(0, 240, 255, 0.35)` : "0 2px 8px rgba(0, 0, 0, 0.2)",
-                    transform: selectedDuration === 30 ? "translateY(-2px)" : "none",
+                    transition: "all 0.2s ease",
+                    boxShadow: selectedDuration === 30 ? `0 6px 20px rgba(0, 240, 255, 0.3)` : "0 2px 6px rgba(0, 0, 0, 0.15)",
+                    transform: selectedDuration === 30 ? "translateY(-1px)" : "none",
                   }}
                   className="duration-button"
                 >
                   <div
                     style={{
-                      fontSize: "32px",
+                      fontSize: "26px",
                       fontWeight: 900,
                       fontFamily: fonts.heading,
                       color: selectedDuration === 30 ? colors.cyan : colors.textPrimary,
-                      marginBottom: "6px",
+                      marginBottom: "4px",
                       letterSpacing: "-0.5px",
+                      lineHeight: "1",
                     }}
                   >
-                    30 min
+                    30
                   </div>
-                  <div style={{ fontSize: "13px", color: selectedDuration === 30 ? colors.cyan : colors.textMuted, fontWeight: 600 }}>
-                    Quick Session
+                  <div style={{ fontSize: "12px", color: selectedDuration === 30 ? colors.cyan : colors.textMuted, fontWeight: 600 }}>
+                    min
                   </div>
                 </button>
                 <button
                   onClick={() => { setSelectedDuration(60); setQuantities({}); }}
                   style={{
-                    flex: 1,
-                    padding: "20px 16px",
-                    minHeight: "88px",
-                    borderRadius: "16px",
+                    padding: "16px 12px",
+                    minHeight: "80px",
+                    borderRadius: "14px",
                     border: selectedDuration === 60
-                      ? `3px solid ${colors.cyan}`
-                      : `2px solid ${colors.border}`,
+                      ? `2.5px solid ${colors.cyan}`
+                      : `1.5px solid ${colors.border}`,
                     background: selectedDuration === 60
-                      ? `linear-gradient(135deg, rgba(0, 240, 255, 0.25) 0%, rgba(0, 240, 255, 0.12) 100%)`
+                      ? `linear-gradient(135deg, rgba(0, 240, 255, 0.22) 0%, rgba(0, 240, 255, 0.10) 100%)`
                       : `linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%)`,
                     cursor: "pointer",
-                    transition: "all 0.3s ease",
-                    boxShadow: selectedDuration === 60 ? `0 8px 24px rgba(0, 240, 255, 0.35)` : "0 2px 8px rgba(0, 0, 0, 0.2)",
-                    transform: selectedDuration === 60 ? "translateY(-2px)" : "none",
+                    transition: "all 0.2s ease",
+                    boxShadow: selectedDuration === 60 ? `0 6px 20px rgba(0, 240, 255, 0.3)` : "0 2px 6px rgba(0, 0, 0, 0.15)",
+                    transform: selectedDuration === 60 ? "translateY(-1px)" : "none",
                   }}
                   className="duration-button"
                 >
                   <div
                     style={{
-                      fontSize: "32px",
+                      fontSize: "26px",
                       fontWeight: 900,
                       fontFamily: fonts.heading,
                       color: selectedDuration === 60 ? colors.cyan : colors.textPrimary,
-                      marginBottom: "6px",
+                      marginBottom: "4px",
                       letterSpacing: "-0.5px",
+                      lineHeight: "1",
                     }}
                   >
-                    1 hour
+                    60
                   </div>
-                  <div style={{ fontSize: "13px", color: selectedDuration === 60 ? colors.cyan : colors.textMuted, fontWeight: 600 }}>
-                    Full Session
+                  <div style={{ fontSize: "12px", color: selectedDuration === 60 ? colors.cyan : colors.textMuted, fontWeight: 600 }}>
+                    min
+                  </div>
+                </button>
+                <button
+                  onClick={() => { setSelectedDuration(90); setQuantities({}); }}
+                  style={{
+                    padding: "16px 12px",
+                    minHeight: "80px",
+                    borderRadius: "14px",
+                    border: selectedDuration === 90
+                      ? `2.5px solid ${colors.red}`
+                      : `1.5px solid ${colors.border}`,
+                    background: selectedDuration === 90
+                      ? `linear-gradient(135deg, rgba(255, 7, 58, 0.22) 0%, rgba(255, 7, 58, 0.10) 100%)`
+                      : `linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%)`,
+                    cursor: "pointer",
+                    transition: "all 0.2s ease",
+                    boxShadow: selectedDuration === 90 ? `0 6px 20px rgba(255, 7, 58, 0.3)` : "0 2px 6px rgba(0, 0, 0, 0.15)",
+                    transform: selectedDuration === 90 ? "translateY(-1px)" : "none",
+                    position: "relative",
+                  }}
+                  className="duration-button"
+                >
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: "6px",
+                      right: "6px",
+                      fontSize: "10px",
+                    }}
+                  >
+                    🔥
+                  </div>
+                  <div
+                    style={{
+                      fontSize: "26px",
+                      fontWeight: 900,
+                      fontFamily: fonts.heading,
+                      color: selectedDuration === 90 ? colors.red : colors.textPrimary,
+                      marginBottom: "4px",
+                      letterSpacing: "-0.5px",
+                      lineHeight: "1",
+                    }}
+                  >
+                    90
+                  </div>
+                  <div style={{ fontSize: "12px", color: selectedDuration === 90 ? colors.red : colors.textMuted, fontWeight: 600 }}>
+                    min
                   </div>
                 </button>
               </div>
@@ -1520,7 +1580,11 @@ export default function BookingPage() {
 
                       {/* Price */}
                       <div style={{ fontSize: "10px", color: colors.textMuted, fontWeight: 600, marginBottom: "6px" }}>
-                        ₹{consolePricing[consoleId]?.[`qty1_${selectedDuration}min` as keyof ConsolePricingTier] ?? (selectedDuration === 30 ? cafePrice * 0.5 : cafePrice)}
+                        ₹{
+                          selectedDuration === 90
+                            ? ((consolePricing[consoleId]?.qty1_60min ?? cafePrice) + (consolePricing[consoleId]?.qty1_30min ?? cafePrice * 0.5))
+                            : (consolePricing[consoleId]?.[`qty1_${selectedDuration}min` as keyof ConsolePricingTier] ?? (selectedDuration === 30 ? cafePrice * 0.5 : cafePrice))
+                        }
                       </div>
 
                       {/* Availability badge - compact */}
