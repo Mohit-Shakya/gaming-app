@@ -15,7 +15,8 @@ export default function OnboardingPage() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
-  const [dob, setDob] = useState("");
+  const [dob, setDob] = useState(""); // Stored in YYYY-MM-DD format for database
+  const [dobDisplay, setDobDisplay] = useState(""); // Displayed in DD/MM/YYYY format for user
 
   // UI states
   const [saving, setSaving] = useState(false);
@@ -63,6 +64,14 @@ export default function OnboardingPage() {
           setLastName(data.last_name || "");
           setPhone(data.phone || "");
           setDob(data.date_of_birth || "");
+
+          // Convert YYYY-MM-DD to DD/MM/YYYY for display
+          if (data.date_of_birth) {
+            const [year, month, day] = data.date_of_birth.split("-");
+            setDobDisplay(`${day}/${month}/${year}`);
+          } else {
+            setDobDisplay("");
+          }
         }
 
         // Pre-fill from Google auth metadata if available
@@ -81,6 +90,46 @@ export default function OnboardingPage() {
 
     if (user) checkProfile();
   }, [user, router]);
+
+  // Handle date input change with automatic formatting
+  function handleDateChange(value: string) {
+    // Remove non-digit characters
+    const digitsOnly = value.replace(/\D/g, "");
+
+    // Format as DD/MM/YYYY
+    let formatted = "";
+    if (digitsOnly.length > 0) {
+      formatted = digitsOnly.substring(0, 2);
+      if (digitsOnly.length >= 3) {
+        formatted += "/" + digitsOnly.substring(2, 4);
+      }
+      if (digitsOnly.length >= 5) {
+        formatted += "/" + digitsOnly.substring(4, 8);
+      }
+    }
+
+    setDobDisplay(formatted);
+
+    // Convert to YYYY-MM-DD for database storage if valid
+    if (digitsOnly.length === 8) {
+      const day = digitsOnly.substring(0, 2);
+      const month = digitsOnly.substring(2, 4);
+      const year = digitsOnly.substring(4, 8);
+
+      // Basic validation
+      const dayNum = parseInt(day, 10);
+      const monthNum = parseInt(month, 10);
+      const yearNum = parseInt(year, 10);
+
+      if (dayNum >= 1 && dayNum <= 31 && monthNum >= 1 && monthNum <= 12 && yearNum >= 1900 && yearNum <= 2100) {
+        setDob(`${year}-${month}-${day}`);
+      } else {
+        setDob("");
+      }
+    } else {
+      setDob("");
+    }
+  }
 
   // Form validation
   function validateForm() {
@@ -480,13 +529,15 @@ export default function OnboardingPage() {
                 marginBottom: "8px",
                 fontWeight: 500,
               }}>
-                Date of Birth <span style={{ color: colors.red }}>*</span>
+                Date of Birth (DD/MM/YYYY) <span style={{ color: colors.red }}>*</span>
               </label>
               <input
-                type="date"
-                value={dob}
-                onChange={(e) => setDob(e.target.value)}
-                max={new Date().toISOString().split("T")[0]}
+                type="text"
+                value={dobDisplay}
+                onChange={(e) => handleDateChange(e.target.value)}
+                placeholder="01/01/2000"
+                maxLength={10}
+                inputMode="numeric"
                 style={{
                   width: "100%",
                   padding: "14px 16px",
