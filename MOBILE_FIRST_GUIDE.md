@@ -3,7 +3,7 @@
 ## Overview
 This document outlines all mobile-first responsive design improvements made to the BookMyGame gaming cafe booking platform.
 
-## Updated Files
+## Updated Filess
 
 ### ✅ Policy Pages
 - `src/app/terms/page.tsx` - Terms of Service
