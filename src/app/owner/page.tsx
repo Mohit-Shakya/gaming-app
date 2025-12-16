@@ -54,6 +54,7 @@ type BookingRow = {
   customer_name?: string | null;
   customer_phone?: string | null;
   booking_items?: Array<{
+    id: string;
     console: string | null;
     quantity: number | null;
   }>;
@@ -123,6 +124,7 @@ export default function OwnerDashboardPage() {
   const [editDate, setEditDate] = useState<string>("");
   const [editStartTime, setEditStartTime] = useState<string>("");
   const [editDuration, setEditDuration] = useState<number>(60);
+  const [editConsole, setEditConsole] = useState<string>("");
   const [saving, setSaving] = useState(false);
 
   // Check role
@@ -232,6 +234,7 @@ export default function OwnerDashboardPage() {
             customer_name,
             customer_phone,
             booking_items (
+              id,
               console,
               quantity
             )
@@ -341,6 +344,9 @@ export default function OwnerDashboardPage() {
     setEditStatus(booking.status || "confirmed");
     setEditDate(booking.booking_date || "");
     setEditDuration(booking.duration || 60);
+    // Get console from booking_items
+    const console = booking.booking_items?.[0]?.console || "";
+    setEditConsole(console);
     // Convert 12-hour format (from DB) to 24-hour format (for input)
     setEditStartTime(booking.start_time ? convertTo24Hour(booking.start_time) : "");
   }
@@ -367,6 +373,19 @@ export default function OwnerDashboardPage() {
 
       if (error) throw error;
 
+      // Update booking_items with new console
+      if (editingBooking.booking_items && editingBooking.booking_items.length > 0) {
+        const bookingItemId = editingBooking.booking_items[0].id;
+        const { error: itemError } = await supabase
+          .from("booking_items")
+          .update({
+            console: editConsole,
+          })
+          .eq("id", bookingItemId);
+
+        if (itemError) throw itemError;
+      }
+
       setBookings((prev) =>
         prev.map((b) =>
           b.id === editingBooking.id
@@ -377,6 +396,10 @@ export default function OwnerDashboardPage() {
                 booking_date: editDate,
                 start_time: startTime12h,
                 duration: editDuration,
+                booking_items: b.booking_items?.map(item => ({
+                  ...item,
+                  console: editConsole
+                }))
               }
             : b
         )
@@ -1770,6 +1793,39 @@ export default function OwnerDashboardPage() {
                 </select>
               </div>
 
+              {/* Console */}
+              <div>
+                <label style={{ fontSize: 12, color: colors.textMuted, display: "block", marginBottom: 8 }}>
+                  Console *
+                </label>
+                <select
+                  value={editConsole}
+                  onChange={(e) => setEditConsole(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "12px",
+                    background: "rgba(30,41,59,0.5)",
+                    border: `1px solid ${colors.border}`,
+                    borderRadius: 8,
+                    color: colors.textPrimary,
+                    fontSize: 14,
+                    fontFamily: fonts.body,
+                    cursor: "pointer",
+                  }}
+                >
+                  <option value="">Select Console</option>
+                  <option value="ps5">PS5</option>
+                  <option value="ps4">PS4</option>
+                  <option value="xbox">Xbox</option>
+                  <option value="pc">PC</option>
+                  <option value="pool">Pool</option>
+                  <option value="snooker">Snooker</option>
+                  <option value="arcade">Arcade</option>
+                  <option value="vr">VR</option>
+                  <option value="steering_wheel">Racing</option>
+                </select>
+              </div>
+
               {/* End Time */}
               <div>
                 <label style={{ fontSize: 12, color: colors.textMuted, display: "block", marginBottom: 8 }}>
@@ -1980,6 +2036,7 @@ function LiveBillingTab({
             customer_name,
             customer_phone,
             booking_items (
+              id,
               console,
               quantity
             )
