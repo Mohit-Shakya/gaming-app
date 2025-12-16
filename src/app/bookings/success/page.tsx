@@ -21,8 +21,8 @@ type BookingRow = {
 type CafeRow = {
   id: string;
   name: string;
-  google_place_id?: string | null;
-  instagram_handle?: string | null;
+  google_maps_url?: string | null;
+  instagram_url?: string | null;
 };
 
 type BookingItemRow = {
@@ -103,7 +103,7 @@ function BookingSuccessContent() {
         if (booking.cafe_id) {
           const { data: cafeRow, error: cafeError } = await supabase
             .from("cafes")
-            .select("id, name, google_place_id, instagram_handle")
+            .select("id, name, google_maps_url, instagram_url")
             .eq("id", booking.cafe_id)
             .maybeSingle();
           if (cafeError) throw cafeError;
@@ -830,14 +830,14 @@ function BookingSuccessContent() {
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: cafe.google_place_id && cafe.instagram_handle ? "1fr 1fr" : "1fr",
+                gridTemplateColumns: cafe.google_maps_url && cafe.instagram_url ? "1fr 1fr" : "1fr",
                 gap: "12px",
               }}
             >
-              {/* Google Review Button */}
-              {cafe.google_place_id && (
+              {/* Google Maps Button */}
+              {cafe.google_maps_url && (
                 <a
-                  href={`https://search.google.com/local/writereview?placeid=${cafe.google_place_id}`}
+                  href={cafe.google_maps_url}
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{
@@ -872,9 +872,9 @@ function BookingSuccessContent() {
               )}
 
               {/* Instagram Follow Button */}
-              {cafe.instagram_handle && (
+              {cafe.instagram_url && (
                 <a
-                  href={`https://www.instagram.com/${cafe.instagram_handle.replace('@', '')}`}
+                  href={cafe.instagram_url}
                   target="_blank"
                   rel="noopener noreferrer"
                   style={{
