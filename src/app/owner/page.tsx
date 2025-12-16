@@ -111,6 +111,9 @@ export default function OwnerDashboardPage() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sourceFilter, setSourceFilter] = useState<string>("all");
   const [dateFilter, setDateFilter] = useState<string>("");
+  const [dateRangeFilter, setDateRangeFilter] = useState<string>("all"); // today, week, month, quarter, custom, all
+  const [customStartDate, setCustomStartDate] = useState<string>("");
+  const [customEndDate, setCustomEndDate] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState<string>("");
 
   // Edit modal state
@@ -398,18 +401,47 @@ export default function OwnerDashboardPage() {
       if (bookingSource !== sourceFilter) return false;
     }
 
-    // Date filter
-    if (dateFilter && booking.booking_date !== dateFilter) {
-      return false;
+    // Date Range filter
+    if (dateRangeFilter !== "all" && booking.booking_date) {
+      const bookingDate = new Date(booking.booking_date);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      if (dateRangeFilter === "today") {
+        const todayStr = today.toISOString().split('T')[0];
+        if (booking.booking_date !== todayStr) return false;
+      } else if (dateRangeFilter === "week") {
+        const weekAgo = new Date(today);
+        weekAgo.setDate(today.getDate() - 7);
+        if (bookingDate < weekAgo) return false;
+      } else if (dateRangeFilter === "month") {
+        const monthAgo = new Date(today);
+        monthAgo.setMonth(today.getMonth() - 1);
+        if (bookingDate < monthAgo) return false;
+      } else if (dateRangeFilter === "quarter") {
+        const quarterAgo = new Date(today);
+        quarterAgo.setMonth(today.getMonth() - 3);
+        if (bookingDate < quarterAgo) return false;
+      } else if (dateRangeFilter === "custom") {
+        if (customStartDate) {
+          const startDate = new Date(customStartDate);
+          if (bookingDate < startDate) return false;
+        }
+        if (customEndDate) {
+          const endDate = new Date(customEndDate);
+          endDate.setHours(23, 59, 59, 999);
+          if (bookingDate > endDate) return false;
+        }
+      }
     }
 
     // Search query
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       const matchesId = booking.id.toLowerCase().includes(query);
-      const matchesName = booking.user_name?.toLowerCase().includes(query);
-      const matchesEmail = booking.user_email?.toLowerCase().includes(query);
-      const matchesPhone = booking.user_phone?.toLowerCase().includes(query);
+      const matchesName = (booking.customer_name || booking.user_name || "").toLowerCase().includes(query);
+      const matchesEmail = (booking.user_email || "").toLowerCase().includes(query);
+      const matchesPhone = (booking.customer_phone || booking.user_phone || "").toLowerCase().includes(query);
       if (!matchesId && !matchesName && !matchesEmail && !matchesPhone) {
         return false;
       }
@@ -890,6 +922,105 @@ export default function OwnerDashboardPage() {
                   marginBottom: 24,
                 }}
               >
+                {/* Date Range Quick Filters */}
+                <div style={{ marginBottom: 20 }}>
+                  <label
+                    style={{
+                      fontSize: 12,
+                      color: colors.textMuted,
+                      display: "block",
+                      marginBottom: 12,
+                      fontWeight: 600,
+                    }}
+                  >
+                    📅 Date Range
+                  </label>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    {[
+                      { value: "all", label: "All Time" },
+                      { value: "today", label: "Today" },
+                      { value: "week", label: "This Week" },
+                      { value: "month", label: "This Month" },
+                      { value: "quarter", label: "This Quarter" },
+                      { value: "custom", label: "Custom Range" },
+                    ].map((range) => (
+                      <button
+                        key={range.value}
+                        onClick={() => setDateRangeFilter(range.value)}
+                        style={{
+                          padding: "8px 16px",
+                          borderRadius: 8,
+                          border: `1px solid ${dateRangeFilter === range.value ? "#3b82f6" : colors.border}`,
+                          background: dateRangeFilter === range.value ? "rgba(59, 130, 246, 0.15)" : "rgba(30,41,59,0.5)",
+                          color: dateRangeFilter === range.value ? "#3b82f6" : colors.textSecondary,
+                          fontSize: 13,
+                          fontWeight: dateRangeFilter === range.value ? 600 : 400,
+                          cursor: "pointer",
+                          transition: "all 0.2s",
+                        }}
+                      >
+                        {range.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Custom Date Range Inputs */}
+                {dateRangeFilter === "custom" && (
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: 16,
+                      marginBottom: 20,
+                      padding: 16,
+                      background: "rgba(59, 130, 246, 0.05)",
+                      borderRadius: 8,
+                      border: "1px solid rgba(59, 130, 246, 0.2)",
+                    }}
+                  >
+                    <div>
+                      <label style={{ fontSize: 12, color: colors.textMuted, display: "block", marginBottom: 8 }}>
+                        Start Date
+                      </label>
+                      <input
+                        type="date"
+                        value={customStartDate}
+                        onChange={(e) => setCustomStartDate(e.target.value)}
+                        style={{
+                          width: "100%",
+                          padding: "10px 12px",
+                          borderRadius: 8,
+                          border: `1px solid ${colors.border}`,
+                          background: "rgba(30,41,59,0.5)",
+                          color: colors.textPrimary,
+                          fontSize: 14,
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 12, color: colors.textMuted, display: "block", marginBottom: 8 }}>
+                        End Date
+                      </label>
+                      <input
+                        type="date"
+                        value={customEndDate}
+                        onChange={(e) => setCustomEndDate(e.target.value)}
+                        style={{
+                          width: "100%",
+                          padding: "10px 12px",
+                          borderRadius: 8,
+                          border: `1px solid ${colors.border}`,
+                          background: "rgba(30,41,59,0.5)",
+                          color: colors.textPrimary,
+                          fontSize: 14,
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Other Filters */}
                 <div
                   style={{
                     display: "grid",
@@ -907,7 +1038,7 @@ export default function OwnerDashboardPage() {
                         marginBottom: 8,
                       }}
                     >
-                      Search
+                      🔍 Search
                     </label>
                     <input
                       type="text"
@@ -936,7 +1067,7 @@ export default function OwnerDashboardPage() {
                         marginBottom: 8,
                       }}
                     >
-                      Status
+                      ⚡ Status
                     </label>
                     <select
                       value={statusFilter}
@@ -970,7 +1101,7 @@ export default function OwnerDashboardPage() {
                         marginBottom: 8,
                       }}
                     >
-                      Source
+                      📍 Source
                     </label>
                     <select
                       value={sourceFilter}
@@ -991,60 +1122,40 @@ export default function OwnerDashboardPage() {
                       <option value="walk_in">Walk-in</option>
                     </select>
                   </div>
-
-                  {/* Date Filter */}
-                  <div>
-                    <label
-                      style={{
-                        fontSize: 12,
-                        color: colors.textMuted,
-                        display: "block",
-                        marginBottom: 8,
-                      }}
-                    >
-                      Date
-                    </label>
-                    <input
-                      type="date"
-                      value={dateFilter}
-                      onChange={(e) => setDateFilter(e.target.value)}
-                      style={{
-                        width: "100%",
-                        padding: "10px 12px",
-                        borderRadius: 8,
-                        border: `1px solid ${colors.border}`,
-                        background: "rgba(30,41,59,0.5)",
-                        color: colors.textPrimary,
-                        fontSize: 14,
-                      }}
-                    />
-                  </div>
                 </div>
 
-                {/* Clear Filters */}
-                {(statusFilter !== "all" || sourceFilter !== "all" || dateFilter || searchQuery) && (
-                  <button
-                    onClick={() => {
-                      setStatusFilter("all");
-                      setSourceFilter("all");
-                      setDateFilter("");
-                      setSearchQuery("");
-                    }}
-                    style={{
-                      marginTop: 16,
-                      padding: "8px 16px",
-                      borderRadius: 6,
-                      border: `1px solid ${colors.border}`,
-                      background: "transparent",
-                      color: colors.textSecondary,
-                      fontSize: 12,
-                      cursor: "pointer",
-                    }}
-                  >
-                    Clear All Filters
-                  </button>
-                )}
+                {/* Clear Filters Button */}
+                <button
+                  onClick={() => {
+                    setSearchQuery("");
+                    setStatusFilter("all");
+                    setSourceFilter("all");
+                    setDateRangeFilter("all");
+                    setCustomStartDate("");
+                    setCustomEndDate("");
+                  }}
+                  style={{
+                    marginTop: 16,
+                    padding: "8px 16px",
+                    borderRadius: 8,
+                    border: `1px solid ${colors.border}`,
+                    background: "rgba(239, 68, 68, 0.1)",
+                    color: "#ef4444",
+                    fontSize: 13,
+                    fontWeight: 500,
+                    cursor: "pointer",
+                  }}
+                >
+                  🔄 Clear All Filters
+                </button>
               </div>
+
+              {/* Active Filters Summary */}
+              {(statusFilter !== "all" || sourceFilter !== "all" || dateRangeFilter !== "all" || searchQuery) && (
+                <div style={{ marginBottom: 16, fontSize: 13, color: colors.textMuted }}>
+                  📊 Showing {filteredBookings.length} of {bookings.length} bookings
+                </div>
+              )}
 
               {/* Results Count */}
               <div
