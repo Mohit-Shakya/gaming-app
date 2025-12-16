@@ -51,7 +51,7 @@ type BookingRow = {
   cafe_name?: string | null;
 };
 
-type NavTab = 'overview' | 'bookings' | 'cafe-details' | 'analytics';
+type NavTab = 'overview' | 'bookings' | 'live-billing' | 'cafe-details' | 'analytics';
 
 // Helper functions for time conversion
 function convertTo24Hour(time12h: string): string {
@@ -415,6 +415,7 @@ export default function OwnerDashboardPage() {
   const navItems: { id: NavTab; label: string; icon: string }[] = [
     { id: 'overview', label: 'Overview', icon: '📊' },
     { id: 'bookings', label: 'Bookings', icon: '📅' },
+    { id: 'live-billing', label: 'Live Billing', icon: '💳' },
     { id: 'cafe-details', label: 'Café Details', icon: '🏪' },
     { id: 'analytics', label: 'Analytics', icon: '📈' },
   ];
@@ -591,6 +592,7 @@ export default function OwnerDashboardPage() {
               >
                 {activeTab === 'overview' && 'Dashboard Overview'}
                 {activeTab === 'bookings' && 'Manage Bookings'}
+                {activeTab === 'live-billing' && 'Live Billing & Availability'}
                 {activeTab === 'cafe-details' && 'Café Details'}
                 {activeTab === 'analytics' && 'Analytics & Reports'}
               </h1>
@@ -603,6 +605,7 @@ export default function OwnerDashboardPage() {
               >
                 {activeTab === 'overview' && 'Track your café performance and bookings'}
                 {activeTab === 'bookings' && 'View and manage all customer bookings'}
+                {activeTab === 'live-billing' && 'Real-time console availability and manual billing for walk-ins'}
                 {activeTab === 'cafe-details' && 'Manage your gaming café information and pricing'}
                 {activeTab === 'analytics' && 'Detailed insights and statistics'}
               </p>
@@ -1278,6 +1281,13 @@ export default function OwnerDashboardPage() {
             </div>
           )}
 
+          {/* Live Billing Tab */}
+          {activeTab === 'live-billing' && (
+            <LiveBillingTab
+              cafes={cafes}
+            />
+          )}
+
           {/* Cafe Details Tab */}
           {activeTab === 'cafe-details' && (
             <div>
@@ -1662,6 +1672,610 @@ export default function OwnerDashboardPage() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// Live Billing Tab Component
+function LiveBillingTab({
+  cafes,
+}: {
+  cafes: CafeRow[];
+}) {
+  const [consoleAvailability, setConsoleAvailability] = useState<any>({});
+  const [activeBookings, setActiveBookings] = useState<BookingRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [billingForm, setBillingForm] = useState({
+    customerName: "",
+    customerPhone: "",
+    console: "",
+    quantity: 1,
+    startTime: "",
+    amount: "",
+  });
+  const [creatingBilling, setCreatingBilling] = useState(false);
+
+  const CONSOLE_TYPES = [
+    { id: "ps5", label: "PS5", icon: "🎮", color: "#0070f3" },
+    { id: "ps4", label: "PS4", icon: "🎮", color: "#7928ca" },
+    { id: "xbox", label: "Xbox", icon: "🎮", color: "#107c10" },
+    { id: "pc", label: "PC", icon: "💻", color: "#ff6b6b" },
+    { id: "pool", label: "Pool", icon: "🎱", color: "#f59e0b" },
+    { id: "snooker", label: "Snooker", icon: "🎱", color: "#10b981" },
+    { id: "arcade", label: "Arcade", icon: "🕹️", color: "#8b5cf6" },
+    { id: "vr", label: "VR", icon: "🥽", color: "#ec4899" },
+    { id: "steering_wheel", label: "Racing", icon: "🏎️", color: "#f97316" },
+  ];
+
+  // Load live availability
+  useEffect(() => {
+    if (cafes.length === 0) return;
+
+    async function loadLiveData() {
+      try {
+        setLoading(true);
+        const cafeId = cafes[0].id;
+        const now = new Date();
+        const today = now.toISOString().slice(0, 10);
+
+        // Fetch active bookings (today, confirmed/pending, not completed)
+        const { data: bookingsData, error: bookingsError } = await supabase
+          .from("bookings")
+          .select(`
+            id,
+            cafe_id,
+            user_id,
+            booking_date,
+            start_time,
+            total_amount,
+            status,
+            source,
+            created_at,
+            booking_items (
+              console,
+              quantity
+            )
+          `)
+          .eq("cafe_id", cafeId)
+          .eq("booking_date", today)
+          .in("status", ["confirmed", "pending"])
+          .order("start_time", { ascending: true });
+
+        if (bookingsError) throw bookingsError;
+
+        setActiveBookings((bookingsData as BookingRow[]) || []);
+
+        // Calculate console availability
+        const cafe = cafes[0];
+        const availability: any = {};
+
+        CONSOLE_TYPES.forEach((consoleType) => {
+          const dbKey = `${consoleType.id}_count` as keyof CafeRow;
+          const totalConsoles = typeof cafe[dbKey] === 'number' ? cafe[dbKey] : 0;
+
+          // Count booked consoles from active bookings
+          let bookedCount = 0;
+          bookingsData?.forEach((booking: any) => {
+            booking.booking_items?.forEach((item: any) => {
+              if (item.console?.toLowerCase() === consoleType.id.toLowerCase()) {
+                bookedCount += item.quantity || 0;
+              }
+            });
+          });
+
+          availability[consoleType.id] = {
+            total: totalConsoles,
+            booked: bookedCount,
+            available: Math.max(0, totalConsoles - bookedCount),
+          };
+        });
+
+        setConsoleAvailability(availability);
+      } catch (err: any) {
+        console.error("Error loading live data:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadLiveData();
+
+    // Refresh every 30 seconds
+    const interval = setInterval(loadLiveData, 30000);
+    return () => clearInterval(interval);
+  }, [cafes]);
+
+  // Handle manual billing creation
+  async function handleCreateBilling() {
+    if (!billingForm.customerName || !billingForm.customerPhone || !billingForm.console || !billingForm.startTime || !billingForm.amount) {
+      alert("Please fill in all required fields");
+      return;
+    }
+
+    if (cafes.length === 0) {
+      alert("No café found");
+      return;
+    }
+
+    try {
+      setCreatingBilling(true);
+      const today = new Date().toISOString().slice(0, 10);
+
+      // Create booking
+      const { data: booking, error: bookingError } = await supabase
+        .from("bookings")
+        .insert({
+          cafe_id: cafes[0].id,
+          user_id: null, // Walk-in customer
+          booking_date: today,
+          start_time: billingForm.startTime,
+          duration: 60, // Default 1 hour
+          total_amount: parseFloat(billingForm.amount),
+          status: "confirmed",
+          source: "walk_in",
+        })
+        .select()
+        .single();
+
+      if (bookingError) throw bookingError;
+
+      // Create booking items
+      const { error: itemsError } = await supabase
+        .from("booking_items")
+        .insert({
+          booking_id: booking.id,
+          console: billingForm.console,
+          quantity: billingForm.quantity,
+        });
+
+      if (itemsError) throw itemsError;
+
+      // Store customer info (optional - you might want to create a customers table)
+      alert("Walk-in booking created successfully!");
+
+      // Reset form
+      setBillingForm({
+        customerName: "",
+        customerPhone: "",
+        console: "",
+        quantity: 1,
+        startTime: "",
+        amount: "",
+      });
+
+      // Refresh data
+      window.location.reload();
+    } catch (err: any) {
+      console.error("Error creating billing:", err);
+      alert("Failed to create billing: " + err.message);
+    } finally {
+      setCreatingBilling(false);
+    }
+  }
+
+  if (cafes.length === 0) {
+    return (
+      <div
+        style={{
+          background: "rgba(15,23,42,0.6)",
+          borderRadius: 16,
+          border: `1px solid ${colors.border}`,
+          padding: "60px 20px",
+          textAlign: "center",
+        }}
+      >
+        <div style={{ fontSize: 64, marginBottom: 16, opacity: 0.3 }}>💳</div>
+        <p style={{ fontSize: 16, color: colors.textSecondary, marginBottom: 8, fontWeight: 500 }}>
+          No café found
+        </p>
+        <p style={{ fontSize: 13, color: colors.textMuted }}>
+          Contact admin to set up your café.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+      {/* Console Availability Grid */}
+      <div
+        style={{
+          background: "rgba(15,23,42,0.6)",
+          borderRadius: 16,
+          border: `1px solid ${colors.border}`,
+          padding: "24px",
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+          <h2
+            style={{
+              fontSize: 18,
+              fontWeight: 600,
+              margin: 0,
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
+            }}
+          >
+            <span>🎮</span>
+            Live Console Availability
+          </h2>
+          <div style={{
+            fontSize: 11,
+            color: colors.textMuted,
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+          }}>
+            <span style={{
+              width: 8,
+              height: 8,
+              borderRadius: "50%",
+              background: "#22c55e",
+              animation: "pulse 2s ease-in-out infinite",
+            }}></span>
+            Live - Auto-refreshes every 30s
+          </div>
+        </div>
+
+        {loading ? (
+          <div style={{ textAlign: "center", padding: "40px", color: colors.textMuted }}>
+            Loading availability...
+          </div>
+        ) : (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+              gap: 16,
+            }}
+          >
+            {CONSOLE_TYPES.map((consoleType) => {
+              const avail = consoleAvailability[consoleType.id] || { total: 0, booked: 0, available: 0 };
+              const availabilityPercent = avail.total > 0 ? (avail.available / avail.total) * 100 : 0;
+
+              return (
+                <div
+                  key={consoleType.id}
+                  style={{
+                    background: "rgba(30,41,59,0.5)",
+                    borderRadius: 12,
+                    border: `1px solid ${colors.border}`,
+                    padding: "16px",
+                    position: "relative",
+                    overflow: "hidden",
+                  }}
+                >
+                  {/* Background gradient */}
+                  <div
+                    style={{
+                      position: "absolute",
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      height: `${availabilityPercent}%`,
+                      background: `linear-gradient(180deg, transparent, ${consoleType.color}15)`,
+                      transition: "height 0.3s ease",
+                    }}
+                  />
+
+                  <div style={{ position: "relative", zIndex: 1 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                      <span style={{ fontSize: 24 }}>{consoleType.icon}</span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: colors.textPrimary }}>
+                          {consoleType.label}
+                        </div>
+                        <div style={{ fontSize: 11, color: colors.textMuted }}>
+                          {avail.total} Total
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12 }}>
+                      <div>
+                        <div style={{ fontSize: 24, fontWeight: 700, color: "#22c55e" }}>
+                          {avail.available}
+                        </div>
+                        <div style={{ fontSize: 11, color: colors.textMuted }}>Available</div>
+                      </div>
+                      <div style={{ textAlign: "right" }}>
+                        <div style={{ fontSize: 24, fontWeight: 700, color: "#ef4444" }}>
+                          {avail.booked}
+                        </div>
+                        <div style={{ fontSize: 11, color: colors.textMuted }}>In Use</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Manual Billing Form */}
+      <div
+        style={{
+          background: "rgba(15,23,42,0.6)",
+          borderRadius: 16,
+          border: `1px solid ${colors.border}`,
+          padding: "24px",
+        }}
+      >
+        <h2
+          style={{
+            fontSize: 18,
+            fontWeight: 600,
+            marginBottom: 20,
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+          }}
+        >
+          <span>💳</span>
+          Create Walk-In Billing
+        </h2>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
+          <div>
+            <label style={{ fontSize: 13, color: colors.textMuted, display: "block", marginBottom: 8 }}>
+              Customer Name *
+            </label>
+            <input
+              type="text"
+              value={billingForm.customerName}
+              onChange={(e) => setBillingForm({ ...billingForm, customerName: e.target.value })}
+              placeholder="Enter customer name"
+              style={{
+                width: "100%",
+                padding: "12px",
+                borderRadius: 8,
+                border: `1px solid ${colors.border}`,
+                background: "rgba(30,41,59,0.5)",
+                color: colors.textPrimary,
+                fontSize: 14,
+              }}
+            />
+          </div>
+
+          <div>
+            <label style={{ fontSize: 13, color: colors.textMuted, display: "block", marginBottom: 8 }}>
+              Phone Number *
+            </label>
+            <input
+              type="tel"
+              value={billingForm.customerPhone}
+              onChange={(e) => setBillingForm({ ...billingForm, customerPhone: e.target.value })}
+              placeholder="Enter phone number"
+              style={{
+                width: "100%",
+                padding: "12px",
+                borderRadius: 8,
+                border: `1px solid ${colors.border}`,
+                background: "rgba(30,41,59,0.5)",
+                color: colors.textPrimary,
+                fontSize: 14,
+              }}
+            />
+          </div>
+
+          <div>
+            <label style={{ fontSize: 13, color: colors.textMuted, display: "block", marginBottom: 8 }}>
+              Console Type *
+            </label>
+            <select
+              value={billingForm.console}
+              onChange={(e) => setBillingForm({ ...billingForm, console: e.target.value })}
+              style={{
+                width: "100%",
+                padding: "12px",
+                borderRadius: 8,
+                border: `1px solid ${colors.border}`,
+                background: "rgba(30,41,59,0.5)",
+                color: colors.textPrimary,
+                fontSize: 14,
+                cursor: "pointer",
+              }}
+            >
+              <option value="">Select Console</option>
+              {CONSOLE_TYPES.map((console) => {
+                const avail = consoleAvailability[console.id] || { available: 0 };
+                return (
+                  <option key={console.id} value={console.id} disabled={avail.available === 0}>
+                    {console.icon} {console.label} ({avail.available} available)
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+
+          <div>
+            <label style={{ fontSize: 13, color: colors.textMuted, display: "block", marginBottom: 8 }}>
+              Quantity *
+            </label>
+            <input
+              type="number"
+              min="1"
+              max="4"
+              value={billingForm.quantity}
+              onChange={(e) => setBillingForm({ ...billingForm, quantity: parseInt(e.target.value) || 1 })}
+              style={{
+                width: "100%",
+                padding: "12px",
+                borderRadius: 8,
+                border: `1px solid ${colors.border}`,
+                background: "rgba(30,41,59,0.5)",
+                color: colors.textPrimary,
+                fontSize: 14,
+              }}
+            />
+          </div>
+
+          <div>
+            <label style={{ fontSize: 13, color: colors.textMuted, display: "block", marginBottom: 8 }}>
+              Start Time *
+            </label>
+            <input
+              type="time"
+              value={billingForm.startTime}
+              onChange={(e) => {
+                const time = e.target.value;
+                if (time) {
+                  const [hours, minutes] = time.split(':');
+                  let h = parseInt(hours);
+                  const period = h >= 12 ? 'pm' : 'am';
+                  h = h % 12 || 12;
+                  const formattedTime = `${h}:${minutes} ${period}`;
+                  setBillingForm({ ...billingForm, startTime: formattedTime });
+                }
+              }}
+              style={{
+                width: "100%",
+                padding: "12px",
+                borderRadius: 8,
+                border: `1px solid ${colors.border}`,
+                background: "rgba(30,41,59,0.5)",
+                color: colors.textPrimary,
+                fontSize: 14,
+              }}
+            />
+          </div>
+
+          <div>
+            <label style={{ fontSize: 13, color: colors.textMuted, display: "block", marginBottom: 8 }}>
+              Amount (₹) *
+            </label>
+            <input
+              type="number"
+              min="0"
+              step="10"
+              value={billingForm.amount}
+              onChange={(e) => setBillingForm({ ...billingForm, amount: e.target.value })}
+              placeholder="Enter amount"
+              style={{
+                width: "100%",
+                padding: "12px",
+                borderRadius: 8,
+                border: `1px solid ${colors.border}`,
+                background: "rgba(30,41,59,0.5)",
+                color: colors.textPrimary,
+                fontSize: 14,
+              }}
+            />
+          </div>
+        </div>
+
+        <button
+          onClick={handleCreateBilling}
+          disabled={creatingBilling}
+          style={{
+            padding: "14px 28px",
+            borderRadius: 10,
+            border: "none",
+            background: creatingBilling
+              ? "rgba(34, 197, 94, 0.3)"
+              : "linear-gradient(135deg, #22c55e, #16a34a)",
+            color: "#fff",
+            fontSize: 14,
+            fontWeight: 600,
+            cursor: creatingBilling ? "not-allowed" : "pointer",
+            boxShadow: creatingBilling ? "none" : "0 4px 16px rgba(34, 197, 94, 0.3)",
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+          }}
+        >
+          {creatingBilling ? "Creating..." : "Create Walk-In Booking"}
+        </button>
+      </div>
+
+      {/* Active Bookings Today */}
+      <div
+        style={{
+          background: "rgba(15,23,42,0.6)",
+          borderRadius: 16,
+          border: `1px solid ${colors.border}`,
+          padding: "24px",
+        }}
+      >
+        <h2
+          style={{
+            fontSize: 18,
+            fontWeight: 600,
+            marginBottom: 20,
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+          }}
+        >
+          <span>📅</span>
+          Active Bookings Today ({activeBookings.length})
+        </h2>
+
+        {activeBookings.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "40px", color: colors.textMuted }}>
+            No active bookings for today
+          </div>
+        ) : (
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", fontSize: 13 }}>
+              <thead>
+                <tr style={{ borderBottom: `1px solid ${colors.border}` }}>
+                  <th style={{ padding: "12px", textAlign: "left", color: colors.textMuted, fontWeight: 600 }}>Time</th>
+                  <th style={{ padding: "12px", textAlign: "left", color: colors.textMuted, fontWeight: 600 }}>Console</th>
+                  <th style={{ padding: "12px", textAlign: "left", color: colors.textMuted, fontWeight: 600 }}>Qty</th>
+                  <th style={{ padding: "12px", textAlign: "left", color: colors.textMuted, fontWeight: 600 }}>Source</th>
+                  <th style={{ padding: "12px", textAlign: "left", color: colors.textMuted, fontWeight: 600 }}>Status</th>
+                  <th style={{ padding: "12px", textAlign: "right", color: colors.textMuted, fontWeight: 600 }}>Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {activeBookings.map((booking) => (
+                  <tr
+                    key={booking.id}
+                    style={{
+                      borderBottom: `1px solid rgba(71, 85, 105, 0.2)`,
+                    }}
+                  >
+                    <td style={{ padding: "12px" }}>{booking.start_time}</td>
+                    <td style={{ padding: "12px" }}>
+                      {booking.booking_items?.map((item: any) => item.console).join(", ") || "-"}
+                    </td>
+                    <td style={{ padding: "12px" }}>
+                      {booking.booking_items?.reduce((sum: number, item: any) => sum + (item.quantity || 0), 0) || 0}
+                    </td>
+                    <td style={{ padding: "12px" }}>
+                      <span style={{
+                        padding: "4px 8px",
+                        borderRadius: 4,
+                        fontSize: 11,
+                        background: booking.source === "walk_in" ? "rgba(168, 85, 247, 0.15)" : "rgba(59, 130, 246, 0.15)",
+                        color: booking.source === "walk_in" ? "#a855f7" : "#3b82f6",
+                      }}>
+                        {booking.source === "walk_in" ? "Walk-in" : "Online"}
+                      </span>
+                    </td>
+                    <td style={{ padding: "12px" }}>
+                      <StatusBadge status={booking.status || "pending"} />
+                    </td>
+                    <td style={{ padding: "12px", textAlign: "right", color: "#22c55e", fontWeight: 600 }}>
+                      ₹{booking.total_amount ?? 0}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <style>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+      `}</style>
     </div>
   );
 }
