@@ -28,6 +28,16 @@ type CafeRow = {
   website?: string | null;
   opening_hours?: string | null;
   status?: string | null;
+  hourly_price?: number | null;
+  ps5_count?: number | null;
+  ps4_count?: number | null;
+  xbox_count?: number | null;
+  pc_count?: number | null;
+  pool_count?: number | null;
+  snooker_count?: number | null;
+  arcade_count?: number | null;
+  vr_count?: number | null;
+  steering_wheel_count?: number | null;
 };
 
 type BookingRow = {
@@ -1690,24 +1700,26 @@ function LiveBillingTab({
     customerPhone: "",
     console: "",
     quantity: 1,
+    duration: 60, // Default 1 hour in minutes
     startTime: "",
     amount: "",
   });
   const [creatingBilling, setCreatingBilling] = useState(false);
+  const [consolePricing, setConsolePricing] = useState<any[]>([]);
 
   const CONSOLE_TYPES = [
-    { id: "ps5", label: "PS5", icon: "🎮", color: "#0070f3" },
-    { id: "ps4", label: "PS4", icon: "🎮", color: "#7928ca" },
-    { id: "xbox", label: "Xbox", icon: "🎮", color: "#107c10" },
-    { id: "pc", label: "PC", icon: "💻", color: "#ff6b6b" },
-    { id: "pool", label: "Pool", icon: "🎱", color: "#f59e0b" },
-    { id: "snooker", label: "Snooker", icon: "🎱", color: "#10b981" },
-    { id: "arcade", label: "Arcade", icon: "🕹️", color: "#8b5cf6" },
-    { id: "vr", label: "VR", icon: "🥽", color: "#ec4899" },
-    { id: "steering_wheel", label: "Racing", icon: "🏎️", color: "#f97316" },
+    { id: "ps5", label: "PS5", icon: "🎮", color: "#0070f3", dbKey: "ps5_count" },
+    { id: "ps4", label: "PS4", icon: "🎮", color: "#7928ca", dbKey: "ps4_count" },
+    { id: "xbox", label: "Xbox", icon: "🎮", color: "#107c10", dbKey: "xbox_count" },
+    { id: "pc", label: "PC", icon: "💻", color: "#ff6b6b", dbKey: "pc_count" },
+    { id: "pool", label: "Pool", icon: "🎱", color: "#f59e0b", dbKey: "pool_count" },
+    { id: "snooker", label: "Snooker", icon: "🎱", color: "#10b981", dbKey: "snooker_count" },
+    { id: "arcade", label: "Arcade", icon: "🕹️", color: "#8b5cf6", dbKey: "arcade_count" },
+    { id: "vr", label: "VR", icon: "🥽", color: "#ec4899", dbKey: "vr_count" },
+    { id: "steering_wheel", label: "Racing", icon: "🏎️", color: "#f97316", dbKey: "steering_wheel_count" },
   ];
 
-  // Load live availability
+  // Load live availability and pricing
   useEffect(() => {
     if (cafes.length === 0) return;
 
@@ -1717,6 +1729,26 @@ function LiveBillingTab({
         const cafeId = cafes[0].id;
         const now = new Date();
         const today = now.toISOString().slice(0, 10);
+
+        // Set current time on initial load
+        if (!billingForm.startTime) {
+          const currentTime = now.toLocaleTimeString("en-IN", {
+            hour: "numeric",
+            minute: "2-digit",
+            hour12: true,
+          });
+          setBillingForm(prev => ({ ...prev, startTime: currentTime }));
+        }
+
+        // Fetch console pricing
+        const { data: pricingData, error: pricingError } = await supabase
+          .from("console_pricing")
+          .select("*")
+          .eq("cafe_id", cafeId);
+
+        if (!pricingError && pricingData) {
+          setConsolePricing(pricingData);
+        }
 
         // Fetch active bookings (today, confirmed/pending, not completed)
         const { data: bookingsData, error: bookingsError } = await supabase
@@ -1750,7 +1782,7 @@ function LiveBillingTab({
         const availability: any = {};
 
         CONSOLE_TYPES.forEach((consoleType) => {
-          const dbKey = `${consoleType.id}_count` as keyof CafeRow;
+          const dbKey = consoleType.dbKey as keyof CafeRow;
           const totalConsoles = typeof cafe[dbKey] === 'number' ? cafe[dbKey] : 0;
 
           // Count booked consoles from active bookings
@@ -1785,6 +1817,32 @@ function LiveBillingTab({
     return () => clearInterval(interval);
   }, [cafes]);
 
+  // Calculate price based on console, quantity, and duration
+  useEffect(() => {
+    if (!billingForm.console || !billingForm.quantity || !billingForm.duration) {
+      return;
+    }
+
+    // Find pricing for the selected console, quantity, and duration
+    const pricing = consolePricing.find((p: any) =>
+      p.console_type === billingForm.console &&
+      p.quantity === billingForm.quantity &&
+      p.duration_minutes === billingForm.duration
+    );
+
+    if (pricing) {
+      setBillingForm(prev => ({ ...prev, amount: pricing.price.toString() }));
+    } else {
+      // Fallback to hourly price from cafe if no specific pricing found
+      if (cafes.length > 0 && cafes[0].hourly_price) {
+        const basePrice = cafes[0].hourly_price as number;
+        const durationMultiplier = billingForm.duration / 60; // Convert to hours
+        const calculatedPrice = Math.round(basePrice * billingForm.quantity * durationMultiplier);
+        setBillingForm(prev => ({ ...prev, amount: calculatedPrice.toString() }));
+      }
+    }
+  }, [billingForm.console, billingForm.quantity, billingForm.duration, consolePricing, cafes]);
+
   // Handle manual billing creation
   async function handleCreateBilling() {
     if (!billingForm.customerName || !billingForm.customerPhone || !billingForm.console || !billingForm.startTime || !billingForm.amount) {
@@ -1809,7 +1867,7 @@ function LiveBillingTab({
           user_id: null, // Walk-in customer
           booking_date: today,
           start_time: billingForm.startTime,
-          duration: 60, // Default 1 hour
+          duration: billingForm.duration,
           total_amount: parseFloat(billingForm.amount),
           status: "confirmed",
           source: "walk_in",
@@ -1834,12 +1892,18 @@ function LiveBillingTab({
       alert("Walk-in booking created successfully!");
 
       // Reset form
+      const currentTime = new Date().toLocaleTimeString("en-IN", {
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      });
       setBillingForm({
         customerName: "",
         customerPhone: "",
         console: "",
         quantity: 1,
-        startTime: "",
+        duration: 60,
+        startTime: currentTime,
         amount: "",
       });
 
@@ -2114,22 +2178,11 @@ function LiveBillingTab({
 
           <div>
             <label style={{ fontSize: 13, color: colors.textMuted, display: "block", marginBottom: 8 }}>
-              Start Time *
+              Duration *
             </label>
-            <input
-              type="time"
-              value={billingForm.startTime}
-              onChange={(e) => {
-                const time = e.target.value;
-                if (time) {
-                  const [hours, minutes] = time.split(':');
-                  let h = parseInt(hours);
-                  const period = h >= 12 ? 'pm' : 'am';
-                  h = h % 12 || 12;
-                  const formattedTime = `${h}:${minutes} ${period}`;
-                  setBillingForm({ ...billingForm, startTime: formattedTime });
-                }
-              }}
+            <select
+              value={billingForm.duration}
+              onChange={(e) => setBillingForm({ ...billingForm, duration: parseInt(e.target.value) })}
               style={{
                 width: "100%",
                 padding: "12px",
@@ -2138,29 +2191,56 @@ function LiveBillingTab({
                 background: "rgba(30,41,59,0.5)",
                 color: colors.textPrimary,
                 fontSize: 14,
+                cursor: "pointer",
+              }}
+            >
+              <option value={30}>30 Minutes</option>
+              <option value={60}>1 Hour</option>
+              <option value={90}>1.5 Hours</option>
+              <option value={120}>2 Hours</option>
+              <option value={180}>3 Hours</option>
+            </select>
+          </div>
+
+          <div>
+            <label style={{ fontSize: 13, color: colors.textMuted, display: "block", marginBottom: 8 }}>
+              Start Time * (Auto-set to current time)
+            </label>
+            <input
+              type="text"
+              value={billingForm.startTime}
+              readOnly
+              style={{
+                width: "100%",
+                padding: "12px",
+                borderRadius: 8,
+                border: `1px solid ${colors.border}`,
+                background: "rgba(30,41,59,0.3)",
+                color: colors.textSecondary,
+                fontSize: 14,
+                cursor: "not-allowed",
               }}
             />
           </div>
 
           <div>
             <label style={{ fontSize: 13, color: colors.textMuted, display: "block", marginBottom: 8 }}>
-              Amount (₹) *
+              Amount (₹) * (Auto-calculated)
             </label>
             <input
-              type="number"
-              min="0"
-              step="10"
-              value={billingForm.amount}
-              onChange={(e) => setBillingForm({ ...billingForm, amount: e.target.value })}
-              placeholder="Enter amount"
+              type="text"
+              value={billingForm.amount ? `₹${billingForm.amount}` : "Select console and duration"}
+              readOnly
               style={{
                 width: "100%",
                 padding: "12px",
                 borderRadius: 8,
                 border: `1px solid ${colors.border}`,
-                background: "rgba(30,41,59,0.5)",
-                color: colors.textPrimary,
+                background: "rgba(30,41,59,0.3)",
+                color: billingForm.amount ? "#22c55e" : colors.textMuted,
                 fontSize: 14,
+                fontWeight: billingForm.amount ? 600 : 400,
+                cursor: "not-allowed",
               }}
             />
           </div>
