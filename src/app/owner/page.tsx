@@ -2055,7 +2055,10 @@ function LiveBillingTab({
               gap: 16,
             }}
           >
-            {CONSOLE_TYPES.map((consoleType) => {
+            {CONSOLE_TYPES.filter((consoleType) => {
+              const avail = consoleAvailability[consoleType.id] || { total: 0, booked: 0, available: 0 };
+              return avail.total > 0; // Only show consoles the café has
+            }).map((consoleType) => {
               const avail = consoleAvailability[consoleType.id] || { total: 0, booked: 0, available: 0 };
               const availabilityPercent = avail.total > 0 ? (avail.available / avail.total) * 100 : 0;
 
@@ -2204,7 +2207,10 @@ function LiveBillingTab({
               }}
             >
               <option value="">Select Console</option>
-              {CONSOLE_TYPES.map((console) => {
+              {CONSOLE_TYPES.filter((console) => {
+                const avail = consoleAvailability[console.id] || { total: 0, available: 0 };
+                return avail.total > 0; // Only show consoles the café has
+              }).map((console) => {
                 const avail = consoleAvailability[console.id] || { available: 0 };
                 return (
                   <option key={console.id} value={console.id} disabled={avail.available === 0}>
