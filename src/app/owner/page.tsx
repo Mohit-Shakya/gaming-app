@@ -51,7 +51,7 @@ type BookingRow = {
   cafe_name?: string | null;
 };
 
-type NavTab = 'overview' | 'bookings' | 'cafes' | 'analytics';
+type NavTab = 'overview' | 'bookings' | 'cafe-details' | 'analytics';
 
 // Helper functions for time conversion
 function convertTo24Hour(time12h: string): string {
@@ -98,7 +98,6 @@ export default function OwnerDashboardPage() {
   // Booking filters
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sourceFilter, setSourceFilter] = useState<string>("all");
-  const [cafeFilter, setCafeFilter] = useState<string>("all");
   const [dateFilter, setDateFilter] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState<string>("");
 
@@ -370,11 +369,6 @@ export default function OwnerDashboardPage() {
       if (bookingSource !== sourceFilter) return false;
     }
 
-    // Cafe filter
-    if (cafeFilter !== "all" && booking.cafe_id !== cafeFilter) {
-      return false;
-    }
-
     // Date filter
     if (dateFilter && booking.booking_date !== dateFilter) {
       return false;
@@ -421,7 +415,7 @@ export default function OwnerDashboardPage() {
   const navItems: { id: NavTab; label: string; icon: string }[] = [
     { id: 'overview', label: 'Overview', icon: '📊' },
     { id: 'bookings', label: 'Bookings', icon: '📅' },
-    { id: 'cafes', label: 'My Cafés', icon: '🏪' },
+    { id: 'cafe-details', label: 'Café Details', icon: '🏪' },
     { id: 'analytics', label: 'Analytics', icon: '📈' },
   ];
 
@@ -597,7 +591,7 @@ export default function OwnerDashboardPage() {
               >
                 {activeTab === 'overview' && 'Dashboard Overview'}
                 {activeTab === 'bookings' && 'Manage Bookings'}
-                {activeTab === 'cafes' && 'My Cafés'}
+                {activeTab === 'cafe-details' && 'Café Details'}
                 {activeTab === 'analytics' && 'Analytics & Reports'}
               </h1>
               <p
@@ -609,7 +603,7 @@ export default function OwnerDashboardPage() {
               >
                 {activeTab === 'overview' && 'Track your café performance and bookings'}
                 {activeTab === 'bookings' && 'View and manage all customer bookings'}
-                {activeTab === 'cafes' && 'Manage your gaming café locations'}
+                {activeTab === 'cafe-details' && 'Manage your gaming café information and pricing'}
                 {activeTab === 'analytics' && 'Detailed insights and statistics'}
               </p>
             </div>
@@ -665,14 +659,61 @@ export default function OwnerDashboardPage() {
                   marginBottom: 32,
                 }}
               >
-                <StatCard
-                  title="My Cafés"
-                  value={loadingData ? "..." : stats?.cafesCount ?? 0}
-                  subtitle="Active locations"
-                  icon="🏪"
-                  gradient="linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(79, 70, 229, 0.1))"
-                  color="#818cf8"
-                />
+                <div
+                  onClick={() => cafes.length > 0 && setActiveTab('cafe-details')}
+                  style={{
+                    padding: "24px",
+                    borderRadius: 16,
+                    background: "linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(79, 70, 229, 0.1))",
+                    border: "1px solid #818cf840",
+                    position: "relative",
+                    overflow: "hidden",
+                    cursor: cafes.length > 0 ? "pointer" : "default",
+                    transition: "all 0.2s ease",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (cafes.length > 0) {
+                      e.currentTarget.style.transform = "translateY(-4px)";
+                      e.currentTarget.style.boxShadow = "0 8px 24px rgba(99, 102, 241, 0.2)";
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = "translateY(0)";
+                    e.currentTarget.style.boxShadow = "none";
+                  }}
+                >
+                  <div style={{ position: "absolute", top: -20, right: -20, fontSize: 80, opacity: 0.1 }}>
+                    🏪
+                  </div>
+                  <div style={{ position: "relative", zIndex: 1 }}>
+                    <p
+                      style={{
+                        fontSize: 11,
+                        color: "#818cf8E6",
+                        marginBottom: 8,
+                        textTransform: "uppercase",
+                        letterSpacing: 1.5,
+                        fontWeight: 600,
+                      }}
+                    >
+                      My Café
+                    </p>
+                    <p
+                      style={{
+                        fontFamily: fonts.heading,
+                        fontSize: cafes.length > 0 ? 20 : 36,
+                        margin: "8px 0",
+                        color: "#818cf8",
+                        lineHeight: 1.2,
+                      }}
+                    >
+                      {loadingData ? "..." : cafes.length > 0 ? cafes[0].name || "Your Café" : "0"}
+                    </p>
+                    <p style={{ fontSize: 13, color: "#818cf8B3", marginTop: 8 }}>
+                      {cafes.length > 0 ? "Click to manage" : "No café assigned"}
+                    </p>
+                  </div>
+                </div>
                 <StatCard
                   title="Today's Bookings"
                   value={loadingData ? "..." : stats?.bookingsToday ?? 0}
@@ -919,41 +960,6 @@ export default function OwnerDashboardPage() {
                     </select>
                   </div>
 
-                  {/* Cafe Filter */}
-                  <div>
-                    <label
-                      style={{
-                        fontSize: 12,
-                        color: colors.textMuted,
-                        display: "block",
-                        marginBottom: 8,
-                      }}
-                    >
-                      Café
-                    </label>
-                    <select
-                      value={cafeFilter}
-                      onChange={(e) => setCafeFilter(e.target.value)}
-                      style={{
-                        width: "100%",
-                        padding: "10px 12px",
-                        borderRadius: 8,
-                        border: `1px solid ${colors.border}`,
-                        background: "rgba(30,41,59,0.5)",
-                        color: colors.textPrimary,
-                        fontSize: 14,
-                        cursor: "pointer",
-                      }}
-                    >
-                      <option value="all">All Cafés</option>
-                      {cafes.map((cafe) => (
-                        <option key={cafe.id} value={cafe.id}>
-                          {cafe.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
                   {/* Date Filter */}
                   <div>
                     <label
@@ -984,12 +990,11 @@ export default function OwnerDashboardPage() {
                 </div>
 
                 {/* Clear Filters */}
-                {(statusFilter !== "all" || sourceFilter !== "all" || cafeFilter !== "all" || dateFilter || searchQuery) && (
+                {(statusFilter !== "all" || sourceFilter !== "all" || dateFilter || searchQuery) && (
                   <button
                     onClick={() => {
                       setStatusFilter("all");
                       setSourceFilter("all");
-                      setCafeFilter("all");
                       setDateFilter("");
                       setSearchQuery("");
                     }}
@@ -1273,47 +1278,9 @@ export default function OwnerDashboardPage() {
             </div>
           )}
 
-          {/* Cafes Tab */}
-          {activeTab === 'cafes' && (
+          {/* Cafe Details Tab */}
+          {activeTab === 'cafe-details' && (
             <div>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  marginBottom: 24,
-                }}
-              >
-                <div>
-                  <h2 style={{ fontSize: 20, margin: 0, marginBottom: 4 }}>
-                    My Cafés
-                  </h2>
-                  <p style={{ fontSize: 13, color: colors.textMuted, margin: 0 }}>
-                    {cafes.length} {cafes.length === 1 ? 'location' : 'locations'}
-                  </p>
-                </div>
-                <button
-                  onClick={() => router.push("/admin/cafes/new")}
-                  style={{
-                    padding: "12px 20px",
-                    borderRadius: 10,
-                    border: "none",
-                    background: "linear-gradient(135deg, #22c55e, #16a34a)",
-                    color: "#fff",
-                    fontSize: 14,
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    boxShadow: "0 4px 16px rgba(34, 197, 94, 0.3)",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                  }}
-                >
-                  <span>+</span>
-                  Add New Café
-                </button>
-              </div>
-
               {cafes.length === 0 ? (
                 <div
                   style={{
@@ -1326,93 +1293,108 @@ export default function OwnerDashboardPage() {
                 >
                   <div style={{ fontSize: 64, marginBottom: 16, opacity: 0.3 }}>🏪</div>
                   <p style={{ fontSize: 16, color: colors.textSecondary, marginBottom: 8, fontWeight: 500 }}>
-                    No cafés found
+                    No café found
                   </p>
                   <p style={{ fontSize: 13, color: colors.textMuted, marginBottom: 20 }}>
-                    Add cafés and set their owner_id to your profile to see them here.
+                    Contact admin to set up your café.
                   </p>
-                  <button
-                    onClick={() => router.push("/admin/cafes/new")}
-                    style={{
-                      padding: "12px 24px",
-                      borderRadius: 10,
-                      border: "none",
-                      background: "linear-gradient(135deg, #22c55e, #16a34a)",
-                      color: "#fff",
-                      fontSize: 14,
-                      fontWeight: 600,
-                      cursor: "pointer",
-                    }}
-                  >
-                    Add Your First Café
-                  </button>
                 </div>
               ) : (
                 <div
                   style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
-                    gap: 20,
+                    background: "linear-gradient(135deg, rgba(30,41,59,0.8), rgba(15,23,42,0.9))",
+                    borderRadius: 16,
+                    border: `1px solid rgba(71, 85, 105, 0.3)`,
+                    padding: "32px",
+                    maxWidth: 800,
+                    margin: "0 auto",
                   }}
                 >
-                  {cafes.map((cafe) => (
-                    <div
-                      key={cafe.id}
-                      style={{
-                        background: "linear-gradient(135deg, rgba(30,41,59,0.8), rgba(15,23,42,0.9))",
-                        borderRadius: 16,
-                        border: `1px solid rgba(71, 85, 105, 0.3)`,
-                        padding: "24px",
-                        transition: "all 0.3s ease",
-                        cursor: "pointer",
-                      }}
-                      onClick={() => router.push(`/owner/cafes/${cafe.id}`)}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = "rgba(99, 102, 241, 0.5)";
-                        e.currentTarget.style.transform = "translateY(-4px)";
-                        e.currentTarget.style.boxShadow = "0 12px 32px rgba(0,0,0,0.3)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = "rgba(71, 85, 105, 0.3)";
-                        e.currentTarget.style.transform = "translateY(0)";
-                        e.currentTarget.style.boxShadow = "none";
-                      }}
-                    >
-                      <div style={{ marginBottom: 16 }}>
-                        <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 8, color: colors.textPrimary }}>
-                          {cafe.name || "Untitled café"}
-                        </h3>
-                        {cafe.address && (
-                          <div style={{ fontSize: 13, color: colors.textSecondary, display: "flex", alignItems: "center", gap: 6 }}>
-                            <span>📍</span>
-                            {cafe.address}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Café Details */}
-                      {cafe.description && (
-                        <div style={{ fontSize: 12, color: colors.textSecondary, lineHeight: 1.5 }}>
-                          {cafe.description.length > 120 ? `${cafe.description.substring(0, 120)}...` : cafe.description}
-                        </div>
-                      )}
-
-                      {/* Click to Edit Hint */}
-                      <div style={{
-                        marginTop: 20,
-                        padding: "8px 12px",
-                        borderRadius: 8,
-                        background: "rgba(59, 130, 246, 0.1)",
-                        border: "1px solid rgba(59, 130, 246, 0.2)",
-                        fontSize: 12,
-                        color: "#3b82f6",
-                        textAlign: "center",
-                        fontWeight: 500
-                      }}>
-                        ⚙️ Click to view and edit café details
-                      </div>
+                  {/* Cafe Header */}
+                  <div style={{ marginBottom: 32, textAlign: "center" }}>
+                    <div style={{
+                      fontSize: 48,
+                      marginBottom: 16,
+                      background: "linear-gradient(135deg, #22c55e, #16a34a)",
+                      width: 80,
+                      height: 80,
+                      borderRadius: 20,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      margin: "0 auto 16px",
+                    }}>
+                      🏪
                     </div>
-                  ))}
+                    <h2 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8, color: colors.textPrimary }}>
+                      {cafes[0].name || "Your Gaming Café"}
+                    </h2>
+                    {cafes[0].address && (
+                      <div style={{ fontSize: 15, color: colors.textSecondary, display: "flex", alignItems: "center", gap: 8, justifyContent: "center" }}>
+                        <span>📍</span>
+                        {cafes[0].address}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Café Description */}
+                  {cafes[0].description && (
+                    <div style={{
+                      fontSize: 14,
+                      color: colors.textSecondary,
+                      lineHeight: 1.6,
+                      marginBottom: 32,
+                      padding: "20px",
+                      background: "rgba(15,23,42,0.5)",
+                      borderRadius: 12,
+                      border: `1px solid ${colors.border}`,
+                    }}>
+                      {cafes[0].description}
+                    </div>
+                  )}
+
+                  {/* Action Button */}
+                  <button
+                    onClick={() => router.push(`/owner/cafes/${cafes[0].id}`)}
+                    style={{
+                      width: "100%",
+                      padding: "18px 32px",
+                      borderRadius: 12,
+                      border: "none",
+                      background: "linear-gradient(135deg, #3b82f6, #2563eb)",
+                      color: "#fff",
+                      fontSize: 16,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      boxShadow: "0 4px 16px rgba(59, 130, 246, 0.3)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 12,
+                      transition: "all 0.2s ease",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = "translateY(-2px)";
+                      e.currentTarget.style.boxShadow = "0 6px 20px rgba(59, 130, 246, 0.4)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = "translateY(0)";
+                      e.currentTarget.style.boxShadow = "0 4px 16px rgba(59, 130, 246, 0.3)";
+                    }}
+                  >
+                    <span style={{ fontSize: 20 }}>⚙️</span>
+                    Edit Café Details, Pricing & Photos
+                  </button>
+
+                  <p style={{
+                    textAlign: "center",
+                    fontSize: 13,
+                    color: colors.textMuted,
+                    marginTop: 16,
+                    fontStyle: "italic"
+                  }}>
+                    Update your café information, console pricing, and photo gallery
+                  </p>
                 </div>
               )}
             </div>
