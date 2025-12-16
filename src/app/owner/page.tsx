@@ -1905,6 +1905,7 @@ function LiveBillingTab({
 }: {
   cafes: CafeRow[];
 }) {
+  const router = useRouter();
   const [consoleAvailability, setConsoleAvailability] = useState<any>({});
   const [activeBookings, setActiveBookings] = useState<BookingRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -2198,27 +2199,8 @@ function LiveBillingTab({
 
       if (itemsError) throw itemsError;
 
-      // Store customer info (optional - you might want to create a customers table)
-      alert("Walk-in booking created successfully!");
-
-      // Reset form
-      const currentTime = new Date().toLocaleTimeString("en-IN", {
-        hour: "numeric",
-        minute: "2-digit",
-        hour12: true,
-      });
-      setBillingForm({
-        customerName: "",
-        customerPhone: "",
-        console: "",
-        controllers: 1,
-        duration: 60,
-        startTime: currentTime,
-        amount: "",
-      });
-
-      // Refresh data
-      window.location.reload();
+      // Navigate to success page
+      router.push(`/bookings/success?ref=${booking.id}`);
     } catch (err: any) {
       console.error("Error creating billing:", err);
       alert("Failed to create billing: " + err.message);
