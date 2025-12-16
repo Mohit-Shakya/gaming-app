@@ -1867,12 +1867,13 @@ function LiveBillingTab({
   // Calculate price based on console, quantity, and duration
   useEffect(() => {
     if (!billingForm.console || !billingForm.quantity || !billingForm.duration) {
+      setBillingForm(prev => ({ ...prev, amount: "" }));
       return;
     }
 
     // Find pricing for the selected console, quantity, and duration
     const pricing = consolePricing.find((p: any) =>
-      p.console_type === billingForm.console &&
+      p.console_type?.toLowerCase() === billingForm.console.toLowerCase() &&
       p.quantity === billingForm.quantity &&
       p.duration_minutes === billingForm.duration
     );
@@ -1880,12 +1881,25 @@ function LiveBillingTab({
     if (pricing) {
       setBillingForm(prev => ({ ...prev, amount: pricing.price.toString() }));
     } else {
-      // Fallback to hourly price from cafe if no specific pricing found
-      if (cafes.length > 0 && cafes[0].hourly_price) {
-        const basePrice = cafes[0].hourly_price as number;
-        const durationMultiplier = billingForm.duration / 60; // Convert to hours
-        const calculatedPrice = Math.round(basePrice * billingForm.quantity * durationMultiplier);
+      // Try to find any pricing for this console and duration, regardless of quantity
+      const anyPricing = consolePricing.find((p: any) =>
+        p.console_type?.toLowerCase() === billingForm.console.toLowerCase() &&
+        p.duration_minutes === billingForm.duration
+      );
+
+      if (anyPricing) {
+        // Scale the price based on quantity
+        const pricePerUnit = anyPricing.price / anyPricing.quantity;
+        const calculatedPrice = Math.round(pricePerUnit * billingForm.quantity);
         setBillingForm(prev => ({ ...prev, amount: calculatedPrice.toString() }));
+      } else {
+        // Fallback to hourly price from cafe if no specific pricing found
+        if (cafes.length > 0 && cafes[0].hourly_price) {
+          const basePrice = cafes[0].hourly_price as number;
+          const durationMultiplier = billingForm.duration / 60; // Convert to hours
+          const calculatedPrice = Math.round(basePrice * billingForm.quantity * durationMultiplier);
+          setBillingForm(prev => ({ ...prev, amount: calculatedPrice.toString() }));
+        }
       }
     }
   }, [billingForm.console, billingForm.quantity, billingForm.duration, consolePricing, cafes]);
@@ -2256,16 +2270,16 @@ function LiveBillingTab({
             <input
               type="text"
               value={billingForm.startTime}
-              readOnly
+              onChange={(e) => setBillingForm({ ...billingForm, startTime: e.target.value })}
+              placeholder="e.g., 2:30 pm"
               style={{
                 width: "100%",
                 padding: "12px",
                 borderRadius: 8,
                 border: `1px solid ${colors.border}`,
-                background: "rgba(30,41,59,0.3)",
-                color: colors.textSecondary,
+                background: "rgba(30,41,59,0.5)",
+                color: colors.textPrimary,
                 fontSize: 14,
-                cursor: "not-allowed",
               }}
             />
           </div>
