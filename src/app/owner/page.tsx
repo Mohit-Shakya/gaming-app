@@ -1322,8 +1322,8 @@ export default function OwnerDashboardPage() {
 
                                     const consoles = items.map((item: any) => {
                                       const consoleName = item.console || "Unknown";
-                                      const qty = item.quantity || 1;
-                                      return qty > 1 ? `${consoleName} (${qty})` : consoleName;
+                                      const controllers = item.quantity || 1;
+                                      return controllers > 1 ? `${consoleName} (${controllers} controllers)` : consoleName;
                                     });
 
                                     return consoles.join(", ");
