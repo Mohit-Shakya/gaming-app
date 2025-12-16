@@ -51,6 +51,8 @@ type BookingRow = {
   status: string | null;
   source: string | null;
   created_at: string | null;
+  customer_name?: string | null;
+  customer_phone?: string | null;
   booking_items?: Array<{
     console: string | null;
     quantity: number | null;
@@ -223,6 +225,8 @@ export default function OwnerDashboardPage() {
             status,
             source,
             created_at,
+            customer_name,
+            customer_phone,
             booking_items (
               console,
               quantity
@@ -1139,14 +1143,14 @@ export default function OwnerDashboardPage() {
                               {/* Customer Name */}
                               <td style={{ padding: "14px 16px" }}>
                                 <div style={{ fontSize: 13, color: colors.textPrimary, fontWeight: 600 }}>
-                                  {booking.user_name || "Guest"}
+                                  {booking.customer_name || booking.user_name || "Guest"}
                                 </div>
                               </td>
 
                               {/* Phone Number */}
                               <td style={{ padding: "14px 16px" }}>
                                 <div style={{ fontSize: 13, color: colors.textSecondary }}>
-                                  {booking.user_phone || "-"}
+                                  {booking.customer_phone || booking.user_phone || "-"}
                                 </div>
                               </td>
 
@@ -1778,6 +1782,8 @@ function LiveBillingTab({
             status,
             source,
             created_at,
+            customer_name,
+            customer_phone,
             booking_items (
               console,
               quantity
@@ -1978,6 +1984,8 @@ function LiveBillingTab({
           total_amount: parseFloat(billingForm.amount),
           status: "confirmed",
           source: "walk_in",
+          customer_name: billingForm.customerName,
+          customer_phone: billingForm.customerPhone,
         })
         .select()
         .single();
