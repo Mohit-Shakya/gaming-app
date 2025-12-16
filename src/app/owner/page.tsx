@@ -833,7 +833,7 @@ export default function OwnerDashboardPage() {
                               borderBottom: `1px solid rgba(71, 85, 105, 0.2)`,
                             }}
                           >
-                            <td style={{ padding: "12px" }}>{booking.user_name || "Guest"}</td>
+                            <td style={{ padding: "12px" }}>{booking.customer_name || booking.user_name || "Guest"}</td>
                             <td style={{ padding: "12px", color: colors.textSecondary }}>{booking.cafe_name || "-"}</td>
                             <td style={{ padding: "12px", color: colors.textSecondary }}>
                               {booking.booking_date
