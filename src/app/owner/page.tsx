@@ -125,6 +125,7 @@ export default function OwnerDashboardPage() {
   const [editStartTime, setEditStartTime] = useState<string>("");
   const [editDuration, setEditDuration] = useState<number>(60);
   const [editConsole, setEditConsole] = useState<string>("");
+  const [editControllers, setEditControllers] = useState<number>(1);
   const [saving, setSaving] = useState(false);
 
   // Check role
@@ -344,9 +345,11 @@ export default function OwnerDashboardPage() {
     setEditStatus(booking.status || "confirmed");
     setEditDate(booking.booking_date || "");
     setEditDuration(booking.duration || 60);
-    // Get console from booking_items
+    // Get console and controllers from booking_items
     const console = booking.booking_items?.[0]?.console || "";
+    const controllers = booking.booking_items?.[0]?.quantity || 1;
     setEditConsole(console);
+    setEditControllers(controllers);
     // Convert 12-hour format (from DB) to 24-hour format (for input)
     setEditStartTime(booking.start_time ? convertTo24Hour(booking.start_time) : "");
   }
@@ -373,13 +376,14 @@ export default function OwnerDashboardPage() {
 
       if (error) throw error;
 
-      // Update booking_items with new console
+      // Update booking_items with new console and controllers
       if (editingBooking.booking_items && editingBooking.booking_items.length > 0) {
         const bookingItemId = editingBooking.booking_items[0].id;
         const { error: itemError } = await supabase
           .from("booking_items")
           .update({
             console: editConsole,
+            quantity: editControllers,
           })
           .eq("id", bookingItemId);
 
@@ -398,7 +402,8 @@ export default function OwnerDashboardPage() {
                 duration: editDuration,
                 booking_items: b.booking_items?.map(item => ({
                   ...item,
-                  console: editConsole
+                  console: editConsole,
+                  quantity: editControllers
                 }))
               }
             : b
@@ -1823,6 +1828,33 @@ export default function OwnerDashboardPage() {
                   <option value="arcade">Arcade</option>
                   <option value="vr">VR</option>
                   <option value="steering_wheel">Racing</option>
+                </select>
+              </div>
+
+              {/* Number of Controllers */}
+              <div>
+                <label style={{ fontSize: 12, color: colors.textMuted, display: "block", marginBottom: 8 }}>
+                  Number of Controllers *
+                </label>
+                <select
+                  value={editControllers}
+                  onChange={(e) => setEditControllers(parseInt(e.target.value))}
+                  style={{
+                    width: "100%",
+                    padding: "12px",
+                    background: "rgba(30,41,59,0.5)",
+                    border: `1px solid ${colors.border}`,
+                    borderRadius: 8,
+                    color: colors.textPrimary,
+                    fontSize: 14,
+                    fontFamily: fonts.body,
+                    cursor: "pointer",
+                  }}
+                >
+                  <option value={1}>1 Controller</option>
+                  <option value={2}>2 Controllers</option>
+                  <option value={3}>3 Controllers</option>
+                  <option value={4}>4 Controllers</option>
                 </select>
               </div>
 
