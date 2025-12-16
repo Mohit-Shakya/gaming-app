@@ -21,6 +21,8 @@ type BookingRow = {
 type CafeRow = {
   id: string;
   name: string;
+  google_place_id?: string | null;
+  instagram_handle?: string | null;
 };
 
 type BookingItemRow = {
@@ -101,7 +103,7 @@ function BookingSuccessContent() {
         if (booking.cafe_id) {
           const { data: cafeRow, error: cafeError } = await supabase
             .from("cafes")
-            .select("id, name")
+            .select("id, name, google_place_id, instagram_handle")
             .eq("id", booking.cafe_id)
             .maybeSingle();
           if (cafeError) throw cafeError;
@@ -792,6 +794,122 @@ function BookingSuccessContent() {
             dashboard for quick access.
           </p>
         </section>
+
+        {/* Social Media & Review Section */}
+        {cafe && (
+          <section
+            style={{
+              background: "linear-gradient(135deg, rgba(255, 7, 58, 0.08) 0%, rgba(0, 240, 255, 0.08) 100%)",
+              border: `1px solid ${colors.border}`,
+              borderRadius: "16px",
+              padding: "20px",
+              marginBottom: "24px",
+            }}
+          >
+            <div style={{ textAlign: "center", marginBottom: "16px" }}>
+              <p
+                style={{
+                  fontSize: "16px",
+                  fontWeight: 600,
+                  color: colors.textPrimary,
+                  marginBottom: "4px",
+                }}
+              >
+                ❤️ Enjoyed your visit?
+              </p>
+              <p
+                style={{
+                  fontSize: "13px",
+                  color: colors.textSecondary,
+                }}
+              >
+                Help us grow by leaving a review and following us!
+              </p>
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: cafe.google_place_id && cafe.instagram_handle ? "1fr 1fr" : "1fr",
+                gap: "12px",
+              }}
+            >
+              {/* Google Review Button */}
+              {cafe.google_place_id && (
+                <a
+                  href={`https://search.google.com/local/writereview?placeid=${cafe.google_place_id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    padding: "14px 16px",
+                    background: "linear-gradient(135deg, #4285F4 0%, #34A853 100%)",
+                    border: "none",
+                    borderRadius: "12px",
+                    color: "white",
+                    fontFamily: fonts.body,
+                    fontSize: "13px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "6px",
+                    textDecoration: "none",
+                    boxShadow: "0 4px 12px rgba(66, 133, 244, 0.3)",
+                    transition: "transform 0.2s",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = "translateY(-2px)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = "translateY(0)";
+                  }}
+                >
+                  <span style={{ fontSize: "24px" }}>⭐</span>
+                  <span>Google Review</span>
+                </a>
+              )}
+
+              {/* Instagram Follow Button */}
+              {cafe.instagram_handle && (
+                <a
+                  href={`https://www.instagram.com/${cafe.instagram_handle.replace('@', '')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    padding: "14px 16px",
+                    background: "linear-gradient(135deg, #F58529 0%, #DD2A7B 50%, #8134AF 100%)",
+                    border: "none",
+                    borderRadius: "12px",
+                    color: "white",
+                    fontFamily: fonts.body,
+                    fontSize: "13px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "6px",
+                    textDecoration: "none",
+                    boxShadow: "0 4px 12px rgba(221, 42, 123, 0.3)",
+                    transition: "transform 0.2s",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = "translateY(-2px)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = "translateY(0)";
+                  }}
+                >
+                  <span style={{ fontSize: "24px" }}>📸</span>
+                  <span>Follow on Instagram</span>
+                </a>
+              )}
+            </div>
+          </section>
+        )}
 
         {/* Buttons */}
         <div
