@@ -1871,47 +1871,79 @@ function LiveBillingTab({
       return;
     }
 
-    // Find pricing for the selected console, controllers, and duration
-    const pricing = consolePricing.find((p: any) =>
+    // Find exact pricing match for the selected console, controllers, and duration
+    const exactPricing = consolePricing.find((p: any) =>
       p.console_type?.toLowerCase() === billingForm.console.toLowerCase() &&
       p.quantity === billingForm.controllers &&
       p.duration_minutes === billingForm.duration
     );
 
-    if (pricing) {
-      setBillingForm(prev => ({ ...prev, amount: pricing.price.toString() }));
+    if (exactPricing) {
+      // Exact match found in pricing table
+      setBillingForm(prev => ({ ...prev, amount: exactPricing.price.toString() }));
     } else {
-      // Try to find any pricing for this console and duration, regardless of controllers
-      const anyPricing = consolePricing.find((p: any) =>
-        p.console_type?.toLowerCase() === billingForm.console.toLowerCase() &&
-        p.duration_minutes === billingForm.duration
+      // Calculate by breaking down duration into 30min and 60min blocks
+      // Example: 90min = 1x 60min + 1x 30min, 120min = 2x 60min, 180min = 3x 60min
+
+      const duration = billingForm.duration;
+      const controllers = billingForm.controllers;
+      const consoleType = billingForm.console.toLowerCase();
+
+      // Get base pricing for 30min and 60min
+      const pricing30 = consolePricing.find((p: any) =>
+        p.console_type?.toLowerCase() === consoleType &&
+        p.quantity === controllers &&
+        p.duration_minutes === 30
       );
 
-      if (anyPricing) {
-        // Scale the price based on controllers
-        const pricePerController = anyPricing.price / anyPricing.quantity;
-        const calculatedPrice = Math.round(pricePerController * billingForm.controllers);
+      const pricing60 = consolePricing.find((p: any) =>
+        p.console_type?.toLowerCase() === consoleType &&
+        p.quantity === controllers &&
+        p.duration_minutes === 60
+      );
+
+      if (pricing30 && pricing60) {
+        let totalPrice = 0;
+
+        // Calculate price by adding 60min and 30min blocks
+        if (duration === 90) {
+          // 90min = 60min + 30min
+          totalPrice = pricing60.price + pricing30.price;
+        } else if (duration === 120) {
+          // 120min = 2x 60min
+          totalPrice = pricing60.price * 2;
+        } else if (duration === 180) {
+          // 180min = 3x 60min
+          totalPrice = pricing60.price * 3;
+        } else {
+          // Fallback for other durations
+          const hours = Math.floor(duration / 60);
+          const halfHours = (duration % 60) / 30;
+          totalPrice = (pricing60.price * hours) + (pricing30.price * halfHours);
+        }
+
+        setBillingForm(prev => ({ ...prev, amount: Math.round(totalPrice).toString() }));
+      } else if (pricing60) {
+        // Only 60min pricing available, scale proportionally
+        const durationMultiplier = duration / 60;
+        const calculatedPrice = Math.round(pricing60.price * durationMultiplier);
         setBillingForm(prev => ({ ...prev, amount: calculatedPrice.toString() }));
       } else {
-        // Fallback: calculate based on duration multiplier
-        // Find base pricing for 60 minutes if available
-        const basePricing = consolePricing.find((p: any) =>
-          p.console_type?.toLowerCase() === billingForm.console.toLowerCase() &&
-          p.duration_minutes === 60 &&
-          p.quantity === billingForm.controllers
+        // Try to scale by controllers if duration pricing exists for different controller count
+        const anyPricing = consolePricing.find((p: any) =>
+          p.console_type?.toLowerCase() === consoleType &&
+          p.duration_minutes === duration
         );
 
-        if (basePricing) {
-          // Scale based on duration
-          const pricePerHour = basePricing.price;
-          const durationMultiplier = billingForm.duration / 60;
-          const calculatedPrice = Math.round(pricePerHour * durationMultiplier);
+        if (anyPricing) {
+          const pricePerController = anyPricing.price / anyPricing.quantity;
+          const calculatedPrice = Math.round(pricePerController * controllers);
           setBillingForm(prev => ({ ...prev, amount: calculatedPrice.toString() }));
         } else if (cafes.length > 0 && cafes[0].hourly_price) {
           // Last fallback to café hourly price
           const basePrice = cafes[0].hourly_price as number;
-          const durationMultiplier = billingForm.duration / 60;
-          const calculatedPrice = Math.round(basePrice * billingForm.controllers * durationMultiplier);
+          const durationMultiplier = duration / 60;
+          const calculatedPrice = Math.round(basePrice * controllers * durationMultiplier);
           setBillingForm(prev => ({ ...prev, amount: calculatedPrice.toString() }));
         }
       }
@@ -2239,12 +2271,9 @@ function LiveBillingTab({
             <label style={{ fontSize: 13, color: colors.textMuted, display: "block", marginBottom: 8 }}>
               Number of Controllers *
             </label>
-            <input
-              type="number"
-              min="1"
-              max="4"
+            <select
               value={billingForm.controllers}
-              onChange={(e) => setBillingForm({ ...billingForm, controllers: parseInt(e.target.value) || 1 })}
+              onChange={(e) => setBillingForm({ ...billingForm, controllers: parseInt(e.target.value) })}
               style={{
                 width: "100%",
                 padding: "12px",
@@ -2253,8 +2282,14 @@ function LiveBillingTab({
                 background: "rgba(30,41,59,0.5)",
                 color: colors.textPrimary,
                 fontSize: 14,
+                cursor: "pointer",
               }}
-            />
+            >
+              <option value={1}>1 Controller</option>
+              <option value={2}>2 Controllers</option>
+              <option value={3}>3 Controllers</option>
+              <option value={4}>4 Controllers</option>
+            </select>
           </div>
 
           <div>
