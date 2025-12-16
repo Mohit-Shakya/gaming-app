@@ -122,6 +122,7 @@ export default function OwnerDashboardPage() {
   const [editStatus, setEditStatus] = useState<string>("");
   const [editDate, setEditDate] = useState<string>("");
   const [editStartTime, setEditStartTime] = useState<string>("");
+  const [editDuration, setEditDuration] = useState<number>(60);
   const [saving, setSaving] = useState(false);
 
   // Check role
@@ -339,6 +340,7 @@ export default function OwnerDashboardPage() {
     setEditAmount(booking.total_amount?.toString() || "");
     setEditStatus(booking.status || "confirmed");
     setEditDate(booking.booking_date || "");
+    setEditDuration(booking.duration || 60);
     // Convert 12-hour format (from DB) to 24-hour format (for input)
     setEditStartTime(booking.start_time ? convertTo24Hour(booking.start_time) : "");
   }
@@ -359,6 +361,7 @@ export default function OwnerDashboardPage() {
           status: editStatus,
           booking_date: editDate,
           start_time: startTime12h,
+          duration: editDuration,
         })
         .eq("id", editingBooking.id);
 
@@ -373,6 +376,7 @@ export default function OwnerDashboardPage() {
                 status: editStatus,
                 booking_date: editDate,
                 start_time: startTime12h,
+                duration: editDuration,
               }
             : b
         )
@@ -387,6 +391,51 @@ export default function OwnerDashboardPage() {
       setSaving(false);
     }
   }
+
+  // Auto-calculate amount when duration changes in edit modal
+  useEffect(() => {
+    if (!editingBooking || !editDuration) return;
+
+    // Get console type and controllers from booking items
+    const bookingItems = editingBooking.booking_items;
+    if (!bookingItems || bookingItems.length === 0) return;
+
+    const consoleType = bookingItems[0].console;
+    const controllers = bookingItems[0].quantity || 1;
+
+    if (!consoleType) return;
+
+    // Calculate price based on duration
+    // For 30 min and 60 min: use pricing from console_pricing table
+    // For other durations: calculate by adding blocks
+
+    const calculatePrice = () => {
+      // This is a simplified calculation - in production you'd fetch from console_pricing
+      // For now, use a simple hourly rate calculation
+      const baseHourlyRate = cafes.length > 0 && cafes[0].hourly_price ? cafes[0].hourly_price : 100;
+
+      if (editDuration === 30) {
+        return Math.round((baseHourlyRate * 0.7) * controllers); // 30 min ≈ 70% of hourly
+      } else if (editDuration === 60) {
+        return Math.round(baseHourlyRate * controllers);
+      } else if (editDuration === 90) {
+        return Math.round((baseHourlyRate * 0.7 + baseHourlyRate) * controllers); // 30min + 60min
+      } else if (editDuration === 120) {
+        return Math.round((baseHourlyRate * 2) * controllers);
+      } else if (editDuration === 150) {
+        return Math.round((baseHourlyRate * 0.7 + baseHourlyRate * 2) * controllers); // 30min + 2hr
+      } else if (editDuration === 180) {
+        return Math.round((baseHourlyRate * 3) * controllers);
+      } else {
+        // For other durations, calculate proportionally
+        const hours = editDuration / 60;
+        return Math.round(baseHourlyRate * hours * controllers);
+      }
+    };
+
+    const newAmount = calculatePrice();
+    setEditAmount(newAmount.toString());
+  }, [editDuration, editingBooking, cafes]);
 
   // Filter bookings
   const filteredBookings = bookings.filter((booking) => {
@@ -1687,14 +1736,47 @@ export default function OwnerDashboardPage() {
                 />
               </div>
 
+              {/* Duration */}
+              <div>
+                <label style={{ fontSize: 12, color: colors.textMuted, display: "block", marginBottom: 8 }}>
+                  Duration *
+                </label>
+                <select
+                  value={editDuration}
+                  onChange={(e) => setEditDuration(parseInt(e.target.value))}
+                  style={{
+                    width: "100%",
+                    padding: "12px",
+                    background: "rgba(30,41,59,0.5)",
+                    border: `1px solid ${colors.border}`,
+                    borderRadius: 8,
+                    color: colors.textPrimary,
+                    fontSize: 14,
+                    fontFamily: fonts.body,
+                    cursor: "pointer",
+                  }}
+                >
+                  <option value={30}>30 Minutes</option>
+                  <option value={60}>1 Hour</option>
+                  <option value={90}>1.5 Hours</option>
+                  <option value={120}>2 Hours</option>
+                  <option value={150}>2.5 Hours</option>
+                  <option value={180}>3 Hours</option>
+                  <option value={210}>3.5 Hours</option>
+                  <option value={240}>4 Hours</option>
+                  <option value={270}>4.5 Hours</option>
+                  <option value={300}>5 Hours</option>
+                </select>
+              </div>
+
               {/* End Time */}
               <div>
                 <label style={{ fontSize: 12, color: colors.textMuted, display: "block", marginBottom: 8 }}>
-                  End Time
+                  End Time (Auto-calculated)
                 </label>
                 <input
                   type="text"
-                  value={editStartTime ? getEndTime(convertTo12Hour(editStartTime), editingBooking?.duration || 60) : ""}
+                  value={editStartTime ? getEndTime(convertTo12Hour(editStartTime), editDuration) : ""}
                   readOnly
                   disabled
                   style={{
@@ -1714,7 +1796,7 @@ export default function OwnerDashboardPage() {
               {/* Amount */}
               <div>
                 <label style={{ fontSize: 12, color: colors.textMuted, display: "block", marginBottom: 8 }}>
-                  Total Amount (₹) *
+                  Total Amount (₹) * (Auto-calculated, editable)
                 </label>
                 <input
                   type="number"
@@ -1728,9 +1810,10 @@ export default function OwnerDashboardPage() {
                     background: "rgba(30,41,59,0.5)",
                     border: `1px solid ${colors.border}`,
                     borderRadius: 8,
-                    color: colors.textPrimary,
+                    color: "#22c55e",
                     fontSize: 14,
                     fontFamily: fonts.body,
+                    fontWeight: 600,
                   }}
                 />
               </div>
