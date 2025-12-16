@@ -2341,22 +2341,22 @@ function LiveBillingTab({
 
           <div>
             <label style={{ fontSize: 13, color: colors.textMuted, display: "block", marginBottom: 8 }}>
-              Amount (₹) * (Auto-calculated)
+              Amount (₹) * (Auto-calculated, editable)
             </label>
             <input
-              type="text"
-              value={billingForm.amount ? `₹${billingForm.amount}` : "Select console and duration"}
-              readOnly
+              type="number"
+              value={billingForm.amount}
+              onChange={(e) => setBillingForm({ ...billingForm, amount: e.target.value })}
+              placeholder="Auto-calculated price"
               style={{
                 width: "100%",
                 padding: "12px",
                 borderRadius: 8,
                 border: `1px solid ${colors.border}`,
-                background: "rgba(30,41,59,0.3)",
-                color: billingForm.amount ? "#22c55e" : colors.textMuted,
+                background: "rgba(30,41,59,0.5)",
+                color: billingForm.amount ? "#22c55e" : colors.textPrimary,
                 fontSize: 14,
                 fontWeight: billingForm.amount ? 600 : 400,
-                cursor: "not-allowed",
               }}
             />
           </div>
