@@ -2037,7 +2037,7 @@ function LiveBillingTab({
             if (isActive) {
               booking.booking_items?.forEach((item: any) => {
                 if (item.console?.toLowerCase() === consoleType.id.toLowerCase()) {
-                  bookedCount += item.quantity || 0;
+                  bookedCount += 1; // Count 1 console per booking item, regardless of controller count
                 }
               });
             }
