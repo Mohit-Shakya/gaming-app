@@ -1714,7 +1714,7 @@ function LiveBillingTab({
     customerName: "",
     customerPhone: "",
     console: "",
-    quantity: 1,
+    controllers: 1, // Number of controllers
     duration: 60, // Default 1 hour in minutes
     startTime: "",
     amount: "",
@@ -1864,45 +1864,59 @@ function LiveBillingTab({
     return () => clearInterval(interval);
   }, [cafes]);
 
-  // Calculate price based on console, quantity, and duration
+  // Calculate price based on console, controllers, and duration
   useEffect(() => {
-    if (!billingForm.console || !billingForm.quantity || !billingForm.duration) {
+    if (!billingForm.console || !billingForm.controllers || !billingForm.duration) {
       setBillingForm(prev => ({ ...prev, amount: "" }));
       return;
     }
 
-    // Find pricing for the selected console, quantity, and duration
+    // Find pricing for the selected console, controllers, and duration
     const pricing = consolePricing.find((p: any) =>
       p.console_type?.toLowerCase() === billingForm.console.toLowerCase() &&
-      p.quantity === billingForm.quantity &&
+      p.quantity === billingForm.controllers &&
       p.duration_minutes === billingForm.duration
     );
 
     if (pricing) {
       setBillingForm(prev => ({ ...prev, amount: pricing.price.toString() }));
     } else {
-      // Try to find any pricing for this console and duration, regardless of quantity
+      // Try to find any pricing for this console and duration, regardless of controllers
       const anyPricing = consolePricing.find((p: any) =>
         p.console_type?.toLowerCase() === billingForm.console.toLowerCase() &&
         p.duration_minutes === billingForm.duration
       );
 
       if (anyPricing) {
-        // Scale the price based on quantity
-        const pricePerUnit = anyPricing.price / anyPricing.quantity;
-        const calculatedPrice = Math.round(pricePerUnit * billingForm.quantity);
+        // Scale the price based on controllers
+        const pricePerController = anyPricing.price / anyPricing.quantity;
+        const calculatedPrice = Math.round(pricePerController * billingForm.controllers);
         setBillingForm(prev => ({ ...prev, amount: calculatedPrice.toString() }));
       } else {
-        // Fallback to hourly price from cafe if no specific pricing found
-        if (cafes.length > 0 && cafes[0].hourly_price) {
+        // Fallback: calculate based on duration multiplier
+        // Find base pricing for 60 minutes if available
+        const basePricing = consolePricing.find((p: any) =>
+          p.console_type?.toLowerCase() === billingForm.console.toLowerCase() &&
+          p.duration_minutes === 60 &&
+          p.quantity === billingForm.controllers
+        );
+
+        if (basePricing) {
+          // Scale based on duration
+          const pricePerHour = basePricing.price;
+          const durationMultiplier = billingForm.duration / 60;
+          const calculatedPrice = Math.round(pricePerHour * durationMultiplier);
+          setBillingForm(prev => ({ ...prev, amount: calculatedPrice.toString() }));
+        } else if (cafes.length > 0 && cafes[0].hourly_price) {
+          // Last fallback to café hourly price
           const basePrice = cafes[0].hourly_price as number;
-          const durationMultiplier = billingForm.duration / 60; // Convert to hours
-          const calculatedPrice = Math.round(basePrice * billingForm.quantity * durationMultiplier);
+          const durationMultiplier = billingForm.duration / 60;
+          const calculatedPrice = Math.round(basePrice * billingForm.controllers * durationMultiplier);
           setBillingForm(prev => ({ ...prev, amount: calculatedPrice.toString() }));
         }
       }
     }
-  }, [billingForm.console, billingForm.quantity, billingForm.duration, consolePricing, cafes]);
+  }, [billingForm.console, billingForm.controllers, billingForm.duration, consolePricing, cafes]);
 
   // Handle manual billing creation
   async function handleCreateBilling() {
@@ -1944,7 +1958,7 @@ function LiveBillingTab({
         .insert({
           booking_id: booking.id,
           console: billingForm.console,
-          quantity: billingForm.quantity,
+          quantity: billingForm.controllers,
         });
 
       if (itemsError) throw itemsError;
@@ -1962,7 +1976,7 @@ function LiveBillingTab({
         customerName: "",
         customerPhone: "",
         console: "",
-        quantity: 1,
+        controllers: 1,
         duration: 60,
         startTime: currentTime,
         amount: "",
@@ -2223,14 +2237,14 @@ function LiveBillingTab({
 
           <div>
             <label style={{ fontSize: 13, color: colors.textMuted, display: "block", marginBottom: 8 }}>
-              Quantity *
+              Number of Controllers *
             </label>
             <input
               type="number"
               min="1"
               max="4"
-              value={billingForm.quantity}
-              onChange={(e) => setBillingForm({ ...billingForm, quantity: parseInt(e.target.value) || 1 })}
+              value={billingForm.controllers}
+              onChange={(e) => setBillingForm({ ...billingForm, controllers: parseInt(e.target.value) || 1 })}
               style={{
                 width: "100%",
                 padding: "12px",
