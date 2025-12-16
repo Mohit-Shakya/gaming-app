@@ -403,33 +403,32 @@ export default function OwnerDashboardPage() {
 
     // Date Range filter
     if (dateRangeFilter !== "all" && booking.booking_date) {
-      const bookingDate = new Date(booking.booking_date);
+      const bookingDate = new Date(booking.booking_date + 'T00:00:00');
       const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
       if (dateRangeFilter === "today") {
-        const todayStr = today.toISOString().split('T')[0];
-        if (booking.booking_date !== todayStr) return false;
+        const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
+        if (bookingDate < todayStart || bookingDate > todayEnd) return false;
       } else if (dateRangeFilter === "week") {
-        const weekAgo = new Date(today);
-        weekAgo.setDate(today.getDate() - 7);
-        if (bookingDate < weekAgo) return false;
+        const weekAgo = new Date(todayStart);
+        weekAgo.setDate(todayStart.getDate() - 7);
+        if (bookingDate < weekAgo || bookingDate > todayStart) return false;
       } else if (dateRangeFilter === "month") {
-        const monthAgo = new Date(today);
-        monthAgo.setMonth(today.getMonth() - 1);
-        if (bookingDate < monthAgo) return false;
+        const monthAgo = new Date(todayStart);
+        monthAgo.setMonth(todayStart.getMonth() - 1);
+        if (bookingDate < monthAgo || bookingDate > todayStart) return false;
       } else if (dateRangeFilter === "quarter") {
-        const quarterAgo = new Date(today);
-        quarterAgo.setMonth(today.getMonth() - 3);
-        if (bookingDate < quarterAgo) return false;
+        const quarterAgo = new Date(todayStart);
+        quarterAgo.setMonth(todayStart.getMonth() - 3);
+        if (bookingDate < quarterAgo || bookingDate > todayStart) return false;
       } else if (dateRangeFilter === "custom") {
         if (customStartDate) {
-          const startDate = new Date(customStartDate);
+          const startDate = new Date(customStartDate + 'T00:00:00');
           if (bookingDate < startDate) return false;
         }
         if (customEndDate) {
-          const endDate = new Date(customEndDate);
-          endDate.setHours(23, 59, 59, 999);
+          const endDate = new Date(customEndDate + 'T23:59:59');
           if (bookingDate > endDate) return false;
         }
       }
