@@ -1360,8 +1360,9 @@ export default function OwnerDashboardPage() {
                                       if (!booking.start_time) return "-";
 
                                       try {
-                                        // Parse start time and calculate end time (default 1 hour duration)
+                                        // Parse start time and calculate end time using booking duration
                                         const startTime = booking.start_time;
+                                        const duration = booking.duration || 60; // Default to 60 minutes if not set
                                         const timeParts = startTime.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
 
                                         if (!timeParts) return startTime;
@@ -1377,8 +1378,8 @@ export default function OwnerDashboardPage() {
                                           hours = 0;
                                         }
 
-                                        // Calculate end time (add 60 minutes)
-                                        let endMinutes = hours * 60 + minutes + 60;
+                                        // Calculate end time (add duration in minutes)
+                                        let endMinutes = hours * 60 + minutes + duration;
                                         let endHours = Math.floor(endMinutes / 60) % 24;
                                         const endMins = endMinutes % 60;
 
