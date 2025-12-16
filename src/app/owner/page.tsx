@@ -168,10 +168,25 @@ export default function OwnerDashboardPage() {
         const ownerId = user.id;
         const todayStr = new Date().toISOString().slice(0, 10);
 
-        // Fetch cafes
+        // Fetch cafes with all console counts
         const { data: cafeRows, error: cafesError } = await supabase
           .from("cafes")
-          .select("id, name, address, description")
+          .select(`
+            id,
+            name,
+            address,
+            description,
+            hourly_price,
+            ps5_count,
+            ps4_count,
+            xbox_count,
+            pc_count,
+            pool_count,
+            snooker_count,
+            arcade_count,
+            vr_count,
+            steering_wheel_count
+          `)
           .eq("owner_id", ownerId)
           .order("created_at", { ascending: false});
 
