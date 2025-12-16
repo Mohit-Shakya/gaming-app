@@ -1792,22 +1792,54 @@ function LiveBillingTab({
 
         setActiveBookings((bookingsData as BookingRow[]) || []);
 
-        // Calculate console availability
+        // Calculate console availability based on current time
         const cafe = cafes[0];
         const availability: any = {};
+
+        // Get current time in minutes from midnight
+        const currentHour = now.getHours();
+        const currentMinute = now.getMinutes();
+        const currentTimeMinutes = currentHour * 60 + currentMinute;
 
         CONSOLE_TYPES.forEach((consoleType) => {
           const dbKey = consoleType.dbKey as keyof CafeRow;
           const totalConsoles = typeof cafe[dbKey] === 'number' ? cafe[dbKey] : 0;
 
-          // Count booked consoles from active bookings
+          // Count booked consoles that are currently active (booking time overlaps with current time)
           let bookedCount = 0;
           bookingsData?.forEach((booking: any) => {
-            booking.booking_items?.forEach((item: any) => {
-              if (item.console?.toLowerCase() === consoleType.id.toLowerCase()) {
-                bookedCount += item.quantity || 0;
-              }
-            });
+            // Parse booking start time
+            const startTime = booking.start_time;
+            if (!startTime) return;
+
+            // Convert start time to minutes (e.g., "10:45 am" -> 645 minutes)
+            const timeMatch = startTime.match(/(\d+):(\d+)\s*(am|pm)/i);
+            if (!timeMatch) return;
+
+            let hours = parseInt(timeMatch[1]);
+            const minutes = parseInt(timeMatch[2]);
+            const period = timeMatch[3].toLowerCase();
+
+            // Convert to 24-hour format
+            if (period === 'pm' && hours !== 12) {
+              hours += 12;
+            } else if (period === 'am' && hours === 12) {
+              hours = 0;
+            }
+
+            const bookingStartMinutes = hours * 60 + minutes;
+            const bookingEndMinutes = bookingStartMinutes + (booking.duration || 60);
+
+            // Check if current time falls within booking time range
+            const isActive = currentTimeMinutes >= bookingStartMinutes && currentTimeMinutes < bookingEndMinutes;
+
+            if (isActive) {
+              booking.booking_items?.forEach((item: any) => {
+                if (item.console?.toLowerCase() === consoleType.id.toLowerCase()) {
+                  bookedCount += item.quantity || 0;
+                }
+              });
+            }
           });
 
           availability[consoleType.id] = {
