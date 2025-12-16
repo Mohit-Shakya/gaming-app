@@ -1991,6 +1991,7 @@ function LiveBillingTab({
           booking_id: booking.id,
           console: billingForm.console,
           quantity: billingForm.controllers,
+          price: parseFloat(billingForm.amount),
         });
 
       if (itemsError) throw itemsError;
