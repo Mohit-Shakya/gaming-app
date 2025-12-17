@@ -1,7 +1,7 @@
 // src/app/page.tsx
 // ✅ SERVER component – do NOT add "use client"
 
-import { supabase } from "@/lib/supabaseClient";
+import { getSupabaseServer } from "@/lib/supabaseServer";
 import HomeClient from "@/components/HomeClient";
 import type { Cafe } from "@/types/cafe";
 import type { Metadata } from "next";
@@ -15,6 +15,7 @@ export const metadata: Metadata = {
 };
 
 export default async function HomePage() {
+  const supabase = getSupabaseServer();
   const { data, error } = await supabase
     .from("cafes")
     .select("*")
