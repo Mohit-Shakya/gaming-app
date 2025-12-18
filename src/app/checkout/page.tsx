@@ -293,12 +293,8 @@ export default function CheckoutPage() {
               gap: 8,
               padding: "6px 12px",
               borderRadius: 999,
-              background: isWalkIn
-                ? "rgba(245,158,11,0.12)"
-                : "rgba(22,163,74,0.14)",
-              border: `1px solid ${
-                isWalkIn ? "rgba(245,158,11,0.7)" : "rgba(22,163,74,0.7)"
-              }`,
+              background: "rgba(22,163,74,0.14)",
+              border: `1px solid rgba(22,163,74,0.7)`,
               fontSize: 11,
               textTransform: "uppercase",
               letterSpacing: 1,
