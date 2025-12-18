@@ -722,8 +722,6 @@ export default function CheckoutPage() {
               cursor: placing ? "not-allowed" : "pointer",
               background: placing
                 ? "rgba(148,163,184,0.3)"
-                : isWalkIn
-                ? `linear-gradient(135deg, ${colors.orange} 0, #f97316 100%)`
                 : `linear-gradient(135deg, ${colors.green} 0, #16a34a 100%)`,
               color: "white",
               minWidth: "160px",
