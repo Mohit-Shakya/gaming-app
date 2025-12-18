@@ -38,6 +38,9 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(true);
   const [placing, setPlacing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isOwner, setIsOwner] = useState(false);
+  const [bookingSuccess, setBookingSuccess] = useState(false);
+  const [successBookingId, setSuccessBookingId] = useState<string | null>(null);
 
   // Function to remove a ticket from the cart
   const removeTicket = (ticketId: string) => {
@@ -70,6 +73,28 @@ export default function CheckoutPage() {
   const editBooking = () => {
     router.back();
   };
+
+  // Check if user is owner/admin
+  useEffect(() => {
+    async function checkUserRole() {
+      if (!user) return;
+
+      try {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", user.id)
+          .maybeSingle();
+
+        const role = profile?.role?.toLowerCase();
+        setIsOwner(role === "owner" || role === "admin" || role === "super_admin");
+      } catch (err) {
+        console.error("Error checking user role:", err);
+      }
+    }
+
+    checkUserRole();
+  }, [user]);
 
   // Load draft from sessionStorage
   useEffect(() => {
@@ -158,13 +183,29 @@ export default function CheckoutPage() {
         window.sessionStorage.removeItem("checkoutDraft");
       }
 
-      // Redirect to success page
-      router.replace(`/bookings/success?ref=${bookingId}`);
+      // For owners: show inline success message and allow new booking
+      if (isOwner) {
+        setSuccessBookingId(bookingId);
+        setBookingSuccess(true);
+        setPlacing(false);
+        setDraft(null);
+      } else {
+        // For regular users: redirect to success page
+        router.replace(`/bookings/success?ref=${bookingId}`);
+      }
     } catch (err) {
       console.error("Place order error", err);
       setError("Something went wrong. Please try again.");
       setPlacing(false);
     }
+  }
+
+  // Function to start a new booking (for owners)
+  function handleNewBooking() {
+    setBookingSuccess(false);
+    setSuccessBookingId(null);
+    setError(null);
+    router.back(); // Go back to booking page
   }
 
   if (loading) {
@@ -181,6 +222,126 @@ export default function CheckoutPage() {
         }}
       >
         Loading checkout…
+      </div>
+    );
+  }
+
+  // Show success message for owners
+  if (bookingSuccess && isOwner) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          background: `linear-gradient(180deg, ${colors.dark} 0%, #0a0a10 100%)`,
+          fontFamily: fonts.body,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "24px",
+        }}
+      >
+        <div
+          style={{
+            maxWidth: "500px",
+            width: "100%",
+            background: colors.darkCard,
+            border: `2px solid ${colors.green}`,
+            borderRadius: "20px",
+            padding: "40px 32px",
+            textAlign: "center",
+            boxShadow: `0 0 40px rgba(34, 197, 94, 0.3)`,
+          }}
+        >
+          {/* Success Icon */}
+          <div
+            style={{
+              width: "80px",
+              height: "80px",
+              margin: "0 auto 24px",
+              borderRadius: "50%",
+              background: `linear-gradient(135deg, ${colors.green} 0%, #16a34a 100%)`,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "40px",
+            }}
+          >
+            ✓
+          </div>
+
+          <h1
+            style={{
+              fontFamily: fonts.heading,
+              fontSize: "28px",
+              fontWeight: 800,
+              color: colors.textPrimary,
+              marginBottom: "12px",
+            }}
+          >
+            Booking Successful!
+          </h1>
+
+          <p
+            style={{
+              fontSize: "16px",
+              color: colors.textSecondary,
+              marginBottom: "24px",
+            }}
+          >
+            Booking ID: <strong style={{ color: colors.cyan }}>#{successBookingId?.slice(0, 8)}</strong>
+          </p>
+
+          <p
+            style={{
+              fontSize: "14px",
+              color: colors.textMuted,
+              marginBottom: "32px",
+            }}
+          >
+            The booking has been confirmed. You can now create another booking.
+          </p>
+
+          {/* Action Buttons */}
+          <div style={{ display: "flex", gap: "12px", flexDirection: "column" }}>
+            <button
+              onClick={handleNewBooking}
+              style={{
+                width: "100%",
+                padding: "16px 24px",
+                background: `linear-gradient(135deg, ${colors.red} 0%, #ff3366 100%)`,
+                border: "none",
+                borderRadius: "12px",
+                color: "white",
+                fontFamily: fonts.heading,
+                fontSize: "14px",
+                fontWeight: 600,
+                textTransform: "uppercase",
+                letterSpacing: "1px",
+                cursor: "pointer",
+              }}
+            >
+              Create New Booking
+            </button>
+
+            <button
+              onClick={() => router.push(`/bookings/success?ref=${successBookingId}`)}
+              style={{
+                width: "100%",
+                padding: "14px 24px",
+                background: "rgba(255, 255, 255, 0.05)",
+                border: `1px solid ${colors.border}`,
+                borderRadius: "12px",
+                color: colors.textSecondary,
+                fontFamily: fonts.body,
+                fontSize: "13px",
+                fontWeight: 500,
+                cursor: "pointer",
+              }}
+            >
+              View Booking Details
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
