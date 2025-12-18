@@ -183,16 +183,11 @@ export default function CheckoutPage() {
         window.sessionStorage.removeItem("checkoutDraft");
       }
 
-      // For owners: show inline success message and allow new booking
-      if (isOwner) {
-        setSuccessBookingId(bookingId);
-        setBookingSuccess(true);
-        setPlacing(false);
-        setDraft(null);
-      } else {
-        // For regular users: redirect to success page
-        router.replace(`/bookings/success?ref=${bookingId}`);
-      }
+      // Show inline success message for all users
+      setSuccessBookingId(bookingId);
+      setBookingSuccess(true);
+      setPlacing(false);
+      setDraft(null);
     } catch (err) {
       console.error("Place order error", err);
       setError("Something went wrong. Please try again.");
@@ -200,13 +195,6 @@ export default function CheckoutPage() {
     }
   }
 
-  // Function to start a new booking (for owners)
-  function handleNewBooking() {
-    setBookingSuccess(false);
-    setSuccessBookingId(null);
-    setError(null);
-    router.back(); // Go back to booking page
-  }
 
   if (loading) {
     return (
@@ -226,8 +214,8 @@ export default function CheckoutPage() {
     );
   }
 
-  // Show success message for owners
-  if (bookingSuccess && isOwner) {
+  // Show success message for all users
+  if (bookingSuccess) {
     return (
       <div
         style={{
@@ -304,7 +292,7 @@ export default function CheckoutPage() {
           {/* Action Buttons */}
           <div style={{ display: "flex", gap: "12px", flexDirection: "column" }}>
             <button
-              onClick={handleNewBooking}
+              onClick={() => router.push("/")}
               style={{
                 width: "100%",
                 padding: "16px 24px",
@@ -320,7 +308,7 @@ export default function CheckoutPage() {
                 cursor: "pointer",
               }}
             >
-              Create New Booking
+              {isOwner ? "Create New Booking" : "Back to Home"}
             </button>
 
             <button
