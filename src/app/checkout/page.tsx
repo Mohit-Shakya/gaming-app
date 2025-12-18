@@ -24,7 +24,7 @@ type CheckoutDraft = {
   tickets: CheckoutTicket[];
   totalAmount: number;
   durationMinutes: 30 | 60 | 90; // Session duration
-  source: "walk_in" | "online";
+  source: "online";
 };
 
 // ========= THEME =========
@@ -105,7 +105,7 @@ export default function CheckoutPage() {
     setError(null);
 
     try {
-      const { cafeId, bookingDate, timeSlot, totalAmount, source, tickets } =
+      const { cafeId, bookingDate, timeSlot, totalAmount, tickets } =
         draft;
 
       // 1. Create booking row
@@ -118,7 +118,7 @@ export default function CheckoutPage() {
           start_time: timeSlot,
           total_amount: totalAmount,
           status: "confirmed", // later you can change based on payment
-          source, // "online" | "walk_in"
+          source: "online",
         })
         .select("id")
         .maybeSingle();
@@ -204,8 +204,6 @@ export default function CheckoutPage() {
       </div>
     );
   }
-
-  const isWalkIn = draft.source === "walk_in";
 
   // Format date nicely
   const dateLabel = new Date(
@@ -311,11 +309,11 @@ export default function CheckoutPage() {
                 width: 8,
                 height: 8,
                 borderRadius: "50%",
-                background: isWalkIn ? colors.orange : colors.green,
+                background: colors.green,
               }}
             />
             <span style={{ fontFamily: fonts.heading }}>
-              {isWalkIn ? "Walk-in Booking" : "Secure Online Checkout"}
+              Secure Online Checkout
             </span>
           </div>
         </header>
@@ -417,23 +415,17 @@ export default function CheckoutPage() {
                   gap: 6,
                   padding: "4px 10px",
                   borderRadius: 999,
-                  background: isWalkIn
-                    ? "rgba(245,158,11,0.15)"
-                    : "rgba(34,197,94,0.18)",
+                  background: "rgba(34,197,94,0.18)",
                   fontSize: 11,
-                  color: isWalkIn ? colors.orange : colors.green,
-                  border: `1px solid ${
-                    isWalkIn
-                      ? "rgba(245,158,11,0.5)"
-                      : "rgba(34,197,94,0.6)"
-                  }`,
+                  color: colors.green,
+                  border: `1px solid rgba(34,197,94,0.6)`,
                   textTransform: "uppercase",
                   letterSpacing: 0.5,
                 }}
               >
-                <span>{isWalkIn ? "🚶‍♂️" : "🔒"}</span>
+                <span>🔒</span>
                 <span>
-                  {isWalkIn ? "Walk-in Booking" : "Online Booking"}
+                  Online Booking
                 </span>
               </div>
             </div>
@@ -645,24 +637,14 @@ export default function CheckoutPage() {
           </div>
         </section>
 
-        {/* Info line for walk-in vs online */}
+        {/* Payment info */}
         <section
           style={{ marginTop: 16, fontSize: 12, color: colors.textMuted }}
         >
-          {isWalkIn ? (
-            <p style={{ margin: 0 }}>
-              This is a <strong>walk-in booking</strong>. Your slot is reserved
-              for the selected time.{" "}
-              <span style={{ color: colors.orange }}>
-                Payment will be taken at the café counter.
-              </span>
-            </p>
-          ) : (
-            <p style={{ margin: 0 }}>
-              Complete the payment to{" "}
-              <strong>lock your slot and confirm your booking.</strong>
-            </p>
-          )}
+          <p style={{ margin: 0 }}>
+            Complete the payment to{" "}
+            <strong>lock your slot and confirm your booking.</strong>
+          </p>
         </section>
 
         {/* Error message */}
@@ -770,8 +752,6 @@ export default function CheckoutPage() {
             )}
             {placing
               ? "Processing..."
-              : isWalkIn
-              ? "Confirm Walk-in (Pay at Counter)"
               : `Pay ₹${draft.totalAmount} & Confirm`}
           </button>
         </div>

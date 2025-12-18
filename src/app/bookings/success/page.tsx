@@ -15,7 +15,7 @@ type BookingRow = {
   total_amount: number | null;
   status: string | null;
   created_at: string | null;
-  source?: "walk_in" | "online" | null;
+  source?: "online" | null;
 };
 
 type CafeRow = {
@@ -321,7 +321,6 @@ function BookingSuccessContent() {
   const { booking, cafe, items } = data;
   const statusInfo = getStatusInfo(booking.status);
   const isConfirmed = (booking.status || "confirmed").toLowerCase() === "confirmed";
-  const isWalkIn = (booking.source || "").toLowerCase() === "walk_in";
 
   // ---------- MAIN UI ----------
 
@@ -451,9 +450,7 @@ function BookingSuccessContent() {
               color: colors.textSecondary,
             }}
           >
-            {isWalkIn
-              ? "Your walk-in slot is reserved. Pay at the café counter. 🎮"
-              : "Get ready for an amazing gaming session! 🎮"}
+            Get ready for an amazing gaming session! 🎮
           </p>
         </header>
 
@@ -731,7 +728,7 @@ function BookingSuccessContent() {
                   marginBottom: "4px",
                 }}
               >
-                {isWalkIn ? "Amount Due at Café" : "Total Paid"}
+                Total Paid
               </p>
               <p
                 style={{
@@ -762,7 +759,7 @@ function BookingSuccessContent() {
                   fontWeight: 600,
                 }}
               >
-                {isWalkIn ? "Slot Reserved" : "Payment Complete"}
+                Payment Complete
               </span>
             </div>
           </div>

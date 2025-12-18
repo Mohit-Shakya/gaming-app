@@ -214,42 +214,6 @@ function generateTickets(
   return tickets;
 }
 
-// For walk-in: today + ACTUAL current time (not 15-minute slot)
-function getDefaultWalkInDateAndTime(): { dateKey: string; timeLabel: string } {
-  const now = new Date();
-
-  // clone date
-  let date = new Date(now);
-  let hour = now.getHours();
-  let minutes = now.getMinutes();
-
-  // If before opening -> move to opening time
-  if (hour < OPEN_HOUR) {
-    hour = OPEN_HOUR;
-    minutes = 0;
-  }
-
-  // If after closing -> move to tomorrow opening
-  if (hour >= CLOSE_HOUR) {
-    date.setDate(date.getDate() + 1);
-    hour = OPEN_HOUR;
-    minutes = 0;
-  }
-
-  const dateKey = date.toISOString().slice(0, 10);
-
-  const d = new Date(date);
-  d.setHours(hour, minutes, 0, 0);
-
-  // "11:04 am" / "2:24 pm" etc
-  const timeLabel = d.toLocaleTimeString("en-IN", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
-
-  return { dateKey, timeLabel };
-}
 
 const DAY_OPTIONS = buildNext7Days();
 const ALL_TIME_SLOTS = buildTimeSlots();
@@ -261,10 +225,6 @@ export default function BookingPage() {
   const searchParams = useSearchParams();
   const { user, loading: userLoading } = useUser();
 
-  // Walk-in mode (?mode=walkin or ?walkin=1)
-  const isWalkIn =
-    searchParams?.get("mode") === "walkin" ||
-    searchParams?.get("walkin") === "1";
 
   const rawId = params?.id;
   const cafeId = typeof rawId === "string" && rawId !== "undefined" ? rawId : null;
@@ -399,14 +359,6 @@ export default function BookingPage() {
     loadCafeData();
   }, [cafeId, selectedConsole]);
 
-  // ===== WALK-IN: AUTO DATE + TIME (ACTUAL CURRENT TIME) =====
-  useEffect(() => {
-    if (!isWalkIn) return;
-    const { dateKey, timeLabel } = getDefaultWalkInDateAndTime();
-    setSelectedDate(dateKey);
-    setSelectedTime(timeLabel);
-    setStep(2); // skip date/time step for walk-in
-  }, [isWalkIn]);
 
   // FETCH LIVE AVAILABILITY with OVERLAP LOGIC
   const fetchLiveAvailability = useCallback(async () => {
@@ -538,17 +490,14 @@ export default function BookingPage() {
     });
   }, [selectedDate]);
 
-  // IMPORTANT: only run this for ONLINE bookings,
-  // otherwise it will wipe the walk-in "11:04 am" time.
   useEffect(() => {
-    if (isWalkIn) return;
     if (selectedTime && filteredTimeSlots.length > 0) {
       const isStillAvailable = filteredTimeSlots.some((slot) => slot.label === selectedTime);
       if (!isStillAvailable) {
         setSelectedTime("");
       }
     }
-  }, [isWalkIn, filteredTimeSlots, selectedTime]);
+  }, [filteredTimeSlots, selectedTime]);
 
   const tickets = useMemo(() => {
     const pricingTier = consolePricing[selectedConsole] ?? null;
@@ -735,8 +684,7 @@ export default function BookingPage() {
         tickets: selectedTickets,
         totalAmount: summary.totalAmount,
         durationMinutes: selectedDuration,
-        // mark walk-in vs online
-        source: isWalkIn ? "walk_in" : "online",
+        source: "online",
       };
 
       sessionStorage.setItem("checkoutDraft", JSON.stringify(payload));
@@ -832,7 +780,7 @@ export default function BookingPage() {
             }}
           >
             <span style={{ fontSize: "18px" }}>←</span>
-            {step === 2 && !isWalkIn ? "Change Date & Time" : "Back"}
+            {step === 2 ? "Change Date & Time" : "Back"}
           </button>
 
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "4px" }}>
@@ -961,8 +909,8 @@ export default function BookingPage() {
           </div>
         </header>
 
-        {/* ========== STEP 1: DATE & TIME (ONLINE ONLY) ========== */}
-        {step === 1 && !isWalkIn && (
+        {/* ========== STEP 1: DATE & TIME ========== */}
+        {step === 1 && (
           <>
             {/* Date Selection */}
             <section style={{ marginBottom: "20px" }}>
@@ -1211,47 +1159,26 @@ export default function BookingPage() {
                       {selectedTime} - {getEndTime(selectedTime, selectedDuration)}
                     </div>
                   </div>
-                  {!isWalkIn && (
-                    <button
-                      onClick={handleBackToDateTime}
-                      style={{
-                        padding: "8px 16px",
-                        background: `linear-gradient(135deg, rgba(0, 240, 255, 0.15) 0%, rgba(0, 240, 255, 0.25) 100%)`,
-                        border: `1px solid ${colors.cyan}`,
-                        borderRadius: "10px",
-                        color: colors.cyan,
-                        fontSize: "12px",
-                        fontWeight: 700,
-                        cursor: "pointer",
-                        textTransform: "uppercase",
-                        letterSpacing: "0.5px",
-                      }}
-                    >
-                      Change
-                    </button>
-                  )}
-                </div>
-
-                <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-                  <div
+                  <button
+                    onClick={handleBackToDateTime}
                     style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: "6px",
-                      padding: "6px 12px",
-                      borderRadius: "999px",
-                      background: isWalkIn ? "rgba(245, 158, 11, 0.2)" : "rgba(34, 197, 94, 0.2)",
-                      border: isWalkIn ? `1px solid ${colors.orange}` : `1px solid ${colors.green}`,
-                      fontSize: "11px",
+                      padding: "8px 16px",
+                      background: `linear-gradient(135deg, rgba(0, 240, 255, 0.15) 0%, rgba(0, 240, 255, 0.25) 100%)`,
+                      border: `1px solid ${colors.cyan}`,
+                      borderRadius: "10px",
+                      color: colors.cyan,
+                      fontSize: "12px",
                       fontWeight: 700,
-                      color: isWalkIn ? colors.orange : colors.green,
+                      cursor: "pointer",
                       textTransform: "uppercase",
                       letterSpacing: "0.5px",
                     }}
                   >
-                    <span>{isWalkIn ? "🚶‍♂️" : "🌐"}</span>
-                    <span>{isWalkIn ? "Walk-in" : "Online"}</span>
-                  </div>
+                    Change
+                  </button>
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
                   <div
                     style={{
                       display: "inline-flex",
@@ -1914,7 +1841,7 @@ export default function BookingPage() {
             gap: "16px",
           }}
         >
-          {step === 1 && !isWalkIn ? (
+          {step === 1 ? (
             <>
               <div>
                 <div style={{ fontSize: "14px", fontWeight: 600, color: colors.textPrimary }}>

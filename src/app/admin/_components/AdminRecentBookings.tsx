@@ -22,7 +22,6 @@ export default function AdminRecentBookings() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filterStatus, setFilterStatus] = useState<"all" | "confirmed" | "pending" | "cancelled">("all");
-  const [filterSource, setFilterSource] = useState<"all" | "online" | "walk_in">("all");
 
   useEffect(() => {
     let cancelled = false;
@@ -110,11 +109,7 @@ export default function AdminRecentBookings() {
       filterStatus === "all" ||
       (booking.status || "confirmed").toLowerCase() === filterStatus;
 
-    const matchesSource =
-      filterSource === "all" ||
-      (booking.source || "online").toLowerCase() === filterSource;
-
-    return matchesStatus && matchesSource;
+    return matchesStatus;
   });
 
   if (!rows.length) {
@@ -259,52 +254,6 @@ export default function AdminRecentBookings() {
           </div>
         </div>
 
-        {/* Source Filter */}
-        <div>
-          <p
-            style={{
-              fontSize: 11,
-              color: colors.textMuted,
-              marginBottom: 8,
-              textTransform: "uppercase",
-              letterSpacing: 1,
-            }}
-          >
-            Source
-          </p>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {(["all", "online", "walk_in"] as const).map((source) => (
-              <button
-                key={source}
-                onClick={() => setFilterSource(source)}
-                style={{
-                  padding: "8px 14px",
-                  borderRadius: 8,
-                  border: `1px solid ${filterSource === source ? colors.cyan : colors.border}`,
-                  background: filterSource === source ? "rgba(0,240,255,0.15)" : colors.darkerCard,
-                  color: filterSource === source ? colors.cyan : colors.textSecondary,
-                  fontSize: 12,
-                  fontWeight: filterSource === source ? 600 : 400,
-                  cursor: "pointer",
-                  textTransform: "capitalize",
-                  transition: "all 0.2s",
-                }}
-                onMouseEnter={(e) => {
-                  if (filterSource !== source) {
-                    e.currentTarget.style.borderColor = colors.textMuted;
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (filterSource !== source) {
-                    e.currentTarget.style.borderColor = colors.border;
-                  }
-                }}
-              >
-                {source === "all" ? "All" : source === "walk_in" ? "Walk-in" : "Online"}
-              </button>
-            ))}
-          </div>
-        </div>
       </div>
 
       {/* No results */}
@@ -460,7 +409,7 @@ export default function AdminRecentBookings() {
                           }`,
                         }}
                       >
-                        {source === "walk_in" ? "🚶 Walk-in" : "💻 Online"}
+                        💻 Online
                       </span>
                     </td>
 
