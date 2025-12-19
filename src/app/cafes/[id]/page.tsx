@@ -172,7 +172,7 @@ export default async function CafePage({ params }: CafePageProps) {
   const { data: galleryRows } = await supabase
     .from("cafe_images")
     .select("id, image_url, cafe_id")
-    .eq("cafe_id", id);
+    .eq("cafe_id", cafe.id);
 
   const galleryImages =
     (galleryRows as CafeImageRow[] | null)?.map((img) => ({

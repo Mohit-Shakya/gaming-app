@@ -51,8 +51,6 @@ type BookingRow = {
   status: string | null;
   source: string | null;
   created_at: string | null;
-  customer_name?: string | null;
-  customer_phone?: string | null;
   booking_items?: Array<{
     id: string;
     console: string | null;
@@ -233,8 +231,6 @@ export default function OwnerDashboardPage() {
             status,
             source,
             created_at,
-            customer_name,
-            customer_phone,
             booking_items (
               id,
               console,
@@ -516,9 +512,9 @@ export default function OwnerDashboardPage() {
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       const matchesId = booking.id.toLowerCase().includes(query);
-      const matchesName = (booking.customer_name || booking.user_name || "").toLowerCase().includes(query);
+      const matchesName = (booking.user_name || "").toLowerCase().includes(query);
       const matchesEmail = (booking.user_email || "").toLowerCase().includes(query);
-      const matchesPhone = (booking.customer_phone || booking.user_phone || "").toLowerCase().includes(query);
+      const matchesPhone = (booking.user_phone || "").toLowerCase().includes(query);
       if (!matchesId && !matchesName && !matchesEmail && !matchesPhone) {
         return false;
       }
@@ -939,7 +935,7 @@ export default function OwnerDashboardPage() {
                               borderBottom: `1px solid rgba(71, 85, 105, 0.2)`,
                             }}
                           >
-                            <td style={{ padding: "12px" }}>{booking.customer_name || booking.user_name || "Guest"}</td>
+                            <td style={{ padding: "12px" }}>{booking.user_name || "Guest"}</td>
                             <td style={{ padding: "12px", color: colors.textSecondary }}>{booking.cafe_name || "-"}</td>
                             <td style={{ padding: "12px", color: colors.textSecondary }}>
                               {booking.booking_date
@@ -1328,14 +1324,14 @@ export default function OwnerDashboardPage() {
                               {/* Customer Name */}
                               <td style={{ padding: "14px 16px" }}>
                                 <div style={{ fontSize: 13, color: colors.textPrimary, fontWeight: 600 }}>
-                                  {booking.customer_name || booking.user_name || "Guest"}
+                                  {booking.user_name || "Guest"}
                                 </div>
                               </td>
 
                               {/* Phone Number */}
                               <td style={{ padding: "14px 16px" }}>
                                 <div style={{ fontSize: 13, color: colors.textSecondary }}>
-                                  {booking.customer_phone || booking.user_phone || "-"}
+                                  {booking.user_phone || "-"}
                                 </div>
                               </td>
 
