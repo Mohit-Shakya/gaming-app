@@ -9,6 +9,7 @@ import { colors, fonts } from "@/lib/constants";
 type CafeRow = {
   id: string;
   name: string | null;
+  slug?: string | null;
   city?: string | null;
   is_active?: boolean | null;
   created_at?: string | null;

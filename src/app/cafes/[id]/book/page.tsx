@@ -238,6 +238,7 @@ export default function BookingPage() {
   // ticketId format: "ps5_2" (console_quantity) OR "ps5_2_30" / "ps5_2_60" (console_quantity_duration)
 
   // Cafe data
+  const [actualCafeId, setActualCafeId] = useState<string | null>(null); // Store UUID when slug is used
   const [cafeName, setCafeName] = useState<string>("Gaming Café");
   const [cafePrice, setCafePrice] = useState<number>(150);
   const [googleMapsUrl, setGoogleMapsUrl] = useState<string>("");
@@ -275,12 +276,16 @@ export default function BookingPage() {
 
       try {
         setLoading(true);
+
+        // Check if cafeId is a UUID or slug
+        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cafeId);
+
         const { data, error } = await supabase
           .from("cafes")
           .select(
-            "name, hourly_price, google_maps_url, instagram_url, ps5_count, ps4_count, xbox_count, pc_count, pool_count, arcade_count, snooker_count, vr_count, steering_wheel_count"
+            "id, name, slug, hourly_price, google_maps_url, instagram_url, ps5_count, ps4_count, xbox_count, pc_count, pool_count, arcade_count, snooker_count, vr_count, steering_wheel_count"
           )
-          .eq("id", cafeId)
+          .eq(isUUID ? "id" : "slug", cafeId)
           .maybeSingle();
 
         if (error || !data) {
@@ -288,6 +293,8 @@ export default function BookingPage() {
           return;
         }
 
+        // Store the actual UUID for booking creation
+        setActualCafeId(data.id);
         setCafeName(data.name || "Gaming Café");
         setCafePrice(data.hourly_price || 150);
         setGoogleMapsUrl(data.google_maps_url || "");
@@ -362,7 +369,8 @@ export default function BookingPage() {
 
   // FETCH LIVE AVAILABILITY with OVERLAP LOGIC
   const fetchLiveAvailability = useCallback(async () => {
-    if (!cafeId || !selectedDate || !selectedTime) {
+    const effectiveCafeId = actualCafeId || cafeId;
+    if (!effectiveCafeId || !selectedDate || !selectedTime) {
       setLiveAvailability({});
       return;
     }
@@ -384,7 +392,7 @@ export default function BookingPage() {
           )
         `
         )
-        .eq("cafe_id", cafeId)
+        .eq("cafe_id", effectiveCafeId)
         .eq("booking_date", selectedDate)
         .neq("status", "cancelled");
 
@@ -455,7 +463,7 @@ export default function BookingPage() {
     } finally {
       setLoadingAvailability(false);
     }
-  }, [cafeId, selectedDate, selectedTime, availableConsoles, consoleLimits, selectedDuration]);
+  }, [actualCafeId, cafeId, selectedDate, selectedTime, availableConsoles, consoleLimits, selectedDuration]);
 
   useEffect(() => {
     fetchLiveAvailability();
@@ -677,7 +685,7 @@ export default function BookingPage() {
       }
 
       const payload = {
-        cafeId,
+        cafeId: actualCafeId || cafeId, // Use actual UUID, fallback to cafeId if not set
         cafeName,
         bookingDate: selectedDate,
         timeSlot: selectedTime,
@@ -2041,12 +2049,15 @@ async function checkBookingCapacityWithOverlap(options: {
     return { ok: false, message: "No tickets selected." };
   }
 
+  // Check if cafeId is a UUID or slug
+  const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cafeId);
+
   const { data: cafeRow, error: cafeError } = await supabase
     .from("cafes")
     .select(
-      "ps5_count, ps4_count, xbox_count, pc_count, pool_count, arcade_count, snooker_count, vr_count, steering_wheel_count"
+      "id, ps5_count, ps4_count, xbox_count, pc_count, pool_count, arcade_count, snooker_count, vr_count, steering_wheel_count"
     )
-    .eq("id", cafeId)
+    .eq(isUUID ? "id" : "slug", cafeId)
     .maybeSingle();
 
   if (cafeError || !cafeRow) {
@@ -2074,7 +2085,7 @@ async function checkBookingCapacityWithOverlap(options: {
       )
     `
     )
-    .eq("cafe_id", cafeId)
+    .eq("cafe_id", cafeRow.id)
     .eq("booking_date", bookingDate)
     .neq("status", "cancelled");
 

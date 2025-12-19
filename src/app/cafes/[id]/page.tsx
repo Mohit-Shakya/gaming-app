@@ -101,12 +101,16 @@ export default async function CafePage({ params }: CafePageProps) {
     );
   }
 
+  // Check if id is a UUID (old format) or slug (new format)
+  const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+
   const { data: cafeRows, error: cafeError } = await supabase
     .from("cafes")
     .select(
       `
       id,
       name,
+      slug,
       address,
       description,
       hourly_price,
@@ -133,7 +137,7 @@ export default async function CafePage({ params }: CafePageProps) {
       show_tech_specs
     `
     )
-    .eq("id", id)
+    .eq(isUUID ? "id" : "slug", id)
     .limit(1);
 
   const cafe = cafeRows?.[0] ?? null;
@@ -607,7 +611,7 @@ export default async function CafePage({ params }: CafePageProps) {
             )}
 
             {/* Book Now Button */}
-            <Link href={`/cafes/${cafe.id}/book`} style={{ display: "block" }}>
+            <Link href={`/cafes/${(cafe as any).slug || cafe.id}/book`} style={{ display: "block" }}>
               <button
                 style={{
                   width: "100%",

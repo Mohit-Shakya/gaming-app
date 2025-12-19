@@ -103,7 +103,7 @@ export default function CafeList({ cafes }: Props) {
         {cafes.map((cafe, index) => (
           <Link
             key={cafe.id}
-            href={`/cafes/${cafe.id}`}
+            href={`/cafes/${cafe.slug || cafe.id}`}
             className="cafe-card block overflow-hidden rounded-2xl sm:rounded-3xl"
             style={{
               animationDelay: `${index * 0.05}s`,

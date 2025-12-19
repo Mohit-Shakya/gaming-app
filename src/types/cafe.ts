@@ -2,6 +2,7 @@
 export type Cafe = {
   id: string;
   name: string;
+  slug?: string | null; // SEO-friendly URL slug
   address: string | null;
   city?: string | null;
   hourly_price: number | null;
