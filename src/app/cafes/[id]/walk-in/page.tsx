@@ -20,6 +20,29 @@ const CONSOLES: { id: ConsoleId; label: string; icon: string; color: string }[] 
   { id: "steering_wheel", label: "Racing Rig", icon: "🏎️", color: "#e10600" },
 ];
 
+const CONSOLE_DB_KEYS: Record<ConsoleId, string> = {
+  ps5: "ps5_count",
+  ps4: "ps4_count",
+  xbox: "xbox_count",
+  pc: "pc_count",
+  pool: "pool_count",
+  arcade: "arcade_count",
+  snooker: "snooker_count",
+  vr: "vr_count",
+  steering_wheel: "steering_wheel_count",
+};
+
+type ConsolePricingTier = {
+  qty1_30min: number | null;
+  qty1_60min: number | null;
+  qty2_30min: number | null;
+  qty2_60min: number | null;
+  qty3_30min: number | null;
+  qty3_60min: number | null;
+  qty4_30min: number | null;
+  qty4_60min: number | null;
+};
+
 export default function WalkInBookingPage() {
   const params = useParams();
   const cafeIdOrSlug = typeof params?.id === "string" ? params.id : null;
@@ -29,6 +52,8 @@ export default function WalkInBookingPage() {
   const [cafeName, setCafeName] = useState<string>("Gaming Café");
   const [cafePrice, setCafePrice] = useState<number>(150);
   const [loading, setLoading] = useState(true);
+  const [availableConsoles, setAvailableConsoles] = useState<ConsoleId[]>([]);
+  const [consolePricing, setConsolePricing] = useState<Partial<Record<ConsoleId, ConsolePricingTier>>>({});
 
   // Form data
   const [customerName, setCustomerName] = useState("");
@@ -54,7 +79,29 @@ export default function WalkInBookingPage() {
 
         const { data, error } = await supabase
           .from("cafes")
-          .select("id, name, hourly_price")
+          .select(`
+            id, name, hourly_price,
+            ps5_count, ps4_count, xbox_count, pc_count,
+            pool_count, arcade_count, snooker_count, vr_count, steering_wheel_count,
+            ps5_qty1_30min, ps5_qty1_60min, ps5_qty2_30min, ps5_qty2_60min,
+            ps5_qty3_30min, ps5_qty3_60min, ps5_qty4_30min, ps5_qty4_60min,
+            ps4_qty1_30min, ps4_qty1_60min, ps4_qty2_30min, ps4_qty2_60min,
+            ps4_qty3_30min, ps4_qty3_60min, ps4_qty4_30min, ps4_qty4_60min,
+            xbox_qty1_30min, xbox_qty1_60min, xbox_qty2_30min, xbox_qty2_60min,
+            xbox_qty3_30min, xbox_qty3_60min, xbox_qty4_30min, xbox_qty4_60min,
+            pc_qty1_30min, pc_qty1_60min, pc_qty2_30min, pc_qty2_60min,
+            pc_qty3_30min, pc_qty3_60min, pc_qty4_30min, pc_qty4_60min,
+            pool_qty1_30min, pool_qty1_60min, pool_qty2_30min, pool_qty2_60min,
+            pool_qty3_30min, pool_qty3_60min, pool_qty4_30min, pool_qty4_60min,
+            arcade_qty1_30min, arcade_qty1_60min, arcade_qty2_30min, arcade_qty2_60min,
+            arcade_qty3_30min, arcade_qty3_60min, arcade_qty4_30min, arcade_qty4_60min,
+            snooker_qty1_30min, snooker_qty1_60min, snooker_qty2_30min, snooker_qty2_60min,
+            snooker_qty3_30min, snooker_qty3_60min, snooker_qty4_30min, snooker_qty4_60min,
+            vr_qty1_30min, vr_qty1_60min, vr_qty2_30min, vr_qty2_60min,
+            vr_qty3_30min, vr_qty3_60min, vr_qty4_30min, vr_qty4_60min,
+            steering_wheel_qty1_30min, steering_wheel_qty1_60min, steering_wheel_qty2_30min, steering_wheel_qty2_60min,
+            steering_wheel_qty3_30min, steering_wheel_qty3_60min, steering_wheel_qty4_30min, steering_wheel_qty4_60min
+          `)
           .eq(isUUID ? "id" : "slug", cafeIdOrSlug)
           .maybeSingle();
 
@@ -67,8 +114,39 @@ export default function WalkInBookingPage() {
         setCafeName(data.name || "Gaming Café");
         setCafePrice(data.hourly_price || 150);
 
-        // Auto-select PS5 as default
-        setSelectedConsole("ps5");
+        // Get available consoles and their pricing
+        const available: ConsoleId[] = [];
+        const pricing: Partial<Record<ConsoleId, ConsolePricingTier>> = {};
+
+        CONSOLES.forEach((c) => {
+          const dbKey = CONSOLE_DB_KEYS[c.id];
+          const count = (data as any)[dbKey] ?? 0;
+
+          if (count > 0) {
+            available.push(c.id);
+
+            // Get pricing tier for this console
+            const prefix = c.id;
+            pricing[c.id] = {
+              qty1_30min: (data as any)[`${prefix}_qty1_30min`],
+              qty1_60min: (data as any)[`${prefix}_qty1_60min`],
+              qty2_30min: (data as any)[`${prefix}_qty2_30min`],
+              qty2_60min: (data as any)[`${prefix}_qty2_60min`],
+              qty3_30min: (data as any)[`${prefix}_qty3_30min`],
+              qty3_60min: (data as any)[`${prefix}_qty3_60min`],
+              qty4_30min: (data as any)[`${prefix}_qty4_30min`],
+              qty4_60min: (data as any)[`${prefix}_qty4_60min`],
+            };
+          }
+        });
+
+        setAvailableConsoles(available);
+        setConsolePricing(pricing);
+
+        // Auto-select first available console
+        if (available.length > 0) {
+          setSelectedConsole(available[0]);
+        }
       } catch (err) {
         console.error("Error loading cafe:", err);
         setError("Could not load café details");
@@ -80,10 +158,24 @@ export default function WalkInBookingPage() {
     loadCafe();
   }, [cafeIdOrSlug]);
 
-  // Calculate amount
+  // Calculate amount based on tier pricing
   const calculateAmount = () => {
     if (!selectedConsole) return 0;
+
+    const tier = consolePricing[selectedConsole];
     const basePrice = cafePrice;
+
+    if (tier) {
+      // Use tier-based pricing
+      const key = `qty${quantity}_${duration}min` as keyof ConsolePricingTier;
+      const tierPrice = tier[key];
+
+      if (tierPrice !== null && tierPrice !== undefined) {
+        return tierPrice;
+      }
+    }
+
+    // Fallback to simple calculation
     const durationMultiplier = duration / 60;
     return basePrice * quantity * durationMultiplier;
   };
@@ -182,7 +274,9 @@ export default function WalkInBookingPage() {
         setCustomerPhone("");
         setQuantity(1);
         setDuration(60);
-        setSelectedConsole("ps5");
+        if (availableConsoles.length > 0) {
+          setSelectedConsole(availableConsoles[0]);
+        }
         setSuccess(false);
         setBookingId("");
       }, 5000);
@@ -231,6 +325,9 @@ export default function WalkInBookingPage() {
       </div>
     );
   }
+
+  // Filter consoles to show only available ones
+  const availableConsoleOptions = CONSOLES.filter(c => availableConsoles.includes(c.id));
 
   return (
     <div style={{
@@ -422,7 +519,7 @@ export default function WalkInBookingPage() {
                 />
               </div>
 
-              {/* Console Selection */}
+              {/* Console Selection - Only Available Consoles */}
               <div style={{ marginBottom: "20px" }}>
                 <label style={{
                   display: "block",
@@ -438,7 +535,7 @@ export default function WalkInBookingPage() {
                   gridTemplateColumns: "repeat(3, 1fr)",
                   gap: "10px",
                 }}>
-                  {CONSOLES.map((console) => {
+                  {availableConsoleOptions.map((console) => {
                     const isSelected = selectedConsole === console.id;
 
                     return (
