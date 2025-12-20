@@ -115,6 +115,8 @@ export default function WalkInBookingPage() {
         if (!pricingError && pricingData) {
           const pricing: Partial<Record<ConsoleId, ConsolePricingTier>> = {};
 
+          console.log('Raw pricing data from database:', pricingData);
+
           pricingData.forEach((item: any) => {
             // Map database console_type to ConsoleId
             let consoleId = item.console_type as ConsoleId;
@@ -138,7 +140,12 @@ export default function WalkInBookingPage() {
             pricing[consoleId]![key] = item.price;
           });
 
+          console.log('Processed console pricing:', pricing);
           setConsolePricing(pricing);
+        } else if (pricingError) {
+          console.error('Error loading pricing:', pricingError);
+        } else {
+          console.warn('No pricing data found for cafe');
         }
 
         // Auto-select first available console
@@ -163,30 +170,35 @@ export default function WalkInBookingPage() {
     const tier = consolePricing[selectedConsole];
     const basePrice = cafePrice;
 
+    console.log('=== WALK-IN PRICING CALCULATION ===');
+    console.log('Selected console:', selectedConsole);
+    console.log('Quantity:', quantity);
+    console.log('Duration:', duration);
+    console.log('Base cafe hourly price:', basePrice);
+    console.log('Tier pricing for this console:', tier);
+
     if (tier) {
       // Use tier-based pricing
       const key = `qty${quantity}_${duration}min` as keyof ConsolePricingTier;
       const tierPrice = tier[key];
 
-      console.log('Pricing Debug:', {
-        selectedConsole,
-        quantity,
-        duration,
-        key,
-        tierPrice,
-        tier,
-        basePrice
-      });
+      console.log('Looking for pricing key:', key);
+      console.log('Tier price found:', tierPrice);
 
       if (tierPrice !== null && tierPrice !== undefined) {
+        console.log('✓ Using tier-based price:', tierPrice);
         return tierPrice;
+      } else {
+        console.log('✗ Tier price is null/undefined, using fallback');
       }
+    } else {
+      console.log('✗ No tier pricing object found for console, using fallback');
     }
 
     // Fallback to simple calculation
     const durationMultiplier = duration / 60;
     const fallbackAmount = basePrice * quantity * durationMultiplier;
-    console.log('Using fallback pricing:', { basePrice, quantity, duration, fallbackAmount });
+    console.log('Fallback calculation:', `${basePrice} × ${quantity} × ${durationMultiplier} = ${fallbackAmount}`);
     return fallbackAmount;
   };
 
