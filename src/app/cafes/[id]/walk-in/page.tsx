@@ -92,9 +92,8 @@ export default function WalkInBookingPage() {
         setCafeName(data.name || "Gaming Café");
         setCafePrice(data.hourly_price || 150);
 
-        // Get available consoles and their pricing
+        // Get available consoles
         const available: ConsoleId[] = [];
-        const pricing: Partial<Record<ConsoleId, ConsolePricingTier>> = {};
 
         CONSOLES.forEach((c) => {
           const dbKey = CONSOLE_DB_KEYS[c.id];
@@ -102,24 +101,45 @@ export default function WalkInBookingPage() {
 
           if (count > 0) {
             available.push(c.id);
-
-            // Get pricing tier for this console
-            const prefix = c.id;
-            pricing[c.id] = {
-              qty1_30min: (data as any)[`${prefix}_qty1_30min`],
-              qty1_60min: (data as any)[`${prefix}_qty1_60min`],
-              qty2_30min: (data as any)[`${prefix}_qty2_30min`],
-              qty2_60min: (data as any)[`${prefix}_qty2_60min`],
-              qty3_30min: (data as any)[`${prefix}_qty3_30min`],
-              qty3_60min: (data as any)[`${prefix}_qty3_60min`],
-              qty4_30min: (data as any)[`${prefix}_qty4_30min`],
-              qty4_60min: (data as any)[`${prefix}_qty4_60min`],
-            };
           }
         });
 
         setAvailableConsoles(available);
-        setConsolePricing(pricing);
+
+        // Load console pricing from console_pricing table
+        const { data: pricingData, error: pricingError } = await supabase
+          .from("console_pricing")
+          .select("console_type, quantity, duration_minutes, price")
+          .eq("cafe_id", data.id);
+
+        if (!pricingError && pricingData) {
+          const pricing: Partial<Record<ConsoleId, ConsolePricingTier>> = {};
+
+          pricingData.forEach((item: any) => {
+            // Map database console_type to ConsoleId
+            let consoleId = item.console_type as ConsoleId;
+
+            // Initialize pricing object if it doesn't exist
+            if (!pricing[consoleId]) {
+              pricing[consoleId] = {
+                qty1_30min: null,
+                qty1_60min: null,
+                qty2_30min: null,
+                qty2_60min: null,
+                qty3_30min: null,
+                qty3_60min: null,
+                qty4_30min: null,
+                qty4_60min: null,
+              };
+            }
+
+            // Map the pricing data to the correct tier
+            const key = `qty${item.quantity}_${item.duration_minutes}min` as keyof ConsolePricingTier;
+            pricing[consoleId]![key] = item.price;
+          });
+
+          setConsolePricing(pricing);
+        }
 
         // Auto-select first available console
         if (available.length > 0) {
