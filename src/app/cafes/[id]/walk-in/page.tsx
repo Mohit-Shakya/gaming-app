@@ -79,29 +79,7 @@ export default function WalkInBookingPage() {
 
         const { data, error } = await supabase
           .from("cafes")
-          .select(`
-            id, name, hourly_price,
-            ps5_count, ps4_count, xbox_count, pc_count,
-            pool_count, arcade_count, snooker_count, vr_count, steering_wheel_count,
-            ps5_qty1_30min, ps5_qty1_60min, ps5_qty2_30min, ps5_qty2_60min,
-            ps5_qty3_30min, ps5_qty3_60min, ps5_qty4_30min, ps5_qty4_60min,
-            ps4_qty1_30min, ps4_qty1_60min, ps4_qty2_30min, ps4_qty2_60min,
-            ps4_qty3_30min, ps4_qty3_60min, ps4_qty4_30min, ps4_qty4_60min,
-            xbox_qty1_30min, xbox_qty1_60min, xbox_qty2_30min, xbox_qty2_60min,
-            xbox_qty3_30min, xbox_qty3_60min, xbox_qty4_30min, xbox_qty4_60min,
-            pc_qty1_30min, pc_qty1_60min, pc_qty2_30min, pc_qty2_60min,
-            pc_qty3_30min, pc_qty3_60min, pc_qty4_30min, pc_qty4_60min,
-            pool_qty1_30min, pool_qty1_60min, pool_qty2_30min, pool_qty2_60min,
-            pool_qty3_30min, pool_qty3_60min, pool_qty4_30min, pool_qty4_60min,
-            arcade_qty1_30min, arcade_qty1_60min, arcade_qty2_30min, arcade_qty2_60min,
-            arcade_qty3_30min, arcade_qty3_60min, arcade_qty4_30min, arcade_qty4_60min,
-            snooker_qty1_30min, snooker_qty1_60min, snooker_qty2_30min, snooker_qty2_60min,
-            snooker_qty3_30min, snooker_qty3_60min, snooker_qty4_30min, snooker_qty4_60min,
-            vr_qty1_30min, vr_qty1_60min, vr_qty2_30min, vr_qty2_60min,
-            vr_qty3_30min, vr_qty3_60min, vr_qty4_30min, vr_qty4_60min,
-            steering_wheel_qty1_30min, steering_wheel_qty1_60min, steering_wheel_qty2_30min, steering_wheel_qty2_60min,
-            steering_wheel_qty3_30min, steering_wheel_qty3_60min, steering_wheel_qty4_30min, steering_wheel_qty4_60min
-          `)
+          .select("*")
           .eq(isUUID ? "id" : "slug", cafeIdOrSlug)
           .maybeSingle();
 
