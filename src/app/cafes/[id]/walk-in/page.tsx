@@ -148,6 +148,16 @@ export default function WalkInBookingPage() {
       const key = `qty${quantity}_${duration}min` as keyof ConsolePricingTier;
       const tierPrice = tier[key];
 
+      console.log('Pricing Debug:', {
+        selectedConsole,
+        quantity,
+        duration,
+        key,
+        tierPrice,
+        tier,
+        basePrice
+      });
+
       if (tierPrice !== null && tierPrice !== undefined) {
         return tierPrice;
       }
@@ -155,7 +165,9 @@ export default function WalkInBookingPage() {
 
     // Fallback to simple calculation
     const durationMultiplier = duration / 60;
-    return basePrice * quantity * durationMultiplier;
+    const fallbackAmount = basePrice * quantity * durationMultiplier;
+    console.log('Using fallback pricing:', { basePrice, quantity, duration, fallbackAmount });
+    return fallbackAmount;
   };
 
   const totalAmount = calculateAmount();
@@ -228,11 +240,17 @@ export default function WalkInBookingPage() {
       }
 
       // Create booking item
+      const consoleInfo = CONSOLES.find(c => c.id === selectedConsole);
+      const ticketId = `${selectedConsole}_${quantity}_${duration}`;
+
       const { error: itemError } = await supabase
         .from("booking_items")
         .insert({
           booking_id: booking.id,
+          ticket_id: ticketId,
           console: selectedConsole,
+          title: `${consoleInfo?.label || selectedConsole} - ${quantity}x ${duration}min`,
+          price: totalAmount,
           quantity: quantity,
         });
 
