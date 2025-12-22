@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { colors, fonts, CONSOLE_LABELS, CONSOLE_ICONS } from "@/lib/constants";
 
-type ConsoleId = "ps5" | "ps4" | "xbox" | "pc" | "pool" | "arcade" | "snooker" | "vr" | "steering_wheel";
+type ConsoleId = "ps5" | "ps4" | "xbox" | "pc" | "pool" | "arcade" | "snooker" | "vr" | "steering";
 
 type ConsoleStatus = {
   id: string;
@@ -118,7 +118,7 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
         { id: "arcade", key: "arcade_count" },
         { id: "snooker", key: "snooker_count" },
         { id: "vr", key: "vr_count" },
-        { id: "steering_wheel", key: "steering_wheel_count" },
+        { id: "steering", key: "steering_wheel_count" },
       ];
 
       const summaries: ConsoleSummary[] = [];
