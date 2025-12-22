@@ -515,8 +515,14 @@ export default function BookingPage() {
   const usedPerConsole = useMemo(() => {
     const map: Partial<Record<ConsoleId, number>> = {};
     Object.entries(quantities).forEach(([ticketId, qty]) => {
+      if (qty <= 0) return;
+
       const consoleId = ticketId.split("_")[0] as ConsoleId;
-      map[consoleId] = (map[consoleId] ?? 0) + qty;
+      const players = parseInt(ticketId.split("_")[1]) || 1; // Number of consoles in this ticket tier
+
+      // Each ticket quantity uses (players × qty) consoles
+      // e.g., 2 tickets of "PS5 | 3 Consoles" = 2 × 3 = 6 consoles used
+      map[consoleId] = (map[consoleId] ?? 0) + (players * qty);
     });
     return map;
   }, [quantities]);
