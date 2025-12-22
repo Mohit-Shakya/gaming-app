@@ -128,6 +128,9 @@ export default function OwnerDashboardPage() {
   const [editControllers, setEditControllers] = useState<number>(1);
   const [saving, setSaving] = useState(false);
 
+  // Console pricing data
+  const [consolePricing, setConsolePricing] = useState<Record<string, any>>({});
+
   // Check role
   useEffect(() => {
     async function checkRole() {
@@ -218,6 +221,37 @@ export default function OwnerDashboardPage() {
         }
 
         const cafeIds = ownerCafes.map((c) => c.id);
+
+        // Fetch console pricing for all cafes
+        const { data: pricingData, error: pricingError } = await supabase
+          .from("console_pricing")
+          .select("cafe_id, console_type, quantity, duration_minutes, price")
+          .in("cafe_id", cafeIds);
+
+        if (!pricingError && pricingData) {
+          // Organize pricing by cafe_id -> console_type -> tier
+          const pricingMap: Record<string, any> = {};
+          pricingData.forEach((item: any) => {
+            if (!pricingMap[item.cafe_id]) {
+              pricingMap[item.cafe_id] = {};
+            }
+            if (!pricingMap[item.cafe_id][item.console_type]) {
+              pricingMap[item.cafe_id][item.console_type] = {
+                qty1_30min: null,
+                qty1_60min: null,
+                qty2_30min: null,
+                qty2_60min: null,
+                qty3_30min: null,
+                qty3_60min: null,
+                qty4_30min: null,
+                qty4_60min: null,
+              };
+            }
+            const key = `qty${item.quantity}_${item.duration_minutes}min`;
+            pricingMap[item.cafe_id][item.console_type][key] = item.price;
+          });
+          setConsolePricing(pricingMap);
+        }
 
         // Fetch bookings with booking items
         const { data: bookingRows, error: bookingsError } = await supabase
@@ -377,7 +411,7 @@ export default function OwnerDashboardPage() {
 
       if (error) throw error;
 
-      // Update booking_items with new console and controllers
+      // Update booking_items with new console, controllers, and price
       if (editingBooking.booking_items && editingBooking.booking_items.length > 0) {
         const bookingItemId = editingBooking.booking_items[0].id;
         const { error: itemError } = await supabase
@@ -385,6 +419,7 @@ export default function OwnerDashboardPage() {
           .update({
             console: editConsole,
             quantity: editControllers,
+            price: parseFloat(editAmount),
           })
           .eq("id", bookingItemId);
 
@@ -421,50 +456,47 @@ export default function OwnerDashboardPage() {
     }
   }
 
-  // Auto-calculate amount when duration changes in edit modal
+  // Auto-calculate amount when duration, console, or controllers change in edit modal
   useEffect(() => {
-    if (!editingBooking || !editDuration) return;
+    if (!editingBooking || !editDuration || !editConsole) return;
 
-    // Get console type and controllers from booking items
-    const bookingItems = editingBooking.booking_items;
-    if (!bookingItems || bookingItems.length === 0) return;
-
-    const consoleType = bookingItems[0].console;
-    const controllers = bookingItems[0].quantity || 1;
-
-    if (!consoleType) return;
-
-    // Calculate price based on duration
-    // For 30 min and 60 min: use pricing from console_pricing table
-    // For other durations: calculate by adding blocks
+    const cafeId = editingBooking.cafe_id;
+    if (!cafeId) return;
 
     const calculatePrice = () => {
-      // This is a simplified calculation - in production you'd fetch from console_pricing
-      // For now, use a simple hourly rate calculation
-      const baseHourlyRate = cafes.length > 0 && cafes[0].hourly_price ? cafes[0].hourly_price : 100;
+      // Get tier pricing for this cafe and console
+      const cafePricing = consolePricing[cafeId];
+      const baseHourlyRate = cafes.find(c => c.id === cafeId)?.hourly_price || 100;
 
-      if (editDuration === 30) {
-        return Math.round((baseHourlyRate * 0.7) * controllers); // 30 min ≈ 70% of hourly
-      } else if (editDuration === 60) {
-        return Math.round(baseHourlyRate * controllers);
-      } else if (editDuration === 90) {
-        return Math.round((baseHourlyRate * 0.7 + baseHourlyRate) * controllers); // 30min + 60min
-      } else if (editDuration === 120) {
-        return Math.round((baseHourlyRate * 2) * controllers);
-      } else if (editDuration === 150) {
-        return Math.round((baseHourlyRate * 0.7 + baseHourlyRate * 2) * controllers); // 30min + 2hr
-      } else if (editDuration === 180) {
-        return Math.round((baseHourlyRate * 3) * controllers);
-      } else {
-        // For other durations, calculate proportionally
-        const hours = editDuration / 60;
-        return Math.round(baseHourlyRate * hours * controllers);
+      // Try to get tier-based pricing
+      if (cafePricing && cafePricing[editConsole]) {
+        const tier = cafePricing[editConsole];
+
+        if (editDuration === 30 || editDuration === 60) {
+          const key = `qty${editControllers}_${editDuration}min`;
+          const tierPrice = tier[key];
+
+          if (tierPrice !== null && tierPrice !== undefined) {
+            return tierPrice;
+          }
+        } else if (editDuration === 90) {
+          // 90min = 60min + 30min
+          const price60 = tier[`qty${editControllers}_60min`];
+          const price30 = tier[`qty${editControllers}_30min`];
+          if (price60 !== null && price30 !== null) {
+            return price60 + price30;
+          }
+        }
       }
+
+      // Fallback to calculation based on hourly rate
+      const durationMultiplier = editDuration / 60;
+      return Math.round(baseHourlyRate * editControllers * durationMultiplier);
     };
 
     const newAmount = calculatePrice();
     setEditAmount(newAmount.toString());
-  }, [editDuration, editingBooking, cafes]);
+  }, [editDuration, editConsole, editControllers, editingBooking, cafes, consolePricing]);
 
   // Filter bookings
   const filteredBookings = bookings.filter((booking) => {
