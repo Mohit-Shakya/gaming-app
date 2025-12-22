@@ -324,10 +324,11 @@ export default function BookingPage() {
         }
 
         // Load console pricing from database (both 30min and 60min)
+        // IMPORTANT: Use data.id (UUID) not cafeId (could be slug)
         const { data: pricingData, error: pricingError } = await supabase
           .from("console_pricing")
           .select("console_type, quantity, duration_minutes, price")
-          .eq("cafe_id", cafeId);
+          .eq("cafe_id", data.id);
 
         if (!pricingError && pricingData) {
           const pricing: Partial<Record<ConsoleId, ConsolePricingTier>> = {};
