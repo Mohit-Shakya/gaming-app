@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabaseClient";
 import useUser from "@/hooks/useUser";
 import { colors, fonts } from "@/lib/constants";
 import { getEndTime } from "@/lib/timeUtils";
+import ConsoleStatusDashboard from "@/components/ConsoleStatusDashboard";
 
 type OwnerStats = {
   cafesCount: number;
@@ -64,7 +65,7 @@ type BookingRow = {
   cafe_name?: string | null;
 };
 
-type NavTab = 'overview' | 'bookings' | 'cafe-details' | 'analytics';
+type NavTab = 'overview' | 'live-status' | 'bookings' | 'cafe-details' | 'analytics';
 
 // Helper functions for time conversion
 function convertTo24Hour(time12h: string): string {
@@ -584,6 +585,7 @@ export default function OwnerDashboardPage() {
   // Navigation items
   const navItems: { id: NavTab; label: string; icon: string }[] = [
     { id: 'overview', label: 'Overview', icon: '📊' },
+    { id: 'live-status', label: 'Live Status', icon: '🔴' },
     { id: 'bookings', label: 'Bookings', icon: '📅' },
     { id: 'cafe-details', label: 'Café Details', icon: '🏪' },
     { id: 'analytics', label: 'Analytics', icon: '📈' },
@@ -760,6 +762,7 @@ export default function OwnerDashboardPage() {
                 }}
               >
                 {activeTab === 'overview' && 'Dashboard Overview'}
+                {activeTab === 'live-status' && 'Live Console Status'}
                 {activeTab === 'bookings' && 'Manage Bookings'}
                 {activeTab === 'cafe-details' && 'Café Details'}
                 {activeTab === 'analytics' && 'Analytics & Reports'}
@@ -772,6 +775,7 @@ export default function OwnerDashboardPage() {
                 }}
               >
                 {activeTab === 'overview' && 'Track your café performance and bookings'}
+                {activeTab === 'live-status' && 'Real-time console occupancy and availability'}
                 {activeTab === 'bookings' && 'View and manage all customer bookings'}
                 {activeTab === 'cafe-details' && 'Manage your gaming café information and pricing'}
                 {activeTab === 'analytics' && 'Detailed insights and statistics'}
@@ -1012,6 +1016,50 @@ export default function OwnerDashboardPage() {
                   </button>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* Live Status Tab */}
+          {activeTab === 'live-status' && cafes.length > 0 && (
+            <ConsoleStatusDashboard cafeId={cafes[0].id} />
+          )}
+
+          {activeTab === 'live-status' && cafes.length === 0 && (
+            <div style={{
+              padding: "60px 20px",
+              textAlign: "center",
+              background: "rgba(15,23,42,0.6)",
+              borderRadius: 16,
+              border: `1px solid ${colors.border}`,
+            }}>
+              <div style={{ fontSize: "64px", marginBottom: "16px" }}>🏪</div>
+              <h3 style={{
+                fontFamily: fonts.heading,
+                fontSize: "20px",
+                color: colors.textPrimary,
+                marginBottom: "8px"
+              }}>
+                No Café Found
+              </h3>
+              <p style={{ fontSize: "14px", color: colors.textSecondary, marginBottom: "24px" }}>
+                Please add a café first to view live console status
+              </p>
+              <button
+                onClick={() => setActiveTab('cafe-details')}
+                style={{
+                  padding: "12px 24px",
+                  background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
+                  border: "none",
+                  borderRadius: "10px",
+                  color: "white",
+                  fontSize: "14px",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  fontFamily: fonts.body,
+                }}
+              >
+                Add Café →
+              </button>
             </div>
           )}
 
