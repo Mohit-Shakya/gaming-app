@@ -184,14 +184,19 @@ function generateTickets(
         const qtyKey = `qty${qty}_${duration}min` as keyof typeof pricingTier;
         const tierPrice = pricingTier[qtyKey];
 
+        console.log(`💰 [${consoleId}] qty=${qty}, duration=${duration}min, key=${qtyKey}, tierPrice=${tierPrice}, fallbackPrice=${fallbackPrice}`);
+
         if (tierPrice !== null && tierPrice !== undefined) {
           price = tierPrice;
+          console.log(`✓ Using tier price: ₹${price}`);
         } else {
           // Fallback: calculate based on duration ratio
           price = duration === 30 ? (fallbackPrice * qty * 0.5) : (fallbackPrice * qty);
+          console.log(`✗ Using fallback price: ₹${price}`);
         }
       }
     } else {
+      console.log(`⚠️ [${consoleId}] No pricingTier found, using fallback`);
       if (duration === 90) {
         // 90min = 1.5 hours
         price = fallbackPrice * qty * 1.5;
@@ -327,6 +332,8 @@ export default function BookingPage() {
         if (!pricingError && pricingData) {
           const pricing: Partial<Record<ConsoleId, ConsolePricingTier>> = {};
 
+          console.log('🔍 [BOOKING] Raw pricing data from database:', pricingData);
+
           pricingData.forEach((item: any) => {
             // Map database console_type to ConsoleId
             let consoleId = item.console_type as ConsoleId;
@@ -354,7 +361,12 @@ export default function BookingPage() {
             }
           });
 
+          console.log('🔍 [BOOKING] Processed console pricing:', pricing);
           setConsolePricing(pricing);
+        } else if (pricingError) {
+          console.error('❌ [BOOKING] Error loading pricing:', pricingError);
+        } else {
+          console.warn('⚠️ [BOOKING] No pricing data found for cafe');
         }
       } catch (err) {
         console.error("Error:", err);
