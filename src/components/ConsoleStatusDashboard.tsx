@@ -93,12 +93,11 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
           start_time,
           duration,
           customer_name,
-          booking_items (console, quantity),
-          profiles!bookings_user_id_fkey (name)
+          booking_items (console, quantity)
         `)
         .eq("cafe_id", cafeId)
         .eq("booking_date", today)
-        .in("status", ["confirmed", "active"]);
+        .in("status", ["confirmed"]);
 
       console.log('Bookings data:', bookings);
       console.log('Bookings error:', bookingsError);
