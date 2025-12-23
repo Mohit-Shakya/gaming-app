@@ -84,6 +84,8 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
 
       // Get today's active bookings
       const today = new Date().toISOString().split("T")[0];
+      console.log('📅 Loading bookings for date:', today);
+
       const { data: bookings, error: bookingsError } = await supabase
         .from("bookings")
         .select(`
@@ -98,7 +100,13 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
         .eq("booking_date", today)
         .in("status", ["confirmed", "active"]);
 
-      if (bookingsError) throw bookingsError;
+      console.log('Bookings data:', bookings);
+      console.log('Bookings error:', bookingsError);
+
+      if (bookingsError) {
+        console.error('❌ Error loading bookings:', bookingsError);
+        throw bookingsError;
+      }
 
       const now = new Date();
       const currentTimeMinutes = now.getHours() * 60 + now.getMinutes();
