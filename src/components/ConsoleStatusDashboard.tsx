@@ -60,6 +60,8 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
     try {
       setLoading(true);
 
+      console.log('🔍 Loading console status for cafe:', cafeId);
+
       // Get cafe console counts
       const { data: cafe, error: cafeError } = await supabase
         .from("cafes")
@@ -67,7 +69,18 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
         .eq("id", cafeId)
         .single();
 
-      if (cafeError) throw cafeError;
+      console.log('Cafe data:', cafe);
+      console.log('Cafe error:', cafeError);
+
+      if (cafeError) {
+        console.error('❌ Error loading cafe:', cafeError);
+        throw cafeError;
+      }
+
+      if (!cafe) {
+        console.warn('⚠️ No cafe found with ID:', cafeId);
+        return;
+      }
 
       // Get today's active bookings
       const today = new Date().toISOString().split("T")[0];
@@ -209,10 +222,13 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
         });
       });
 
+      console.log('📊 Console summaries generated:', summaries);
+      console.log('Total console types found:', summaries.length);
+
       setConsoleData(summaries);
       setLastUpdated(new Date());
     } catch (error) {
-      console.error("Error loading console status:", error);
+      console.error("❌ Error loading console status:", error);
     } finally {
       setLoading(false);
     }
