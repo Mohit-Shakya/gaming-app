@@ -129,20 +129,40 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
 
         const statuses: ConsoleStatus[] = [];
 
-        // Find bookings for this console type
-        const consoleBookings = activeBookings.filter((b: any) =>
-          b.booking_items?.some((item: any) => item.console === id)
-        );
+        // Find bookings for this console type with their quantities
+        const consoleBookings = activeBookings
+          .filter((b: any) => b.booking_items?.some((item: any) => item.console === id))
+          .map((b: any) => {
+            const item = b.booking_items?.find((i: any) => i.console === id);
+            return {
+              ...b,
+              consoleQuantity: item?.quantity || 1,
+            };
+          });
 
         let busyCount = 0;
 
         // Create status for each console unit
         for (let i = 1; i <= total; i++) {
-          const booking = consoleBookings[i - 1]; // Simple assignment for now
+          // Check if this console unit is covered by any active booking
+          let assignedBooking = null;
 
-          if (booking) {
-            const startMinutes = parseTime(booking.start_time);
-            const endMinutes = startMinutes + booking.duration;
+          // Find which booking uses this console unit
+          let currentConsole = 1;
+          for (const booking of consoleBookings) {
+            const bookingEndConsole = currentConsole + booking.consoleQuantity - 1;
+
+            if (i >= currentConsole && i <= bookingEndConsole) {
+              assignedBooking = booking;
+              break;
+            }
+
+            currentConsole += booking.consoleQuantity;
+          }
+
+          if (assignedBooking) {
+            const startMinutes = parseTime(assignedBooking.start_time);
+            const endMinutes = startMinutes + assignedBooking.duration;
             const endHours = Math.floor(endMinutes / 60) % 24;
             const endMins = endMinutes % 60;
             const endPeriod = endHours >= 12 ? "pm" : "am";
@@ -150,7 +170,7 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
             const endTime = `${displayHours}:${endMins.toString().padStart(2, "0")} ${endPeriod}`;
 
             const timeRemaining = calculateTimeRemaining(endTime);
-            const customerName = booking.customer_name || (booking.profiles as any)?.name || "Guest";
+            const customerName = assignedBooking.customer_name || (assignedBooking.profiles as any)?.name || "Guest";
 
             statuses.push({
               id: `${id}-${i}`,
@@ -158,11 +178,11 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
               consoleNumber: i,
               status: timeRemaining <= 15 ? "ending_soon" : "busy",
               booking: {
-                id: booking.id,
+                id: assignedBooking.id,
                 customerName,
-                startTime: booking.start_time,
+                startTime: assignedBooking.start_time,
                 endTime,
-                duration: booking.duration,
+                duration: assignedBooking.duration,
                 timeRemaining,
               },
             });
