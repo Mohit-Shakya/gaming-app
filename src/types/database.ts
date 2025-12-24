@@ -112,6 +112,26 @@ export interface BookingWithItems extends BookingRow {
 }
 
 /**
+ * Enriched booking with profile name for owner dashboard
+ */
+export interface EnrichedBooking extends BookingRow {
+  booking_items: BookingItemRow[];
+  profileName?: string;
+}
+
+/**
+ * Simple booking with nested items (for availability checking)
+ */
+export interface BookingWithNestedItems {
+  id: string;
+  start_time: string;
+  booking_items?: Array<{
+    console: string;
+    quantity: number;
+  }>;
+}
+
+/**
  * Console availability for a specific console type
  */
 export interface ConsoleAvailability {

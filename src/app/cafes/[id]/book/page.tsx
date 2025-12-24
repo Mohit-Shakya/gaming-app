@@ -6,6 +6,7 @@ import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import useUser from "@/hooks/useUser";
 import { colors, fonts, CONSOLE_LABELS, CONSOLE_DB_KEYS, CONSOLE_COLORS, CONSOLE_ICONS, OPEN_HOUR, CLOSE_HOUR, PEAK_START, PEAK_END, TIME_INTERVAL, BOOKING_DURATION_MINUTES, type ConsoleId } from "@/lib/constants";
+import { ConsolePricingRow, BookingRow, BookingItemRow, BookingWithNestedItems } from "@/types/database";
 
 // ============ TYPES ============
 
@@ -335,7 +336,7 @@ export default function BookingPage() {
 
           console.log('🔍 [BOOKING] Raw pricing data from database:', pricingData);
 
-          pricingData.forEach((item: any) => {
+          pricingData.forEach((item: ConsolePricingRow) => {
             // Map database console_type to ConsoleId
             let consoleId = item.console_type as ConsoleId;
             // Handle steering_wheel mapping
@@ -428,12 +429,12 @@ export default function BookingPage() {
         Record<ConsoleId, { endMinutes: number; quantity: number }[]>
       > = {};
 
-      (bookings ?? []).forEach((booking: any) => {
+      (bookings ?? []).forEach((booking: BookingWithNestedItems) => {
         const bookingStartMinutes = timeStringToMinutes(booking.start_time || "");
         const bookingEndMinutes = bookingStartMinutes + BOOKING_DURATION_MINUTES;
 
         if (doTimeSlotsOverlap(selectedTimeMinutes, bookingStartMinutes, selectedDuration)) {
-          (booking.booking_items ?? []).forEach((item: any) => {
+          (booking.booking_items ?? []).forEach((item: BookingItemRow) => {
             const consoleId = item.console as ConsoleId;
             if (consoleId && availability[consoleId]) {
               availability[consoleId]!.booked += item.quantity || 0;
@@ -2115,11 +2116,11 @@ async function checkBookingCapacityWithOverlap(options: {
 
   const alreadyBooked: Partial<Record<ConsoleId, number>> = {};
 
-  (bookings ?? []).forEach((booking: any) => {
+  (bookings ?? []).forEach((booking: BookingWithNestedItems) => {
     const bookingStartMinutes = timeStringToMinutes(booking.start_time || "");
 
     if (doTimeSlotsOverlap(selectedTimeMinutes, bookingStartMinutes, durationMinutes)) {
-      (booking.booking_items ?? []).forEach((item: any) => {
+      (booking.booking_items ?? []).forEach((item: BookingItemRow) => {
         const consoleId = item.console as ConsoleId;
         if (!consoleId) return;
         const qty = item.quantity ?? 0;
