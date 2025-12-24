@@ -167,16 +167,6 @@ export default function WalkInBookingPage() {
     loadCafe();
   }, [cafeIdOrSlug]);
 
-  // Auto-adjust quantity when console changes
-  useEffect(() => {
-    if (selectedConsole && consoleCounts[selectedConsole]) {
-      const maxAvailable = consoleCounts[selectedConsole] || 4;
-      if (quantity > maxAvailable) {
-        setQuantity(maxAvailable);
-      }
-    }
-  }, [selectedConsole, consoleCounts]);
-
   // Calculate amount based on tier pricing
   const calculateAmount = () => {
     if (!selectedConsole) return 0;
@@ -618,38 +608,33 @@ export default function WalkInBookingPage() {
                   fontWeight: 600,
                   marginBottom: "8px",
                 }}>
-                  Quantity {selectedConsole && consoleCounts[selectedConsole] ? `(Max: ${consoleCounts[selectedConsole]})` : ""}
+                  No. of Controllers
                 </label>
                 <div style={{ display: "flex", gap: "8px" }}>
                   {[1, 2, 3, 4].map((num) => {
                     const isSelected = quantity === num;
-                    const maxAvailable = selectedConsole ? (consoleCounts[selectedConsole] || 4) : 4;
-                    const isDisabled = num > maxAvailable;
 
                     return (
                       <button
                         key={num}
                         type="button"
-                        onClick={() => !isDisabled && setQuantity(num)}
-                        disabled={submitting || isDisabled}
+                        onClick={() => setQuantity(num)}
+                        disabled={submitting}
                         style={{
                           flex: 1,
                           padding: "14px",
-                          background: isDisabled
-                            ? "rgba(255, 255, 255, 0.02)"
-                            : isSelected
+                          background: isSelected
                             ? `linear-gradient(135deg, ${colors.red} 0%, #cc0530 100%)`
                             : "rgba(255, 255, 255, 0.05)",
                           border: isSelected
                             ? `2px solid ${colors.red}`
                             : "1px solid rgba(255, 255, 255, 0.1)",
                           borderRadius: "12px",
-                          color: isDisabled ? "rgba(255, 255, 255, 0.2)" : colors.textPrimary,
+                          color: colors.textPrimary,
                           fontSize: "18px",
                           fontWeight: 700,
-                          cursor: isDisabled ? "not-allowed" : "pointer",
+                          cursor: "pointer",
                           transition: "all 0.2s",
-                          opacity: isDisabled ? 0.3 : 1,
                         }}
                       >
                         {num}
