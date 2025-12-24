@@ -281,7 +281,7 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
     loadConsoleStatus();
 
     if (autoRefresh) {
-      const interval = setInterval(loadConsoleStatus, 30000);
+      const interval = setInterval(loadConsoleStatus, 10000);
       return () => clearInterval(interval);
     }
   }, [cafeId, autoRefresh]);
@@ -421,7 +421,7 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
               style={{ cursor: "pointer", width: "16px", height: "16px" }}
             />
             <span style={{ fontSize: "13px", color: colors.textPrimary }}>
-              Auto-refresh (30s)
+              Auto-refresh (10s)
             </span>
           </label>
 
