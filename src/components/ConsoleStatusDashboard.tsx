@@ -31,6 +31,7 @@ type ConsoleStatus = {
     startTime: string;
     endTime: string;
     timeRemaining: number;
+    controllerCount?: number;
   };
 };
 
@@ -155,21 +156,21 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
       if (total === 0) return;
 
       // Get bookings for this console type
+      // NOTE: quantity in booking_items represents number of controllers, not console units
+      // Each booking occupies exactly 1 console unit regardless of controller count
       const consoleBookings = activeBookings
         .filter(b => b.booking_items?.some(item => item.console === id))
         .map(b => {
-          const requestedQty = b.booking_items?.find(item => item.console === id)?.quantity || 1;
-          // Cap quantity to total available units to prevent overbooking display
-          const actualQty = Math.min(requestedQty, total);
+          const controllerCount = b.booking_items?.find(item => item.console === id)?.quantity || 1;
           return {
             ...b,
-            quantity: actualQty,
-            requestedQuantity: requestedQty
+            quantity: 1, // Always 1 console unit per booking
+            controllerCount: controllerCount
           };
         });
 
       console.log(`📋 ${id.toUpperCase()}: ${consoleBookings.length} bookings, ${total} total units`,
-        consoleBookings.map(b => ({ customer: b.customer_name, requested: b.requestedQuantity, allocated: b.quantity })));
+        consoleBookings.map(b => ({ customer: b.customer_name, controllers: b.controllerCount })));
 
       const statuses: ConsoleStatus[] = [];
       let busyCount = 0;
@@ -205,7 +206,8 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
               customerName,
               startTime: booking.start_time,
               endTime: formatEndTime(startMinutes, booking.duration),
-              timeRemaining
+              timeRemaining,
+              controllerCount: booking.controllerCount
             }
           });
 
@@ -606,6 +608,19 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
                           <span style={{ fontSize: "15px", color: colors.textPrimary, fontWeight: 600 }}>
                             {status.booking.customerName}
                           </span>
+                          {status.booking.controllerCount && status.booking.controllerCount > 1 && (
+                            <span style={{
+                              fontSize: "11px",
+                              color: colors.cyan,
+                              background: "rgba(0, 188, 212, 0.15)",
+                              padding: "2px 8px",
+                              borderRadius: "10px",
+                              fontWeight: 600,
+                              border: "1px solid rgba(0, 188, 212, 0.3)"
+                            }}>
+                              {status.booking.controllerCount}× Controllers
+                            </span>
+                          )}
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                           <span style={{ fontSize: "14px" }}>🕒</span>
