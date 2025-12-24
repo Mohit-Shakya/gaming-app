@@ -38,23 +38,6 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
   const [loading, setLoading] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
 
-  // Calculate time remaining in minutes
-  const calculateTimeRemaining = (endTime: string): number => {
-    const now = new Date();
-    const [time, period] = endTime.toLowerCase().split(" ");
-    const [hours, minutes] = time.split(":").map(Number);
-
-    let endHours = hours;
-    if (period === "pm" && hours !== 12) endHours += 12;
-    if (period === "am" && hours === 12) endHours = 0;
-
-    const endDate = new Date();
-    endDate.setHours(endHours, minutes, 0, 0);
-
-    const diff = endDate.getTime() - now.getTime();
-    return Math.max(0, Math.floor(diff / 60000)); // Convert to minutes
-  };
-
   // Load console status
   const loadConsoleStatus = async () => {
     try {
@@ -93,6 +76,8 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
           start_time,
           duration,
           customer_name,
+          user_id,
+          profiles:user_id (name),
           booking_items (console, quantity)
         `)
         .eq("cafe_id", cafeId)
@@ -193,22 +178,46 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
             const displayHours = endHours % 12 || 12;
             const endTime = `${displayHours}:${endMins.toString().padStart(2, "0")} ${endPeriod}`;
 
-            const timeRemaining = calculateTimeRemaining(endTime);
-            const customerName = assignedBooking.customer_name || (assignedBooking.profiles as any)?.name || "Guest";
+            // Get customer name from booking or profile
+            const profileData = assignedBooking.profiles as any;
+            const customerName = assignedBooking.customer_name
+              || (Array.isArray(profileData) ? profileData[0]?.name : profileData?.name)
+              || "Guest";
 
             // Check if booking has started or is upcoming
             const hasStarted = currentTimeMinutes >= startMinutes;
+
+            // Calculate correct time remaining or time until start
+            let displayTimeRemaining: number;
+            if (!hasStarted) {
+              // Booking hasn't started - show time until start
+              displayTimeRemaining = Math.floor(startMinutes - currentTimeMinutes);
+            } else {
+              // Booking is active - show time until end
+              displayTimeRemaining = Math.floor(endMinutes - currentTimeMinutes);
+            }
 
             // Determine status
             let consoleStatus: "free" | "busy" | "ending_soon";
             if (!hasStarted) {
               // Upcoming booking - show as busy (reserved)
               consoleStatus = "busy";
-            } else if (timeRemaining <= 15) {
+            } else if (displayTimeRemaining <= 15) {
               consoleStatus = "ending_soon";
             } else {
               consoleStatus = "busy";
             }
+
+            console.log(`📌 Console ${id} #${i}:`, {
+              customerName,
+              startTime: assignedBooking.start_time,
+              endTime,
+              hasStarted,
+              displayTimeRemaining,
+              currentTimeMinutes,
+              startMinutes,
+              endMinutes
+            });
 
             statuses.push({
               id: `${id}-${i}`,
@@ -221,7 +230,7 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
                 startTime: assignedBooking.start_time,
                 endTime,
                 duration: assignedBooking.duration,
-                timeRemaining: hasStarted ? timeRemaining : Math.floor(startMinutes - currentTimeMinutes),
+                timeRemaining: displayTimeRemaining,
               },
             });
 
