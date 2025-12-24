@@ -11,7 +11,7 @@ type ConsoleStatus = {
   id: string;
   consoleType: ConsoleId;
   consoleNumber: number;
-  status: "free" | "busy" | "ending_soon";
+  status: "free" | "reserved" | "busy" | "ending_soon";
   booking?: {
     id: string;
     customerName: string;
@@ -19,6 +19,7 @@ type ConsoleStatus = {
     endTime: string;
     duration: number;
     timeRemaining: number; // minutes
+    timeUntilStart?: number; // minutes until booking starts (for reserved)
   };
 };
 
@@ -120,12 +121,13 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
         return totalHours * 60 + minutes;
       };
 
-      // Process active bookings
-      const activeBookings = bookings?.filter((b: any) => {
+      // Process all today's bookings (active + upcoming)
+      const todaysBookings = bookings?.filter((b: any) => {
         if (!b.start_time || !b.duration) return false;
         const startMinutes = parseTime(b.start_time);
         const endMinutes = startMinutes + (b.duration || 0);
-        return currentTimeMinutes >= startMinutes && currentTimeMinutes < endMinutes;
+        // Include bookings that haven't ended yet (active or upcoming)
+        return currentTimeMinutes < endMinutes;
       }) || [];
 
       // Build console status data
@@ -150,7 +152,7 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
         const statuses: ConsoleStatus[] = [];
 
         // Find bookings for this console type with their quantities
-        const consoleBookings = activeBookings
+        const consoleBookings = todaysBookings
           .filter((b: any) => b.booking_items?.some((item: any) => item.console === id))
           .map((b: any) => {
             const item = b.booking_items?.find((i: any) => i.console === id);
@@ -192,11 +194,24 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
             const timeRemaining = calculateTimeRemaining(endTime);
             const customerName = assignedBooking.customer_name || (assignedBooking.profiles as any)?.name || "Guest";
 
+            // Check if booking has started or is upcoming
+            const isUpcoming = currentTimeMinutes < startMinutes;
+            const timeUntilStart = isUpcoming ? startMinutes - currentTimeMinutes : 0;
+
+            let bookingStatus: "reserved" | "busy" | "ending_soon";
+            if (isUpcoming) {
+              bookingStatus = "reserved";
+            } else if (timeRemaining <= 15) {
+              bookingStatus = "ending_soon";
+            } else {
+              bookingStatus = "busy";
+            }
+
             statuses.push({
               id: `${id}-${i}`,
               consoleType: id,
               consoleNumber: i,
-              status: timeRemaining <= 15 ? "ending_soon" : "busy",
+              status: bookingStatus,
               booking: {
                 id: assignedBooking.id,
                 customerName,
@@ -204,6 +219,7 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
                 endTime,
                 duration: assignedBooking.duration,
                 timeRemaining,
+                timeUntilStart: isUpcoming ? timeUntilStart : undefined,
               },
             });
 
@@ -568,7 +584,9 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
             }}>
               {console.statuses.map((status) => {
                 const isFree = status.status === "free";
+                const isReserved = status.status === "reserved";
                 const isEndingSoon = status.status === "ending_soon";
+                const isBusy = status.status === "busy";
 
                 return (
                   <div
@@ -576,12 +594,16 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
                     style={{
                       background: isFree
                         ? "linear-gradient(135deg, rgba(34, 197, 94, 0.05) 0%, rgba(34, 197, 94, 0.02) 100%)"
+                        : isReserved
+                        ? "linear-gradient(135deg, rgba(59, 130, 246, 0.08) 0%, rgba(59, 130, 246, 0.02) 100%)"
                         : isEndingSoon
                         ? "linear-gradient(135deg, rgba(251, 191, 36, 0.08) 0%, rgba(251, 191, 36, 0.02) 100%)"
                         : "linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, rgba(239, 68, 68, 0.02) 100%)",
                       border: `1.5px solid ${
                         isFree
                           ? "rgba(34, 197, 94, 0.3)"
+                          : isReserved
+                          ? "rgba(59, 130, 246, 0.4)"
                           : isEndingSoon
                           ? "rgba(251, 191, 36, 0.4)"
                           : "rgba(239, 68, 68, 0.4)"
@@ -602,8 +624,8 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
                       width: "12px",
                       height: "12px",
                       borderRadius: "50%",
-                      background: isFree ? "#22c55e" : isEndingSoon ? "#fbbf24" : "#ef4444",
-                      boxShadow: `0 0 12px ${isFree ? "rgba(34, 197, 94, 0.6)" : isEndingSoon ? "rgba(251, 191, 36, 0.6)" : "rgba(239, 68, 68, 0.6)"}`,
+                      background: isFree ? "#22c55e" : isReserved ? "#3b82f6" : isEndingSoon ? "#fbbf24" : "#ef4444",
+                      boxShadow: `0 0 12px ${isFree ? "rgba(34, 197, 94, 0.6)" : isReserved ? "rgba(59, 130, 246, 0.6)" : isEndingSoon ? "rgba(251, 191, 36, 0.6)" : "rgba(239, 68, 68, 0.6)"}`,
                     }} />
 
                     {/* Console Number */}
@@ -624,6 +646,8 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
                       padding: "6px 14px",
                       background: isFree
                         ? "rgba(34, 197, 94, 0.15)"
+                        : isReserved
+                        ? "rgba(59, 130, 246, 0.15)"
                         : isEndingSoon
                         ? "rgba(251, 191, 36, 0.15)"
                         : "rgba(239, 68, 68, 0.15)",
@@ -635,9 +659,9 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
                         fontWeight: 700,
                         textTransform: "uppercase",
                         letterSpacing: "0.5px",
-                        color: isFree ? "#22c55e" : isEndingSoon ? "#fbbf24" : "#ef4444",
+                        color: isFree ? "#22c55e" : isReserved ? "#3b82f6" : isEndingSoon ? "#fbbf24" : "#ef4444",
                       }}>
-                        {isFree ? "Available" : isEndingSoon ? "Ending Soon" : "In Use"}
+                        {isFree ? "Available" : isReserved ? "Reserved" : isEndingSoon ? "Ending Soon" : "In Use"}
                       </span>
                     </div>
 
@@ -658,19 +682,39 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
                         }}>
                           👤 {status.booking.customerName}
                         </div>
-                        <div style={{
-                          fontSize: "13px",
-                          color: colors.textSecondary,
-                        }}>
-                          ⏰ Until {status.booking.endTime}
-                        </div>
-                        <div style={{
-                          fontSize: "14px",
-                          color: isEndingSoon ? "#fbbf24" : colors.textSecondary,
-                          fontWeight: 700,
-                        }}>
-                          ⏱️ {status.booking.timeRemaining} min left
-                        </div>
+                        {isReserved ? (
+                          <>
+                            <div style={{
+                              fontSize: "13px",
+                              color: colors.textSecondary,
+                            }}>
+                              🕐 Starts at {status.booking.startTime}
+                            </div>
+                            <div style={{
+                              fontSize: "14px",
+                              color: "#3b82f6",
+                              fontWeight: 700,
+                            }}>
+                              ⏰ In {status.booking.timeUntilStart} min
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div style={{
+                              fontSize: "13px",
+                              color: colors.textSecondary,
+                            }}>
+                              ⏰ Until {status.booking.endTime}
+                            </div>
+                            <div style={{
+                              fontSize: "14px",
+                              color: isEndingSoon ? "#fbbf24" : colors.textSecondary,
+                              fontWeight: 700,
+                            }}>
+                              ⏱️ {status.booking.timeRemaining} min left
+                            </div>
+                          </>
+                        )}
                       </div>
                     ) : (
                       <div style={{
