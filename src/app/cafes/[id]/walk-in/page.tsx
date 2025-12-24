@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { colors, fonts } from "@/lib/constants";
+import { logger } from "@/lib/logger";
 
 type ConsoleId = "ps5" | "ps4" | "xbox" | "pc" | "pool" | "arcade" | "snooker" | "vr" | "steering_wheel";
 
@@ -119,8 +120,6 @@ export default function WalkInBookingPage() {
         if (!pricingError && pricingData) {
           const pricing: Partial<Record<ConsoleId, ConsolePricingTier>> = {};
 
-          console.log('Raw pricing data from database:', pricingData);
-
           pricingData.forEach((item: any) => {
             // Map database console_type to ConsoleId
             let consoleId = item.console_type as ConsoleId;
@@ -144,12 +143,9 @@ export default function WalkInBookingPage() {
             pricing[consoleId]![key] = item.price;
           });
 
-          console.log('Processed console pricing:', pricing);
           setConsolePricing(pricing);
         } else if (pricingError) {
-          console.error('Error loading pricing:', pricingError);
-        } else {
-          console.warn('No pricing data found for cafe');
+          logger.error('Error loading pricing:', pricingError);
         }
 
         // Auto-select first available console
@@ -157,7 +153,7 @@ export default function WalkInBookingPage() {
           setSelectedConsole(available[0]);
         }
       } catch (err) {
-        console.error("Error loading cafe:", err);
+        logger.error("Error loading cafe:", err);
         setError("Could not load café details");
       } finally {
         setLoading(false);
@@ -174,35 +170,19 @@ export default function WalkInBookingPage() {
     const tier = consolePricing[selectedConsole];
     const basePrice = cafePrice;
 
-    console.log('=== WALK-IN PRICING CALCULATION ===');
-    console.log('Selected console:', selectedConsole);
-    console.log('Quantity:', quantity);
-    console.log('Duration:', duration);
-    console.log('Base cafe hourly price:', basePrice);
-    console.log('Tier pricing for this console:', tier);
-
     if (tier) {
       // Use tier-based pricing
       const key = `qty${quantity}_${duration}min` as keyof ConsolePricingTier;
       const tierPrice = tier[key];
 
-      console.log('Looking for pricing key:', key);
-      console.log('Tier price found:', tierPrice);
-
       if (tierPrice !== null && tierPrice !== undefined) {
-        console.log('✓ Using tier-based price:', tierPrice);
         return tierPrice;
-      } else {
-        console.log('✗ Tier price is null/undefined, using fallback');
       }
-    } else {
-      console.log('✗ No tier pricing object found for console, using fallback');
     }
 
     // Fallback to simple calculation
     const durationMultiplier = duration / 60;
     const fallbackAmount = basePrice * quantity * durationMultiplier;
-    console.log('Fallback calculation:', `${basePrice} × ${quantity} × ${durationMultiplier} = ${fallbackAmount}`);
     return fallbackAmount;
   };
 
@@ -270,7 +250,7 @@ export default function WalkInBookingPage() {
         .single();
 
       if (bookingError) {
-        console.error("Booking error:", bookingError);
+        logger.error("Booking error:", bookingError);
         setError("Could not create booking. Please try again.");
         return;
       }
@@ -291,7 +271,7 @@ export default function WalkInBookingPage() {
         });
 
       if (itemError) {
-        console.error("Booking item error:", itemError);
+        logger.error("Booking item error:", itemError);
         setError("Booking created but item failed. Please contact staff.");
         return;
       }
@@ -314,7 +294,7 @@ export default function WalkInBookingPage() {
       }, 5000);
 
     } catch (err) {
-      console.error("Unexpected error:", err);
+      logger.error("Unexpected error:", err);
       setError("An unexpected error occurred. Please try again.");
     } finally {
       setSubmitting(false);

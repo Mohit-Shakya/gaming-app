@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { colors, fonts, CONSOLE_LABELS, CONSOLE_ICONS } from "@/lib/constants";
+import { logger } from "@/lib/logger";
 
 type ConsoleId = "ps5" | "ps4" | "xbox" | "pc" | "pool" | "arcade" | "snooker" | "vr" | "steering";
 
@@ -84,7 +85,7 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
         .eq("status", "confirmed");
 
       if (bookingsError) {
-        console.error("Error loading bookings:", bookingsError);
+        logger.error("Error loading bookings:", bookingsError);
         return;
       }
 
@@ -109,18 +110,13 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
         profile: b.user_id ? profilesMap[b.user_id] : null
       }));
 
-      console.log("📊 All bookings:", enrichedBookings.map(b => ({
-        customer: b.customer_name || b.profile?.name,
-        items: b.booking_items
-      })));
-
       // Build console summaries
       const summaries = buildConsoleSummaries(cafe, enrichedBookings);
 
       setConsoleData(summaries);
       setLastUpdated(new Date());
     } catch (error) {
-      console.error("Error loading console status:", error);
+      logger.error("Error loading console status:", error);
     } finally {
       setLoading(false);
     }
@@ -168,9 +164,6 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
             controllerCount: controllerCount
           };
         });
-
-      console.log(`📋 ${id.toUpperCase()}: ${consoleBookings.length} bookings, ${total} total units`,
-        consoleBookings.map(b => ({ customer: b.customer_name, controllers: b.controllerCount })));
 
       const statuses: ConsoleStatus[] = [];
       let busyCount = 0;
