@@ -135,7 +135,11 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
         return currentTimeMinutes < endMinutes;
       }) || [];
 
-      console.log('📊 Active/Upcoming bookings:', activeBookings);
+      console.log('📊 Active/Upcoming bookings:', activeBookings.map(b => ({
+        id: b.id.substring(0, 8),
+        customer: b.customer_name || b.profile?.name,
+        items: b.booking_items
+      })));
       console.log('🕐 Current time (minutes):', currentTimeMinutes);
 
       // Build console status data
