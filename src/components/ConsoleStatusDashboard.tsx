@@ -77,7 +77,6 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
           duration,
           customer_name,
           user_id,
-          profiles:user_id (name),
           booking_items (console, quantity)
         `)
         .eq("cafe_id", cafeId)
@@ -91,6 +90,28 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
         console.error('❌ Error loading bookings:', bookingsError);
         throw bookingsError;
       }
+
+      // Fetch user profiles for bookings that have user_id
+      const userIds = bookings?.filter(b => b.user_id).map(b => b.user_id) || [];
+      let profilesMap: Record<string, any> = {};
+
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("id, name")
+          .in("id", userIds);
+
+        // Create a map of user_id -> profile
+        profiles?.forEach(p => {
+          profilesMap[p.id] = p;
+        });
+      }
+
+      // Merge profiles into bookings
+      const bookingsWithProfiles = bookings?.map(b => ({
+        ...b,
+        profile: b.user_id ? profilesMap[b.user_id] : null
+      })) || [];
 
       const now = new Date();
       const currentTimeMinutes = now.getHours() * 60 + now.getMinutes();
@@ -106,7 +127,7 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
       };
 
       // Process active bookings (currently running OR upcoming today)
-      const activeBookings = bookings?.filter((b: any) => {
+      const activeBookings = bookingsWithProfiles?.filter((b: any) => {
         if (!b.start_time || !b.duration) return false;
         const startMinutes = parseTime(b.start_time);
         const endMinutes = startMinutes + (b.duration || 0);
@@ -179,9 +200,8 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
             const endTime = `${displayHours}:${endMins.toString().padStart(2, "0")} ${endPeriod}`;
 
             // Get customer name from booking or profile
-            const profileData = assignedBooking.profiles as any;
             const customerName = assignedBooking.customer_name
-              || (Array.isArray(profileData) ? profileData[0]?.name : profileData?.name)
+              || assignedBooking.profile?.name
               || "Guest";
 
             // Check if booking has started or is upcoming
