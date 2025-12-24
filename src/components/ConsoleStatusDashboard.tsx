@@ -8,6 +8,18 @@ import { logger } from "@/lib/logger";
 
 type ConsoleId = "ps5" | "ps4" | "xbox" | "pc" | "pool" | "arcade" | "snooker" | "vr" | "steering";
 
+type CafeConsoleCounts = {
+  ps5_count: number;
+  ps4_count: number;
+  xbox_count: number;
+  pc_count: number;
+  pool_count: number;
+  arcade_count: number;
+  snooker_count: number;
+  vr_count: number;
+  steering_wheel_count: number;
+};
+
 type BookingData = {
   id: string;
   start_time: string;
@@ -122,7 +134,7 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
     }
   };
 
-  const buildConsoleSummaries = (cafe: any, bookings: BookingData[]): ConsoleSummary[] => {
+  const buildConsoleSummaries = (cafe: CafeConsoleCounts, bookings: BookingData[]): ConsoleSummary[] => {
     const consoleTypes: Array<{ id: ConsoleId; key: string }> = [
       { id: "ps5", key: "ps5_count" },
       { id: "ps4", key: "ps4_count" },
@@ -148,7 +160,7 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
     });
 
     consoleTypes.forEach(({ id, key }) => {
-      const total = cafe[key] || 0;
+      const total = cafe[key as keyof CafeConsoleCounts] || 0;
       if (total === 0) return;
 
       // Get bookings for this console type

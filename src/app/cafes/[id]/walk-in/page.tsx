@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { colors, fonts } from "@/lib/constants";
 import { logger } from "@/lib/logger";
+import { CafeRow, ConsolePricingRow } from "@/types/database";
 
 type ConsoleId = "ps5" | "ps4" | "xbox" | "pc" | "pool" | "arcade" | "snooker" | "vr" | "steering_wheel";
 
@@ -100,7 +101,7 @@ export default function WalkInBookingPage() {
 
         CONSOLES.forEach((c) => {
           const dbKey = CONSOLE_DB_KEYS[c.id];
-          const count = (data as any)[dbKey] ?? 0;
+          const count = data[dbKey as keyof CafeRow] as number ?? 0;
 
           if (count > 0) {
             available.push(c.id);
@@ -120,7 +121,7 @@ export default function WalkInBookingPage() {
         if (!pricingError && pricingData) {
           const pricing: Partial<Record<ConsoleId, ConsolePricingTier>> = {};
 
-          pricingData.forEach((item: any) => {
+          pricingData.forEach((item: ConsolePricingRow) => {
             // Map database console_type to ConsoleId
             let consoleId = item.console_type as ConsoleId;
 
