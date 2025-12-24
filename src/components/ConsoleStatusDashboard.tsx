@@ -170,6 +170,14 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
             };
           });
 
+        console.log(`📋 ${id.toUpperCase()} bookings (${consoleBookings.length}):`, consoleBookings.map(b => ({
+          id: b.id.substring(0, 8),
+          customer: b.customer_name || b.profile?.name || 'Unknown',
+          quantity: b.consoleQuantity,
+          start: b.start_time,
+          items: b.booking_items?.map((i: any) => `${i.console}×${i.quantity}`)
+        })));
+
         let busyCount = 0;
 
         // Create status for each console unit
