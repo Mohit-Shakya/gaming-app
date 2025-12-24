@@ -277,117 +277,137 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
   }
 
   // Calculate overall stats
-  const totalConsoles = consoleData.reduce((sum, c) => sum + c.total, 0);
   const totalFree = consoleData.reduce((sum, c) => sum + c.free, 0);
   const totalBusy = consoleData.reduce((sum, c) => sum + c.busy, 0);
-  const occupancyRate = totalConsoles > 0 ? Math.round((totalBusy / totalConsoles) * 100) : 0;
 
   return (
-    <div style={{ padding: "20px", maxWidth: "1400px", margin: "0 auto" }}>
-      {/* Header with Overall Stats */}
+    <div style={{
+      padding: "32px",
+      background: "linear-gradient(to bottom, #0a0e1a 0%, #0f1419 100%)",
+      minHeight: "100vh",
+    }}>
+      {/* Header Section */}
       <div style={{
-        background: `linear-gradient(135deg, ${colors.darkCard} 0%, ${colors.darkerCard} 100%)`,
-        borderRadius: "16px",
-        padding: "24px",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "flex-start",
         marginBottom: "32px",
-        border: `1px solid ${colors.border}`,
+        flexWrap: "wrap",
+        gap: "20px",
       }}>
-        <div style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          flexWrap: "wrap",
-          gap: "20px",
-        }}>
-          <div>
+        {/* Title & Stats */}
+        <div>
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            marginBottom: "12px",
+          }}>
+            <div style={{
+              width: "10px",
+              height: "10px",
+              borderRadius: "50%",
+              background: "#ef4444",
+              boxShadow: "0 0 12px rgba(239, 68, 68, 0.6)",
+              animation: "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+            }} />
             <h2 style={{
               fontFamily: fonts.heading,
               fontSize: "28px",
+              fontWeight: 700,
               color: colors.textPrimary,
-              marginBottom: "8px",
-              display: "flex",
-              alignItems: "center",
-              gap: "12px",
+              letterSpacing: "-0.5px",
+              margin: 0,
             }}>
-              <span style={{
-                animation: "pulse 2s ease-in-out infinite",
-                display: "inline-block",
-              }}>🔴</span>
               Live Console Status
             </h2>
-            <p style={{
-              fontSize: "14px",
-              color: colors.textSecondary,
-            }}>
-              Last updated: {formatTimeAgo(lastUpdated)}
-            </p>
           </div>
 
-          {/* Overall Stats Cards */}
-          <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
+          {/* Stats Cards Row */}
+          <div style={{
+            display: "flex",
+            gap: "16px",
+            marginTop: "16px",
+            flexWrap: "wrap",
+          }}>
             <div style={{
-              background: "rgba(34, 197, 94, 0.15)",
-              border: "2px solid rgba(34, 197, 94, 0.3)",
+              background: "rgba(34, 197, 94, 0.1)",
+              border: "1px solid rgba(34, 197, 94, 0.3)",
               borderRadius: "12px",
               padding: "12px 20px",
-              textAlign: "center",
-              minWidth: "100px",
+              minWidth: "120px",
             }}>
               <div style={{
-                fontSize: "24px",
+                fontSize: "28px",
                 fontWeight: 700,
                 color: "#22c55e",
                 fontFamily: fonts.heading,
-              }}>
-                {totalFree}
-              </div>
-              <div style={{ fontSize: "12px", color: colors.textSecondary, marginTop: "4px" }}>
-                Free
-              </div>
+              }}>{totalFree}</div>
+              <div style={{
+                fontSize: "12px",
+                color: "rgba(34, 197, 94, 0.8)",
+                textTransform: "uppercase",
+                letterSpacing: "0.5px",
+                fontWeight: 600,
+                marginTop: "4px",
+              }}>Free</div>
             </div>
 
             <div style={{
-              background: "rgba(239, 68, 68, 0.15)",
-              border: "2px solid rgba(239, 68, 68, 0.3)",
+              background: "rgba(239, 68, 68, 0.1)",
+              border: "1px solid rgba(239, 68, 68, 0.3)",
               borderRadius: "12px",
               padding: "12px 20px",
-              textAlign: "center",
-              minWidth: "100px",
+              minWidth: "120px",
             }}>
               <div style={{
-                fontSize: "24px",
+                fontSize: "28px",
                 fontWeight: 700,
                 color: "#ef4444",
                 fontFamily: fonts.heading,
-              }}>
-                {totalBusy}
-              </div>
-              <div style={{ fontSize: "12px", color: colors.textSecondary, marginTop: "4px" }}>
-                Busy
-              </div>
+              }}>{totalBusy}</div>
+              <div style={{
+                fontSize: "12px",
+                color: "rgba(239, 68, 68, 0.8)",
+                textTransform: "uppercase",
+                letterSpacing: "0.5px",
+                fontWeight: 600,
+                marginTop: "4px",
+              }}>Busy</div>
             </div>
 
             <div style={{
-              background: "rgba(99, 102, 241, 0.15)",
-              border: "2px solid rgba(99, 102, 241, 0.3)",
+              background: "rgba(148, 163, 184, 0.1)",
+              border: "1px solid rgba(148, 163, 184, 0.3)",
               borderRadius: "12px",
               padding: "12px 20px",
-              textAlign: "center",
-              minWidth: "100px",
+              minWidth: "120px",
             }}>
               <div style={{
-                fontSize: "24px",
+                fontSize: "28px",
                 fontWeight: 700,
-                color: "#6366f1",
+                color: "#94a3b8",
                 fontFamily: fonts.heading,
-              }}>
-                {occupancyRate}%
-              </div>
-              <div style={{ fontSize: "12px", color: colors.textSecondary, marginTop: "4px" }}>
-                Occupancy
-              </div>
+              }}>{Math.round((totalBusy / (totalFree + totalBusy) * 100) || 0)}%</div>
+              <div style={{
+                fontSize: "12px",
+                color: "rgba(148, 163, 184, 0.8)",
+                textTransform: "uppercase",
+                letterSpacing: "0.5px",
+                fontWeight: 600,
+                marginTop: "4px",
+              }}>Occupancy</div>
             </div>
           </div>
+
+          <p style={{
+            fontSize: "13px",
+            color: colors.textSecondary,
+            marginTop: "12px",
+            marginBottom: 0,
+          }}>
+            Last updated {formatTimeAgo(lastUpdated)}
+          </p>
         </div>
 
         {/* Controls */}
@@ -395,102 +415,155 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
           display: "flex",
           gap: "12px",
           alignItems: "center",
-          marginTop: "20px",
-          paddingTop: "20px",
-          borderTop: `1px solid ${colors.border}`,
+          flexWrap: "wrap",
         }}>
           <label style={{
             display: "flex",
             alignItems: "center",
             gap: "8px",
             cursor: "pointer",
-            padding: "8px 12px",
+            fontSize: "14px",
+            color: colors.textSecondary,
+            padding: "10px 16px",
             background: colors.darkCard,
-            borderRadius: "8px",
             border: `1px solid ${colors.border}`,
+            borderRadius: "10px",
+            transition: "all 0.2s",
           }}>
             <input
               type="checkbox"
               checked={autoRefresh}
               onChange={(e) => setAutoRefresh(e.target.checked)}
-              style={{ cursor: "pointer", width: "16px", height: "16px" }}
+              style={{
+                cursor: "pointer",
+                width: "16px",
+                height: "16px",
+              }}
             />
-            <span style={{ fontSize: "13px", color: colors.textPrimary }}>
-              Auto-refresh (30s)
-            </span>
+            <span>Auto-refresh (30s)</span>
           </label>
 
           <button
             onClick={loadConsoleStatus}
             disabled={loading}
             style={{
-              padding: "8px 16px",
-              background: loading ? colors.border : colors.cyan,
-              border: "none",
-              borderRadius: "8px",
-              color: loading ? colors.textSecondary : colors.dark,
-              fontSize: "13px",
+              padding: "10px 20px",
+              background: loading ? colors.darkCard : colors.cyan,
+              border: loading ? `1px solid ${colors.border}` : "none",
+              borderRadius: "10px",
+              color: loading ? colors.textPrimary : colors.dark,
+              fontSize: "14px",
+              fontWeight: 600,
               cursor: loading ? "not-allowed" : "pointer",
               fontFamily: fonts.body,
-              fontWeight: 600,
-              transition: "all 0.2s",
               opacity: loading ? 0.6 : 1,
+              transition: "all 0.2s",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
             }}
           >
-            {loading ? "🔄 Refreshing..." : "🔄 Refresh Now"}
+            <span>{loading ? "⏳" : "🔄"}</span>
+            {loading ? "Refreshing..." : "Refresh Now"}
           </button>
-
-          <div style={{
-            marginLeft: "auto",
-            fontSize: "12px",
-            color: colors.textSecondary,
-            display: "flex",
-            alignItems: "center",
-            gap: "12px",
-          }}>
-            <span>🟢 Free</span>
-            <span>🟡 Ending Soon</span>
-            <span>🔴 Busy</span>
-          </div>
         </div>
       </div>
 
       {/* Console Groups */}
-      <div style={{ display: "flex", flexDirection: "column", gap: "32px" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "40px" }}>
         {consoleData.map((console) => (
           <div key={console.type}>
             {/* Console Type Header */}
             <div style={{
               display: "flex",
-              justifyContent: "space-between",
               alignItems: "center",
+              justifyContent: "space-between",
               marginBottom: "16px",
+              padding: "16px 20px",
+              background: colors.darkCard,
+              borderRadius: "12px",
+              border: `1px solid ${colors.border}`,
             }}>
-              <h3 style={{
-                fontFamily: fonts.heading,
-                fontSize: "18px",
-                color: colors.textPrimary,
+              <div style={{
                 display: "flex",
                 alignItems: "center",
-                gap: "8px",
+                gap: "12px",
               }}>
-                <span>{console.icon}</span>
-                <span>{console.label}</span>
-                <span style={{ fontSize: "14px", color: colors.textSecondary }}>
-                  ({console.total} total)
-                </span>
-              </h3>
+                <span style={{ fontSize: "28px" }}>{console.icon}</span>
+                <div>
+                  <h3 style={{
+                    fontFamily: fonts.heading,
+                    fontSize: "20px",
+                    fontWeight: 700,
+                    color: colors.textPrimary,
+                    margin: 0,
+                    marginBottom: "2px",
+                  }}>
+                    {console.label}
+                  </h3>
+                  <p style={{
+                    fontSize: "13px",
+                    color: colors.textSecondary,
+                    margin: 0,
+                  }}>
+                    {console.total} total units
+                  </p>
+                </div>
+              </div>
 
-              <div style={{ display: "flex", gap: "16px", fontSize: "13px" }}>
-                <span style={{ color: "#22c55e" }}>🟢 {console.free} Free</span>
-                <span style={{ color: "#ef4444" }}>🔴 {console.busy} Busy</span>
+              <div style={{
+                display: "flex",
+                gap: "12px",
+                alignItems: "center",
+              }}>
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  padding: "6px 12px",
+                  background: "rgba(34, 197, 94, 0.15)",
+                  borderRadius: "8px",
+                }}>
+                  <div style={{
+                    width: "8px",
+                    height: "8px",
+                    borderRadius: "50%",
+                    background: "#22c55e",
+                  }} />
+                  <span style={{
+                    fontSize: "14px",
+                    fontWeight: 600,
+                    color: "#22c55e",
+                  }}>{console.free} Free</span>
+                </div>
+
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  padding: "6px 12px",
+                  background: "rgba(239, 68, 68, 0.15)",
+                  borderRadius: "8px",
+                }}>
+                  <div style={{
+                    width: "8px",
+                    height: "8px",
+                    borderRadius: "50%",
+                    background: "#ef4444",
+                  }} />
+                  <span style={{
+                    fontSize: "14px",
+                    fontWeight: 600,
+                    color: "#ef4444",
+                  }}>{console.busy} Busy</span>
+                </div>
               </div>
             </div>
 
             {/* Console Cards Grid */}
             <div style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
+              gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
               gap: "16px",
             }}>
               {console.statuses.map((status) => {
@@ -502,185 +575,116 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
                     key={status.id}
                     style={{
                       background: isFree
-                        ? "rgba(34, 197, 94, 0.08)"
+                        ? "linear-gradient(135deg, rgba(34, 197, 94, 0.05) 0%, rgba(34, 197, 94, 0.02) 100%)"
                         : isEndingSoon
-                        ? "rgba(251, 191, 36, 0.08)"
-                        : "rgba(239, 68, 68, 0.08)",
-                      border: `2px solid ${
+                        ? "linear-gradient(135deg, rgba(251, 191, 36, 0.08) 0%, rgba(251, 191, 36, 0.02) 100%)"
+                        : "linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, rgba(239, 68, 68, 0.02) 100%)",
+                      border: `1.5px solid ${
                         isFree
-                          ? "rgba(34, 197, 94, 0.4)"
+                          ? "rgba(34, 197, 94, 0.3)"
                           : isEndingSoon
                           ? "rgba(251, 191, 36, 0.4)"
                           : "rgba(239, 68, 68, 0.4)"
                       }`,
-                      borderRadius: "16px",
+                      borderRadius: "14px",
                       padding: "20px",
-                      minHeight: "160px",
-                      display: "flex",
-                      flexDirection: "column",
-                      position: "relative",
-                      overflow: "hidden",
                       transition: "all 0.3s ease",
                       cursor: "default",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = "translateY(-4px)";
-                      e.currentTarget.style.boxShadow = `0 8px 24px ${
-                        isFree
-                          ? "rgba(34, 197, 94, 0.2)"
-                          : isEndingSoon
-                          ? "rgba(251, 191, 36, 0.2)"
-                          : "rgba(239, 68, 68, 0.2)"
-                      }`;
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = "translateY(0)";
-                      e.currentTarget.style.boxShadow = "none";
+                      position: "relative",
+                      overflow: "hidden",
                     }}
                   >
-                    {/* Status Badge */}
+                    {/* Status Indicator Dot */}
                     <div style={{
                       position: "absolute",
-                      top: "12px",
-                      right: "12px",
-                      background: isFree
-                        ? "rgba(34, 197, 94, 0.2)"
-                        : isEndingSoon
-                        ? "rgba(251, 191, 36, 0.2)"
-                        : "rgba(239, 68, 68, 0.2)",
-                      border: `1.5px solid ${
-                        isFree ? "#22c55e" : isEndingSoon ? "#f59e0b" : "#ef4444"
-                      }`,
-                      borderRadius: "20px",
-                      padding: "4px 12px",
-                      fontSize: "11px",
-                      fontWeight: 700,
-                      color: isFree ? "#22c55e" : isEndingSoon ? "#f59e0b" : "#ef4444",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px",
-                    }}>
-                      {isFree ? "FREE" : isEndingSoon ? "ENDING SOON" : "BUSY"}
-                    </div>
+                      top: "16px",
+                      right: "16px",
+                      width: "12px",
+                      height: "12px",
+                      borderRadius: "50%",
+                      background: isFree ? "#22c55e" : isEndingSoon ? "#fbbf24" : "#ef4444",
+                      boxShadow: `0 0 12px ${isFree ? "rgba(34, 197, 94, 0.6)" : isEndingSoon ? "rgba(251, 191, 36, 0.6)" : "rgba(239, 68, 68, 0.6)"}`,
+                    }} />
 
                     {/* Console Number */}
                     <div style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "10px",
+                      fontFamily: fonts.heading,
+                      fontSize: "24px",
+                      fontWeight: 800,
+                      color: colors.textPrimary,
                       marginBottom: "16px",
+                      letterSpacing: "-0.5px",
                     }}>
-                      <div style={{
-                        fontSize: "32px",
-                        filter: isFree ? "grayscale(0)" : "grayscale(0.3)",
-                      }}>
-                        {console.icon}
-                      </div>
-                      <div>
-                        <div style={{
-                          fontFamily: fonts.heading,
-                          fontSize: "18px",
-                          fontWeight: 700,
-                          color: colors.textPrimary,
-                        }}>
-                          #{status.consoleNumber}
-                        </div>
-                        <div style={{
-                          fontSize: "12px",
-                          color: colors.textSecondary,
-                          marginTop: "2px",
-                        }}>
-                          {console.label}
-                        </div>
-                      </div>
+                      {console.icon} #{status.consoleNumber}
                     </div>
 
-                    {/* Booking Details or Free State */}
+                    {/* Status Badge */}
+                    <div style={{
+                      display: "inline-block",
+                      padding: "6px 14px",
+                      background: isFree
+                        ? "rgba(34, 197, 94, 0.15)"
+                        : isEndingSoon
+                        ? "rgba(251, 191, 36, 0.15)"
+                        : "rgba(239, 68, 68, 0.15)",
+                      borderRadius: "8px",
+                      marginBottom: "12px",
+                    }}>
+                      <span style={{
+                        fontSize: "12px",
+                        fontWeight: 700,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.5px",
+                        color: isFree ? "#22c55e" : isEndingSoon ? "#fbbf24" : "#ef4444",
+                      }}>
+                        {isFree ? "Available" : isEndingSoon ? "Ending Soon" : "In Use"}
+                      </span>
+                    </div>
+
+                    {/* Booking Info */}
                     {status.booking ? (
                       <div style={{
-                        flex: 1,
                         display: "flex",
                         flexDirection: "column",
-                        gap: "10px",
-                        background: "rgba(0, 0, 0, 0.2)",
-                        padding: "12px",
-                        borderRadius: "8px",
+                        gap: "8px",
+                        marginTop: "12px",
+                        paddingTop: "12px",
+                        borderTop: `1px solid ${colors.border}`,
                       }}>
                         <div style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "8px",
+                          fontSize: "15px",
+                          color: colors.textPrimary,
+                          fontWeight: 600,
                         }}>
-                          <span style={{ fontSize: "16px" }}>👤</span>
-                          <span style={{
-                            fontSize: "15px",
-                            color: colors.textPrimary,
-                            fontWeight: 600,
-                          }}>
-                            {status.booking.customerName}
-                          </span>
+                          👤 {status.booking.customerName}
                         </div>
                         <div style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "8px",
+                          fontSize: "13px",
+                          color: colors.textSecondary,
                         }}>
-                          <span style={{ fontSize: "14px" }}>🕒</span>
-                          <span style={{ fontSize: "13px", color: colors.textSecondary }}>
-                            Ends at <strong style={{ color: colors.textPrimary }}>{status.booking.endTime}</strong>
-                          </span>
+                          ⏰ Until {status.booking.endTime}
                         </div>
                         <div style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "8px",
-                          marginTop: "4px",
-                          padding: "8px",
-                          background: isEndingSoon
-                            ? "rgba(251, 191, 36, 0.15)"
-                            : "rgba(99, 102, 241, 0.1)",
-                          borderRadius: "6px",
-                          border: `1px solid ${
-                            isEndingSoon ? "rgba(251, 191, 36, 0.3)" : "rgba(99, 102, 241, 0.2)"
-                          }`,
+                          fontSize: "14px",
+                          color: isEndingSoon ? "#fbbf24" : colors.textSecondary,
+                          fontWeight: 700,
                         }}>
-                          <span style={{ fontSize: "16px" }}>⏱️</span>
-                          <span style={{
-                            fontSize: "14px",
-                            color: isEndingSoon ? "#f59e0b" : "#6366f1",
-                            fontWeight: 700,
-                          }}>
-                            {status.booking.timeRemaining} min left
-                          </span>
+                          ⏱️ {status.booking.timeRemaining} min left
                         </div>
                       </div>
                     ) : (
                       <div style={{
-                        flex: 1,
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: "8px",
-                        padding: "20px",
-                        background: "rgba(34, 197, 94, 0.05)",
-                        borderRadius: "8px",
-                        border: "1px dashed rgba(34, 197, 94, 0.3)",
+                        marginTop: "12px",
+                        paddingTop: "12px",
+                        borderTop: `1px solid ${colors.border}`,
                       }}>
-                        <span style={{ fontSize: "24px" }}>✓</span>
-                        <span style={{
-                          fontSize: "13px",
+                        <div style={{
+                          fontSize: "14px",
                           color: "#22c55e",
                           fontWeight: 600,
-                          textAlign: "center",
                         }}>
-                          Available Now
-                        </span>
-                        <span style={{
-                          fontSize: "11px",
-                          color: colors.textSecondary,
-                        }}>
-                          Ready for booking
-                        </span>
+                          ✓ Ready for booking
+                        </div>
                       </div>
                     )}
                   </div>
@@ -691,6 +695,7 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
         ))}
       </div>
 
+      {/* Add pulse animation */}
       <style>{`
         @keyframes pulse {
           0%, 100% {
