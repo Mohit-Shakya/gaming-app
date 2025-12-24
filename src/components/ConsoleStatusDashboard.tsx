@@ -157,12 +157,19 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
       // Get bookings for this console type
       const consoleBookings = activeBookings
         .filter(b => b.booking_items?.some(item => item.console === id))
-        .map(b => ({
-          ...b,
-          quantity: b.booking_items?.find(item => item.console === id)?.quantity || 1
-        }));
+        .map(b => {
+          const requestedQty = b.booking_items?.find(item => item.console === id)?.quantity || 1;
+          // Cap quantity to total available units to prevent overbooking display
+          const actualQty = Math.min(requestedQty, total);
+          return {
+            ...b,
+            quantity: actualQty,
+            requestedQuantity: requestedQty
+          };
+        });
 
-      console.log(`📋 ${id.toUpperCase()}: ${consoleBookings.length} bookings, ${total} total units`);
+      console.log(`📋 ${id.toUpperCase()}: ${consoleBookings.length} bookings, ${total} total units`,
+        consoleBookings.map(b => ({ customer: b.customer_name, requested: b.requestedQuantity, allocated: b.quantity })));
 
       const statuses: ConsoleStatus[] = [];
       let busyCount = 0;
