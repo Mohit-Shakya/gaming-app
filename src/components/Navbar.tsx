@@ -462,13 +462,13 @@ export default function Navbar() {
 }
 
 /* Helpers for display name + initials */
-function displayName(user: any) {
+function displayName(user: { user_metadata?: { full_name?: string }; email?: string }) {
   return (
     user.user_metadata?.full_name ?? user.email?.split("@")[0] ?? "Player"
   );
 }
 
-function initialsFromUser(user: any) {
+function initialsFromUser(user: { user_metadata?: { full_name?: string }; email?: string }) {
   const name: string = displayName(user);
   const parts = name.trim().split(/\s+/);
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();

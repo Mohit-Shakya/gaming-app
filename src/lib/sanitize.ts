@@ -194,9 +194,9 @@ export function sanitizeBoolean(value: unknown): boolean {
 /**
  * Sanitize object by applying sanitizers to each field
  */
-export function sanitizeObject<T extends Record<string, any>>(
+export function sanitizeObject<T extends Record<string, unknown>>(
   obj: T,
-  schema: { [K in keyof T]?: (value: any) => any }
+  schema: { [K in keyof T]?: (value: unknown) => unknown }
 ): Partial<T> {
   const sanitized: Partial<T> = {};
 

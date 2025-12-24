@@ -51,7 +51,7 @@ export default function CafesTable() {
         if (!cancelled) {
           setCafes((data as CafeRow[]) ?? []);
         }
-      } catch (err: any) {
+      } catch (err) {
         console.error("[CafesTable] Unexpected error:", err);
         if (!cancelled) {
           setError("Could not load cafés. Please try again.");
@@ -100,9 +100,9 @@ export default function CafesTable() {
       );
 
       alert(`Café ${newIsActive ? "activated" : "deactivated"} successfully!`);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Error toggling status:", err);
-      alert(`Failed to ${newIsActive ? "activate" : "deactivate"} café: ${err.message}`);
+      alert(`Failed to ${newIsActive ? "activate" : "deactivate"} café: ${err instanceof Error ? err.message : String(err)}`);
 
       // Reload cafes on error to ensure UI matches database
       window.location.reload();
@@ -144,9 +144,9 @@ export default function CafesTable() {
       setCafes(prev => prev.filter(cafe => cafe.id !== cafeId));
 
       alert("Café has been deactivated and hidden from users!");
-    } catch (err: any) {
+    } catch (err) {
       console.error("Error deactivating café:", err);
-      alert(`Failed to deactivate café: ${err.message || "Unknown error"}`);
+      alert(`Failed to deactivate café: ${(err instanceof Error ? err.message : String(err)) || "Unknown error"}`);
 
       // Reload to ensure UI matches database state
       window.location.reload();

@@ -146,9 +146,9 @@ export default function ManageCafes({ openNewCafe = false }: ManageCafesProps = 
 
       console.log("Loaded cafés:", data);
       setCafes((data as CafeRow[]) || []);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Error loading cafés:", err);
-      alert("Failed to load cafés: " + err.message);
+      alert("Failed to load cafés: " + (err instanceof Error ? err.message : String(err)));
     } finally {
       setLoading(false);
     }
@@ -205,9 +205,9 @@ export default function ManageCafes({ openNewCafe = false }: ManageCafesProps = 
         loadGalleryImages(cafeId);
         loadConsolePricing(cafeId);
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error("Error loading café details:", err);
-      alert("Failed to load café details: " + err.message);
+      alert("Failed to load café details: " + (err instanceof Error ? err.message : String(err)));
     } finally {
       setSaving(false);
     }
@@ -225,7 +225,7 @@ export default function ManageCafes({ openNewCafe = false }: ManageCafesProps = 
       if (error) throw error;
 
       setGalleryImages(data || []);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Error loading gallery images:", err);
     }
   }
@@ -254,7 +254,7 @@ export default function ManageCafes({ openNewCafe = false }: ManageCafesProps = 
       };
 
       if (data) {
-        data.forEach((item: any) => {
+        data.forEach((item) => {
           const consoleType = item.console_type;
           const qty = item.quantity;
           const duration = item.duration_minutes;
@@ -268,7 +268,7 @@ export default function ManageCafes({ openNewCafe = false }: ManageCafesProps = 
       }
 
       setConsolePricing(pricingMap);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Error loading console pricing:", err);
     }
   }
@@ -332,9 +332,9 @@ export default function ManageCafes({ openNewCafe = false }: ManageCafesProps = 
 
       // Reset file input
       event.target.value = "";
-    } catch (err: any) {
+    } catch (err) {
       console.error("Error uploading image:", err);
-      alert("Failed to upload image: " + err.message);
+      alert("Failed to upload image: " + (err instanceof Error ? err.message : String(err)));
     } finally {
       setUploading(false);
     }
@@ -354,9 +354,9 @@ export default function ManageCafes({ openNewCafe = false }: ManageCafesProps = 
 
       setGalleryImages(galleryImages.filter(img => img.id !== imageId));
       alert("Image deleted successfully!");
-    } catch (err: any) {
+    } catch (err) {
       console.error("Error deleting image:", err);
-      alert("Failed to delete image: " + err.message);
+      alert("Failed to delete image: " + (err instanceof Error ? err.message : String(err)));
     }
   }
 
@@ -372,7 +372,13 @@ export default function ManageCafes({ openNewCafe = false }: ManageCafesProps = 
       if (deleteError) throw deleteError;
 
       // Insert new pricing (only for consoles with prices set)
-      const pricingData: any[] = [];
+      const pricingData: Array<{
+        cafe_id: string;
+        console_type: string;
+        quantity: number;
+        duration_minutes: number;
+        price: number;
+      }> = [];
 
       Object.entries(consolePricing).forEach(([console_type, tiers]) => {
         if (!tiers) return;
@@ -420,9 +426,9 @@ export default function ManageCafes({ openNewCafe = false }: ManageCafesProps = 
       }
 
       console.log("Console pricing saved successfully");
-    } catch (err: any) {
+    } catch (err) {
       console.error("Error saving console pricing:", err);
-      throw new Error("Failed to save console pricing: " + err.message);
+      throw new Error("Failed to save console pricing: " + (err instanceof Error ? err.message : String(err)));
     }
   }
 
@@ -522,9 +528,9 @@ export default function ManageCafes({ openNewCafe = false }: ManageCafesProps = 
         alert("Café updated successfully!");
         loadCafes();
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error("Error saving café:", err);
-      alert("Failed to save café: " + err.message);
+      alert("Failed to save café: " + (err instanceof Error ? err.message : String(err)));
     } finally {
       setSaving(false);
     }
@@ -972,7 +978,7 @@ export default function ManageCafes({ openNewCafe = false }: ManageCafesProps = 
                       <input
                         type="number"
                         min="0"
-                        value={(formData as any)[field.key]}
+                        value={formData[field.key as keyof CafeData] as number}
                         onChange={(e) =>
                           setFormData({
                             ...formData,

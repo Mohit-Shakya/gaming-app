@@ -4,10 +4,11 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { CafeRow } from "@/types/database";
 
 type CafeFormProps = {
   mode: "create" | "edit";
-  cafe?: any; // when editing we pass the existing row
+  cafe?: Partial<CafeRow>; // when editing we pass the existing row
 };
 
 type GalleryImage = {
@@ -116,7 +117,7 @@ export default function CafeForm({ mode, cafe }: CafeFormProps) {
 
       if (!error && data) {
         setExistingGallery(
-          data.map((row: any) => ({ id: row.id, url: row.image_url }))
+          data.map((row: { id: string; image_url: string }) => ({ id: row.id, url: row.image_url }))
         );
       }
     }
@@ -224,7 +225,7 @@ export default function CafeForm({ mode, cafe }: CafeFormProps) {
       const newCoverUrl = await uploadCoverIfNeeded(cafe?.cover_url);
 
       // 2) payload
-      const payload: any = {
+      const payload: Partial<CafeRow> = {
         name,
         address,
         google_maps_url: mapsUrl || null,
@@ -282,9 +283,9 @@ export default function CafeForm({ mode, cafe }: CafeFormProps) {
 
       router.push(`/cafes/${cafeId}`);
       router.refresh();
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
-      setErrorMsg(err.message || "Something went wrong");
+      setErrorMsg((err instanceof Error ? err.message : String(err)) || "Something went wrong");
     } finally {
       setIsSubmitting(false);
     }

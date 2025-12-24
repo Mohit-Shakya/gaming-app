@@ -8,6 +8,7 @@ import useUser from "@/hooks/useUser";
 import { colors, fonts } from "@/lib/constants";
 import { getEndTime } from "@/lib/timeUtils";
 import ConsoleStatusDashboard from "@/components/ConsoleStatusDashboard";
+import { ConsolePricingRow, BookingItemRow } from "@/types/database";
 
 type OwnerStats = {
   cafesCount: number;
@@ -231,8 +232,18 @@ export default function OwnerDashboardPage() {
 
         if (!pricingError && pricingData) {
           // Organize pricing by cafe_id -> console_type -> tier
-          const pricingMap: Record<string, any> = {};
-          pricingData.forEach((item: any) => {
+          type PricingTier = {
+            qty1_30min: number | null;
+            qty1_60min: number | null;
+            qty2_30min: number | null;
+            qty2_60min: number | null;
+            qty3_30min: number | null;
+            qty3_60min: number | null;
+            qty4_30min: number | null;
+            qty4_60min: number | null;
+          };
+          const pricingMap: Record<string, Record<string, PricingTier>> = {};
+          pricingData.forEach((item: ConsolePricingRow) => {
             if (!pricingMap[item.cafe_id]) {
               pricingMap[item.cafe_id] = {};
             }
@@ -297,7 +308,7 @@ export default function OwnerDashboardPage() {
               .in("id", userIds);
 
             if (profiles && profiles.length > 0) {
-              profiles.forEach((profile: any) => {
+              profiles.forEach((profile: { id: string; first_name: string | null; last_name: string | null; phone: string | null }) => {
                 const fullName = [profile.first_name, profile.last_name]
                   .filter(Boolean)
                   .join(" ") || null;
@@ -315,7 +326,7 @@ export default function OwnerDashboardPage() {
         }
 
         // Enrich bookings with user and cafe data
-        const enrichedBookings = ownerBookings.map((booking: any) => {
+        const enrichedBookings = ownerBookings.map((booking: BookingRow) => {
           const cafe = ownerCafes.find((c) => c.id === booking.cafe_id);
           const cafe_name = cafe?.name || null;
 
@@ -359,9 +370,9 @@ export default function OwnerDashboardPage() {
           totalBookings: enrichedBookings.length,
           pendingBookings,
         });
-      } catch (err: any) {
+      } catch (err) {
         console.error("[OwnerDashboard] loadData error:", err);
-        setError(err.message || "Could not load café owner dashboard.");
+        setError((err instanceof Error ? err.message : String(err)) || "Could not load café owner dashboard.");
       } finally {
         setLoadingData(false);
       }
@@ -449,9 +460,9 @@ export default function OwnerDashboardPage() {
 
       setEditingBooking(null);
       alert("Booking updated successfully!");
-    } catch (err: any) {
+    } catch (err) {
       console.error("Error updating booking:", err);
-      alert("Failed to update booking: " + err.message);
+      alert("Failed to update booking: " + (err instanceof Error ? err.message : String(err)));
     } finally {
       setSaving(false);
     }
@@ -1426,7 +1437,7 @@ export default function OwnerDashboardPage() {
                                     const items = booking.booking_items || [];
                                     if (items.length === 0) return "-";
 
-                                    const consoles = items.map((item: any) => {
+                                    const consoles = items.map((item: BookingItemRow) => {
                                       const consoleName = item.console || "Unknown";
                                       const controllers = item.quantity || 1;
                                       return controllers > 1 ? `${consoleName} (${controllers} controllers)` : consoleName;

@@ -10,14 +10,14 @@ export const logger = {
   /**
    * Log error messages (always logged, even in production)
    */
-  error: (...args: any[]) => {
+  error: (...args: unknown[]) => {
     console.error('[ERROR]', ...args);
   },
 
   /**
    * Log warning messages (only in development)
    */
-  warn: (...args: any[]) => {
+  warn: (...args: unknown[]) => {
     if (isDevelopment) {
       console.warn('[WARN]', ...args);
     }
@@ -26,7 +26,7 @@ export const logger = {
   /**
    * Log info messages (only in development)
    */
-  info: (...args: any[]) => {
+  info: (...args: unknown[]) => {
     if (isDevelopment) {
       console.info('[INFO]', ...args);
     }
@@ -35,7 +35,7 @@ export const logger = {
   /**
    * Log debug messages (only in development)
    */
-  debug: (...args: any[]) => {
+  debug: (...args: unknown[]) => {
     if (isDevelopment) {
       console.log('[DEBUG]', ...args);
     }
@@ -44,7 +44,7 @@ export const logger = {
   /**
    * Log regular messages (only in development)
    */
-  log: (...args: any[]) => {
+  log: (...args: unknown[]) => {
     if (isDevelopment) {
       console.log(...args);
     }

@@ -240,7 +240,7 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
     return summaries;
   };
 
-  const findBookingForUnit = (unitNumber: number, bookings: any[]): any => {
+  const findBookingForUnit = (unitNumber: number, bookings: Array<{ quantity: number; [key: string]: unknown }>): unknown => {
     let currentUnit = 1;
 
     for (const booking of bookings) {

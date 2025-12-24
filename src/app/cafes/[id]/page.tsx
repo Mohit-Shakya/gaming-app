@@ -190,7 +190,7 @@ export default async function CafePage({ params }: CafePageProps) {
       : null);
 
   const availableConsoles = CONSOLE_CONFIG.filter(({ key }) => {
-    const value = (cafe as any)[key] as number | null;
+    const value = cafe[key as keyof typeof cafe] as number | null;
     return (value ?? 0) > 0;
   });
 
@@ -611,7 +611,7 @@ export default async function CafePage({ params }: CafePageProps) {
             )}
 
             {/* Book Now Button */}
-            <Link href={`/cafes/${(cafe as any).slug || cafe.id}/book`} style={{ display: "block" }}>
+            <Link href={`/cafes/${cafe.slug || cafe.id}/book`} style={{ display: "block" }}>
               <button
                 style={{
                   width: "100%",

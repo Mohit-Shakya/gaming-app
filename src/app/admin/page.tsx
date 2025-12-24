@@ -60,8 +60,8 @@ export default function AdminDashboardPage() {
           return;
         }
 
-        const role = (profile as any)?.role;
-        const is_admin = (profile as any)?.is_admin;
+        const role = (profile as { role?: string; is_admin?: boolean })?.role;
+        const is_admin = (profile as { role?: string; is_admin?: boolean })?.is_admin;
 
         const isReallyAdmin =
           role === "admin" || role === "super_admin" || is_admin === true;

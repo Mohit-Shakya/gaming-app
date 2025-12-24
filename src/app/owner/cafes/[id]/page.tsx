@@ -215,9 +215,9 @@ export default function OwnerCafeEditPage() {
         if (!imagesError && images) {
           setCafeImages(images as CafeImage[]);
         }
-      } catch (err: any) {
+      } catch (err) {
         console.error("Error loading data:", err);
-        setError(err.message || "Could not load café details");
+        setError((err instanceof Error ? err.message : String(err)) || "Could not load café details");
       } finally {
         setLoading(false);
       }
@@ -244,9 +244,9 @@ export default function OwnerCafeEditPage() {
 
       setSuccessMessage("Café details updated successfully!");
       setTimeout(() => setSuccessMessage(null), 3000);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Error saving cafe:", err);
-      setError(err.message || "Failed to save changes");
+      setError((err instanceof Error ? err.message : String(err)) || "Failed to save changes");
     } finally {
       setSaving(false);
     }
@@ -303,9 +303,9 @@ export default function OwnerCafeEditPage() {
 
       setSuccessMessage("Pricing updated!");
       setTimeout(() => setSuccessMessage(null), 2000);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Error updating pricing:", err);
-      setError(err.message || "Failed to update pricing");
+      setError((err instanceof Error ? err.message : String(err)) || "Failed to update pricing");
     }
   }
 
@@ -363,9 +363,9 @@ export default function OwnerCafeEditPage() {
 
       // Reset file input
       event.target.value = "";
-    } catch (err: any) {
+    } catch (err) {
       console.error("Error uploading image:", err);
-      setError(err.message || "Failed to upload image");
+      setError((err instanceof Error ? err.message : String(err)) || "Failed to upload image");
     } finally {
       setUploadingImage(false);
     }
@@ -388,9 +388,9 @@ export default function OwnerCafeEditPage() {
       setNewImageUrl("");
       setSuccessMessage("Image added successfully!");
       setTimeout(() => setSuccessMessage(null), 2000);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Error adding image:", err);
-      setError(err.message || "Failed to add image");
+      setError((err instanceof Error ? err.message : String(err)) || "Failed to add image");
     }
   }
 
@@ -409,9 +409,9 @@ export default function OwnerCafeEditPage() {
       setFormData((prev) => ({ ...prev, cover_url: imageUrl }));
       setSuccessMessage("Cover photo updated!");
       setTimeout(() => setSuccessMessage(null), 2000);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Error updating cover photo:", err);
-      setError(err.message || "Failed to update cover photo");
+      setError((err instanceof Error ? err.message : String(err)) || "Failed to update cover photo");
     }
   }
 
@@ -427,9 +427,9 @@ export default function OwnerCafeEditPage() {
       setCafeImages((prev) => prev.filter((img) => img.id !== imageId));
       setSuccessMessage("Image deleted successfully!");
       setTimeout(() => setSuccessMessage(null), 2000);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Error deleting image:", err);
-      setError(err.message || "Failed to delete image");
+      setError((err instanceof Error ? err.message : String(err)) || "Failed to delete image");
     }
   }
 

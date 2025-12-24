@@ -310,7 +310,7 @@ export default function BookingPage() {
         const available: ConsoleId[] = [];
 
         CONSOLES.forEach((c) => {
-          const count = (data as any)[c.dbKey];
+          const count = data[c.dbKey as keyof typeof data] as number;
           if (count && count > 0) {
             limits[c.id] = count;
             available.push(c.id);
@@ -2088,7 +2088,7 @@ async function checkBookingCapacityWithOverlap(options: {
   const capacities: Partial<Record<ConsoleId, number>> = {};
   (Object.keys(CONSOLE_DB_KEYS) as ConsoleId[]).forEach((consoleId) => {
     const dbKey = CONSOLE_DB_KEYS[consoleId];
-    capacities[consoleId] = (cafeRow as any)[dbKey] ?? 0;
+    capacities[consoleId] = (cafeRow[dbKey as keyof typeof cafeRow] as number) ?? 0;
   });
 
   const selectedTimeMinutes = timeStringToMinutes(timeSlot);

@@ -135,14 +135,14 @@ export default function CafeList({ cafes }: Props) {
                     />
                     
                     {/* Rating if available */}
-                    {(cafe as any).rating && (
+                    {cafe.rating && (
                       <div className="flex items-center gap-1 rounded-lg bg-black/60 backdrop-blur-sm px-2 py-1">
                         <span className="rating-star text-yellow-400 text-xs">★</span>
-                        <span 
+                        <span
                           className="text-xs font-semibold text-white"
                           style={{ fontFamily: 'Rajdhani, sans-serif' }}
                         >
-                          {(cafe as any).rating}
+                          {cafe.rating}
                         </span>
                       </div>
                     )}
@@ -391,7 +391,7 @@ function ConsoleIconsRow({ cafe }: { cafe: Cafe }) {
   const allConfigs = [...CONSOLE_CONFIG, ...EXTENDED_CONFIG];
   
   const available = allConfigs.filter(
-    ({ key }) => (((cafe as any)[key] as number | null) ?? 0) > 0
+    ({ key }) => ((cafe[key as keyof Cafe] as number | null) ?? 0) > 0
   );
 
   if (available.length === 0) return null;
