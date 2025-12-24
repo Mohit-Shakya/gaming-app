@@ -54,6 +54,7 @@ export default function WalkInBookingPage() {
   const [loading, setLoading] = useState(true);
   const [availableConsoles, setAvailableConsoles] = useState<ConsoleId[]>([]);
   const [consolePricing, setConsolePricing] = useState<Partial<Record<ConsoleId, ConsolePricingTier>>>({});
+  const [consoleCounts, setConsoleCounts] = useState<Partial<Record<ConsoleId, number>>>({});
 
   // Form data
   const [customerName, setCustomerName] = useState("");
@@ -92,8 +93,9 @@ export default function WalkInBookingPage() {
         setCafeName(data.name || "Gaming Café");
         setCafePrice(data.hourly_price || 150);
 
-        // Get available consoles
+        // Get available consoles and their counts
         const available: ConsoleId[] = [];
+        const counts: Partial<Record<ConsoleId, number>> = {};
 
         CONSOLES.forEach((c) => {
           const dbKey = CONSOLE_DB_KEYS[c.id];
@@ -101,10 +103,12 @@ export default function WalkInBookingPage() {
 
           if (count > 0) {
             available.push(c.id);
+            counts[c.id] = count;
           }
         });
 
         setAvailableConsoles(available);
+        setConsoleCounts(counts);
 
         // Load console pricing from console_pricing table
         const { data: pricingData, error: pricingError } = await supabase
@@ -162,6 +166,16 @@ export default function WalkInBookingPage() {
 
     loadCafe();
   }, [cafeIdOrSlug]);
+
+  // Auto-adjust quantity when console changes
+  useEffect(() => {
+    if (selectedConsole && consoleCounts[selectedConsole]) {
+      const maxAvailable = consoleCounts[selectedConsole] || 4;
+      if (quantity > maxAvailable) {
+        setQuantity(maxAvailable);
+      }
+    }
+  }, [selectedConsole, consoleCounts]);
 
   // Calculate amount based on tier pricing
   const calculateAmount = () => {
@@ -604,33 +618,38 @@ export default function WalkInBookingPage() {
                   fontWeight: 600,
                   marginBottom: "8px",
                 }}>
-                  No. of Controllers
+                  Quantity {selectedConsole && consoleCounts[selectedConsole] ? `(Max: ${consoleCounts[selectedConsole]})` : ""}
                 </label>
                 <div style={{ display: "flex", gap: "8px" }}>
                   {[1, 2, 3, 4].map((num) => {
                     const isSelected = quantity === num;
+                    const maxAvailable = selectedConsole ? (consoleCounts[selectedConsole] || 4) : 4;
+                    const isDisabled = num > maxAvailable;
 
                     return (
                       <button
                         key={num}
                         type="button"
-                        onClick={() => setQuantity(num)}
-                        disabled={submitting}
+                        onClick={() => !isDisabled && setQuantity(num)}
+                        disabled={submitting || isDisabled}
                         style={{
                           flex: 1,
                           padding: "14px",
-                          background: isSelected
+                          background: isDisabled
+                            ? "rgba(255, 255, 255, 0.02)"
+                            : isSelected
                             ? `linear-gradient(135deg, ${colors.red} 0%, #cc0530 100%)`
                             : "rgba(255, 255, 255, 0.05)",
                           border: isSelected
                             ? `2px solid ${colors.red}`
                             : "1px solid rgba(255, 255, 255, 0.1)",
                           borderRadius: "12px",
-                          color: colors.textPrimary,
+                          color: isDisabled ? "rgba(255, 255, 255, 0.2)" : colors.textPrimary,
                           fontSize: "18px",
                           fontWeight: 700,
-                          cursor: "pointer",
+                          cursor: isDisabled ? "not-allowed" : "pointer",
                           transition: "all 0.2s",
+                          opacity: isDisabled ? 0.3 : 1,
                         }}
                       >
                         {num}
