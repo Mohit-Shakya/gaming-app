@@ -120,13 +120,17 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
         return totalHours * 60 + minutes;
       };
 
-      // Process active bookings
+      // Process active bookings (currently running OR upcoming today)
       const activeBookings = bookings?.filter((b: any) => {
         if (!b.start_time || !b.duration) return false;
         const startMinutes = parseTime(b.start_time);
         const endMinutes = startMinutes + (b.duration || 0);
-        return currentTimeMinutes >= startMinutes && currentTimeMinutes < endMinutes;
+        // Include if: (1) currently active OR (2) hasn't ended yet (upcoming)
+        return currentTimeMinutes < endMinutes;
       }) || [];
+
+      console.log('📊 Active/Upcoming bookings:', activeBookings);
+      console.log('🕐 Current time (minutes):', currentTimeMinutes);
 
       // Build console status data
       const consoleTypes: { id: ConsoleId; key: string }[] = [
@@ -192,18 +196,32 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
             const timeRemaining = calculateTimeRemaining(endTime);
             const customerName = assignedBooking.customer_name || (assignedBooking.profiles as any)?.name || "Guest";
 
+            // Check if booking has started or is upcoming
+            const hasStarted = currentTimeMinutes >= startMinutes;
+
+            // Determine status
+            let consoleStatus: "free" | "busy" | "ending_soon";
+            if (!hasStarted) {
+              // Upcoming booking - show as busy (reserved)
+              consoleStatus = "busy";
+            } else if (timeRemaining <= 15) {
+              consoleStatus = "ending_soon";
+            } else {
+              consoleStatus = "busy";
+            }
+
             statuses.push({
               id: `${id}-${i}`,
               consoleType: id,
               consoleNumber: i,
-              status: timeRemaining <= 15 ? "ending_soon" : "busy",
+              status: consoleStatus,
               booking: {
                 id: assignedBooking.id,
                 customerName,
                 startTime: assignedBooking.start_time,
                 endTime,
                 duration: assignedBooking.duration,
-                timeRemaining,
+                timeRemaining: hasStarted ? timeRemaining : Math.floor(startMinutes - currentTimeMinutes),
               },
             });
 
@@ -626,7 +644,10 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
                         }}>
                           <span style={{ fontSize: "14px" }}>🕒</span>
                           <span style={{ fontSize: "13px", color: colors.textSecondary }}>
-                            Ends at <strong style={{ color: colors.textPrimary }}>{status.booking.endTime}</strong>
+                            {status.booking.timeRemaining > 120
+                              ? `Starts at ${status.booking.startTime}`
+                              : `Ends at ${status.booking.endTime}`
+                            }
                           </span>
                         </div>
                         <div style={{
@@ -649,7 +670,10 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
                             color: isEndingSoon ? "#f59e0b" : "#6366f1",
                             fontWeight: 700,
                           }}>
-                            {status.booking.timeRemaining} min left
+                            {status.booking.timeRemaining > 120
+                              ? `Starts in ${status.booking.timeRemaining} min`
+                              : `${status.booking.timeRemaining} min left`
+                            }
                           </span>
                         </div>
                       </div>
