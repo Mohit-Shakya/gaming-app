@@ -7,18 +7,30 @@ import { colors, fonts, CONSOLE_LABELS, CONSOLE_ICONS } from "@/lib/constants";
 
 type ConsoleId = "ps5" | "ps4" | "xbox" | "pc" | "pool" | "arcade" | "snooker" | "vr" | "steering";
 
+type BookingData = {
+  id: string;
+  start_time: string;
+  duration: number;
+  customer_name: string | null;
+  user_id: string | null;
+  booking_items: Array<{
+    console: ConsoleId;
+    quantity: number;
+  }>;
+  profile?: {
+    name: string;
+  } | null;
+};
+
 type ConsoleStatus = {
   id: string;
-  consoleType: ConsoleId;
   consoleNumber: number;
   status: "free" | "busy" | "ending_soon";
   booking?: {
-    id: string;
     customerName: string;
     startTime: string;
     endTime: string;
-    duration: number;
-    timeRemaining: number; // minutes
+    timeRemaining: number;
   };
 };
 
@@ -38,37 +50,24 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
   const [loading, setLoading] = useState(true);
   const [autoRefresh, setAutoRefresh] = useState(true);
 
-  // Load console status
   const loadConsoleStatus = async () => {
     try {
       setLoading(true);
 
-      console.log('🔍 Loading console status for cafe:', cafeId);
-
-      // Get cafe console counts
+      // Get cafe data
       const { data: cafe, error: cafeError } = await supabase
         .from("cafes")
         .select("ps5_count, ps4_count, xbox_count, pc_count, pool_count, arcade_count, snooker_count, vr_count, steering_wheel_count")
         .eq("id", cafeId)
         .single();
 
-      console.log('Cafe data:', cafe);
-      console.log('Cafe error:', cafeError);
-
-      if (cafeError) {
-        console.error('❌ Error loading cafe:', cafeError);
-        throw cafeError;
-      }
-
-      if (!cafe) {
-        console.warn('⚠️ No cafe found with ID:', cafeId);
+      if (cafeError || !cafe) {
+        console.error("Error loading cafe:", cafeError);
         return;
       }
 
-      // Get today's active bookings
+      // Get today's confirmed bookings
       const today = new Date().toISOString().split("T")[0];
-      console.log('📅 Loading bookings for date:', today);
-
       const { data: bookings, error: bookingsError } = await supabase
         .from("bookings")
         .select(`
@@ -81,19 +80,16 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
         `)
         .eq("cafe_id", cafeId)
         .eq("booking_date", today)
-        .in("status", ["confirmed"]);
-
-      console.log('Bookings data:', bookings);
-      console.log('Bookings error:', bookingsError);
+        .eq("status", "confirmed");
 
       if (bookingsError) {
-        console.error('❌ Error loading bookings:', bookingsError);
-        throw bookingsError;
+        console.error("Error loading bookings:", bookingsError);
+        return;
       }
 
-      // Fetch user profiles for bookings that have user_id
+      // Fetch user profiles
       const userIds = bookings?.filter(b => b.user_id).map(b => b.user_id) || [];
-      let profilesMap: Record<string, any> = {};
+      let profilesMap: Record<string, { name: string }> = {};
 
       if (userIds.length > 0) {
         const { data: profiles } = await supabase
@@ -101,214 +97,168 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
           .select("id, name")
           .in("id", userIds);
 
-        // Create a map of user_id -> profile
         profiles?.forEach(p => {
-          profilesMap[p.id] = p;
+          profilesMap[p.id] = { name: p.name };
         });
       }
 
-      // Merge profiles into bookings
-      const bookingsWithProfiles = bookings?.map(b => ({
+      // Merge profiles with bookings
+      const enrichedBookings: BookingData[] = (bookings || []).map(b => ({
         ...b,
         profile: b.user_id ? profilesMap[b.user_id] : null
-      })) || [];
+      }));
 
-      const now = new Date();
-      const currentTimeMinutes = now.getHours() * 60 + now.getMinutes();
-
-      // Calculate end time from start time and duration
-      const parseTime = (timeStr: string): number => {
-        const [time, period] = timeStr.toLowerCase().split(" ");
-        const [hours, minutes] = time.split(":").map(Number);
-        let totalHours = hours;
-        if (period === "pm" && hours !== 12) totalHours += 12;
-        if (period === "am" && hours === 12) totalHours = 0;
-        return totalHours * 60 + minutes;
-      };
-
-      // Process active bookings (currently running OR upcoming today)
-      const activeBookings = bookingsWithProfiles?.filter((b: any) => {
-        if (!b.start_time || !b.duration) return false;
-        const startMinutes = parseTime(b.start_time);
-        const endMinutes = startMinutes + (b.duration || 0);
-        // Include if: (1) currently active OR (2) hasn't ended yet (upcoming)
-        return currentTimeMinutes < endMinutes;
-      }) || [];
-
-      console.log('📊 Active/Upcoming bookings:', activeBookings.map(b => ({
-        id: b.id.substring(0, 8),
+      console.log("📊 All bookings:", enrichedBookings.map(b => ({
         customer: b.customer_name || b.profile?.name,
         items: b.booking_items
       })));
-      console.log('🕐 Current time (minutes):', currentTimeMinutes);
 
-      // Build console status data
-      const consoleTypes: { id: ConsoleId; key: string }[] = [
-        { id: "ps5", key: "ps5_count" },
-        { id: "ps4", key: "ps4_count" },
-        { id: "xbox", key: "xbox_count" },
-        { id: "pc", key: "pc_count" },
-        { id: "pool", key: "pool_count" },
-        { id: "arcade", key: "arcade_count" },
-        { id: "snooker", key: "snooker_count" },
-        { id: "vr", key: "vr_count" },
-        { id: "steering", key: "steering_wheel_count" },
-      ];
-
-      const summaries: ConsoleSummary[] = [];
-
-      consoleTypes.forEach(({ id, key }) => {
-        const total = (cafe as any)[key] || 0;
-        if (total === 0) return; // Skip consoles not available at this cafe
-
-        const statuses: ConsoleStatus[] = [];
-
-        // Find bookings for this console type with their quantities
-        const consoleBookings = activeBookings
-          .filter((b: any) => b.booking_items?.some((item: any) => item.console === id))
-          .map((b: any) => {
-            const item = b.booking_items?.find((i: any) => i.console === id);
-            return {
-              ...b,
-              consoleQuantity: item?.quantity || 1,
-            };
-          });
-
-        console.log(`📋 ${id.toUpperCase()} bookings (${consoleBookings.length}):`, consoleBookings.map(b => ({
-          id: b.id.substring(0, 8),
-          customer: b.customer_name || b.profile?.name || 'Unknown',
-          quantity: b.consoleQuantity,
-          start: b.start_time,
-          items: b.booking_items?.map((i: any) => `${i.console}×${i.quantity}`)
-        })));
-
-        let busyCount = 0;
-
-        // Create status for each console unit
-        for (let i = 1; i <= total; i++) {
-          // Check if this console unit is covered by any active booking
-          let assignedBooking = null;
-
-          // Find which booking uses this console unit
-          let currentConsole = 1;
-          for (const booking of consoleBookings) {
-            const bookingEndConsole = currentConsole + booking.consoleQuantity - 1;
-
-            if (i >= currentConsole && i <= bookingEndConsole) {
-              assignedBooking = booking;
-              break;
-            }
-
-            currentConsole += booking.consoleQuantity;
-          }
-
-          if (assignedBooking) {
-            const startMinutes = parseTime(assignedBooking.start_time);
-            const endMinutes = startMinutes + assignedBooking.duration;
-            const endHours = Math.floor(endMinutes / 60) % 24;
-            const endMins = endMinutes % 60;
-            const endPeriod = endHours >= 12 ? "pm" : "am";
-            const displayHours = endHours % 12 || 12;
-            const endTime = `${displayHours}:${endMins.toString().padStart(2, "0")} ${endPeriod}`;
-
-            // Get customer name from booking or profile
-            const customerName = assignedBooking.customer_name
-              || assignedBooking.profile?.name
-              || "Guest";
-
-            // Check if booking has started or is upcoming
-            const hasStarted = currentTimeMinutes >= startMinutes;
-
-            // Calculate correct time remaining or time until start
-            let displayTimeRemaining: number;
-            if (!hasStarted) {
-              // Booking hasn't started - show time until start
-              displayTimeRemaining = Math.floor(startMinutes - currentTimeMinutes);
-            } else {
-              // Booking is active - show time until end
-              displayTimeRemaining = Math.floor(endMinutes - currentTimeMinutes);
-            }
-
-            // Determine status
-            let consoleStatus: "free" | "busy" | "ending_soon";
-            if (!hasStarted) {
-              // Upcoming booking - show as busy (reserved)
-              consoleStatus = "busy";
-            } else if (displayTimeRemaining <= 15) {
-              consoleStatus = "ending_soon";
-            } else {
-              consoleStatus = "busy";
-            }
-
-            console.log(`📌 Console ${id} #${i}:`, {
-              customerName,
-              startTime: assignedBooking.start_time,
-              endTime,
-              hasStarted,
-              displayTimeRemaining,
-              currentTimeMinutes,
-              startMinutes,
-              endMinutes
-            });
-
-            statuses.push({
-              id: `${id}-${i}`,
-              consoleType: id,
-              consoleNumber: i,
-              status: consoleStatus,
-              booking: {
-                id: assignedBooking.id,
-                customerName,
-                startTime: assignedBooking.start_time,
-                endTime,
-                duration: assignedBooking.duration,
-                timeRemaining: displayTimeRemaining,
-              },
-            });
-
-            busyCount++;
-          } else {
-            statuses.push({
-              id: `${id}-${i}`,
-              consoleType: id,
-              consoleNumber: i,
-              status: "free",
-            });
-          }
-        }
-
-        summaries.push({
-          type: id,
-          label: CONSOLE_LABELS[id] || id,
-          icon: CONSOLE_ICONS[id] || "🎮",
-          total,
-          free: total - busyCount,
-          busy: busyCount,
-          statuses,
-        });
-      });
-
-      console.log('📊 Console summaries generated:', summaries);
-      console.log('Total console types found:', summaries.length);
+      // Build console summaries
+      const summaries = buildConsoleSummaries(cafe, enrichedBookings);
 
       setConsoleData(summaries);
       setLastUpdated(new Date());
     } catch (error) {
-      console.error("❌ Error loading console status:", error);
+      console.error("Error loading console status:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  // Initial load and auto-refresh
-  useEffect(() => {
-    loadConsoleStatus();
+  const buildConsoleSummaries = (cafe: any, bookings: BookingData[]): ConsoleSummary[] => {
+    const consoleTypes: Array<{ id: ConsoleId; key: string }> = [
+      { id: "ps5", key: "ps5_count" },
+      { id: "ps4", key: "ps4_count" },
+      { id: "xbox", key: "xbox_count" },
+      { id: "pc", key: "pc_count" },
+      { id: "pool", key: "pool_count" },
+      { id: "arcade", key: "arcade_count" },
+      { id: "snooker", key: "snooker_count" },
+      { id: "vr", key: "vr_count" },
+      { id: "steering", key: "steering_wheel_count" },
+    ];
 
-    if (autoRefresh) {
-      const interval = setInterval(loadConsoleStatus, 30000); // Refresh every 30 seconds
-      return () => clearInterval(interval);
+    const summaries: ConsoleSummary[] = [];
+    const now = new Date();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+    // Filter active/upcoming bookings
+    const activeBookings = bookings.filter(b => {
+      if (!b.start_time || !b.duration) return false;
+      const startMinutes = parseTimeToMinutes(b.start_time);
+      const endMinutes = startMinutes + b.duration;
+      return currentMinutes < endMinutes; // Include if not ended yet
+    });
+
+    consoleTypes.forEach(({ id, key }) => {
+      const total = cafe[key] || 0;
+      if (total === 0) return;
+
+      // Get bookings for this console type
+      const consoleBookings = activeBookings
+        .filter(b => b.booking_items?.some(item => item.console === id))
+        .map(b => ({
+          ...b,
+          quantity: b.booking_items?.find(item => item.console === id)?.quantity || 1
+        }));
+
+      console.log(`📋 ${id.toUpperCase()}: ${consoleBookings.length} bookings, ${total} total units`);
+
+      const statuses: ConsoleStatus[] = [];
+      let busyCount = 0;
+
+      // Assign each console unit
+      for (let unitNumber = 1; unitNumber <= total; unitNumber++) {
+        const booking = findBookingForUnit(unitNumber, consoleBookings);
+
+        if (booking) {
+          const customerName = booking.customer_name || booking.profile?.name || "Guest";
+          const startMinutes = parseTimeToMinutes(booking.start_time);
+          const endMinutes = startMinutes + booking.duration;
+          const hasStarted = currentMinutes >= startMinutes;
+
+          let timeRemaining: number;
+          let status: "busy" | "ending_soon";
+
+          if (hasStarted) {
+            // Booking is active
+            timeRemaining = endMinutes - currentMinutes;
+            status = timeRemaining <= 15 ? "ending_soon" : "busy";
+          } else {
+            // Booking is upcoming
+            timeRemaining = startMinutes - currentMinutes;
+            status = "busy"; // Show as busy even if upcoming
+          }
+
+          statuses.push({
+            id: `${id}-${unitNumber}`,
+            consoleNumber: unitNumber,
+            status,
+            booking: {
+              customerName,
+              startTime: booking.start_time,
+              endTime: formatEndTime(startMinutes, booking.duration),
+              timeRemaining
+            }
+          });
+
+          busyCount++;
+        } else {
+          statuses.push({
+            id: `${id}-${unitNumber}`,
+            consoleNumber: unitNumber,
+            status: "free"
+          });
+        }
+      }
+
+      summaries.push({
+        type: id,
+        label: CONSOLE_LABELS[id] || id,
+        icon: CONSOLE_ICONS[id] || "🎮",
+        total,
+        free: total - busyCount,
+        busy: busyCount,
+        statuses
+      });
+    });
+
+    return summaries;
+  };
+
+  const findBookingForUnit = (unitNumber: number, bookings: any[]): any => {
+    let currentUnit = 1;
+
+    for (const booking of bookings) {
+      const endUnit = currentUnit + booking.quantity - 1;
+
+      if (unitNumber >= currentUnit && unitNumber <= endUnit) {
+        return booking;
+      }
+
+      currentUnit += booking.quantity;
     }
-  }, [cafeId, autoRefresh]);
+
+    return null;
+  };
+
+  const parseTimeToMinutes = (timeStr: string): number => {
+    const [time, period] = timeStr.toLowerCase().split(" ");
+    const [hours, minutes] = time.split(":").map(Number);
+    let totalHours = hours;
+    if (period === "pm" && hours !== 12) totalHours += 12;
+    if (period === "am" && hours === 12) totalHours = 0;
+    return totalHours * 60 + minutes;
+  };
+
+  const formatEndTime = (startMinutes: number, duration: number): string => {
+    const endMinutes = startMinutes + duration;
+    const hours = Math.floor(endMinutes / 60) % 24;
+    const mins = endMinutes % 60;
+    const period = hours >= 12 ? "pm" : "am";
+    const displayHours = hours % 12 || 12;
+    return `${displayHours}:${mins.toString().padStart(2, "0")} ${period}`;
+  };
 
   const formatTimeAgo = (date: Date): string => {
     const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
@@ -317,6 +267,15 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
     if (minutes < 60) return `${minutes} minute${minutes > 1 ? "s" : ""} ago`;
     return "Just now";
   };
+
+  useEffect(() => {
+    loadConsoleStatus();
+
+    if (autoRefresh) {
+      const interval = setInterval(loadConsoleStatus, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [cafeId, autoRefresh]);
 
   if (loading && consoleData.length === 0) {
     return (
@@ -335,15 +294,14 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
     );
   }
 
-  // Calculate overall stats
-  const totalConsoles = consoleData.reduce((sum, c) => sum + c.total, 0);
   const totalFree = consoleData.reduce((sum, c) => sum + c.free, 0);
   const totalBusy = consoleData.reduce((sum, c) => sum + c.busy, 0);
+  const totalConsoles = totalFree + totalBusy;
   const occupancyRate = totalConsoles > 0 ? Math.round((totalBusy / totalConsoles) * 100) : 0;
 
   return (
     <div style={{ padding: "20px", maxWidth: "1400px", margin: "0 auto" }}>
-      {/* Header with Overall Stats */}
+      {/* Header */}
       <div style={{
         background: `linear-gradient(135deg, ${colors.darkCard} 0%, ${colors.darkerCard} 100%)`,
         borderRadius: "16px",
@@ -368,21 +326,15 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
               alignItems: "center",
               gap: "12px",
             }}>
-              <span style={{
-                animation: "pulse 2s ease-in-out infinite",
-                display: "inline-block",
-              }}>🔴</span>
+              <span style={{ animation: "pulse 2s ease-in-out infinite" }}>🔴</span>
               Live Console Status
             </h2>
-            <p style={{
-              fontSize: "14px",
-              color: colors.textSecondary,
-            }}>
+            <p style={{ fontSize: "14px", color: colors.textSecondary }}>
               Last updated: {formatTimeAgo(lastUpdated)}
             </p>
           </div>
 
-          {/* Overall Stats Cards */}
+          {/* Stats Cards */}
           <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
             <div style={{
               background: "rgba(34, 197, 94, 0.15)",
@@ -392,12 +344,7 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
               textAlign: "center",
               minWidth: "100px",
             }}>
-              <div style={{
-                fontSize: "24px",
-                fontWeight: 700,
-                color: "#22c55e",
-                fontFamily: fonts.heading,
-              }}>
+              <div style={{ fontSize: "24px", fontWeight: 700, color: "#22c55e", fontFamily: fonts.heading }}>
                 {totalFree}
               </div>
               <div style={{ fontSize: "12px", color: colors.textSecondary, marginTop: "4px" }}>
@@ -413,12 +360,7 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
               textAlign: "center",
               minWidth: "100px",
             }}>
-              <div style={{
-                fontSize: "24px",
-                fontWeight: 700,
-                color: "#ef4444",
-                fontFamily: fonts.heading,
-              }}>
+              <div style={{ fontSize: "24px", fontWeight: 700, color: "#ef4444", fontFamily: fonts.heading }}>
                 {totalBusy}
               </div>
               <div style={{ fontSize: "12px", color: colors.textSecondary, marginTop: "4px" }}>
@@ -434,12 +376,7 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
               textAlign: "center",
               minWidth: "100px",
             }}>
-              <div style={{
-                fontSize: "24px",
-                fontWeight: 700,
-                color: "#6366f1",
-                fontFamily: fonts.heading,
-              }}>
+              <div style={{ fontSize: "24px", fontWeight: 700, color: "#6366f1", fontFamily: fonts.heading }}>
                 {occupancyRate}%
               </div>
               <div style={{ fontSize: "12px", color: colors.textSecondary, marginTop: "4px" }}>
@@ -628,10 +565,7 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
                       gap: "10px",
                       marginBottom: "16px",
                     }}>
-                      <div style={{
-                        fontSize: "32px",
-                        filter: isFree ? "grayscale(0)" : "grayscale(0.3)",
-                      }}>
+                      <div style={{ fontSize: "32px", filter: isFree ? "grayscale(0)" : "grayscale(0.3)" }}>
                         {console.icon}
                       </div>
                       <div>
@@ -643,17 +577,13 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
                         }}>
                           #{status.consoleNumber}
                         </div>
-                        <div style={{
-                          fontSize: "12px",
-                          color: colors.textSecondary,
-                          marginTop: "2px",
-                        }}>
+                        <div style={{ fontSize: "12px", color: colors.textSecondary, marginTop: "2px" }}>
                           {console.label}
                         </div>
                       </div>
                     </div>
 
-                    {/* Booking Details or Free State */}
+                    {/* Booking Info */}
                     {status.booking ? (
                       <div style={{
                         flex: 1,
@@ -664,25 +594,13 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
                         padding: "12px",
                         borderRadius: "8px",
                       }}>
-                        <div style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "8px",
-                        }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                           <span style={{ fontSize: "16px" }}>👤</span>
-                          <span style={{
-                            fontSize: "15px",
-                            color: colors.textPrimary,
-                            fontWeight: 600,
-                          }}>
+                          <span style={{ fontSize: "15px", color: colors.textPrimary, fontWeight: 600 }}>
                             {status.booking.customerName}
                           </span>
                         </div>
-                        <div style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "8px",
-                        }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                           <span style={{ fontSize: "14px" }}>🕒</span>
                           <span style={{ fontSize: "13px", color: colors.textSecondary }}>
                             {status.booking.timeRemaining > 120
@@ -706,11 +624,7 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
                           }`,
                         }}>
                           <span style={{ fontSize: "16px" }}>⏱️</span>
-                          <span style={{
-                            fontSize: "14px",
-                            color: isEndingSoon ? "#f59e0b" : "#6366f1",
-                            fontWeight: 700,
-                          }}>
+                          <span style={{ fontSize: "14px", color: isEndingSoon ? "#f59e0b" : "#6366f1", fontWeight: 700 }}>
                             {status.booking.timeRemaining > 120
                               ? `Starts in ${status.booking.timeRemaining} min`
                               : `${status.booking.timeRemaining} min left`
@@ -732,18 +646,10 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
                         border: "1px dashed rgba(34, 197, 94, 0.3)",
                       }}>
                         <span style={{ fontSize: "24px" }}>✓</span>
-                        <span style={{
-                          fontSize: "13px",
-                          color: "#22c55e",
-                          fontWeight: 600,
-                          textAlign: "center",
-                        }}>
+                        <span style={{ fontSize: "13px", color: "#22c55e", fontWeight: 600, textAlign: "center" }}>
                           Available Now
                         </span>
-                        <span style={{
-                          fontSize: "11px",
-                          color: colors.textSecondary,
-                        }}>
+                        <span style={{ fontSize: "11px", color: colors.textSecondary }}>
                           Ready for booking
                         </span>
                       </div>
@@ -758,12 +664,8 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
 
       <style>{`
         @keyframes pulse {
-          0%, 100% {
-            opacity: 1;
-          }
-          50% {
-            opacity: 0.5;
-          }
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
         }
       `}</style>
     </div>
