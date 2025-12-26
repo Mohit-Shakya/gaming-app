@@ -48,6 +48,54 @@ type ConsoleStatus = {
   };
 };
 
+/**
+ * Format time remaining in a user-friendly way
+ * Converts minutes to hours and minutes for better readability
+ */
+function formatTimeRemaining(minutes: number, isActive: boolean): string {
+  if (isActive) {
+    // Active booking - show minutes left
+    return `${minutes} min left`;
+  }
+
+  // Future booking
+  if (minutes >= 60) {
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+
+    if (mins === 0) {
+      return `Starts in ${hours} ${hours === 1 ? 'hour' : 'hours'}`;
+    } else {
+      return `Starts in ${hours}h ${mins}min`;
+    }
+  } else {
+    return `Starts in ${minutes} min`;
+  }
+}
+
+/**
+ * Get display category and emoji for booking based on time remaining
+ */
+function getBookingCategory(timeRemaining: number, isActive: boolean): { emoji: string; label: string } {
+  if (isActive) {
+    return { emoji: "⏱️", label: "In Progress" };
+  }
+
+  if (timeRemaining >= 180) {
+    // 3+ hours away
+    return { emoji: "📅", label: "Upcoming Today" };
+  } else if (timeRemaining >= 60) {
+    // 1-3 hours away
+    return { emoji: "⏳", label: "Starting Later" };
+  } else if (timeRemaining >= 30) {
+    // 30-60 min away
+    return { emoji: "🔜", label: "Starting Soon" };
+  } else {
+    // Under 30 min
+    return { emoji: "⏱️", label: "Starting Very Soon" };
+  }
+}
+
 type ConsoleSummary = {
   type: ConsoleId;
   label: string;
@@ -627,6 +675,18 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
                             </span>
                           )}
                         </div>
+                        {/* Category Label for Future Bookings */}
+                        {status.booking.timeRemaining > 120 && (
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+                            <span style={{ fontSize: "14px" }}>
+                              {getBookingCategory(status.booking.timeRemaining, false).emoji}
+                            </span>
+                            <span style={{ fontSize: "12px", color: "#a78bfa", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                              {getBookingCategory(status.booking.timeRemaining, false).label}
+                            </span>
+                          </div>
+                        )}
+
                         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                           <span style={{ fontSize: "14px" }}>🕒</span>
                           <span style={{ fontSize: "13px", color: colors.textSecondary }}>
@@ -642,20 +702,48 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
                           gap: "8px",
                           marginTop: "4px",
                           padding: "8px",
-                          background: isEndingSoon
-                            ? "rgba(251, 191, 36, 0.15)"
-                            : "rgba(99, 102, 241, 0.1)",
+                          background: status.booking.timeRemaining > 120
+                            ? (status.booking.timeRemaining >= 180
+                                ? "rgba(59, 130, 246, 0.1)"  // Blue for far future
+                                : status.booking.timeRemaining >= 60
+                                  ? "rgba(139, 92, 246, 0.1)"  // Purple for 1-3 hours
+                                  : "rgba(249, 115, 22, 0.1)")  // Orange for < 1 hour
+                            : isEndingSoon
+                              ? "rgba(251, 191, 36, 0.15)"  // Amber for ending soon
+                              : "rgba(239, 68, 68, 0.15)",  // Red for active
                           borderRadius: "6px",
                           border: `1px solid ${
-                            isEndingSoon ? "rgba(251, 191, 36, 0.3)" : "rgba(99, 102, 241, 0.2)"
+                            status.booking.timeRemaining > 120
+                              ? (status.booking.timeRemaining >= 180
+                                  ? "rgba(59, 130, 246, 0.3)"
+                                  : status.booking.timeRemaining >= 60
+                                    ? "rgba(139, 92, 246, 0.3)"
+                                    : "rgba(249, 115, 22, 0.3)")
+                              : isEndingSoon
+                                ? "rgba(251, 191, 36, 0.3)"
+                                : "rgba(239, 68, 68, 0.3)"
                           }`,
                         }}>
-                          <span style={{ fontSize: "16px" }}>⏱️</span>
-                          <span style={{ fontSize: "14px", color: isEndingSoon ? "#f59e0b" : "#6366f1", fontWeight: 700 }}>
+                          <span style={{ fontSize: "16px" }}>
                             {status.booking.timeRemaining > 120
-                              ? `Starts in ${status.booking.timeRemaining} min`
-                              : `${status.booking.timeRemaining} min left`
+                              ? getBookingCategory(status.booking.timeRemaining, false).emoji
+                              : "⏱️"
                             }
+                          </span>
+                          <span style={{
+                            fontSize: "14px",
+                            color: status.booking.timeRemaining > 120
+                              ? (status.booking.timeRemaining >= 180
+                                  ? "#3b82f6"  // Blue
+                                  : status.booking.timeRemaining >= 60
+                                    ? "#8b5cf6"  // Purple
+                                    : "#f97316")  // Orange
+                              : isEndingSoon
+                                ? "#f59e0b"  // Amber
+                                : "#ef4444",  // Red
+                            fontWeight: 700
+                          }}>
+                            {formatTimeRemaining(status.booking.timeRemaining, status.booking.timeRemaining <= 120)}
                           </span>
                         </div>
                       </div>

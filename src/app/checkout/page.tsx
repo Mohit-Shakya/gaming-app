@@ -133,6 +133,18 @@ export default function CheckoutPage() {
       const { cafeId, bookingDate, timeSlot, totalAmount, tickets } =
         draft;
 
+      // Fetch user profile for customer name and phone
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("first_name, last_name, phone")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      // Combine first and last name
+      const customerName = profile?.first_name && profile?.last_name
+        ? `${profile.first_name} ${profile.last_name}`.trim()
+        : profile?.first_name || "Guest";
+
       // 1. Create booking row
       const { data: bookingData, error: bookingError } = await supabase
         .from("bookings")
@@ -141,9 +153,12 @@ export default function CheckoutPage() {
           user_id: user.id,
           booking_date: bookingDate,
           start_time: timeSlot,
+          duration: draft.durationMinutes,
           total_amount: totalAmount,
           status: "confirmed", // later you can change based on payment
           source: "online",
+          customer_name: customerName,
+          customer_phone: profile?.phone || "",
         })
         .select("id")
         .maybeSingle();

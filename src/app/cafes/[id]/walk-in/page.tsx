@@ -1,68 +1,41 @@
 // src/app/cafes/[id]/walk-in/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useState } from "react";
+import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import { colors, fonts } from "@/lib/constants";
+import { colors, fonts, CONSOLE_LABELS, CONSOLE_COLORS, CONSOLE_ICONS, type ConsoleId } from "@/lib/constants";
+import { ConsolePricingTier } from "@/types/booking";
+import { useCafeData } from "@/hooks/useCafeData";
+import { determinePriceForTier, calculateConsoleMaxQuantity } from "@/lib/ticketService";
 import { logger } from "@/lib/logger";
-import { CafeRow, ConsolePricingRow } from "@/types/database";
 
-type ConsoleId = "ps5" | "ps4" | "xbox" | "pc" | "pool" | "arcade" | "snooker" | "vr" | "steering_wheel";
-
-const CONSOLES: { id: ConsoleId; label: string; icon: string; color: string }[] = [
-  { id: "ps5", label: "PS5", icon: "🎮", color: "#0070d1" },
-  { id: "ps4", label: "PS4", icon: "🎮", color: "#003791" },
-  { id: "xbox", label: "Xbox", icon: "🎮", color: "#107c10" },
-  { id: "pc", label: "PC", icon: "💻", color: "#ff073a" },
-  { id: "pool", label: "Pool Table", icon: "🎱", color: "#8b4513" },
-  { id: "arcade", label: "Arcade", icon: "🕹️", color: "#ff6b00" },
-  { id: "snooker", label: "Snooker", icon: "🎱", color: "#228b22" },
-  { id: "vr", label: "VR", icon: "🥽", color: "#9945ff" },
-  { id: "steering_wheel", label: "Racing Rig", icon: "🏎️", color: "#e10600" },
+const CONSOLES = [
+  { id: "ps5" as ConsoleId, label: CONSOLE_LABELS.ps5, icon: CONSOLE_ICONS.ps5, color: CONSOLE_COLORS.ps5 },
+  { id: "ps4" as ConsoleId, label: CONSOLE_LABELS.ps4, icon: CONSOLE_ICONS.ps4, color: CONSOLE_COLORS.ps4 },
+  { id: "xbox" as ConsoleId, label: CONSOLE_LABELS.xbox, icon: CONSOLE_ICONS.xbox, color: CONSOLE_COLORS.xbox },
+  { id: "pc" as ConsoleId, label: CONSOLE_LABELS.pc, icon: CONSOLE_ICONS.pc, color: CONSOLE_COLORS.pc },
+  { id: "pool" as ConsoleId, label: CONSOLE_LABELS.pool, icon: CONSOLE_ICONS.pool, color: CONSOLE_COLORS.pool },
+  { id: "arcade" as ConsoleId, label: CONSOLE_LABELS.arcade, icon: CONSOLE_ICONS.arcade, color: CONSOLE_COLORS.arcade },
+  { id: "snooker" as ConsoleId, label: CONSOLE_LABELS.snooker, icon: CONSOLE_ICONS.snooker, color: CONSOLE_COLORS.snooker },
+  { id: "vr" as ConsoleId, label: CONSOLE_LABELS.vr, icon: CONSOLE_ICONS.vr, color: CONSOLE_COLORS.vr },
+  { id: "steering" as ConsoleId, label: CONSOLE_LABELS.steering, icon: CONSOLE_ICONS.steering, color: CONSOLE_COLORS.steering },
 ];
-
-const CONSOLE_DB_KEYS: Record<ConsoleId, string> = {
-  ps5: "ps5_count",
-  ps4: "ps4_count",
-  xbox: "xbox_count",
-  pc: "pc_count",
-  pool: "pool_count",
-  arcade: "arcade_count",
-  snooker: "snooker_count",
-  vr: "vr_count",
-  steering_wheel: "steering_wheel_count",
-};
-
-type ConsolePricingTier = {
-  qty1_30min: number | null;
-  qty1_60min: number | null;
-  qty2_30min: number | null;
-  qty2_60min: number | null;
-  qty3_30min: number | null;
-  qty3_60min: number | null;
-  qty4_30min: number | null;
-  qty4_60min: number | null;
-};
 
 export default function WalkInBookingPage() {
   const params = useParams();
+  const router = useRouter();
   const cafeIdOrSlug = typeof params?.id === "string" ? params.id : null;
 
-  // Cafe data
-  const [cafeId, setCafeId] = useState<string | null>(null);
-  const [cafeName, setCafeName] = useState<string>("Gaming Café");
-  const [cafePrice, setCafePrice] = useState<number>(150);
-  const [loading, setLoading] = useState(true);
-  const [availableConsoles, setAvailableConsoles] = useState<ConsoleId[]>([]);
-  const [consolePricing, setConsolePricing] = useState<Partial<Record<ConsoleId, ConsolePricingTier>>>({});
-  const [consoleCounts, setConsoleCounts] = useState<Partial<Record<ConsoleId, number>>>({});
+  // Load cafe data
+  const { actualCafeId, cafeName, cafePrice, consolePricing, availableConsoles, consoleLimits, loading, error: cafeError } = useCafeData(cafeIdOrSlug);
 
   // Form data
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [selectedConsole, setSelectedConsole] = useState<ConsoleId | null>(null);
-  const [quantity, setQuantity] = useState(1);
+  const [consoleQuantity, setConsoleQuantity] = useState(1); // Number of consoles
+  const [numControllers, setNumControllers] = useState(1); // Number of controllers/players
   const [duration, setDuration] = useState<30 | 60>(60);
 
   // UI state
@@ -70,159 +43,63 @@ export default function WalkInBookingPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [bookingId, setBookingId] = useState<string>("");
+  const [confirmedAmount, setConfirmedAmount] = useState<number>(0);
 
-  // Load cafe data
-  useEffect(() => {
-    async function loadCafe() {
-      if (!cafeIdOrSlug) return;
-
-      try {
-        setLoading(true);
-        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cafeIdOrSlug);
-
-        const { data, error } = await supabase
-          .from("cafes")
-          .select("*")
-          .eq(isUUID ? "id" : "slug", cafeIdOrSlug)
-          .maybeSingle();
-
-        if (error || !data) {
-          setError("Café not found");
-          return;
-        }
-
-        setCafeId(data.id);
-        setCafeName(data.name || "Gaming Café");
-        setCafePrice(data.hourly_price || 150);
-
-        // Get available consoles and their counts
-        const available: ConsoleId[] = [];
-        const counts: Partial<Record<ConsoleId, number>> = {};
-
-        CONSOLES.forEach((c) => {
-          const dbKey = CONSOLE_DB_KEYS[c.id];
-          const count = data[dbKey as keyof CafeRow] as number ?? 0;
-
-          if (count > 0) {
-            available.push(c.id);
-            counts[c.id] = count;
-          }
-        });
-
-        setAvailableConsoles(available);
-        setConsoleCounts(counts);
-
-        // Load console pricing from console_pricing table
-        const { data: pricingData, error: pricingError } = await supabase
-          .from("console_pricing")
-          .select("console_type, quantity, duration_minutes, price")
-          .eq("cafe_id", data.id);
-
-        if (!pricingError && pricingData) {
-          const pricing: Partial<Record<ConsoleId, ConsolePricingTier>> = {};
-
-          pricingData.forEach((item: ConsolePricingRow) => {
-            // Map database console_type to ConsoleId
-            let consoleId = item.console_type as ConsoleId;
-
-            // Initialize pricing object if it doesn't exist
-            if (!pricing[consoleId]) {
-              pricing[consoleId] = {
-                qty1_30min: null,
-                qty1_60min: null,
-                qty2_30min: null,
-                qty2_60min: null,
-                qty3_30min: null,
-                qty3_60min: null,
-                qty4_30min: null,
-                qty4_60min: null,
-              };
-            }
-
-            // Map the pricing data to the correct tier
-            const key = `qty${item.quantity}_${item.duration_minutes}min` as keyof ConsolePricingTier;
-            pricing[consoleId]![key] = item.price;
-          });
-
-          setConsolePricing(pricing);
-        } else if (pricingError) {
-          logger.error('Error loading pricing:', pricingError);
-        }
-
-        // Auto-select first available console
-        if (available.length > 0) {
-          setSelectedConsole(available[0]);
-        }
-      } catch (err) {
-        logger.error("Error loading cafe:", err);
-        setError("Could not load café details");
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadCafe();
-  }, [cafeIdOrSlug]);
-
-  // Calculate amount based on tier pricing
-  const calculateAmount = () => {
-    if (!selectedConsole) return 0;
-
-    const tier = consolePricing[selectedConsole];
-    const basePrice = cafePrice;
-
-    if (tier) {
-      // Use tier-based pricing
-      const key = `qty${quantity}_${duration}min` as keyof ConsolePricingTier;
-      const tierPrice = tier[key];
-
-      if (tierPrice !== null && tierPrice !== undefined) {
-        return tierPrice;
-      }
-    }
-
-    // Fallback to simple calculation
-    const durationMultiplier = duration / 60;
-    const fallbackAmount = basePrice * quantity * durationMultiplier;
-    return fallbackAmount;
+  // Get max controllers for selected console type
+  const getMaxControllers = (): number => {
+    if (!selectedConsole) return 4;
+    return calculateConsoleMaxQuantity(selectedConsole);
   };
 
-  const totalAmount = calculateAmount();
+  // Get max quantity available for selected console
+  const getMaxConsoleQuantity = (): number => {
+    if (!selectedConsole) return 5;
+    const availableCount = consoleLimits[selectedConsole] ?? 0;
+    // Return available count (minimum 1 if console is available)
+    return Math.max(1, availableCount);
+  };
 
-  // Handle form submission
+  // Calculate price based on controllers (players) and console quantity
+  const calculatePrice = (): number => {
+    if (!selectedConsole) return 0;
+
+    const pricingTier = consolePricing[selectedConsole] ?? null;
+    const pricePerConsole = determinePriceForTier(pricingTier, numControllers, duration, cafePrice, selectedConsole);
+
+    // Multiply by console quantity
+    return pricePerConsole * consoleQuantity;
+  };
+
+  const totalPrice = calculatePrice();
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    // Validation
     if (!customerName.trim()) {
-      setError("Please enter your name");
+      setError("Please enter customer name");
       return;
     }
-
     if (!customerPhone.trim()) {
-      setError("Please enter your phone number");
+      setError("Please enter customer phone");
       return;
     }
-
-    if (customerPhone.length < 10) {
+    if (customerPhone.trim().length < 10) {
       setError("Please enter a valid 10-digit phone number");
       return;
     }
-
     if (!selectedConsole) {
       setError("Please select a console");
       return;
     }
-
-    if (!cafeId) {
+    if (!actualCafeId) {
       setError("Café information not loaded");
       return;
     }
 
-    try {
-      setSubmitting(true);
+    setSubmitting(true);
 
+    try {
       // Get current date and time
       const now = new Date();
       const bookingDate = now.toISOString().split("T")[0];
@@ -236,527 +113,717 @@ export default function WalkInBookingPage() {
       const { data: booking, error: bookingError } = await supabase
         .from("bookings")
         .insert({
-          cafe_id: cafeId,
-          user_id: null,
+          cafe_id: actualCafeId,
           booking_date: bookingDate,
           start_time: startTime,
           duration: duration,
-          total_amount: totalAmount,
           status: "confirmed",
-          source: "walk_in",
           customer_name: customerName.trim(),
           customer_phone: customerPhone.trim(),
+          source: "walk-in",
+          total_amount: totalPrice,
         })
         .select()
         .single();
 
-      if (bookingError) {
-        logger.error("Booking error:", bookingError);
-        setError("Could not create booking. Please try again.");
+      if (bookingError || !booking) {
+        logger.error("Error creating booking:", bookingError);
+        setError("Failed to create booking. Please try again.");
+        setSubmitting(false);
         return;
       }
 
-      // Create booking item
-      const consoleInfo = CONSOLES.find(c => c.id === selectedConsole);
-      const ticketId = `${selectedConsole}_${quantity}_${duration}`;
-
-      const { error: itemError } = await supabase
+      // Create booking items
+      const { error: itemsError } = await supabase
         .from("booking_items")
         .insert({
           booking_id: booking.id,
-          ticket_id: ticketId,
           console: selectedConsole,
-          title: `${consoleInfo?.label || selectedConsole} - ${quantity}x ${duration}min`,
-          price: totalAmount,
-          quantity: quantity,
+          quantity: consoleQuantity,
+          title: `${CONSOLE_LABELS[selectedConsole]} x${consoleQuantity} (${numControllers} ${numControllers > 1 ? 'controllers' : 'controller'})`,
+          price: totalPrice,
         });
 
-      if (itemError) {
-        logger.error("Booking item error:", itemError);
-        setError("Booking created but item failed. Please contact staff.");
+      if (itemsError) {
+        logger.error("Error creating booking items:", itemsError);
+        setError("Booking created but items failed. Please contact support.");
+        setSubmitting(false);
         return;
       }
 
-      // Success!
-      setBookingId(booking.id.slice(0, 8).toUpperCase());
+      // Save the confirmed amount before resetting the form
+      setConfirmedAmount(totalPrice);
+      setBookingId(booking.id);
       setSuccess(true);
 
-      // Reset form after 5 seconds
-      setTimeout(() => {
-        setCustomerName("");
-        setCustomerPhone("");
-        setQuantity(1);
-        setDuration(60);
-        if (availableConsoles.length > 0) {
-          setSelectedConsole(availableConsoles[0]);
-        }
-        setSuccess(false);
-        setBookingId("");
-      }, 5000);
-
+      // Reset form
+      setCustomerName("");
+      setCustomerPhone("");
+      setSelectedConsole(null);
+      setConsoleQuantity(1);
+      setNumControllers(1);
+      setDuration(60);
     } catch (err) {
-      logger.error("Unexpected error:", err);
-      setError("An unexpected error occurred. Please try again.");
+      logger.error("Error creating walk-in booking:", err);
+      setError("An unexpected error occurred");
     } finally {
       setSubmitting(false);
     }
   };
 
+  // Loading state
   if (loading) {
     return (
-      <div style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 100%)",
-        fontFamily: fonts.body,
-      }}>
-        <div style={{ color: colors.textSecondary, fontSize: "16px" }}>Loading...</div>
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: colors.dark }}>
+        <div style={{ width: "40px", height: "40px", border: `4px solid ${colors.border}`, borderTopColor: colors.cyan, borderRadius: "50%", animation: "spin 1s linear infinite" }} />
       </div>
     );
   }
 
-  if (error && !cafeId) {
+  // Error state
+  if (cafeError || !cafeIdOrSlug) {
     return (
-      <div style={{
-        minHeight: "100vh",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 100%)",
-        fontFamily: fonts.body,
-        padding: "20px",
-      }}>
-        <div style={{
-          textAlign: "center",
-          color: colors.red,
-          fontSize: "18px",
-        }}>
-          {error}
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: colors.dark, padding: "20px" }}>
+        <div style={{ textAlign: "center" }}>
+          <p style={{ fontSize: "18px", color: colors.textPrimary }}>{cafeError || "Café not found"}</p>
+          <button onClick={() => router.push("/owner")} style={{ marginTop: "20px", padding: "10px 20px", background: colors.red, color: "white", border: "none", borderRadius: "8px", cursor: "pointer" }}>
+            Back to Dashboard
+          </button>
         </div>
       </div>
     );
   }
 
-  // Filter consoles to show only available ones
-  const availableConsoleOptions = CONSOLES.filter(c => availableConsoles.includes(c.id));
-
   return (
-    <div style={{
-      minHeight: "100vh",
-      background: "linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 100%)",
-      fontFamily: fonts.body,
-      padding: "16px",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-    }}>
-      <div style={{
-        maxWidth: "480px",
-        width: "100%",
-      }}>
-        {/* Success Message */}
-        {success ? (
-          <div style={{
-            background: "rgba(20, 20, 28, 0.95)",
-            border: "2px solid rgba(34, 197, 94, 0.5)",
-            borderRadius: "20px",
-            padding: "40px 24px",
-            textAlign: "center",
-            animation: "fadeIn 0.3s ease",
-          }}>
-            <div style={{
-              fontSize: "64px",
-              marginBottom: "16px",
-              animation: "scaleIn 0.5s ease",
-            }}>
-              ✅
-            </div>
-            <div style={{
-              color: "#22c55e",
-              fontFamily: fonts.heading,
+    <div style={{ minHeight: "100vh", background: "#0F0F14", color: colors.textPrimary, fontFamily: fonts.body, padding: "20px 16px 40px" }}>
+      <div style={{ maxWidth: "500px", margin: "0 auto" }}>
+        {/* Header */}
+        <div style={{ marginBottom: "32px", textAlign: "center" }}>
+          <div style={{ marginBottom: "8px" }}>
+            <h1 style={{
               fontSize: "24px",
               fontWeight: 700,
-              marginBottom: "8px",
-              textTransform: "uppercase",
-              letterSpacing: "1px",
+              fontFamily: fonts.heading,
+              color: "#FFFFFF",
+              marginBottom: "4px",
+              letterSpacing: "0.5px"
             }}>
-              Booking Confirmed!
-            </div>
+              {cafeName || "Gaming Cafe"}
+            </h1>
+          </div>
+          <p style={{
+            fontSize: "14px",
+            fontWeight: 400,
+            color: "#8B8B8E",
+            marginBottom: "0",
+            letterSpacing: "0.3px"
+          }}>
+            Walk-In Booking
+          </p>
+        </div>
+
+        {/* Success Modal */}
+        {success && (
+          <div style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(0, 0, 0, 0.85)",
+            backdropFilter: "blur(8px)",
+            zIndex: 1000,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "20px"
+          }}>
             <div style={{
-              color: colors.textPrimary,
-              fontSize: "16px",
-              marginBottom: "8px",
-              fontWeight: 600,
+              background: "linear-gradient(145deg, rgba(30, 30, 36, 0.95) 0%, rgba(25, 25, 30, 0.95) 100%)",
+              borderRadius: "28px",
+              padding: "40px 32px",
+              maxWidth: "450px",
+              width: "100%",
+              border: "1px solid rgba(16, 185, 129, 0.3)",
+              boxShadow: "0 20px 60px rgba(0, 0, 0, 0.5)",
+              textAlign: "center",
+              animation: "slideUp 0.4s ease-out"
             }}>
-              Booking ID: #{bookingId}
-            </div>
-            <div style={{
-              color: colors.textSecondary,
-              fontSize: "14px",
-              marginTop: "16px",
-            }}>
-              Please proceed to the counter for payment
-            </div>
-            <div style={{
-              marginTop: "24px",
-              padding: "16px",
-              background: "rgba(255, 7, 58, 0.1)",
-              borderRadius: "12px",
-            }}>
-              <div style={{ color: colors.textSecondary, fontSize: "13px", marginBottom: "4px" }}>
-                Amount to Pay
-              </div>
+              {/* Success Icon */}
               <div style={{
-                color: colors.red,
-                fontSize: "32px",
-                fontWeight: 700,
-                fontFamily: fonts.heading,
+                width: "80px",
+                height: "80px",
+                background: "linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(16, 185, 129, 0.1) 100%)",
+                borderRadius: "50%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                margin: "0 auto 24px",
+                border: "2px solid #10B981"
               }}>
-                ₹{totalAmount}
+                <span style={{ fontSize: "48px" }}>✅</span>
               </div>
+
+              {/* Title */}
+              <h2 style={{
+                fontSize: "28px",
+                fontWeight: 800,
+                color: "#10B981",
+                fontFamily: fonts.heading,
+                marginBottom: "12px",
+                letterSpacing: "0.5px"
+              }}>
+                Booking Confirmed!
+              </h2>
+
+              {/* Booking ID */}
+              <div style={{
+                background: "rgba(15, 15, 20, 0.8)",
+                padding: "16px 20px",
+                borderRadius: "16px",
+                marginBottom: "24px",
+                border: "1px solid rgba(255, 255, 255, 0.08)"
+              }}>
+                <div style={{
+                  fontSize: "12px",
+                  color: "#999",
+                  marginBottom: "6px",
+                  textTransform: "uppercase",
+                  letterSpacing: "1px"
+                }}>
+                  Booking ID
+                </div>
+                <div style={{
+                  fontSize: "24px",
+                  fontWeight: 700,
+                  color: "#00D9FF",
+                  fontFamily: fonts.heading,
+                  letterSpacing: "1px"
+                }}>
+                  {bookingId}
+                </div>
+              </div>
+
+              {/* Pay at Counter */}
+              <div style={{
+                background: "linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(239, 68, 68, 0.08) 100%)",
+                padding: "20px",
+                borderRadius: "16px",
+                marginBottom: "28px",
+                border: "1px solid rgba(239, 68, 68, 0.2)"
+              }}>
+                <div style={{
+                  fontSize: "14px",
+                  color: "#B4B4B7",
+                  marginBottom: "12px"
+                }}>
+                  Total Amount
+                </div>
+                <div style={{
+                  fontSize: "42px",
+                  fontWeight: 900,
+                  color: "#EF4444",
+                  fontFamily: fonts.heading,
+                  marginBottom: "12px",
+                  lineHeight: "1"
+                }}>
+                  ₹{confirmedAmount}
+                </div>
+                <div style={{
+                  fontSize: "13px",
+                  color: "#E5E5E7",
+                  fontWeight: 600,
+                  textTransform: "uppercase",
+                  letterSpacing: "1px"
+                }}>
+                  💳 Pay at Counter
+                </div>
+              </div>
+
+              {/* Close Button */}
+              <button
+                onClick={() => {
+                  setSuccess(false);
+                  setBookingId("");
+                  setConfirmedAmount(0);
+                }}
+                style={{
+                  width: "100%",
+                  padding: "18px 24px",
+                  background: "linear-gradient(135deg, #10B981 0%, #059669 100%)",
+                  border: "none",
+                  borderRadius: "16px",
+                  color: "#FFFFFF",
+                  fontFamily: fonts.heading,
+                  fontSize: "15px",
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                  letterSpacing: "2px",
+                  cursor: "pointer",
+                  transition: "all 0.3s ease",
+                  boxShadow: "0 8px 24px rgba(16, 185, 129, 0.3)"
+                }}
+                className="close-modal-btn"
+              >
+                Close
+              </button>
             </div>
           </div>
-        ) : (
-          <>
-            {/* Header */}
-            <div style={{
-              textAlign: "center",
-              marginBottom: "24px",
-            }}>
-              <h1 style={{
-                fontFamily: fonts.heading,
-                fontSize: "28px",
-                fontWeight: 700,
-                color: colors.textPrimary,
-                marginBottom: "8px",
-                textTransform: "uppercase",
-                letterSpacing: "1px",
-              }}>
-                {cafeName}
-              </h1>
-              <p style={{
-                color: colors.textSecondary,
+        )}
+
+        {/* Error Message */}
+        {error && (
+          <div style={{ padding: "16px", background: "rgba(239, 68, 68, 0.1)", border: "1px solid #ef4444", borderRadius: "12px", marginBottom: "24px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <span style={{ fontSize: "24px" }}>❌</span>
+              <p style={{ fontSize: "14px", color: "#ef4444" }}>{error}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Form Card */}
+        <form onSubmit={handleSubmit}>
+          <div style={{
+            background: "linear-gradient(145deg, rgba(30, 30, 36, 0.7) 0%, rgba(25, 25, 30, 0.6) 100%)",
+            borderRadius: "28px",
+            padding: "36px 28px",
+            border: "1px solid rgba(255, 255, 255, 0.08)",
+            boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3)"
+          }}>
+            {/* Customer Name */}
+            <div style={{ marginBottom: "24px" }}>
+              <label style={{
+                display: "block",
                 fontSize: "13px",
+                fontWeight: 500,
+                color: "#E5E5E7",
+                marginBottom: "10px",
+                letterSpacing: "0.3px"
               }}>
-                Walk-In Booking Form
-              </p>
+                Your Name <span style={{ color: "#EF4444" }}>*</span>
+              </label>
+              <input
+                type="text"
+                value={customerName}
+                onChange={(e) => {
+                  // Only allow letters and spaces
+                  const value = e.target.value.replace(/[^a-zA-Z\s]/g, '');
+                  setCustomerName(value);
+                }}
+                placeholder="Enter your full name"
+                className="form-input"
+                maxLength={50}
+                style={{
+                  width: "100%",
+                  padding: "16px 18px",
+                  background: "rgba(15, 15, 20, 0.9)",
+                  border: "1px solid rgba(255, 255, 255, 0.08)",
+                  borderRadius: "14px",
+                  color: "#FFFFFF",
+                  fontSize: "15px",
+                  fontFamily: fonts.body,
+                  fontWeight: 400
+                }}
+              />
             </div>
 
-            {/* Form */}
-            <form onSubmit={handleSubmit} style={{
-              background: "rgba(20, 20, 28, 0.95)",
-              border: "1px solid rgba(255, 255, 255, 0.1)",
-              borderRadius: "20px",
-              padding: "24px",
-            }}>
-              {/* Error Message */}
-              {error && (
-                <div style={{
-                  background: "rgba(239, 68, 68, 0.15)",
-                  border: "1px solid rgba(239, 68, 68, 0.4)",
-                  borderRadius: "12px",
-                  padding: "12px 16px",
-                  marginBottom: "20px",
-                  color: "#ef4444",
-                  fontSize: "14px",
-                  textAlign: "center",
+            {/* Phone Number */}
+            <div style={{ marginBottom: "32px" }}>
+              <label style={{
+                display: "block",
+                fontSize: "13px",
+                fontWeight: 500,
+                color: "#E5E5E7",
+                marginBottom: "10px",
+                letterSpacing: "0.3px"
+              }}>
+                Phone Number <span style={{ color: "#EF4444" }}>*</span>
+              </label>
+              <input
+                type="tel"
+                value={customerPhone}
+                onChange={(e) => {
+                  // Only allow digits
+                  const value = e.target.value.replace(/\D/g, '');
+                  // Limit to 10 digits
+                  setCustomerPhone(value.slice(0, 10));
+                }}
+                placeholder="10-digit mobile number"
+                className="form-input"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={10}
+                style={{
+                  width: "100%",
+                  padding: "16px 18px",
+                  background: "rgba(15, 15, 20, 0.9)",
+                  border: "1px solid rgba(255, 255, 255, 0.08)",
+                  borderRadius: "14px",
+                  color: "#FFFFFF",
+                  fontSize: "15px",
+                  fontFamily: fonts.body,
+                  fontWeight: 400
+                }}
+              />
+            </div>
+
+            {/* Console Selection */}
+            <div style={{ marginBottom: "32px" }}>
+              <label style={{
+                display: "block",
+                fontSize: "13px",
+                fontWeight: 500,
+                color: "#E5E5E7",
+                marginBottom: "14px",
+                letterSpacing: "0.3px"
+              }}>
+                Select Console <span style={{ color: "#EF4444" }}>*</span>
+              </label>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(105px, 1fr))", gap: "12px" }}>
+                {CONSOLES.filter(c => availableConsoles.includes(c.id)).map((console) => {
+                  const isSelected = selectedConsole === console.id;
+                  return (
+                    <button
+                      key={console.id}
+                      type="button"
+                      onClick={() => setSelectedConsole(console.id)}
+                      style={{
+                        padding: "18px 10px",
+                        borderRadius: "18px",
+                        border: isSelected ? `2px solid ${console.color}` : "1px solid rgba(255, 255, 255, 0.08)",
+                        background: isSelected
+                          ? `linear-gradient(135deg, ${console.color}25 0%, ${console.color}15 100%)`
+                          : "rgba(15, 15, 20, 0.7)",
+                        cursor: "pointer",
+                        transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                        textAlign: "center"
+                      }}
+                      className="console-btn"
+                    >
+                      <div style={{ fontSize: "36px", marginBottom: "10px" }}>{console.icon}</div>
+                      <div style={{
+                        fontSize: "12px",
+                        fontWeight: 600,
+                        color: isSelected ? console.color : "#E5E5E7",
+                        letterSpacing: "0.3px"
+                      }}>
+                        {console.label}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Console Quantity */}
+            {selectedConsole && (
+              <div style={{ marginBottom: "32px" }}>
+                <label style={{
+                  display: "block",
+                  fontSize: "13px",
+                  fontWeight: 500,
+                  color: "#E5E5E7",
+                  marginBottom: "14px",
+                  letterSpacing: "0.3px"
                 }}>
-                  {error}
+                  Quantity (No. of Consoles)
+                </label>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(70px, 1fr))", gap: "12px" }}>
+                  {Array.from({ length: getMaxConsoleQuantity() }, (_, i) => i + 1).map((num) => (
+                    <button
+                      key={num}
+                      type="button"
+                      onClick={() => setConsoleQuantity(num)}
+                      style={{
+                        padding: "22px 12px",
+                        borderRadius: "18px",
+                        border: consoleQuantity === num ? "2px solid #10B981" : "1px solid rgba(255, 255, 255, 0.08)",
+                        background: consoleQuantity === num
+                          ? "linear-gradient(135deg, rgba(16, 185, 129, 0.3) 0%, rgba(16, 185, 129, 0.15) 100%)"
+                          : "rgba(15, 15, 20, 0.7)",
+                        cursor: "pointer",
+                        transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                        textAlign: "center"
+                      }}
+                      className="quantity-btn"
+                    >
+                      <div style={{
+                        fontSize: "32px",
+                        fontWeight: 800,
+                        color: consoleQuantity === num ? "#10B981" : "#E5E5E7",
+                        fontFamily: fonts.heading,
+                        lineHeight: "1"
+                      }}>
+                        {num}
+                      </div>
+                    </button>
+                  ))}
                 </div>
-              )}
-
-              {/* Name Input */}
-              <div style={{ marginBottom: "16px" }}>
-                <label style={{
-                  display: "block",
-                  color: colors.textPrimary,
-                  fontSize: "13px",
-                  fontWeight: 600,
-                  marginBottom: "8px",
-                }}>
-                  Your Name *
-                </label>
-                <input
-                  type="text"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  placeholder="Enter your full name"
-                  disabled={submitting}
-                  autoComplete="name"
-                  style={{
-                    width: "100%",
-                    padding: "14px 16px",
-                    background: "rgba(255, 255, 255, 0.05)",
-                    border: "1px solid rgba(255, 255, 255, 0.1)",
-                    borderRadius: "12px",
-                    color: colors.textPrimary,
-                    fontSize: "16px",
-                    fontFamily: fonts.body,
-                    outline: "none",
-                  }}
-                />
-              </div>
-
-              {/* Phone Input */}
-              <div style={{ marginBottom: "20px" }}>
-                <label style={{
-                  display: "block",
-                  color: colors.textPrimary,
-                  fontSize: "13px",
-                  fontWeight: 600,
-                  marginBottom: "8px",
-                }}>
-                  Phone Number *
-                </label>
-                <input
-                  type="tel"
-                  value={customerPhone}
-                  onChange={(e) => setCustomerPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                  placeholder="10-digit mobile number"
-                  disabled={submitting}
-                  autoComplete="tel"
-                  inputMode="numeric"
-                  style={{
-                    width: "100%",
-                    padding: "14px 16px",
-                    background: "rgba(255, 255, 255, 0.05)",
-                    border: "1px solid rgba(255, 255, 255, 0.1)",
-                    borderRadius: "12px",
-                    color: colors.textPrimary,
-                    fontSize: "16px",
-                    fontFamily: fonts.body,
-                    outline: "none",
-                  }}
-                />
-              </div>
-
-              {/* Console Selection - Only Available Consoles */}
-              <div style={{ marginBottom: "20px" }}>
-                <label style={{
-                  display: "block",
-                  color: colors.textPrimary,
-                  fontSize: "13px",
-                  fontWeight: 600,
-                  marginBottom: "10px",
-                }}>
-                  Select Console *
-                </label>
                 <div style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(3, 1fr)",
-                  gap: "10px",
+                  fontSize: "12px",
+                  color: "#999",
+                  marginTop: "10px",
+                  textAlign: "center"
                 }}>
-                  {availableConsoleOptions.map((console) => {
-                    const isSelected = selectedConsole === console.id;
-
-                    return (
-                      <button
-                        key={console.id}
-                        type="button"
-                        onClick={() => setSelectedConsole(console.id)}
-                        disabled={submitting}
-                        style={{
-                          padding: "14px 8px",
-                          background: isSelected
-                            ? `linear-gradient(135deg, ${console.color}33 0%, ${console.color}11 100%)`
-                            : "rgba(255, 255, 255, 0.03)",
-                          border: isSelected
-                            ? `2px solid ${console.color}`
-                            : "1px solid rgba(255, 255, 255, 0.1)",
-                          borderRadius: "12px",
-                          color: colors.textPrimary,
-                          cursor: "pointer",
-                          transition: "all 0.2s",
-                          textAlign: "center",
-                        }}
-                      >
-                        <div style={{ fontSize: "24px", marginBottom: "4px" }}>{console.icon}</div>
-                        <div style={{ fontSize: "12px", fontWeight: 600 }}>{console.label}</div>
-                      </button>
-                    );
-                  })}
+                  {getMaxConsoleQuantity()} {getMaxConsoleQuantity() === 1 ? 'console' : 'consoles'} available
                 </div>
               </div>
+            )}
 
-              {/* Quantity Selection */}
-              <div style={{ marginBottom: "16px" }}>
+            {/* Number of Controllers */}
+            {selectedConsole && (
+              <div style={{ marginBottom: "32px" }}>
                 <label style={{
                   display: "block",
-                  color: colors.textPrimary,
                   fontSize: "13px",
-                  fontWeight: 600,
-                  marginBottom: "8px",
+                  fontWeight: 500,
+                  color: "#E5E5E7",
+                  marginBottom: "14px",
+                  letterSpacing: "0.3px"
                 }}>
                   No. of Controllers
                 </label>
-                <div style={{ display: "flex", gap: "8px" }}>
-                  {[1, 2, 3, 4].map((num) => {
-                    const isSelected = quantity === num;
-
-                    return (
-                      <button
-                        key={num}
-                        type="button"
-                        onClick={() => setQuantity(num)}
-                        disabled={submitting}
-                        style={{
-                          flex: 1,
-                          padding: "14px",
-                          background: isSelected
-                            ? `linear-gradient(135deg, ${colors.red} 0%, #cc0530 100%)`
-                            : "rgba(255, 255, 255, 0.05)",
-                          border: isSelected
-                            ? `2px solid ${colors.red}`
-                            : "1px solid rgba(255, 255, 255, 0.1)",
-                          borderRadius: "12px",
-                          color: colors.textPrimary,
-                          fontSize: "18px",
-                          fontWeight: 700,
-                          cursor: "pointer",
-                          transition: "all 0.2s",
-                        }}
-                      >
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "12px" }}>
+                  {[1, 2, 3, 4].filter(num => num <= getMaxControllers()).map((num) => (
+                    <button
+                      key={num}
+                      type="button"
+                      onClick={() => setNumControllers(num)}
+                      style={{
+                        padding: "22px 12px",
+                        borderRadius: "18px",
+                        border: numControllers === num ? "2px solid #EF4444" : "1px solid rgba(255, 255, 255, 0.08)",
+                        background: numControllers === num
+                          ? "linear-gradient(135deg, rgba(239, 68, 68, 0.3) 0%, rgba(239, 68, 68, 0.15) 100%)"
+                          : "rgba(15, 15, 20, 0.7)",
+                        cursor: "pointer",
+                        transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                        textAlign: "center"
+                      }}
+                      className="controller-btn"
+                    >
+                      <div style={{
+                        fontSize: "32px",
+                        fontWeight: 800,
+                        color: numControllers === num ? "#EF4444" : "#E5E5E7",
+                        fontFamily: fonts.heading,
+                        lineHeight: "1"
+                      }}>
                         {num}
-                      </button>
-                    );
-                  })}
+                      </div>
+                    </button>
+                  ))}
                 </div>
               </div>
+            )}
 
-              {/* Duration Selection */}
-              <div style={{ marginBottom: "24px" }}>
+            {/* Duration */}
+            {selectedConsole && (
+              <div style={{ marginBottom: "36px" }}>
                 <label style={{
                   display: "block",
-                  color: colors.textPrimary,
                   fontSize: "13px",
-                  fontWeight: 600,
-                  marginBottom: "8px",
+                  fontWeight: 500,
+                  color: "#E5E5E7",
+                  marginBottom: "14px",
+                  letterSpacing: "0.3px"
                 }}>
                   Duration
                 </label>
-                <div style={{ display: "flex", gap: "10px" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "14px" }}>
                   <button
                     type="button"
                     onClick={() => setDuration(30)}
-                    disabled={submitting}
                     style={{
-                      flex: 1,
-                      padding: "14px",
+                      padding: "22px 20px",
+                      borderRadius: "18px",
+                      border: duration === 30 ? "2px solid #00D9FF" : "1px solid rgba(255, 255, 255, 0.08)",
                       background: duration === 30
-                        ? `linear-gradient(135deg, ${colors.cyan} 0%, #00b8d4 100%)`
-                        : "rgba(255, 255, 255, 0.05)",
-                      border: duration === 30
-                        ? `2px solid ${colors.cyan}`
-                        : "1px solid rgba(255, 255, 255, 0.1)",
-                      borderRadius: "12px",
-                      color: colors.textPrimary,
-                      fontSize: "16px",
-                      fontWeight: 700,
+                        ? "linear-gradient(135deg, rgba(0, 217, 255, 0.3) 0%, rgba(0, 217, 255, 0.15) 100%)"
+                        : "rgba(15, 15, 20, 0.7)",
                       cursor: "pointer",
-                      transition: "all 0.2s",
+                      transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                      textAlign: "center"
                     }}
+                    className="duration-btn"
                   >
-                    30 min
+                    <div style={{
+                      fontSize: "32px",
+                      fontWeight: 800,
+                      color: duration === 30 ? "#00D9FF" : "#E5E5E7",
+                      fontFamily: fonts.heading,
+                      lineHeight: "1",
+                      letterSpacing: "0.5px"
+                    }}>
+                      30 min
+                    </div>
                   </button>
                   <button
                     type="button"
                     onClick={() => setDuration(60)}
-                    disabled={submitting}
                     style={{
-                      flex: 1,
-                      padding: "14px",
+                      padding: "22px 20px",
+                      borderRadius: "18px",
+                      border: duration === 60 ? "2px solid #00D9FF" : "1px solid rgba(255, 255, 255, 0.08)",
                       background: duration === 60
-                        ? `linear-gradient(135deg, ${colors.cyan} 0%, #00b8d4 100%)`
-                        : "rgba(255, 255, 255, 0.05)",
-                      border: duration === 60
-                        ? `2px solid ${colors.cyan}`
-                        : "1px solid rgba(255, 255, 255, 0.1)",
-                      borderRadius: "12px",
-                      color: colors.textPrimary,
-                      fontSize: "16px",
-                      fontWeight: 700,
+                        ? "linear-gradient(135deg, rgba(0, 217, 255, 0.3) 0%, rgba(0, 217, 255, 0.15) 100%)"
+                        : "rgba(15, 15, 20, 0.7)",
                       cursor: "pointer",
-                      transition: "all 0.2s",
+                      transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                      textAlign: "center"
                     }}
+                    className="duration-btn"
                   >
-                    60 min
+                    <div style={{
+                      fontSize: "32px",
+                      fontWeight: 800,
+                      color: duration === 60 ? "#00D9FF" : "#E5E5E7",
+                      fontFamily: fonts.heading,
+                      lineHeight: "1",
+                      letterSpacing: "0.5px"
+                    }}>
+                      60 min
+                    </div>
                   </button>
                 </div>
               </div>
+            )}
 
-              {/* Amount Display */}
+            {/* Price Summary */}
+            {selectedConsole && (
               <div style={{
-                background: "rgba(255, 7, 58, 0.1)",
-                border: "1px solid rgba(255, 7, 58, 0.3)",
-                borderRadius: "16px",
-                padding: "20px",
-                marginBottom: "24px",
+                padding: "28px 24px",
+                background: "linear-gradient(135deg, rgba(139, 69, 69, 0.2) 0%, rgba(139, 69, 69, 0.08) 100%)",
+                borderRadius: "20px",
+                marginBottom: "28px",
+                border: "1px solid rgba(239, 68, 68, 0.12)",
+                boxShadow: "0 4px 16px rgba(0, 0, 0, 0.2)"
               }}>
                 <div style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
+                  fontSize: "12px",
+                  color: "#999",
+                  marginBottom: "6px",
+                  letterSpacing: "0.5px",
+                  textTransform: "uppercase"
                 }}>
-                  <div>
-                    <div style={{ color: colors.textSecondary, fontSize: "13px", marginBottom: "4px" }}>
-                      Total Amount
-                    </div>
-                    <div style={{ color: colors.textPrimary, fontSize: "11px" }}>
-                      Pay at Counter
-                    </div>
-                  </div>
-                  <div style={{
-                    fontFamily: fonts.heading,
-                    fontSize: "36px",
-                    fontWeight: 700,
-                    color: colors.red,
-                  }}>
-                    ₹{totalAmount}
-                  </div>
+                  Total Amount
+                </div>
+                <div style={{
+                  fontSize: "13px",
+                  color: "#B4B4B7",
+                  marginBottom: "20px",
+                  fontWeight: 400
+                }}>
+                  Pay at Counter
+                </div>
+                <div style={{
+                  fontSize: "52px",
+                  fontWeight: 900,
+                  color: "#EF4444",
+                  fontFamily: fonts.heading,
+                  lineHeight: "1",
+                  letterSpacing: "1px"
+                }}>
+                  ₹{totalPrice}
                 </div>
               </div>
+            )}
 
-              {/* Submit Button */}
-              <button
-                type="submit"
-                disabled={submitting || !selectedConsole}
-                style={{
-                  width: "100%",
-                  padding: "18px",
-                  background: submitting
-                    ? "rgba(148, 163, 184, 0.3)"
-                    : `linear-gradient(135deg, ${colors.red} 0%, #ff3366 100%)`,
-                  border: "none",
-                  borderRadius: "14px",
-                  color: "white",
-                  fontSize: "17px",
-                  fontWeight: 700,
-                  fontFamily: fonts.heading,
-                  textTransform: "uppercase",
-                  letterSpacing: "1.5px",
-                  cursor: submitting ? "not-allowed" : "pointer",
-                  opacity: submitting ? 0.6 : 1,
-                  boxShadow: submitting ? "none" : "0 4px 20px rgba(255, 7, 58, 0.3)",
-                  transition: "all 0.2s",
-                }}
-              >
-                {submitting ? "Creating..." : "Confirm Booking"}
-              </button>
-            </form>
-          </>
-        )}
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={submitting || !selectedConsole}
+              style={{
+                width: "100%",
+                padding: "20px 24px",
+                background: selectedConsole && !submitting
+                  ? "linear-gradient(135deg, #EF4444 0%, #DC2626 100%)"
+                  : "rgba(255, 255, 255, 0.04)",
+                border: "none",
+                borderRadius: "18px",
+                color: selectedConsole ? "#FFFFFF" : "#555",
+                fontFamily: fonts.heading,
+                fontSize: "15px",
+                fontWeight: 800,
+                textTransform: "uppercase",
+                letterSpacing: "2.5px",
+                cursor: selectedConsole && !submitting ? "pointer" : "not-allowed",
+                transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
+                boxShadow: selectedConsole && !submitting
+                  ? "0 8px 24px rgba(239, 68, 68, 0.25)"
+                  : "none"
+              }}
+              className="submit-btn"
+            >
+              {submitting ? "PROCESSING..." : "CONFIRM BOOKING"}
+            </button>
+          </div>
+        </form>
       </div>
 
-      <style jsx global>{`
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
+      {/* Styles */}
+      <style>{`
+        @keyframes spin {
+          to { transform: rotate(360deg); }
         }
-        @keyframes scaleIn {
-          from { transform: scale(0.5); }
-          to { transform: scale(1); }
+
+        @keyframes slideUp {
+          from {
+            opacity: 0;
+            transform: translateY(30px) scale(0.95);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+          }
+        }
+
+        .form-input:focus {
+          outline: none;
+          border-color: #00D9FF !important;
+          box-shadow: 0 0 0 4px rgba(0, 217, 255, 0.1);
+        }
+
+        .form-input::placeholder {
+          color: #666;
+        }
+
+        .console-btn:hover:not(:disabled) {
+          transform: translateY(-4px);
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+        }
+
+        .quantity-btn:hover:not(:disabled) {
+          transform: scale(1.05);
+          box-shadow: 0 8px 16px rgba(16, 185, 129, 0.2);
+        }
+
+        .controller-btn:hover:not(:disabled) {
+          transform: scale(1.05);
+          box-shadow: 0 8px 16px rgba(239, 68, 68, 0.2);
+        }
+
+        .duration-btn:hover:not(:disabled) {
+          transform: scale(1.02);
+          box-shadow: 0 8px 16px rgba(0, 217, 255, 0.2);
+        }
+
+        .submit-btn:hover:not(:disabled) {
+          transform: translateY(-2px);
+          box-shadow: 0 12px 32px rgba(239, 68, 68, 0.3);
+        }
+
+        .submit-btn:active:not(:disabled) {
+          transform: translateY(0);
+        }
+
+        .close-modal-btn:hover {
+          transform: scale(1.02);
+          box-shadow: 0 12px 32px rgba(16, 185, 129, 0.4) !important;
+        }
+
+        .close-modal-btn:active {
+          transform: scale(0.98);
         }
       `}</style>
     </div>
