@@ -9,6 +9,7 @@ import { ConsolePricingTier } from "@/types/booking";
 import { useCafeData } from "@/hooks/useCafeData";
 import { determinePriceForTier, calculateConsoleMaxQuantity } from "@/lib/ticketService";
 import { checkBookingCapacityWithOverlap } from "@/lib/capacityValidator";
+import { fetchLiveAvailability } from "@/lib/availabilityService";
 import { logger } from "@/lib/logger";
 
 const CONSOLES = [
@@ -123,7 +124,24 @@ export default function WalkInBookingPage() {
       });
 
       if (!capacityCheck.ok) {
-        setError(capacityCheck.message || "Not enough consoles available for this time slot");
+        // Fetch live availability to get next available time
+        const availability = await fetchLiveAvailability({
+          cafeId: actualCafeId,
+          selectedDate: bookingDate,
+          selectedTime: startTime,
+          selectedDuration: duration,
+          availableConsoles: [selectedConsole],
+          consoleLimits: consoleLimits,
+        });
+
+        const consoleAvailability = availability[selectedConsole];
+        const nextAvailableTime = consoleAvailability?.nextAvailableAt;
+
+        if (nextAvailableTime) {
+          setError(`${CONSOLE_LABELS[selectedConsole]} not available right now. Next available at ${nextAvailableTime}`);
+        } else {
+          setError(capacityCheck.message || "Not enough consoles available for this time slot");
+        }
         setSubmitting(false);
         return;
       }
