@@ -8,6 +8,7 @@ import { colors, fonts, CONSOLE_LABELS, CONSOLE_COLORS, CONSOLE_ICONS, type Cons
 import { ConsolePricingTier } from "@/types/booking";
 import { useCafeData } from "@/hooks/useCafeData";
 import { determinePriceForTier, calculateConsoleMaxQuantity } from "@/lib/ticketService";
+import { checkBookingCapacityWithOverlap } from "@/lib/capacityValidator";
 import { logger } from "@/lib/logger";
 
 const CONSOLES = [
@@ -108,6 +109,24 @@ export default function WalkInBookingPage() {
       const ampm = hours >= 12 ? "pm" : "am";
       const displayHours = hours % 12 || 12;
       const startTime = `${displayHours}:${minutes.toString().padStart(2, "0")} ${ampm}`;
+
+      // Check capacity availability before creating bookings
+      const capacityCheck = await checkBookingCapacityWithOverlap({
+        cafeId: actualCafeId,
+        bookingDate,
+        timeSlot: startTime,
+        tickets: [{
+          console: selectedConsole,
+          quantity: consoleQuantity, // Number of console units
+        }],
+        durationMinutes: duration,
+      });
+
+      if (!capacityCheck.ok) {
+        setError(capacityCheck.message || "Not enough consoles available for this time slot");
+        setSubmitting(false);
+        return;
+      }
 
       // Create separate bookings for each console unit
       const pricePerConsole = totalPrice / consoleQuantity;
