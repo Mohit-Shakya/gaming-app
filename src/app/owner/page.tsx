@@ -383,7 +383,7 @@ export default function OwnerDashboardPage() {
 
   // Handle edit booking
   function handleEditBooking(booking: BookingRow) {
-    if (booking.source?.toLowerCase() !== "walk_in") {
+    if (booking.source?.toLowerCase() !== "walk-in") {
       alert("Only walk-in bookings can be edited");
       return;
     }
@@ -519,7 +519,7 @@ export default function OwnerDashboardPage() {
 
     // Source filter
     if (sourceFilter !== "all") {
-      const bookingSource = booking.source?.toLowerCase() === "walk_in" ? "walk_in" : "online";
+      const bookingSource = booking.source?.toLowerCase() === "walk-in" ? "walk_in" : "online";
       if (bookingSource !== sourceFilter) return false;
     }
 
@@ -1394,7 +1394,7 @@ export default function OwnerDashboardPage() {
                       </thead>
                       <tbody>
                         {filteredBookings.map((booking, index) => {
-                          const source = booking.source?.toLowerCase() === "walk_in" ? "Walk-in" : "Online";
+                          const source = booking.source?.toLowerCase() === "walk-in" ? "Walk-in" : "Online";
                           return (
                             <tr
                               key={booking.id}
