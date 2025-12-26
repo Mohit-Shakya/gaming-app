@@ -109,58 +109,60 @@ export default function WalkInBookingPage() {
       const displayHours = hours % 12 || 12;
       const startTime = `${displayHours}:${minutes.toString().padStart(2, "0")} ${ampm}`;
 
-      // Create booking
-      const { data: booking, error: bookingError } = await supabase
-        .from("bookings")
-        .insert({
-          cafe_id: actualCafeId,
-          booking_date: bookingDate,
-          start_time: startTime,
-          duration: duration,
-          status: "confirmed",
-          customer_name: customerName.trim(),
-          customer_phone: customerPhone.trim(),
-          source: "walk-in",
-          total_amount: totalPrice,
-        })
-        .select()
-        .single();
+      // Create separate bookings for each console unit
+      const pricePerConsole = totalPrice / consoleQuantity;
+      const createdBookingIds: string[] = [];
 
-      if (bookingError || !booking) {
-        logger.error("Error creating booking:", bookingError);
-        setError("Failed to create booking. Please try again.");
-        setSubmitting(false);
-        return;
-      }
-
-      // Create booking items - one item per console unit
-      // Each item represents 1 console unit with X controllers
-      const bookingItems = [];
       for (let i = 0; i < consoleQuantity; i++) {
-        bookingItems.push({
-          booking_id: booking.id,
-          console: selectedConsole,
-          quantity: numControllers, // Number of controllers for this console unit
-          title: `${CONSOLE_LABELS[selectedConsole]} (${numControllers} ${numControllers > 1 ? 'controllers' : 'controller'})`,
-          price: totalPrice / consoleQuantity, // Divide price equally among console units
-          ticket_id: `walk-in-${booking.id}-${i}`, // Unique ticket ID for each console unit
-        });
-      }
+        // Create individual booking for each console
+        const { data: booking, error: bookingError } = await supabase
+          .from("bookings")
+          .insert({
+            cafe_id: actualCafeId,
+            booking_date: bookingDate,
+            start_time: startTime,
+            duration: duration,
+            status: "confirmed",
+            customer_name: customerName.trim(),
+            customer_phone: customerPhone.trim(),
+            source: "walk-in",
+            total_amount: pricePerConsole,
+          })
+          .select()
+          .single();
 
-      const { error: itemsError } = await supabase
-        .from("booking_items")
-        .insert(bookingItems);
+        if (bookingError || !booking) {
+          logger.error("Error creating booking:", bookingError);
+          setError("Failed to create booking. Please try again.");
+          setSubmitting(false);
+          return;
+        }
 
-      if (itemsError) {
-        logger.error("Error creating booking items:", itemsError);
-        setError("Booking created but items failed. Please contact support.");
-        setSubmitting(false);
-        return;
+        createdBookingIds.push(booking.id);
+
+        // Create booking item for this console
+        const { error: itemsError } = await supabase
+          .from("booking_items")
+          .insert({
+            booking_id: booking.id,
+            console: selectedConsole,
+            quantity: numControllers, // Number of controllers
+            title: `${CONSOLE_LABELS[selectedConsole]} (${numControllers} ${numControllers > 1 ? 'controllers' : 'controller'})`,
+            price: pricePerConsole,
+            ticket_id: `walk-in-${booking.id}`,
+          });
+
+        if (itemsError) {
+          logger.error("Error creating booking item:", itemsError);
+          setError("Booking created but items failed. Please contact support.");
+          setSubmitting(false);
+          return;
+        }
       }
 
       // Save the confirmed amount before resetting the form
       setConfirmedAmount(totalPrice);
-      setBookingId(booking.id);
+      setBookingId(createdBookingIds[0]); // Show first booking ID
       setSuccess(true);
 
       // Reset form
