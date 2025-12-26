@@ -81,8 +81,8 @@ export async function fetchLiveAvailability(options: {
         (booking.booking_items ?? []).forEach((item) => {
           const consoleId = item.console as ConsoleId;
           if (consoleId && availability[consoleId]) {
-            // Add to booked count
-            availability[consoleId]!.booked += item.quantity || 0;
+            // Add to booked count - each booking_item represents 1 console unit
+            availability[consoleId]!.booked += 1;
             availability[consoleId]!.available =
               availability[consoleId]!.total - availability[consoleId]!.booked;
 
@@ -92,7 +92,7 @@ export async function fetchLiveAvailability(options: {
             }
             overlappingBookingsPerConsole[consoleId]!.push({
               endMinutes: bookingEndMinutes,
-              quantity: item.quantity || 0,
+              quantity: 1, // Each item = 1 console unit
             });
           }
         });

@@ -94,8 +94,8 @@ export async function checkBookingCapacityWithOverlap(options: {
       (booking.booking_items ?? []).forEach((item) => {
         const consoleId = item.console as ConsoleId;
         if (!consoleId) return;
-        const qty = item.quantity ?? 0;
-        alreadyBooked[consoleId] = (alreadyBooked[consoleId] ?? 0) + qty;
+        // Each booking_item represents 1 console unit (quantity = controllers, not units)
+        alreadyBooked[consoleId] = (alreadyBooked[consoleId] ?? 0) + 1;
       });
     }
   });
