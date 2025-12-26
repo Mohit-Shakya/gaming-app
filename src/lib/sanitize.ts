@@ -206,7 +206,7 @@ export function sanitizeObject<T extends Record<string, unknown>>(
       if (sanitizer) {
         const sanitizedValue = sanitizer(obj[key]);
         if (sanitizedValue !== null && sanitizedValue !== undefined) {
-          sanitized[key] = sanitizedValue;
+          sanitized[key] = sanitizedValue as T[Extract<keyof T, string>];
         }
       }
     }

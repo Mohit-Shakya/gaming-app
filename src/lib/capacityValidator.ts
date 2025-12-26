@@ -91,7 +91,7 @@ export async function checkBookingCapacityWithOverlap(options: {
     const bookingStartMinutes = timeStringToMinutes(booking.start_time || "");
 
     if (doTimeSlotsOverlap(selectedTimeMinutes, bookingStartMinutes, durationMinutes)) {
-      (booking.booking_items ?? []).forEach((item: BookingItemRow) => {
+      (booking.booking_items ?? []).forEach((item) => {
         const consoleId = item.console as ConsoleId;
         if (!consoleId) return;
         const qty = item.quantity ?? 0;

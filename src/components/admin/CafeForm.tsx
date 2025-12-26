@@ -230,7 +230,7 @@ export default function CafeForm({ mode, cafe }: CafeFormProps) {
         address,
         google_maps_url: mapsUrl || null,
         description: description || null,
-        hourly_price: hourlyPrice ? Number(hourlyPrice) : null,
+        hourly_price: hourlyPrice ? Number(hourlyPrice) : 0,
         cover_url: newCoverUrl,
 
         ps5_count: ps5Count ? Number(ps5Count) : 0,
@@ -261,6 +261,9 @@ export default function CafeForm({ mode, cafe }: CafeFormProps) {
       if (mode === "create") {
         result = await supabase.from("cafes").insert(payload).select().single();
       } else {
+        if (!cafe?.id) {
+          throw new Error("Cafe ID is required for update");
+        }
         result = await supabase
           .from("cafes")
           .update(payload)

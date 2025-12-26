@@ -243,7 +243,7 @@ export default function OwnerDashboardPage() {
             qty4_60min: number | null;
           };
           const pricingMap: Record<string, Record<string, PricingTier>> = {};
-          pricingData.forEach((item: ConsolePricingRow) => {
+          pricingData.forEach((item) => {
             if (!pricingMap[item.cafe_id]) {
               pricingMap[item.cafe_id] = {};
             }
@@ -259,7 +259,7 @@ export default function OwnerDashboardPage() {
                 qty4_60min: null,
               };
             }
-            const key = `qty${item.quantity}_${item.duration_minutes}min`;
+            const key = `qty${item.quantity}_${item.duration_minutes}min` as keyof PricingTier;
             pricingMap[item.cafe_id][item.console_type][key] = item.price;
           });
           setConsolePricing(pricingMap);
@@ -1437,7 +1437,7 @@ export default function OwnerDashboardPage() {
                                     const items = booking.booking_items || [];
                                     if (items.length === 0) return "-";
 
-                                    const consoles = items.map((item: BookingItemRow) => {
+                                    const consoles = items.map((item) => {
                                       const consoleName = item.console || "Unknown";
                                       const controllers = item.quantity || 1;
                                       return controllers > 1 ? `${consoleName} (${controllers} controllers)` : consoleName;

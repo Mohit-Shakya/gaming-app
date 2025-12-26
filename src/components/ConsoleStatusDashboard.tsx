@@ -288,7 +288,10 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
     return summaries;
   };
 
-  const findBookingForUnit = (unitNumber: number, bookings: Array<{ quantity: number; [key: string]: unknown }>): unknown => {
+  const findBookingForUnit = (
+    unitNumber: number,
+    bookings: Array<BookingData & { quantity: number; controllerCount: number }>
+  ): (BookingData & { quantity: number; controllerCount: number }) | null => {
     let currentUnit = 1;
 
     for (const booking of bookings) {

@@ -20,6 +20,11 @@ export interface CafeRow {
   user_id: string;
   is_active: boolean;
 
+  // URLs
+  google_maps_url: string | null;
+  instagram_url: string | null;
+  cover_url: string | null;
+
   // Console counts
   ps5_count: number;
   ps4_count: number;
@@ -30,6 +35,17 @@ export interface CafeRow {
   snooker_count: number;
   vr_count: number;
   steering_wheel_count: number;
+
+  // Additional details
+  opening_hours: string | null;
+  peak_hours: string | null;
+  popular_games: string | null;
+  offers: string | null;
+  monitor_details: string | null;
+  processor_details: string | null;
+  gpu_details: string | null;
+  ram_details: string | null;
+  accessories_details: string | null;
 
   // Optional fields for joined data
   gallery_images?: GalleryImage[];

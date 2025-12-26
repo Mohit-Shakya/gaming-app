@@ -78,7 +78,7 @@ export async function fetchLiveAvailability(options: {
 
       // Check if this booking overlaps with the selected time slot
       if (doTimeSlotsOverlap(selectedTimeMinutes, bookingStartMinutes, selectedDuration)) {
-        (booking.booking_items ?? []).forEach((item: BookingItemRow) => {
+        (booking.booking_items ?? []).forEach((item) => {
           const consoleId = item.console as ConsoleId;
           if (consoleId && availability[consoleId]) {
             // Add to booked count

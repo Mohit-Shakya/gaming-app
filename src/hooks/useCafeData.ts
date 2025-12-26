@@ -133,12 +133,12 @@ export function useCafeData(cafeId: string | null): CafeData {
 
           logger.debug("Raw pricing data from database:", pricingData);
 
-          pricingData.forEach((item: ConsolePricingRow) => {
+          pricingData.forEach((item) => {
             // Map database console_type to ConsoleId
             let consoleId = item.console_type as ConsoleId;
             // Handle steering_wheel mapping
             if (item.console_type === "steering_wheel") {
-              consoleId = "steering";
+              consoleId = "steering" as ConsoleId;
             }
 
             // Initialize tier object if not exists
