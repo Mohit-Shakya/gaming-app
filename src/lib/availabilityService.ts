@@ -5,9 +5,9 @@
  */
 
 import { supabase } from "@/lib/supabaseClient";
-import { ConsoleId, BOOKING_DURATION_MINUTES } from "@/lib/constants";
+import { ConsoleId } from "@/lib/constants";
 import { ConsoleAvailability } from "@/types/booking";
-import { BookingWithNestedItems, BookingItemRow } from "@/types/database";
+import { BookingWithNestedItems } from "@/types/database";
 import { timeStringToMinutes, minutesToTimeString, doTimeSlotsOverlap } from "@/lib/timeSlotUtils";
 import { logger } from "@/lib/logger";
 
@@ -40,6 +40,7 @@ export async function fetchLiveAvailability(options: {
         `
         id,
         start_time,
+        duration,
         booking_items (
           console,
           quantity
@@ -72,9 +73,10 @@ export async function fetchLiveAvailability(options: {
     > = {};
 
     // Process each booking and check for overlap
-    (bookings ?? []).forEach((booking: BookingWithNestedItems) => {
+    (bookings ?? []).forEach((booking: BookingWithNestedItems & { duration?: number }) => {
       const bookingStartMinutes = timeStringToMinutes(booking.start_time || "");
-      const bookingEndMinutes = bookingStartMinutes + BOOKING_DURATION_MINUTES;
+      const bookingDuration = booking.duration || 60; // Default to 60 if not specified
+      const bookingEndMinutes = bookingStartMinutes + bookingDuration;
 
       // Check if this booking overlaps with the selected time slot
       if (doTimeSlotsOverlap(selectedTimeMinutes, bookingStartMinutes, selectedDuration)) {
