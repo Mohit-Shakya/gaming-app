@@ -133,16 +133,23 @@ export default function WalkInBookingPage() {
         return;
       }
 
-      // Create booking items
-      const { error: itemsError } = await supabase
-        .from("booking_items")
-        .insert({
+      // Create booking items - one item per console unit
+      // Each item represents 1 console unit with X controllers
+      const bookingItems = [];
+      for (let i = 0; i < consoleQuantity; i++) {
+        bookingItems.push({
           booking_id: booking.id,
           console: selectedConsole,
-          quantity: consoleQuantity,
-          title: `${CONSOLE_LABELS[selectedConsole]} x${consoleQuantity} (${numControllers} ${numControllers > 1 ? 'controllers' : 'controller'})`,
-          price: totalPrice,
+          quantity: numControllers, // Number of controllers for this console unit
+          title: `${CONSOLE_LABELS[selectedConsole]} (${numControllers} ${numControllers > 1 ? 'controllers' : 'controller'})`,
+          price: totalPrice / consoleQuantity, // Divide price equally among console units
+          ticket_id: `walk-in-${booking.id}-${i}`, // Unique ticket ID for each console unit
         });
+      }
+
+      const { error: itemsError } = await supabase
+        .from("booking_items")
+        .insert(bookingItems);
 
       if (itemsError) {
         logger.error("Error creating booking items:", itemsError);
