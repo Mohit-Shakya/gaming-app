@@ -141,6 +141,9 @@ export default function OwnerDashboardPage() {
   // Console pricing data
   const [consolePricing, setConsolePricing] = useState<Record<string, any>>({});
 
+  // Refresh trigger for bookings
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
   // Check role
   useEffect(() => {
     async function checkRole() {
@@ -432,7 +435,7 @@ export default function OwnerDashboardPage() {
     }
 
     loadData();
-  }, [allowed, user]);
+  }, [allowed, user, refreshTrigger]);
 
   // Real-time subscription for bookings
   useEffect(() => {
@@ -616,6 +619,68 @@ export default function OwnerDashboardPage() {
       supabase.removeChannel(channel);
     };
   }, [allowed, user, cafes]);
+
+  // Handle confirm booking (pending -> confirmed)
+  async function handleConfirmBooking(booking: BookingRow) {
+    if (booking.status !== "pending") {
+      alert("Only pending bookings can be confirmed");
+      return;
+    }
+
+    const confirmed = confirm(`Confirm booking for ${booking.customer_name || "customer"}?`);
+    if (!confirmed) return;
+
+    try {
+      const { error } = await supabase
+        .from("bookings")
+        .update({ status: "confirmed" })
+        .eq("id", booking.id);
+
+      if (error) {
+        console.error("Error confirming booking:", error);
+        alert("Failed to confirm booking");
+        return;
+      }
+
+      // Refresh bookings list
+      setRefreshTrigger(prev => prev + 1);
+      alert("Booking confirmed successfully!");
+    } catch (err) {
+      console.error("Error confirming booking:", err);
+      alert("Failed to confirm booking");
+    }
+  }
+
+  // Handle start booking (confirmed -> in-progress)
+  async function handleStartBooking(booking: BookingRow) {
+    if (booking.status !== "confirmed") {
+      alert("Only confirmed bookings can be started");
+      return;
+    }
+
+    const confirmed = confirm(`Start session for ${booking.customer_name || "customer"}?`);
+    if (!confirmed) return;
+
+    try {
+      const { error } = await supabase
+        .from("bookings")
+        .update({ status: "in-progress" })
+        .eq("id", booking.id);
+
+      if (error) {
+        console.error("Error starting booking:", error);
+        alert("Failed to start booking");
+        return;
+      }
+
+      // Refresh bookings list
+      setRefreshTrigger(prev => prev + 1);
+      alert("Booking started successfully!");
+    } catch (err) {
+      console.error("Error starting booking:", err);
+      alert("Failed to start booking");
+    }
+  }
 
   // Handle edit booking
   function handleEditBooking(booking: BookingRow) {
@@ -2315,30 +2380,85 @@ export default function OwnerDashboardPage() {
                                 </div>
                               </td>
                               <td style={{ padding: "14px 16px", textAlign: "center" }}>
-                                {source === "Walk-in" && (
-                                  <button
-                                    onClick={() => handleEditBooking(booking)}
-                                    style={{
-                                      padding: "6px 12px",
-                                      borderRadius: 6,
-                                      border: `1px solid ${colors.border}`,
-                                      background: "rgba(59, 130, 246, 0.1)",
-                                      color: "#3b82f6",
-                                      fontSize: 11,
-                                      fontWeight: 500,
-                                      cursor: "pointer",
-                                      transition: "all 0.2s ease",
-                                    }}
-                                    onMouseEnter={(e) => {
-                                      e.currentTarget.style.background = "rgba(59, 130, 246, 0.2)";
-                                    }}
-                                    onMouseLeave={(e) => {
-                                      e.currentTarget.style.background = "rgba(59, 130, 246, 0.1)";
-                                    }}
-                                  >
-                                    ✏️ Edit
-                                  </button>
-                                )}
+                                <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+                                  {/* Confirm button for pending online bookings */}
+                                  {booking.status === "pending" && source !== "Walk-in" && (
+                                    <button
+                                      onClick={() => handleConfirmBooking(booking)}
+                                      style={{
+                                        padding: "6px 12px",
+                                        borderRadius: 6,
+                                        border: "1px solid rgba(34, 197, 94, 0.3)",
+                                        background: "rgba(34, 197, 94, 0.1)",
+                                        color: "#22c55e",
+                                        fontSize: 11,
+                                        fontWeight: 500,
+                                        cursor: "pointer",
+                                        transition: "all 0.2s ease",
+                                      }}
+                                      onMouseEnter={(e) => {
+                                        e.currentTarget.style.background = "rgba(34, 197, 94, 0.2)";
+                                      }}
+                                      onMouseLeave={(e) => {
+                                        e.currentTarget.style.background = "rgba(34, 197, 94, 0.1)";
+                                      }}
+                                    >
+                                      ✅ Confirm
+                                    </button>
+                                  )}
+
+                                  {/* Start button for confirmed bookings */}
+                                  {booking.status === "confirmed" && (
+                                    <button
+                                      onClick={() => handleStartBooking(booking)}
+                                      style={{
+                                        padding: "6px 12px",
+                                        borderRadius: 6,
+                                        border: "1px solid rgba(168, 85, 247, 0.3)",
+                                        background: "rgba(168, 85, 247, 0.1)",
+                                        color: "#a855f7",
+                                        fontSize: 11,
+                                        fontWeight: 500,
+                                        cursor: "pointer",
+                                        transition: "all 0.2s ease",
+                                      }}
+                                      onMouseEnter={(e) => {
+                                        e.currentTarget.style.background = "rgba(168, 85, 247, 0.2)";
+                                      }}
+                                      onMouseLeave={(e) => {
+                                        e.currentTarget.style.background = "rgba(168, 85, 247, 0.1)";
+                                      }}
+                                    >
+                                      ▶️ Start
+                                    </button>
+                                  )}
+
+                                  {/* Edit button for walk-in bookings */}
+                                  {source === "Walk-in" && (
+                                    <button
+                                      onClick={() => handleEditBooking(booking)}
+                                      style={{
+                                        padding: "6px 12px",
+                                        borderRadius: 6,
+                                        border: `1px solid ${colors.border}`,
+                                        background: "rgba(59, 130, 246, 0.1)",
+                                        color: "#3b82f6",
+                                        fontSize: 11,
+                                        fontWeight: 500,
+                                        cursor: "pointer",
+                                        transition: "all 0.2s ease",
+                                      }}
+                                      onMouseEnter={(e) => {
+                                        e.currentTarget.style.background = "rgba(59, 130, 246, 0.2)";
+                                      }}
+                                      onMouseLeave={(e) => {
+                                        e.currentTarget.style.background = "rgba(59, 130, 246, 0.1)";
+                                      }}
+                                    >
+                                      ✏️ Edit
+                                    </button>
+                                  )}
+                                </div>
                               </td>
                             </tr>
                           );

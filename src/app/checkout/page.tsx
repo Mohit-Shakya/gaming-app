@@ -155,7 +155,7 @@ export default function CheckoutPage() {
           start_time: timeSlot,
           duration: draft.durationMinutes,
           total_amount: totalAmount,
-          status: "confirmed", // later you can change based on payment
+          status: "pending", // Owner must confirm before customer arrives
           source: "online",
           customer_name: customerName,
           customer_phone: profile?.phone || "",
