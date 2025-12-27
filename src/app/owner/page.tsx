@@ -91,7 +91,17 @@ function convertTo24Hour(time12h: string): string {
   return `${hours.toString().padStart(2, "0")}:${minutes}`;
 }
 
-function convertTo12Hour(time24h: string): string {
+function convertTo12Hour(time24h?: string): string {
+  if (!time24h) {
+    // If no time provided, use current time
+    const now = new Date();
+    const hours = now.getHours();
+    const minutes = now.getMinutes();
+    const period = hours >= 12 ? "pm" : "am";
+    const displayHours = hours % 12 || 12;
+    return `${displayHours}:${minutes.toString().padStart(2, "0")} ${period}`;
+  }
+
   const [hoursStr, minutes] = time24h.split(":");
   let hours = parseInt(hoursStr);
 
@@ -662,9 +672,15 @@ export default function OwnerDashboardPage() {
     if (!confirmed) return;
 
     try {
+      // Get current time in 12-hour format
+      const currentTime = convertTo12Hour();
+
       const { error } = await supabase
         .from("bookings")
-        .update({ status: "in-progress" })
+        .update({
+          status: "in-progress",
+          start_time: currentTime  // Update start time to actual start time
+        })
         .eq("id", booking.id);
 
       if (error) {
