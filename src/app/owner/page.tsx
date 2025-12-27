@@ -684,10 +684,7 @@ export default function OwnerDashboardPage() {
 
   // Handle edit booking
   function handleEditBooking(booking: BookingRow) {
-    if (booking.source?.toLowerCase() !== "walk-in") {
-      alert("Only walk-in bookings can be edited");
-      return;
-    }
+    // Allow editing all bookings, not just walk-ins
     setEditingBooking(booking);
     setEditAmount(booking.total_amount?.toString() || "");
     setEditStatus(booking.status || "confirmed");
@@ -2487,8 +2484,8 @@ export default function OwnerDashboardPage() {
                                           </button>
                                         )}
 
-                                        {/* Edit button for walk-in bookings (only if confirmed and not in-progress/completed) */}
-                                        {source === "Walk-in" && status === "confirmed" && !isBookingEnded && (
+                                        {/* Edit button for all confirmed bookings (not ended, not in-progress/completed) */}
+                                        {status === "confirmed" && !isBookingEnded && (
                                           <button
                                             onClick={() => handleEditBooking(booking)}
                                             style={{
