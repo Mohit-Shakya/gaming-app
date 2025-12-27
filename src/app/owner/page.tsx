@@ -2381,83 +2381,125 @@ export default function OwnerDashboardPage() {
                               </td>
                               <td style={{ padding: "14px 16px", textAlign: "center" }}>
                                 <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
-                                  {/* Confirm button for pending online bookings */}
-                                  {booking.status === "pending" && source !== "Walk-in" && (
-                                    <button
-                                      onClick={() => handleConfirmBooking(booking)}
-                                      style={{
-                                        padding: "6px 12px",
-                                        borderRadius: 6,
-                                        border: "1px solid rgba(34, 197, 94, 0.3)",
-                                        background: "rgba(34, 197, 94, 0.1)",
-                                        color: "#22c55e",
-                                        fontSize: 11,
-                                        fontWeight: 500,
-                                        cursor: "pointer",
-                                        transition: "all 0.2s ease",
-                                      }}
-                                      onMouseEnter={(e) => {
-                                        e.currentTarget.style.background = "rgba(34, 197, 94, 0.2)";
-                                      }}
-                                      onMouseLeave={(e) => {
-                                        e.currentTarget.style.background = "rgba(34, 197, 94, 0.1)";
-                                      }}
-                                    >
-                                      ✅ Confirm
-                                    </button>
-                                  )}
+                                  {(() => {
+                                    const status = booking.status || "pending";
 
-                                  {/* Start button for confirmed bookings */}
-                                  {booking.status === "confirmed" && (
-                                    <button
-                                      onClick={() => handleStartBooking(booking)}
-                                      style={{
-                                        padding: "6px 12px",
-                                        borderRadius: 6,
-                                        border: "1px solid rgba(168, 85, 247, 0.3)",
-                                        background: "rgba(168, 85, 247, 0.1)",
-                                        color: "#a855f7",
-                                        fontSize: 11,
-                                        fontWeight: 500,
-                                        cursor: "pointer",
-                                        transition: "all 0.2s ease",
-                                      }}
-                                      onMouseEnter={(e) => {
-                                        e.currentTarget.style.background = "rgba(168, 85, 247, 0.2)";
-                                      }}
-                                      onMouseLeave={(e) => {
-                                        e.currentTarget.style.background = "rgba(168, 85, 247, 0.1)";
-                                      }}
-                                    >
-                                      ▶️ Start
-                                    </button>
-                                  )}
+                                    // Check if booking has ended (past booking)
+                                    const isBookingEnded = (() => {
+                                      try {
+                                        const bookingDate = booking.booking_date || "";
+                                        const startTime = booking.start_time || "";
+                                        const duration = booking.duration || 60;
 
-                                  {/* Edit button for walk-in bookings */}
-                                  {source === "Walk-in" && (
-                                    <button
-                                      onClick={() => handleEditBooking(booking)}
-                                      style={{
-                                        padding: "6px 12px",
-                                        borderRadius: 6,
-                                        border: `1px solid ${colors.border}`,
-                                        background: "rgba(59, 130, 246, 0.1)",
-                                        color: "#3b82f6",
-                                        fontSize: 11,
-                                        fontWeight: 500,
-                                        cursor: "pointer",
-                                        transition: "all 0.2s ease",
-                                      }}
-                                      onMouseEnter={(e) => {
-                                        e.currentTarget.style.background = "rgba(59, 130, 246, 0.2)";
-                                      }}
-                                      onMouseLeave={(e) => {
-                                        e.currentTarget.style.background = "rgba(59, 130, 246, 0.1)";
-                                      }}
-                                    >
-                                      ✏️ Edit
-                                    </button>
-                                  )}
+                                        if (!bookingDate || !startTime) return false;
+
+                                        // Parse start time
+                                        const timeParts = startTime.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
+                                        if (!timeParts) return false;
+
+                                        let hours = parseInt(timeParts[1]);
+                                        const minutes = parseInt(timeParts[2]);
+                                        const period = timeParts[3]?.toLowerCase();
+
+                                        // Convert to 24-hour format
+                                        if (period === 'pm' && hours !== 12) {
+                                          hours += 12;
+                                        } else if (period === 'am' && hours === 12) {
+                                          hours = 0;
+                                        }
+
+                                        // Calculate end time
+                                        const bookingDateTime = new Date(`${bookingDate}T${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:00`);
+                                        const endDateTime = new Date(bookingDateTime.getTime() + duration * 60000);
+
+                                        return endDateTime < new Date();
+                                      } catch (e) {
+                                        return false;
+                                      }
+                                    })();
+
+                                    return (
+                                      <>
+                                        {/* Confirm button for pending online bookings */}
+                                        {status === "pending" && source !== "Walk-in" && (
+                                          <button
+                                            onClick={() => handleConfirmBooking(booking)}
+                                            style={{
+                                              padding: "6px 12px",
+                                              borderRadius: 6,
+                                              border: "1px solid rgba(34, 197, 94, 0.3)",
+                                              background: "rgba(34, 197, 94, 0.1)",
+                                              color: "#22c55e",
+                                              fontSize: 11,
+                                              fontWeight: 500,
+                                              cursor: "pointer",
+                                              transition: "all 0.2s ease",
+                                            }}
+                                            onMouseEnter={(e) => {
+                                              e.currentTarget.style.background = "rgba(34, 197, 94, 0.2)";
+                                            }}
+                                            onMouseLeave={(e) => {
+                                              e.currentTarget.style.background = "rgba(34, 197, 94, 0.1)";
+                                            }}
+                                          >
+                                            ✅ Confirm
+                                          </button>
+                                        )}
+
+                                        {/* Start button for confirmed bookings (not ended) */}
+                                        {status === "confirmed" && !isBookingEnded && (
+                                          <button
+                                            onClick={() => handleStartBooking(booking)}
+                                            style={{
+                                              padding: "6px 12px",
+                                              borderRadius: 6,
+                                              border: "1px solid rgba(168, 85, 247, 0.3)",
+                                              background: "rgba(168, 85, 247, 0.1)",
+                                              color: "#a855f7",
+                                              fontSize: 11,
+                                              fontWeight: 500,
+                                              cursor: "pointer",
+                                              transition: "all 0.2s ease",
+                                            }}
+                                            onMouseEnter={(e) => {
+                                              e.currentTarget.style.background = "rgba(168, 85, 247, 0.2)";
+                                            }}
+                                            onMouseLeave={(e) => {
+                                              e.currentTarget.style.background = "rgba(168, 85, 247, 0.1)";
+                                            }}
+                                          >
+                                            ▶️ Start
+                                          </button>
+                                        )}
+
+                                        {/* Edit button for walk-in bookings (only if confirmed and not in-progress/completed) */}
+                                        {source === "Walk-in" && status === "confirmed" && !isBookingEnded && (
+                                          <button
+                                            onClick={() => handleEditBooking(booking)}
+                                            style={{
+                                              padding: "6px 12px",
+                                              borderRadius: 6,
+                                              border: `1px solid ${colors.border}`,
+                                              background: "rgba(59, 130, 246, 0.1)",
+                                              color: "#3b82f6",
+                                              fontSize: 11,
+                                              fontWeight: 500,
+                                              cursor: "pointer",
+                                              transition: "all 0.2s ease",
+                                            }}
+                                            onMouseEnter={(e) => {
+                                              e.currentTarget.style.background = "rgba(59, 130, 246, 0.2)";
+                                            }}
+                                            onMouseLeave={(e) => {
+                                              e.currentTarget.style.background = "rgba(59, 130, 246, 0.1)";
+                                            }}
+                                          >
+                                            ✏️ Edit
+                                          </button>
+                                        )}
+                                      </>
+                                    );
+                                  })()}
                                 </div>
                               </td>
                             </tr>
