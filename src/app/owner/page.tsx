@@ -1255,13 +1255,37 @@ export default function OwnerDashboardPage() {
                       Total Revenue
                     </p>
                     <p style={{ fontSize: 32, fontWeight: 700, color: "#10b981", fontFamily: fonts.heading }}>
-                      ₹{loadingData ? "..." :
-                        revenueFilter === "today" ? stats?.todayRevenue ?? 0 :
-                        revenueFilter === "week" ? stats?.weekRevenue ?? 0 :
-                        revenueFilter === "month" ? stats?.monthRevenue ?? 0 :
-                        revenueFilter === "quarter" ? stats?.quarterRevenue ?? 0 :
-                        stats?.totalRevenue ?? 0
-                      }
+                      ₹{loadingData ? "..." : (() => {
+                        const todayStr = new Date().toISOString().split('T')[0];
+
+                        if (revenueFilter === "today") {
+                          return bookings
+                            .filter(b => b.booking_date === todayStr)
+                            .reduce((sum, b) => sum + (b.total_amount || 0), 0);
+                        } else if (revenueFilter === "week") {
+                          const now = new Date();
+                          const startOfWeek = new Date(now);
+                          startOfWeek.setDate(now.getDate() - now.getDay());
+                          return bookings
+                            .filter(b => new Date(b.booking_date || "") >= startOfWeek)
+                            .reduce((sum, b) => sum + (b.total_amount || 0), 0);
+                        } else if (revenueFilter === "month") {
+                          const now = new Date();
+                          const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+                          return bookings
+                            .filter(b => new Date(b.booking_date || "") >= startOfMonth)
+                            .reduce((sum, b) => sum + (b.total_amount || 0), 0);
+                        } else if (revenueFilter === "quarter") {
+                          const now = new Date();
+                          const currentQuarter = Math.floor(now.getMonth() / 3);
+                          const startOfQuarter = new Date(now.getFullYear(), currentQuarter * 3, 1);
+                          return bookings
+                            .filter(b => new Date(b.booking_date || "") >= startOfQuarter)
+                            .reduce((sum, b) => sum + (b.total_amount || 0), 0);
+                        } else {
+                          return bookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
+                        }
+                      })()}
                     </p>
                     <p style={{ fontSize: 12, color: "#10b98180", marginTop: 8 }}>
                       {revenueFilter === "today" ? "Today's earnings" :
@@ -1284,30 +1308,29 @@ export default function OwnerDashboardPage() {
                       Bookings
                     </p>
                     <p style={{ fontSize: 32, fontWeight: 700, color: "#3b82f6", fontFamily: fonts.heading }}>
-                      {loadingData ? "..." :
-                        revenueFilter === "today" ? stats?.bookingsToday ?? 0 :
-                        revenueFilter === "week" ?
-                          bookings.filter(b => {
-                            const now = new Date();
-                            const startOfWeek = new Date(now);
-                            startOfWeek.setDate(now.getDate() - now.getDay());
-                            return new Date(b.booking_date || "") >= startOfWeek;
-                          }).length :
-                        revenueFilter === "month" ?
-                          bookings.filter(b => {
-                            const now = new Date();
-                            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-                            return new Date(b.booking_date || "") >= startOfMonth;
-                          }).length :
-                        revenueFilter === "quarter" ?
-                          bookings.filter(b => {
-                            const now = new Date();
-                            const currentQuarter = Math.floor(now.getMonth() / 3);
-                            const startOfQuarter = new Date(now.getFullYear(), currentQuarter * 3, 1);
-                            return new Date(b.booking_date || "") >= startOfQuarter;
-                          }).length :
-                        stats?.totalBookings ?? 0
-                      }
+                      {loadingData ? "..." : (() => {
+                        const todayStr = new Date().toISOString().split('T')[0];
+
+                        if (revenueFilter === "today") {
+                          return bookings.filter(b => b.booking_date === todayStr).length;
+                        } else if (revenueFilter === "week") {
+                          const now = new Date();
+                          const startOfWeek = new Date(now);
+                          startOfWeek.setDate(now.getDate() - now.getDay());
+                          return bookings.filter(b => new Date(b.booking_date || "") >= startOfWeek).length;
+                        } else if (revenueFilter === "month") {
+                          const now = new Date();
+                          const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+                          return bookings.filter(b => new Date(b.booking_date || "") >= startOfMonth).length;
+                        } else if (revenueFilter === "quarter") {
+                          const now = new Date();
+                          const currentQuarter = Math.floor(now.getMonth() / 3);
+                          const startOfQuarter = new Date(now.getFullYear(), currentQuarter * 3, 1);
+                          return bookings.filter(b => new Date(b.booking_date || "") >= startOfQuarter).length;
+                        } else {
+                          return bookings.length;
+                        }
+                      })()}
                     </p>
                     <p style={{ fontSize: 12, color: "#3b82f680", marginTop: 8 }}>
                       {revenueFilter === "today" ? "Today's bookings" :
@@ -1331,32 +1354,37 @@ export default function OwnerDashboardPage() {
                     </p>
                     <p style={{ fontSize: 32, fontWeight: 700, color: "#f97316", fontFamily: fonts.heading }}>
                       ₹{loadingData ? "..." : (() => {
+                        const todayStr = new Date().toISOString().split('T')[0];
                         let revenue = 0;
                         let count = 0;
 
                         if (revenueFilter === "today") {
-                          revenue = stats?.todayRevenue ?? 0;
-                          count = stats?.bookingsToday ?? 0;
+                          const todayBookings = bookings.filter(b => b.booking_date === todayStr);
+                          revenue = todayBookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
+                          count = todayBookings.length;
                         } else if (revenueFilter === "week") {
-                          revenue = stats?.weekRevenue ?? 0;
                           const now = new Date();
                           const startOfWeek = new Date(now);
                           startOfWeek.setDate(now.getDate() - now.getDay());
-                          count = bookings.filter(b => new Date(b.booking_date || "") >= startOfWeek).length;
+                          const weekBookings = bookings.filter(b => new Date(b.booking_date || "") >= startOfWeek);
+                          revenue = weekBookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
+                          count = weekBookings.length;
                         } else if (revenueFilter === "month") {
-                          revenue = stats?.monthRevenue ?? 0;
                           const now = new Date();
                           const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-                          count = bookings.filter(b => new Date(b.booking_date || "") >= startOfMonth).length;
+                          const monthBookings = bookings.filter(b => new Date(b.booking_date || "") >= startOfMonth);
+                          revenue = monthBookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
+                          count = monthBookings.length;
                         } else if (revenueFilter === "quarter") {
-                          revenue = stats?.quarterRevenue ?? 0;
                           const now = new Date();
                           const currentQuarter = Math.floor(now.getMonth() / 3);
                           const startOfQuarter = new Date(now.getFullYear(), currentQuarter * 3, 1);
-                          count = bookings.filter(b => new Date(b.booking_date || "") >= startOfQuarter).length;
+                          const quarterBookings = bookings.filter(b => new Date(b.booking_date || "") >= startOfQuarter);
+                          revenue = quarterBookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
+                          count = quarterBookings.length;
                         } else {
-                          revenue = stats?.totalRevenue ?? 0;
-                          count = stats?.totalBookings ?? 0;
+                          revenue = bookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
+                          count = bookings.length;
                         }
 
                         return count > 0 ? Math.round(revenue / count) : 0;
