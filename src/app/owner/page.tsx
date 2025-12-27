@@ -381,6 +381,149 @@ export default function OwnerDashboardPage() {
     loadData();
   }, [allowed, user]);
 
+  // Real-time subscription for bookings
+  useEffect(() => {
+    if (!allowed || !user || cafes.length === 0) return;
+
+    const cafeIds = cafes.map((c) => c.id);
+
+    // Subscribe to bookings table changes for owner's cafes
+    const channel = supabase
+      .channel('bookings-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to INSERT, UPDATE, DELETE
+          schema: 'public',
+          table: 'bookings',
+          filter: `cafe_id=in.(${cafeIds.join(',')})`,
+        },
+        async (payload) => {
+          console.log('[Real-time] Booking changed:', payload);
+
+          // Refresh bookings data when any change occurs
+          try {
+            const { data: bookingRows, error: bookingsError } = await supabase
+              .from("bookings")
+              .select(`
+                id,
+                cafe_id,
+                user_id,
+                booking_date,
+                start_time,
+                duration,
+                total_amount,
+                status,
+                source,
+                created_at,
+                customer_name,
+                customer_phone,
+                booking_items (
+                  id,
+                  console,
+                  quantity
+                )
+              `)
+              .in("cafe_id", cafeIds)
+              .order("created_at", { ascending: false })
+              .limit(100);
+
+            if (bookingsError) {
+              console.error('[Real-time] Error fetching bookings:', bookingsError);
+              return;
+            }
+
+            const ownerBookings = (bookingRows as BookingRow[]) ?? [];
+
+            // Get all unique user IDs
+            const userIds = [...new Set(ownerBookings.map(b => b.user_id).filter(Boolean))];
+
+            // Fetch all user profiles at once
+            const userProfiles = new Map();
+            if (userIds.length > 0) {
+              try {
+                const { data: profiles } = await supabase
+                  .from("profiles")
+                  .select("id, first_name, last_name, phone")
+                  .in("id", userIds);
+
+                if (profiles && profiles.length > 0) {
+                  profiles.forEach((profile: { id: string; first_name: string | null; last_name: string | null; phone: string | null }) => {
+                    const fullName = [profile.first_name, profile.last_name]
+                      .filter(Boolean)
+                      .join(" ") || null;
+
+                    userProfiles.set(profile.id, {
+                      name: fullName,
+                      email: null,
+                      phone: profile.phone || null,
+                    });
+                  });
+                }
+              } catch (err) {
+                console.error("[Real-time] Error fetching profiles:", err);
+              }
+            }
+
+            // Enrich bookings with user and cafe data
+            const enrichedBookings = ownerBookings.map((booking: BookingRow) => {
+              const cafe = cafes.find((c) => c.id === booking.cafe_id);
+              const cafe_name = cafe?.name || null;
+
+              // Get user data from profiles map
+              const userProfile = booking.user_id ? userProfiles.get(booking.user_id) : null;
+
+              // If no profile found, show user ID as fallback
+              const user_name = userProfile?.name || (booking.user_id ? `User ${booking.user_id.slice(0, 8)}` : null);
+              const user_email = userProfile?.email || null;
+              const user_phone = userProfile?.phone || null;
+
+              return {
+                ...booking,
+                user_name,
+                user_email,
+                user_phone,
+                cafe_name,
+              };
+            });
+
+            setBookings(enrichedBookings);
+
+            // Update stats
+            const todayStr = new Date().toISOString().slice(0, 10);
+            const bookingsToday = enrichedBookings.filter(
+              (b) => b.booking_date === todayStr
+            ).length;
+
+            const pendingBookings = enrichedBookings.filter(
+              (b) => b.status?.toLowerCase() === "pending"
+            ).length;
+
+            const recentRevenue = enrichedBookings
+              .slice(0, 20)
+              .reduce((sum, b) => sum + (b.total_amount || 0), 0);
+
+            setStats(prevStats => ({
+              cafesCount: cafes.length,
+              bookingsToday,
+              recentBookings: Math.min(enrichedBookings.length, 20),
+              recentRevenue,
+              totalBookings: enrichedBookings.length,
+              pendingBookings,
+            }));
+          } catch (err) {
+            console.error('[Real-time] Error updating bookings:', err);
+          }
+        }
+      )
+      .subscribe();
+
+    // Cleanup subscription on unmount
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [allowed, user, cafes]);
+
   // Handle edit booking
   function handleEditBooking(booking: BookingRow) {
     if (booking.source?.toLowerCase() !== "walk-in") {
