@@ -2393,6 +2393,16 @@ export default function OwnerDashboardPage() {
 
                                         if (!bookingDate || !startTime) return false;
 
+                                        const now = new Date();
+                                        const todayStr = now.toISOString().split('T')[0];
+
+                                        // If booking is on a past date, it's definitely ended
+                                        if (bookingDate < todayStr) return true;
+
+                                        // If booking is on a future date, it hasn't ended
+                                        if (bookingDate > todayStr) return false;
+
+                                        // Booking is today - check the time
                                         // Parse start time
                                         const timeParts = startTime.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
                                         if (!timeParts) return false;
@@ -2401,18 +2411,23 @@ export default function OwnerDashboardPage() {
                                         const minutes = parseInt(timeParts[2]);
                                         const period = timeParts[3]?.toLowerCase();
 
-                                        // Convert to 24-hour format
-                                        if (period === 'pm' && hours !== 12) {
-                                          hours += 12;
-                                        } else if (period === 'am' && hours === 12) {
-                                          hours = 0;
+                                        // Convert to 24-hour format if period exists
+                                        if (period) {
+                                          if (period === 'pm' && hours !== 12) {
+                                            hours += 12;
+                                          } else if (period === 'am' && hours === 12) {
+                                            hours = 0;
+                                          }
                                         }
 
-                                        // Calculate end time
-                                        const bookingDateTime = new Date(`${bookingDate}T${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:00`);
-                                        const endDateTime = new Date(bookingDateTime.getTime() + duration * 60000);
+                                        // Calculate end time in minutes from midnight
+                                        const startMinutes = hours * 60 + minutes;
+                                        const endMinutes = startMinutes + duration;
 
-                                        return endDateTime < new Date();
+                                        // Get current time in minutes from midnight
+                                        const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+                                        return currentMinutes > endMinutes;
                                       } catch (e) {
                                         return false;
                                       }
