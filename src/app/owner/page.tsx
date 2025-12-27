@@ -2484,8 +2484,8 @@ export default function OwnerDashboardPage() {
                                           </button>
                                         )}
 
-                                        {/* Edit button for all confirmed bookings (not ended, not in-progress/completed) */}
-                                        {status === "confirmed" && !isBookingEnded && (
+                                        {/* Edit button for all bookings except pending online bookings */}
+                                        {!(status === "pending" && source !== "Walk-in") && (
                                           <button
                                             onClick={() => handleEditBooking(booking)}
                                             style={{
