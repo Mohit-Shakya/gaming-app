@@ -1369,6 +1369,306 @@ export default function OwnerDashboardPage() {
                 </div>
               </div>
 
+              {/* Daily Earnings - Last 30 Days */}
+              <div
+                style={{
+                  background: "rgba(15,23,42,0.6)",
+                  borderRadius: 16,
+                  border: `1px solid ${colors.border}`,
+                  padding: "24px",
+                  marginBottom: 24,
+                }}
+              >
+                <h2
+                  style={{
+                    fontSize: 18,
+                    fontWeight: 600,
+                    marginBottom: 16,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                  }}
+                >
+                  <span>📊</span>
+                  Daily Earnings - Last 30 Days
+                </h2>
+
+                <div
+                  style={{
+                    overflowX: "auto",
+                    maxHeight: "500px",
+                    overflowY: "auto",
+                  }}
+                >
+                  <table
+                    style={{
+                      width: "100%",
+                      borderCollapse: "collapse",
+                    }}
+                  >
+                    <thead
+                      style={{
+                        position: "sticky",
+                        top: 0,
+                        background: "rgba(15,23,42,0.95)",
+                        zIndex: 1,
+                      }}
+                    >
+                      <tr>
+                        <th
+                          style={{
+                            textAlign: "left",
+                            padding: "12px 16px",
+                            borderBottom: `1px solid ${colors.border}`,
+                            fontSize: 13,
+                            color: "#94a3b8",
+                            fontWeight: 600,
+                            textTransform: "uppercase",
+                            letterSpacing: 0.5,
+                          }}
+                        >
+                          Date
+                        </th>
+                        <th
+                          style={{
+                            textAlign: "right",
+                            padding: "12px 16px",
+                            borderBottom: `1px solid ${colors.border}`,
+                            fontSize: 13,
+                            color: "#94a3b8",
+                            fontWeight: 600,
+                            textTransform: "uppercase",
+                            letterSpacing: 0.5,
+                          }}
+                        >
+                          Bookings
+                        </th>
+                        <th
+                          style={{
+                            textAlign: "right",
+                            padding: "12px 16px",
+                            borderBottom: `1px solid ${colors.border}`,
+                            fontSize: 13,
+                            color: "#94a3b8",
+                            fontWeight: 600,
+                            textTransform: "uppercase",
+                            letterSpacing: 0.5,
+                          }}
+                        >
+                          Revenue
+                        </th>
+                        <th
+                          style={{
+                            textAlign: "right",
+                            padding: "12px 16px",
+                            borderBottom: `1px solid ${colors.border}`,
+                            fontSize: 13,
+                            color: "#94a3b8",
+                            fontWeight: 600,
+                            textTransform: "uppercase",
+                            letterSpacing: 0.5,
+                          }}
+                        >
+                          Avg/Booking
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(() => {
+                        // Generate last 30 days
+                        const last30Days = [];
+                        const today = new Date();
+                        for (let i = 0; i < 30; i++) {
+                          const date = new Date(today);
+                          date.setDate(today.getDate() - i);
+                          const dateStr = date.toISOString().split('T')[0];
+
+                          // Calculate bookings and revenue for this date
+                          const dayBookings = bookings.filter(b => b.booking_date === dateStr);
+                          const dayRevenue = dayBookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
+                          const avgRevenue = dayBookings.length > 0 ? Math.round(dayRevenue / dayBookings.length) : 0;
+
+                          // Format date nicely
+                          const isToday = i === 0;
+                          const isYesterday = i === 1;
+                          const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+                          const formattedDate = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+                          let dateLabel = formattedDate;
+                          if (isToday) dateLabel = `Today (${formattedDate})`;
+                          if (isYesterday) dateLabel = `Yesterday (${formattedDate})`;
+
+                          last30Days.push({
+                            date: dateStr,
+                            dateLabel,
+                            dayName,
+                            bookingsCount: dayBookings.length,
+                            revenue: dayRevenue,
+                            avgRevenue,
+                            isToday,
+                            isYesterday,
+                          });
+                        }
+
+                        return last30Days.map((day, idx) => (
+                          <tr
+                            key={day.date}
+                            style={{
+                              borderBottom: `1px solid ${colors.border}40`,
+                              background: day.isToday ? "rgba(16, 185, 129, 0.05)" : "transparent",
+                              transition: "background 0.2s ease",
+                            }}
+                            onMouseEnter={(e) => {
+                              if (!day.isToday) {
+                                e.currentTarget.style.background = "rgba(255,255,255,0.02)";
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              if (!day.isToday) {
+                                e.currentTarget.style.background = "transparent";
+                              }
+                            }}
+                          >
+                            <td
+                              style={{
+                                padding: "14px 16px",
+                                fontSize: 14,
+                                color: day.isToday ? "#10b981" : "#e2e8f0",
+                                fontWeight: day.isToday ? 600 : 400,
+                              }}
+                            >
+                              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                <span style={{
+                                  fontSize: 11,
+                                  color: "#64748b",
+                                  minWidth: 30,
+                                  textAlign: "center",
+                                  background: "rgba(255,255,255,0.05)",
+                                  padding: "2px 6px",
+                                  borderRadius: 4,
+                                }}>
+                                  {day.dayName}
+                                </span>
+                                {day.dateLabel}
+                              </div>
+                            </td>
+                            <td
+                              style={{
+                                padding: "14px 16px",
+                                fontSize: 14,
+                                color: day.bookingsCount > 0 ? "#3b82f6" : "#64748b",
+                                textAlign: "right",
+                                fontWeight: day.bookingsCount > 0 ? 600 : 400,
+                              }}
+                            >
+                              {day.bookingsCount > 0 ? day.bookingsCount : "-"}
+                            </td>
+                            <td
+                              style={{
+                                padding: "14px 16px",
+                                fontSize: 14,
+                                color: day.revenue > 0 ? "#10b981" : "#64748b",
+                                textAlign: "right",
+                                fontWeight: day.revenue > 0 ? 600 : 400,
+                              }}
+                            >
+                              {day.revenue > 0 ? `₹${day.revenue}` : "-"}
+                            </td>
+                            <td
+                              style={{
+                                padding: "14px 16px",
+                                fontSize: 14,
+                                color: day.avgRevenue > 0 ? "#f97316" : "#64748b",
+                                textAlign: "right",
+                              }}
+                            >
+                              {day.avgRevenue > 0 ? `₹${day.avgRevenue}` : "-"}
+                            </td>
+                          </tr>
+                        ));
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Summary */}
+                <div
+                  style={{
+                    marginTop: 20,
+                    paddingTop: 20,
+                    borderTop: `1px solid ${colors.border}`,
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+                    gap: 16,
+                  }}
+                >
+                  <div>
+                    <p style={{ fontSize: 11, color: "#64748b", marginBottom: 4, textTransform: "uppercase", letterSpacing: 1 }}>
+                      Total (30 Days)
+                    </p>
+                    <p style={{ fontSize: 20, fontWeight: 700, color: "#10b981" }}>
+                      ₹{(() => {
+                        const thirtyDaysAgo = new Date();
+                        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+                        return bookings
+                          .filter(b => new Date(b.booking_date || "") >= thirtyDaysAgo)
+                          .reduce((sum, b) => sum + (b.total_amount || 0), 0);
+                      })()}
+                    </p>
+                  </div>
+                  <div>
+                    <p style={{ fontSize: 11, color: "#64748b", marginBottom: 4, textTransform: "uppercase", letterSpacing: 1 }}>
+                      Total Bookings
+                    </p>
+                    <p style={{ fontSize: 20, fontWeight: 700, color: "#3b82f6" }}>
+                      {(() => {
+                        const thirtyDaysAgo = new Date();
+                        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+                        return bookings.filter(b => new Date(b.booking_date || "") >= thirtyDaysAgo).length;
+                      })()}
+                    </p>
+                  </div>
+                  <div>
+                    <p style={{ fontSize: 11, color: "#64748b", marginBottom: 4, textTransform: "uppercase", letterSpacing: 1 }}>
+                      Daily Average
+                    </p>
+                    <p style={{ fontSize: 20, fontWeight: 700, color: "#f97316" }}>
+                      ₹{(() => {
+                        const thirtyDaysAgo = new Date();
+                        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+                        const total = bookings
+                          .filter(b => new Date(b.booking_date || "") >= thirtyDaysAgo)
+                          .reduce((sum, b) => sum + (b.total_amount || 0), 0);
+                        return Math.round(total / 30);
+                      })()}
+                    </p>
+                  </div>
+                  <div>
+                    <p style={{ fontSize: 11, color: "#64748b", marginBottom: 4, textTransform: "uppercase", letterSpacing: 1 }}>
+                      Peak Day
+                    </p>
+                    <p style={{ fontSize: 20, fontWeight: 700, color: "#a855f7" }}>
+                      ₹{(() => {
+                        const thirtyDaysAgo = new Date();
+                        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+                        const recentBookings = bookings.filter(b => new Date(b.booking_date || "") >= thirtyDaysAgo);
+
+                        // Group by date
+                        const dailyRevenue: Record<string, number> = {};
+                        recentBookings.forEach(b => {
+                          const date = b.booking_date || "";
+                          dailyRevenue[date] = (dailyRevenue[date] || 0) + (b.total_amount || 0);
+                        });
+
+                        // Find max
+                        const maxRevenue = Math.max(...Object.values(dailyRevenue), 0);
+                        return maxRevenue;
+                      })()}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               {/* Recent Activity */}
               <div
                 style={{
