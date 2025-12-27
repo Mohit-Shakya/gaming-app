@@ -2180,365 +2180,369 @@ export default function OwnerDashboardPage() {
                 Showing {filteredBookings.length} of {bookings.length} bookings
               </div>
 
-              {/* Bookings Grid */}
-              {filteredBookings.length === 0 ? (
-                <div
-                  style={{
-                    background: "rgba(15,23,42,0.6)",
-                    borderRadius: 16,
-                    border: `1px solid ${colors.border}`,
-                    textAlign: "center",
-                    padding: "80px 20px",
-                    color: colors.textMuted,
-                  }}
-                >
-                  <div style={{ fontSize: 64, marginBottom: 20, opacity: 0.5 }}>📅</div>
-                  <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8, color: colors.textPrimary }}>
-                    No bookings found
+              {/* Bookings Table */}
+              <div
+                style={{
+                  background: "rgba(15,23,42,0.6)",
+                  borderRadius: 16,
+                  border: `1px solid ${colors.border}`,
+                  overflow: "hidden",
+                }}
+              >
+                {filteredBookings.length === 0 ? (
+                  <div
+                    style={{
+                      textAlign: "center",
+                      padding: "60px 20px",
+                      color: colors.textMuted,
+                    }}
+                  >
+                    <div style={{ fontSize: 48, marginBottom: 16 }}>📅</div>
+                    <div style={{ fontSize: 16 }}>No bookings found</div>
                   </div>
-                  <div style={{ fontSize: 14, color: colors.textSecondary }}>
-                    Try adjusting your filters or create a new booking
-                  </div>
-                </div>
-              ) : (
-                <div style={{ display: "grid", gap: 16 }}>
-                  {filteredBookings.map((booking) => {
-                    const source = booking.source?.toLowerCase() === "walk-in" ? "Walk-in" : "Online";
-                    return (
-                      <div
-                        key={booking.id}
-                        style={{
-                          background: "linear-gradient(135deg, rgba(30,41,59,0.8), rgba(15,23,42,0.9))",
-                          borderRadius: 16,
-                          border: `1px solid ${colors.border}`,
-                          padding: "20px 24px",
-                          transition: "all 0.3s ease",
-                          cursor: "pointer",
-                          position: "relative",
-                          overflow: "hidden",
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.transform = "translateY(-2px)";
-                          e.currentTarget.style.boxShadow = "0 8px 24px rgba(0,0,0,0.3)";
-                          e.currentTarget.style.borderColor = "rgba(99, 102, 241, 0.5)";
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.transform = "translateY(0)";
-                          e.currentTarget.style.boxShadow = "none";
-                          e.currentTarget.style.borderColor = colors.border;
-                        }}
-                      >
-                        {/* Top Row: ID, Source, Status */}
-                        <div style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          marginBottom: 16,
-                          flexWrap: "wrap",
-                          gap: 12,
-                        }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                            <div style={{
-                              fontFamily: "monospace",
-                              fontSize: 12,
-                              color: colors.cyan,
-                              fontWeight: 700,
-                              background: "rgba(0, 188, 212, 0.1)",
-                              padding: "6px 12px",
-                              borderRadius: 8,
-                              border: "1px solid rgba(0, 188, 212, 0.3)",
-                            }}>
-                              #{booking.id.slice(0, 8).toUpperCase()}
-                            </div>
-                            <span
+                ) : (
+                  <div style={{ overflowX: "auto" }}>
+                    <table style={{ width: "100%", fontSize: 13 }}>
+                      <thead>
+                        <tr
+                          style={{
+                            background: "rgba(30,41,59,0.5)",
+                            borderBottom: `1px solid ${colors.border}`,
+                          }}
+                        >
+                          <th style={{ padding: "14px 16px", textAlign: "left", color: colors.textMuted, fontSize: 11, textTransform: "uppercase", fontWeight: 600 }}>
+                            Booking ID
+                          </th>
+                          <th style={{ padding: "14px 16px", textAlign: "left", color: colors.textMuted, fontSize: 11, textTransform: "uppercase", fontWeight: 600 }}>
+                            Customer Name
+                          </th>
+                          <th style={{ padding: "14px 16px", textAlign: "left", color: colors.textMuted, fontSize: 11, textTransform: "uppercase", fontWeight: 600 }}>
+                            Phone Number
+                          </th>
+                          <th style={{ padding: "14px 16px", textAlign: "left", color: colors.textMuted, fontSize: 11, textTransform: "uppercase", fontWeight: 600 }}>
+                            Console
+                          </th>
+                          <th style={{ padding: "14px 16px", textAlign: "left", color: colors.textMuted, fontSize: 11, textTransform: "uppercase", fontWeight: 600 }}>
+                            Duration
+                          </th>
+                          <th style={{ padding: "14px 16px", textAlign: "left", color: colors.textMuted, fontSize: 11, textTransform: "uppercase", fontWeight: 600 }}>
+                            Source
+                          </th>
+                          <th style={{ padding: "14px 16px", textAlign: "left", color: colors.textMuted, fontSize: 11, textTransform: "uppercase", fontWeight: 600 }}>
+                            Status
+                          </th>
+                          <th style={{ padding: "14px 16px", textAlign: "right", color: colors.textMuted, fontSize: 11, textTransform: "uppercase", fontWeight: 600 }}>
+                            Amount
+                          </th>
+                          <th style={{ padding: "14px 16px", textAlign: "center", color: colors.textMuted, fontSize: 11, textTransform: "uppercase", fontWeight: 600 }}>
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredBookings.map((booking, index) => {
+                          const source = booking.source?.toLowerCase() === "walk-in" ? "Walk-in" : "Online";
+                          return (
+                            <tr
+                              key={booking.id}
                               style={{
-                                padding: "6px 12px",
-                                borderRadius: 8,
-                                fontSize: 12,
-                                fontWeight: 600,
-                                background: source === "Walk-in" ? "rgba(168, 85, 247, 0.15)" : "rgba(59, 130, 246, 0.15)",
-                                color: source === "Walk-in" ? "#a855f7" : "#3b82f6",
-                                border: `1px solid ${source === "Walk-in" ? "rgba(168, 85, 247, 0.3)" : "rgba(59, 130, 246, 0.3)"}`,
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: 6,
+                                borderBottom: index < filteredBookings.length - 1 ? `1px solid rgba(71, 85, 105, 0.2)` : "none",
+                                transition: "background 0.2s ease",
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background = "rgba(51,65,85,0.3)";
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = "transparent";
                               }}
                             >
-                              {source === "Walk-in" ? "🚶" : "💻"}
-                              {source}
-                            </span>
-                          </div>
-                          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                            <StatusBadge status={booking.status || "pending"} />
-                          </div>
-                        </div>
+                              {/* Booking ID */}
+                              <td style={{ padding: "14px 16px" }}>
+                                <div style={{ fontFamily: "monospace", fontSize: 12, color: colors.textPrimary, fontWeight: 600 }}>
+                                  #{booking.id.slice(0, 8).toUpperCase()}
+                                </div>
+                              </td>
 
-                        {/* Main Content Row */}
-                        <div style={{
-                          display: "grid",
-                          gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-                          gap: 20,
-                          marginBottom: 16,
-                        }}>
-                          {/* Customer Info */}
-                          <div>
-                            <div style={{ fontSize: 11, color: colors.textMuted, marginBottom: 6, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                              Customer
-                            </div>
-                            <div style={{ fontSize: 15, color: colors.textPrimary, fontWeight: 700, marginBottom: 4 }}>
-                              {booking.customer_name || booking.user_name || "Guest"}
-                            </div>
-                            <div style={{ fontSize: 13, color: colors.textSecondary, display: "flex", alignItems: "center", gap: 6 }}>
-                              <span>📱</span>
-                              {booking.customer_phone || booking.user_phone || "N/A"}
-                            </div>
-                          </div>
+                              {/* Customer Name */}
+                              <td style={{ padding: "14px 16px" }}>
+                                <div style={{ fontSize: 13, color: colors.textPrimary, fontWeight: 600 }}>
+                                  {booking.customer_name || booking.user_name || "Guest"}
+                                </div>
+                              </td>
 
-                          {/* Console Info */}
-                          <div>
-                            <div style={{ fontSize: 11, color: colors.textMuted, marginBottom: 6, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                              Console
-                            </div>
-                            <div style={{ fontSize: 14, color: colors.textPrimary, fontWeight: 600 }}>
-                              {(() => {
-                                const items = booking.booking_items || [];
-                                if (items.length === 0) return "-";
+                              {/* Phone Number */}
+                              <td style={{ padding: "14px 16px" }}>
+                                <div style={{ fontSize: 13, color: colors.textSecondary }}>
+                                  {booking.customer_phone || booking.user_phone || "-"}
+                                </div>
+                              </td>
 
-                                const consoles = items.map((item) => {
-                                  const consoleName = item.console || "Unknown";
-                                  const controllers = item.quantity || 1;
-                                  return (
-                                    <div key={item.id} style={{ marginBottom: 4 }}>
-                                      <span style={{ color: colors.cyan }}>🎮</span> {consoleName}
-                                      {controllers > 1 && (
-                                        <span style={{
-                                          marginLeft: 8,
-                                          fontSize: 11,
-                                          color: "#f59e0b",
-                                          background: "rgba(245, 158, 11, 0.1)",
-                                          padding: "2px 8px",
-                                          borderRadius: 6,
-                                          border: "1px solid rgba(245, 158, 11, 0.3)",
-                                        }}>
-                                          {controllers}× controllers
-                                        </span>
-                                      )}
-                                    </div>
-                                  );
-                                });
+                              {/* Console */}
+                              <td style={{ padding: "14px 16px" }}>
+                                <div style={{ fontSize: 13, color: colors.textPrimary, fontWeight: 500 }}>
+                                  {(() => {
+                                    const items = booking.booking_items || [];
+                                    if (items.length === 0) return "-";
 
-                                return consoles;
-                              })()}
-                            </div>
-                          </div>
-
-                          {/* Time & Date */}
-                          <div>
-                            <div style={{ fontSize: 11, color: colors.textMuted, marginBottom: 6, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                              Schedule
-                            </div>
-                            <div style={{ fontSize: 13, color: colors.textSecondary, marginBottom: 4, display: "flex", alignItems: "center", gap: 6 }}>
-                              <span>📅</span>
-                              {booking.booking_date
-                                ? (() => {
-                                    const bookingDate = new Date(`${booking.booking_date}T00:00:00`);
-                                    const today = new Date();
-                                    const tomorrow = new Date(today);
-                                    tomorrow.setDate(tomorrow.getDate() + 1);
-
-                                    const isToday = bookingDate.toDateString() === today.toDateString();
-                                    const isTomorrow = bookingDate.toDateString() === tomorrow.toDateString();
-
-                                    if (isToday) return <span style={{ color: "#22c55e", fontWeight: 600 }}>Today</span>;
-                                    if (isTomorrow) return <span style={{ color: "#f59e0b", fontWeight: 600 }}>Tomorrow</span>;
-
-                                    return bookingDate.toLocaleDateString("en-IN", {
-                                      day: "2-digit",
-                                      month: "short",
-                                      year: "numeric",
+                                    const consoles = items.map((item) => {
+                                      const consoleName = item.console || "Unknown";
+                                      const controllers = item.quantity || 1;
+                                      return controllers > 1 ? `${consoleName} (${controllers} controllers)` : consoleName;
                                     });
-                                  })()
-                                : "-"}
-                            </div>
-                            <div style={{ fontSize: 14, color: colors.textPrimary, fontWeight: 700, display: "flex", alignItems: "center", gap: 6 }}>
-                              <span>🕒</span>
-                              {(() => {
-                                if (!booking.start_time) return "-";
 
-                                try {
-                                  const startTime = booking.start_time;
-                                  const duration = booking.duration || 60;
-                                  const timeParts = startTime.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
+                                    return consoles.join(", ");
+                                  })()}
+                                </div>
+                              </td>
 
-                                  if (!timeParts) return startTime;
+                              {/* Duration */}
+                              <td style={{ padding: "14px 16px" }}>
+                                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                                  <div style={{ fontSize: 12, color: colors.textSecondary }}>
+                                    {booking.booking_date
+                                      ? (() => {
+                                          const bookingDate = new Date(`${booking.booking_date}T00:00:00`);
+                                          const today = new Date();
+                                          const tomorrow = new Date(today);
+                                          tomorrow.setDate(tomorrow.getDate() + 1);
 
-                                  let hours = parseInt(timeParts[1]);
-                                  const minutes = parseInt(timeParts[2]);
-                                  const period = timeParts[3]?.toLowerCase();
+                                          const isToday = bookingDate.toDateString() === today.toDateString();
+                                          const isTomorrow = bookingDate.toDateString() === tomorrow.toDateString();
 
-                                  if (period === 'pm' && hours !== 12) {
-                                    hours += 12;
-                                  } else if (period === 'am' && hours === 12) {
-                                    hours = 0;
-                                  }
+                                          if (isToday) return "Today";
+                                          if (isTomorrow) return "Tomorrow";
 
-                                  let endMinutes = hours * 60 + minutes + duration;
-                                  let endHours = Math.floor(endMinutes / 60) % 24;
-                                  const endMins = endMinutes % 60;
+                                          return bookingDate.toLocaleDateString("en-IN", {
+                                            day: "2-digit",
+                                            month: "short",
+                                          });
+                                        })()
+                                      : "-"}
+                                  </div>
+                                  <div style={{ fontSize: 13, color: colors.textPrimary, fontWeight: 600 }}>
+                                    {(() => {
+                                      if (!booking.start_time) return "-";
 
-                                  const endPeriod = endHours >= 12 ? 'pm' : 'am';
-                                  const endHours12 = endHours % 12 || 12;
-                                  const endTime = `${endHours12}:${endMins.toString().padStart(2, '0')} ${endPeriod}`;
+                                      try {
+                                        // Parse start time and calculate end time using booking duration
+                                        const startTime = booking.start_time;
+                                        const duration = booking.duration || 60; // Default to 60 minutes if not set
+                                        const timeParts = startTime.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
 
-                                  return (
-                                    <span>
-                                      {startTime}
-                                      <span style={{ color: colors.textMuted, margin: "0 4px" }}>→</span>
-                                      {endTime}
-                                    </span>
-                                  );
-                                } catch (e) {
-                                  return booking.start_time;
-                                }
-                              })()}
-                            </div>
-                          </div>
+                                        if (!timeParts) return startTime;
 
-                          {/* Amount */}
-                          <div>
-                            <div style={{ fontSize: 11, color: colors.textMuted, marginBottom: 6, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                              Amount
-                            </div>
-                            <div style={{
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: 6,
-                              background: "rgba(34, 197, 94, 0.1)",
-                              padding: "8px 16px",
-                              borderRadius: 10,
-                              border: "1px solid rgba(34, 197, 94, 0.3)"
-                            }}>
-                              <span style={{ fontSize: 16, color: "#22c55e" }}>💰</span>
-                              <span style={{ fontFamily: fonts.heading, fontSize: 20, color: "#22c55e", fontWeight: 700 }}>
-                                ₹{booking.total_amount ?? 0}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
+                                        let hours = parseInt(timeParts[1]);
+                                        const minutes = parseInt(timeParts[2]);
+                                        const period = timeParts[3]?.toLowerCase();
 
-                        {/* Actions Row */}
-                        <div style={{
-                          display: "flex",
-                          gap: 8,
-                          paddingTop: 16,
-                          borderTop: `1px solid ${colors.border}`,
-                        }}>
-                          {(() => {
-                            const status = booking.status || "pending";
+                                        // Convert to 24-hour format
+                                        if (period === 'pm' && hours !== 12) {
+                                          hours += 12;
+                                        } else if (period === 'am' && hours === 12) {
+                                          hours = 0;
+                                        }
 
-                            return (
-                              <>
-                                {/* Confirm button for pending online bookings */}
-                                {status === "pending" && source !== "Walk-in" && (
-                                  <button
-                                    onClick={() => handleConfirmBooking(booking)}
-                                    style={{
-                                      padding: "8px 16px",
-                                      borderRadius: 8,
-                                      border: "1px solid rgba(34, 197, 94, 0.3)",
-                                      background: "rgba(34, 197, 94, 0.1)",
-                                      color: "#22c55e",
-                                      fontSize: 13,
-                                      fontWeight: 600,
-                                      cursor: "pointer",
-                                      transition: "all 0.2s ease",
-                                      display: "flex",
-                                      alignItems: "center",
-                                      gap: 6,
-                                    }}
-                                    onMouseEnter={(e) => {
-                                      e.currentTarget.style.background = "rgba(34, 197, 94, 0.2)";
-                                      e.currentTarget.style.transform = "translateY(-1px)";
-                                    }}
-                                    onMouseLeave={(e) => {
-                                      e.currentTarget.style.background = "rgba(34, 197, 94, 0.1)";
-                                      e.currentTarget.style.transform = "translateY(0)";
-                                    }}
-                                  >
-                                    ✅ Confirm Booking
-                                  </button>
-                                )}
+                                        // Calculate end time (add duration in minutes)
+                                        let endMinutes = hours * 60 + minutes + duration;
+                                        let endHours = Math.floor(endMinutes / 60) % 24;
+                                        const endMins = endMinutes % 60;
 
-                                {/* Start button for confirmed bookings */}
-                                {status === "confirmed" && (
-                                  <button
-                                    onClick={() => handleStartBooking(booking)}
-                                    style={{
-                                      padding: "8px 16px",
-                                      borderRadius: 8,
-                                      border: "1px solid rgba(168, 85, 247, 0.3)",
-                                      background: "rgba(168, 85, 247, 0.1)",
-                                      color: "#a855f7",
-                                      fontSize: 13,
-                                      fontWeight: 600,
-                                      cursor: "pointer",
-                                      transition: "all 0.2s ease",
-                                      display: "flex",
-                                      alignItems: "center",
-                                      gap: 6,
-                                    }}
-                                    onMouseEnter={(e) => {
-                                      e.currentTarget.style.background = "rgba(168, 85, 247, 0.2)";
-                                      e.currentTarget.style.transform = "translateY(-1px)";
-                                    }}
-                                    onMouseLeave={(e) => {
-                                      e.currentTarget.style.background = "rgba(168, 85, 247, 0.1)";
-                                      e.currentTarget.style.transform = "translateY(0)";
-                                    }}
-                                  >
-                                    ▶️ Start Session
-                                  </button>
-                                )}
+                                        // Convert back to 12-hour format
+                                        const endPeriod = endHours >= 12 ? 'pm' : 'am';
+                                        const endHours12 = endHours % 12 || 12;
+                                        const endTime = `${endHours12}:${endMins.toString().padStart(2, '0')} ${endPeriod}`;
 
-                                {/* Edit button for all bookings except pending online bookings */}
-                                {!(status === "pending" && source !== "Walk-in") && (
-                                  <button
-                                    onClick={() => handleEditBooking(booking)}
-                                    style={{
-                                      padding: "8px 16px",
-                                      borderRadius: 8,
-                                      border: `1px solid ${colors.border}`,
-                                      background: "rgba(59, 130, 246, 0.1)",
-                                      color: "#3b82f6",
-                                      fontSize: 13,
-                                      fontWeight: 600,
-                                      cursor: "pointer",
-                                      transition: "all 0.2s ease",
-                                      display: "flex",
-                                      alignItems: "center",
-                                      gap: 6,
-                                    }}
-                                    onMouseEnter={(e) => {
-                                      e.currentTarget.style.background = "rgba(59, 130, 246, 0.2)";
-                                      e.currentTarget.style.transform = "translateY(-1px)";
-                                    }}
-                                    onMouseLeave={(e) => {
-                                      e.currentTarget.style.background = "rgba(59, 130, 246, 0.1)";
-                                      e.currentTarget.style.transform = "translateY(0)";
-                                    }}
-                                  >
-                                    ✏️ Edit Details
-                                  </button>
-                                )}
-                              </>
-                            );
-                          })()}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+                                        return `${startTime} - ${endTime}`;
+                                      } catch (e) {
+                                        return booking.start_time;
+                                      }
+                                    })()}
+                                  </div>
+                                </div>
+                              </td>
+                              <td style={{ padding: "14px 16px" }}>
+                                <span
+                                  style={{
+                                    padding: "4px 10px",
+                                    borderRadius: 6,
+                                    fontSize: 11,
+                                    fontWeight: 500,
+                                    background: source === "Walk-in" ? "rgba(168, 85, 247, 0.15)" : "rgba(59, 130, 246, 0.15)",
+                                    color: source === "Walk-in" ? "#a855f7" : "#3b82f6",
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: 6,
+                                  }}
+                                >
+                                  {source === "Walk-in" ? "🚶" : "💻"}
+                                  {source}
+                                </span>
+                              </td>
+                              <td style={{ padding: "14px 16px" }}>
+                                <StatusBadge status={booking.status || "pending"} />
+                              </td>
+                              <td style={{ padding: "14px 16px", textAlign: "right" }}>
+                                <div style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: 4,
+                                  background: "rgba(34, 197, 94, 0.1)",
+                                  padding: "6px 12px",
+                                  borderRadius: 6,
+                                  border: "1px solid rgba(34, 197, 94, 0.2)"
+                                }}>
+                                  <span style={{ fontSize: 11, color: "#22c55e" }}>💰</span>
+                                  <span style={{ fontFamily: fonts.heading, fontSize: 15, color: "#22c55e", fontWeight: 700 }}>
+                                    ₹{booking.total_amount ?? 0}
+                                  </span>
+                                </div>
+                              </td>
+                              <td style={{ padding: "14px 16px", textAlign: "center" }}>
+                                <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+                                  {(() => {
+                                    const status = booking.status || "pending";
+
+                                    // Check if booking has ended (past booking)
+                                    const isBookingEnded = (() => {
+                                      try {
+                                        const bookingDate = booking.booking_date || "";
+                                        const startTime = booking.start_time || "";
+                                        const duration = booking.duration || 60;
+
+                                        if (!bookingDate || !startTime) return false;
+
+                                        const now = new Date();
+                                        const todayStr = now.toISOString().split('T')[0];
+
+                                        // If booking is on a past date, it's definitely ended
+                                        if (bookingDate < todayStr) return true;
+
+                                        // If booking is on a future date, it hasn't ended
+                                        if (bookingDate > todayStr) return false;
+
+                                        // Booking is today - check the time
+                                        // Parse start time
+                                        const timeParts = startTime.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
+                                        if (!timeParts) return false;
+
+                                        let hours = parseInt(timeParts[1]);
+                                        const minutes = parseInt(timeParts[2]);
+                                        const period = timeParts[3]?.toLowerCase();
+
+                                        // Convert to 24-hour format if period exists
+                                        if (period) {
+                                          if (period === 'pm' && hours !== 12) {
+                                            hours += 12;
+                                          } else if (period === 'am' && hours === 12) {
+                                            hours = 0;
+                                          }
+                                        }
+
+                                        // Calculate end time in minutes from midnight
+                                        const startMinutes = hours * 60 + minutes;
+                                        const endMinutes = startMinutes + duration;
+
+                                        // Get current time in minutes from midnight
+                                        const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+                                        return currentMinutes > endMinutes;
+                                      } catch (e) {
+                                        return false;
+                                      }
+                                    })();
+
+                                    return (
+                                      <>
+                                        {/* Confirm button for pending online bookings */}
+                                        {status === "pending" && source !== "Walk-in" && (
+                                          <button
+                                            onClick={() => handleConfirmBooking(booking)}
+                                            style={{
+                                              padding: "6px 12px",
+                                              borderRadius: 6,
+                                              border: "1px solid rgba(34, 197, 94, 0.3)",
+                                              background: "rgba(34, 197, 94, 0.1)",
+                                              color: "#22c55e",
+                                              fontSize: 11,
+                                              fontWeight: 500,
+                                              cursor: "pointer",
+                                              transition: "all 0.2s ease",
+                                            }}
+                                            onMouseEnter={(e) => {
+                                              e.currentTarget.style.background = "rgba(34, 197, 94, 0.2)";
+                                            }}
+                                            onMouseLeave={(e) => {
+                                              e.currentTarget.style.background = "rgba(34, 197, 94, 0.1)";
+                                            }}
+                                          >
+                                            ✅ Confirm
+                                          </button>
+                                        )}
+
+                                        {/* Start button for confirmed bookings (not ended) */}
+                                        {status === "confirmed" && !isBookingEnded && (
+                                          <button
+                                            onClick={() => handleStartBooking(booking)}
+                                            style={{
+                                              padding: "6px 12px",
+                                              borderRadius: 6,
+                                              border: "1px solid rgba(168, 85, 247, 0.3)",
+                                              background: "rgba(168, 85, 247, 0.1)",
+                                              color: "#a855f7",
+                                              fontSize: 11,
+                                              fontWeight: 500,
+                                              cursor: "pointer",
+                                              transition: "all 0.2s ease",
+                                            }}
+                                            onMouseEnter={(e) => {
+                                              e.currentTarget.style.background = "rgba(168, 85, 247, 0.2)";
+                                            }}
+                                            onMouseLeave={(e) => {
+                                              e.currentTarget.style.background = "rgba(168, 85, 247, 0.1)";
+                                            }}
+                                          >
+                                            ▶️ Start
+                                          </button>
+                                        )}
+
+                                        {/* Edit button for all bookings except pending online bookings */}
+                                        {!(status === "pending" && source !== "Walk-in") && (
+                                          <button
+                                            onClick={() => handleEditBooking(booking)}
+                                            style={{
+                                              padding: "6px 12px",
+                                              borderRadius: 6,
+                                              border: `1px solid ${colors.border}`,
+                                              background: "rgba(59, 130, 246, 0.1)",
+                                              color: "#3b82f6",
+                                              fontSize: 11,
+                                              fontWeight: 500,
+                                              cursor: "pointer",
+                                              transition: "all 0.2s ease",
+                                            }}
+                                            onMouseEnter={(e) => {
+                                              e.currentTarget.style.background = "rgba(59, 130, 246, 0.2)";
+                                            }}
+                                            onMouseLeave={(e) => {
+                                              e.currentTarget.style.background = "rgba(59, 130, 246, 0.1)";
+                                            }}
+                                          >
+                                            ✏️ Edit
+                                          </button>
+                                        )}
+                                      </>
+                                    );
+                                  })()}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
