@@ -16,6 +16,10 @@ type OwnerStats = {
   recentBookings: number;
   recentRevenue: number;
   todayRevenue: number;
+  weekRevenue: number;
+  monthRevenue: number;
+  quarterRevenue: number;
+  totalRevenue: number;
   totalBookings: number;
   pendingBookings: number;
 };
@@ -120,6 +124,9 @@ export default function OwnerDashboardPage() {
   const [customEndDate, setCustomEndDate] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState<string>("");
 
+  // Revenue filter for overview
+  const [revenueFilter, setRevenueFilter] = useState<string>("today"); // today, week, month, quarter, all
+
   // Edit modal state
   const [editingBooking, setEditingBooking] = useState<BookingRow | null>(null);
   const [editAmount, setEditAmount] = useState<string>("");
@@ -218,6 +225,10 @@ export default function OwnerDashboardPage() {
             recentBookings: 0,
             recentRevenue: 0,
             todayRevenue: 0,
+            weekRevenue: 0,
+            monthRevenue: 0,
+            quarterRevenue: 0,
+            totalRevenue: 0,
             totalBookings: 0,
             pendingBookings: 0,
           });
@@ -352,6 +363,13 @@ export default function OwnerDashboardPage() {
         setBookings(enrichedBookings);
 
         // Calculate stats
+        const now = new Date();
+        const startOfWeek = new Date(now);
+        startOfWeek.setDate(now.getDate() - now.getDay()); // Sunday
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const currentQuarter = Math.floor(now.getMonth() / 3);
+        const startOfQuarter = new Date(now.getFullYear(), currentQuarter * 3, 1);
+
         const bookingsToday = enrichedBookings.filter(
           (b) => b.booking_date === todayStr
         ).length;
@@ -368,12 +386,40 @@ export default function OwnerDashboardPage() {
           .filter((b) => b.booking_date === todayStr)
           .reduce((sum, b) => sum + (b.total_amount || 0), 0);
 
+        const weekRevenue = enrichedBookings
+          .filter((b) => {
+            const bookingDate = new Date(b.booking_date || "");
+            return bookingDate >= startOfWeek;
+          })
+          .reduce((sum, b) => sum + (b.total_amount || 0), 0);
+
+        const monthRevenue = enrichedBookings
+          .filter((b) => {
+            const bookingDate = new Date(b.booking_date || "");
+            return bookingDate >= startOfMonth;
+          })
+          .reduce((sum, b) => sum + (b.total_amount || 0), 0);
+
+        const quarterRevenue = enrichedBookings
+          .filter((b) => {
+            const bookingDate = new Date(b.booking_date || "");
+            return bookingDate >= startOfQuarter;
+          })
+          .reduce((sum, b) => sum + (b.total_amount || 0), 0);
+
+        const totalRevenue = enrichedBookings
+          .reduce((sum, b) => sum + (b.total_amount || 0), 0);
+
         setStats({
           cafesCount: ownerCafes.length,
           bookingsToday,
           recentBookings: Math.min(enrichedBookings.length, 20),
           recentRevenue,
           todayRevenue,
+          weekRevenue,
+          monthRevenue,
+          quarterRevenue,
+          totalRevenue,
           totalBookings: enrichedBookings.length,
           pendingBookings,
         });
@@ -497,7 +543,14 @@ export default function OwnerDashboardPage() {
             setBookings(enrichedBookings);
 
             // Update stats
-            const todayStr = new Date().toISOString().slice(0, 10);
+            const now = new Date();
+            const todayStr = now.toISOString().slice(0, 10);
+            const startOfWeek = new Date(now);
+            startOfWeek.setDate(now.getDate() - now.getDay()); // Sunday
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+            const currentQuarter = Math.floor(now.getMonth() / 3);
+            const startOfQuarter = new Date(now.getFullYear(), currentQuarter * 3, 1);
+
             const bookingsToday = enrichedBookings.filter(
               (b) => b.booking_date === todayStr
             ).length;
@@ -514,12 +567,40 @@ export default function OwnerDashboardPage() {
               .filter((b) => b.booking_date === todayStr)
               .reduce((sum, b) => sum + (b.total_amount || 0), 0);
 
+            const weekRevenue = enrichedBookings
+              .filter((b) => {
+                const bookingDate = new Date(b.booking_date || "");
+                return bookingDate >= startOfWeek;
+              })
+              .reduce((sum, b) => sum + (b.total_amount || 0), 0);
+
+            const monthRevenue = enrichedBookings
+              .filter((b) => {
+                const bookingDate = new Date(b.booking_date || "");
+                return bookingDate >= startOfMonth;
+              })
+              .reduce((sum, b) => sum + (b.total_amount || 0), 0);
+
+            const quarterRevenue = enrichedBookings
+              .filter((b) => {
+                const bookingDate = new Date(b.booking_date || "");
+                return bookingDate >= startOfQuarter;
+              })
+              .reduce((sum, b) => sum + (b.total_amount || 0), 0);
+
+            const totalRevenue = enrichedBookings
+              .reduce((sum, b) => sum + (b.total_amount || 0), 0);
+
             setStats(prevStats => ({
               cafesCount: cafes.length,
               bookingsToday,
               recentBookings: Math.min(enrichedBookings.length, 20),
               recentRevenue,
               todayRevenue,
+              weekRevenue,
+              monthRevenue,
+              quarterRevenue,
+              totalRevenue,
               totalBookings: enrichedBookings.length,
               pendingBookings,
             }));
@@ -1063,14 +1144,6 @@ export default function OwnerDashboardPage() {
                   color="#fb923c"
                 />
                 <StatCard
-                  title="Today's Revenue"
-                  value={loadingData ? "..." : `₹${stats?.todayRevenue ?? 0}`}
-                  subtitle="Total payment today"
-                  icon="💵"
-                  gradient="linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(5, 150, 105, 0.1))"
-                  color="#10b981"
-                />
-                <StatCard
                   title="Total Bookings"
                   value={loadingData ? "..." : stats?.totalBookings ?? 0}
                   subtitle="All time"
@@ -1086,14 +1159,214 @@ export default function OwnerDashboardPage() {
                   gradient="linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(217, 119, 6, 0.1))"
                   color="#f59e0b"
                 />
-                <StatCard
-                  title="Recent Revenue"
-                  value={loadingData ? "..." : `₹${stats?.recentRevenue ?? 0}`}
-                  subtitle="Last 20 bookings"
-                  icon="💰"
-                  gradient="linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(22, 163, 74, 0.1))"
-                  color="#22c55e"
-                />
+              </div>
+
+              {/* Revenue Overview with Filters */}
+              <div
+                style={{
+                  background: "rgba(15,23,42,0.6)",
+                  borderRadius: 16,
+                  border: `1px solid ${colors.border}`,
+                  padding: "24px",
+                  marginBottom: 24,
+                }}
+              >
+                <div style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: 20,
+                  flexWrap: "wrap",
+                  gap: 12,
+                }}>
+                  <h2
+                    style={{
+                      fontSize: 18,
+                      fontWeight: 600,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                    }}
+                  >
+                    <span>💰</span> Revenue Overview
+                  </h2>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    {[
+                      { value: "today", label: "Today" },
+                      { value: "week", label: "This Week" },
+                      { value: "month", label: "This Month" },
+                      { value: "quarter", label: "This Quarter" },
+                      { value: "all", label: "All Time" },
+                    ].map((filter) => (
+                      <button
+                        key={filter.value}
+                        onClick={() => setRevenueFilter(filter.value)}
+                        style={{
+                          padding: "8px 16px",
+                          borderRadius: 8,
+                          border: `1px solid ${
+                            revenueFilter === filter.value ? "#10b981" : colors.border
+                          }`,
+                          background:
+                            revenueFilter === filter.value
+                              ? "rgba(16, 185, 129, 0.15)"
+                              : "rgba(15,23,42,0.4)",
+                          color: revenueFilter === filter.value ? "#10b981" : "#94a3b8",
+                          fontSize: 13,
+                          fontWeight: 500,
+                          cursor: "pointer",
+                          transition: "all 0.2s ease",
+                        }}
+                        onMouseEnter={(e) => {
+                          if (revenueFilter !== filter.value) {
+                            e.currentTarget.style.borderColor = "#10b98180";
+                            e.currentTarget.style.background = "rgba(16, 185, 129, 0.08)";
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (revenueFilter !== filter.value) {
+                            e.currentTarget.style.borderColor = colors.border;
+                            e.currentTarget.style.background = "rgba(15,23,42,0.4)";
+                          }
+                        }}
+                      >
+                        {filter.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                    gap: 16,
+                  }}
+                >
+                  <div
+                    style={{
+                      padding: "20px",
+                      borderRadius: 12,
+                      background: "linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(5, 150, 105, 0.1))",
+                      border: "1px solid rgba(16, 185, 129, 0.3)",
+                    }}
+                  >
+                    <p style={{ fontSize: 12, color: "#10b981", marginBottom: 8, textTransform: "uppercase", letterSpacing: 1 }}>
+                      Total Revenue
+                    </p>
+                    <p style={{ fontSize: 32, fontWeight: 700, color: "#10b981", fontFamily: fonts.heading }}>
+                      ₹{loadingData ? "..." :
+                        revenueFilter === "today" ? stats?.todayRevenue ?? 0 :
+                        revenueFilter === "week" ? stats?.weekRevenue ?? 0 :
+                        revenueFilter === "month" ? stats?.monthRevenue ?? 0 :
+                        revenueFilter === "quarter" ? stats?.quarterRevenue ?? 0 :
+                        stats?.totalRevenue ?? 0
+                      }
+                    </p>
+                    <p style={{ fontSize: 12, color: "#10b98180", marginTop: 8 }}>
+                      {revenueFilter === "today" ? "Today's earnings" :
+                       revenueFilter === "week" ? "This week's earnings" :
+                       revenueFilter === "month" ? "This month's earnings" :
+                       revenueFilter === "quarter" ? "This quarter's earnings" :
+                       "All time earnings"}
+                    </p>
+                  </div>
+
+                  <div
+                    style={{
+                      padding: "20px",
+                      borderRadius: 12,
+                      background: "linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(37, 99, 235, 0.1))",
+                      border: "1px solid rgba(59, 130, 246, 0.3)",
+                    }}
+                  >
+                    <p style={{ fontSize: 12, color: "#3b82f6", marginBottom: 8, textTransform: "uppercase", letterSpacing: 1 }}>
+                      Bookings
+                    </p>
+                    <p style={{ fontSize: 32, fontWeight: 700, color: "#3b82f6", fontFamily: fonts.heading }}>
+                      {loadingData ? "..." :
+                        revenueFilter === "today" ? stats?.bookingsToday ?? 0 :
+                        revenueFilter === "week" ?
+                          bookings.filter(b => {
+                            const now = new Date();
+                            const startOfWeek = new Date(now);
+                            startOfWeek.setDate(now.getDate() - now.getDay());
+                            return new Date(b.booking_date || "") >= startOfWeek;
+                          }).length :
+                        revenueFilter === "month" ?
+                          bookings.filter(b => {
+                            const now = new Date();
+                            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+                            return new Date(b.booking_date || "") >= startOfMonth;
+                          }).length :
+                        revenueFilter === "quarter" ?
+                          bookings.filter(b => {
+                            const now = new Date();
+                            const currentQuarter = Math.floor(now.getMonth() / 3);
+                            const startOfQuarter = new Date(now.getFullYear(), currentQuarter * 3, 1);
+                            return new Date(b.booking_date || "") >= startOfQuarter;
+                          }).length :
+                        stats?.totalBookings ?? 0
+                      }
+                    </p>
+                    <p style={{ fontSize: 12, color: "#3b82f680", marginTop: 8 }}>
+                      {revenueFilter === "today" ? "Today's bookings" :
+                       revenueFilter === "week" ? "This week's bookings" :
+                       revenueFilter === "month" ? "This month's bookings" :
+                       revenueFilter === "quarter" ? "This quarter's bookings" :
+                       "All time bookings"}
+                    </p>
+                  </div>
+
+                  <div
+                    style={{
+                      padding: "20px",
+                      borderRadius: 12,
+                      background: "linear-gradient(135deg, rgba(249, 115, 22, 0.15), rgba(234, 88, 12, 0.1))",
+                      border: "1px solid rgba(249, 115, 22, 0.3)",
+                    }}
+                  >
+                    <p style={{ fontSize: 12, color: "#f97316", marginBottom: 8, textTransform: "uppercase", letterSpacing: 1 }}>
+                      Avg per Booking
+                    </p>
+                    <p style={{ fontSize: 32, fontWeight: 700, color: "#f97316", fontFamily: fonts.heading }}>
+                      ₹{loadingData ? "..." : (() => {
+                        let revenue = 0;
+                        let count = 0;
+
+                        if (revenueFilter === "today") {
+                          revenue = stats?.todayRevenue ?? 0;
+                          count = stats?.bookingsToday ?? 0;
+                        } else if (revenueFilter === "week") {
+                          revenue = stats?.weekRevenue ?? 0;
+                          const now = new Date();
+                          const startOfWeek = new Date(now);
+                          startOfWeek.setDate(now.getDate() - now.getDay());
+                          count = bookings.filter(b => new Date(b.booking_date || "") >= startOfWeek).length;
+                        } else if (revenueFilter === "month") {
+                          revenue = stats?.monthRevenue ?? 0;
+                          const now = new Date();
+                          const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+                          count = bookings.filter(b => new Date(b.booking_date || "") >= startOfMonth).length;
+                        } else if (revenueFilter === "quarter") {
+                          revenue = stats?.quarterRevenue ?? 0;
+                          const now = new Date();
+                          const currentQuarter = Math.floor(now.getMonth() / 3);
+                          const startOfQuarter = new Date(now.getFullYear(), currentQuarter * 3, 1);
+                          count = bookings.filter(b => new Date(b.booking_date || "") >= startOfQuarter).length;
+                        } else {
+                          revenue = stats?.totalRevenue ?? 0;
+                          count = stats?.totalBookings ?? 0;
+                        }
+
+                        return count > 0 ? Math.round(revenue / count) : 0;
+                      })()}
+                    </p>
+                    <p style={{ fontSize: 12, color: "#f9731680", marginTop: 8 }}>
+                      Average revenue per booking
+                    </p>
+                  </div>
+                </div>
               </div>
 
               {/* Recent Activity */}
