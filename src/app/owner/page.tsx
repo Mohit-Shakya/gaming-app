@@ -15,6 +15,7 @@ type OwnerStats = {
   bookingsToday: number;
   recentBookings: number;
   recentRevenue: number;
+  todayRevenue: number;
   totalBookings: number;
   pendingBookings: number;
 };
@@ -216,6 +217,7 @@ export default function OwnerDashboardPage() {
             bookingsToday: 0,
             recentBookings: 0,
             recentRevenue: 0,
+            todayRevenue: 0,
             totalBookings: 0,
             pendingBookings: 0,
           });
@@ -362,11 +364,16 @@ export default function OwnerDashboardPage() {
           .slice(0, 20)
           .reduce((sum, b) => sum + (b.total_amount || 0), 0);
 
+        const todayRevenue = enrichedBookings
+          .filter((b) => b.booking_date === todayStr)
+          .reduce((sum, b) => sum + (b.total_amount || 0), 0);
+
         setStats({
           cafesCount: ownerCafes.length,
           bookingsToday,
           recentBookings: Math.min(enrichedBookings.length, 20),
           recentRevenue,
+          todayRevenue,
           totalBookings: enrichedBookings.length,
           pendingBookings,
         });
@@ -503,11 +510,16 @@ export default function OwnerDashboardPage() {
               .slice(0, 20)
               .reduce((sum, b) => sum + (b.total_amount || 0), 0);
 
+            const todayRevenue = enrichedBookings
+              .filter((b) => b.booking_date === todayStr)
+              .reduce((sum, b) => sum + (b.total_amount || 0), 0);
+
             setStats(prevStats => ({
               cafesCount: cafes.length,
               bookingsToday,
               recentBookings: Math.min(enrichedBookings.length, 20),
               recentRevenue,
+              todayRevenue,
               totalBookings: enrichedBookings.length,
               pendingBookings,
             }));
@@ -1049,6 +1061,14 @@ export default function OwnerDashboardPage() {
                   icon="📅"
                   gradient="linear-gradient(135deg, rgba(251, 146, 60, 0.15), rgba(249, 115, 22, 0.1))"
                   color="#fb923c"
+                />
+                <StatCard
+                  title="Today's Revenue"
+                  value={loadingData ? "..." : `₹${stats?.todayRevenue ?? 0}`}
+                  subtitle="Total payment today"
+                  icon="💵"
+                  gradient="linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(5, 150, 105, 0.1))"
+                  color="#10b981"
                 />
                 <StatCard
                   title="Total Bookings"
