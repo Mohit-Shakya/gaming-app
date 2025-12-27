@@ -675,6 +675,11 @@ export default function OwnerDashboardPage() {
       // Get current time in 12-hour format
       const currentTime = convertTo12Hour();
 
+      console.log(`[Start Booking] Updating booking ${booking.id}:`);
+      console.log(`  Original start time: ${booking.start_time}`);
+      console.log(`  New start time: ${currentTime}`);
+      console.log(`  Duration: ${booking.duration} minutes`);
+
       const { error } = await supabase
         .from("bookings")
         .update({
