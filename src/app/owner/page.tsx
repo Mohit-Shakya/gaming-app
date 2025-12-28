@@ -71,7 +71,7 @@ type BookingRow = {
   cafe_name?: string | null;
 };
 
-type NavTab = 'overview' | 'live-status' | 'bookings' | 'cafe-details' | 'analytics';
+type NavTab = 'dashboard' | 'sessions' | 'customers' | 'stations' | 'subscriptions' | 'memberships' | 'coupons' | 'reports' | 'settings' | 'overview' | 'live-status' | 'bookings' | 'cafe-details' | 'analytics';
 
 // Helper functions for time conversion
 function convertTo24Hour(time12h: string): string {
@@ -117,7 +117,7 @@ export default function OwnerDashboardPage() {
 
   const [checkingRole, setCheckingRole] = useState(true);
   const [allowed, setAllowed] = useState(false);
-  const [activeTab, setActiveTab] = useState<NavTab>('overview');
+  const [activeTab, setActiveTab] = useState<NavTab>('dashboard');
 
   const [stats, setStats] = useState<OwnerStats | null>(null);
   const [cafes, setCafes] = useState<CafeRow[]>([]);
@@ -975,11 +975,15 @@ export default function OwnerDashboardPage() {
 
   // Navigation items
   const navItems: { id: NavTab; label: string; icon: string }[] = [
-    { id: 'overview', label: 'Overview', icon: '📊' },
-    { id: 'live-status', label: 'Live Status', icon: '🔴' },
-    { id: 'bookings', label: 'Bookings', icon: '📅' },
-    { id: 'cafe-details', label: 'Café Details', icon: '🏪' },
-    { id: 'analytics', label: 'Analytics', icon: '📈' },
+    { id: 'dashboard', label: 'Dashboard', icon: '🏠' },
+    { id: 'sessions', label: 'Sessions', icon: '▶️' },
+    { id: 'customers', label: 'Customers', icon: '👥' },
+    { id: 'stations', label: 'Stations', icon: '🖥️' },
+    { id: 'subscriptions', label: 'Subscriptions', icon: '🔄' },
+    { id: 'memberships', label: 'Memberships', icon: '🎫' },
+    { id: 'coupons', label: 'Coupons', icon: '🎟️' },
+    { id: 'reports', label: 'Reports', icon: '📊' },
+    { id: 'settings', label: 'Settings', icon: '⚙️' },
   ];
 
   return (
@@ -1012,38 +1016,42 @@ export default function OwnerDashboardPage() {
             borderBottom: `1px solid ${colors.border}`,
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 10,
-                background: "linear-gradient(135deg, #22c55e, #16a34a)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 20,
-              }}
-            >
-              🏪
-            </div>
-            <div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <div
                 style={{
-                  fontSize: 14,
-                  fontWeight: 600,
-                  color: colors.textPrimary,
+                  width: 48,
+                  height: 48,
+                  borderRadius: 12,
+                  background: "#fff",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 24,
                 }}
               >
-                Owner Portal
+                🎮
               </div>
-              <div
-                style={{
-                  fontSize: 11,
-                  color: colors.textMuted,
-                }}
-              >
-                Gaming Café
+              <div>
+                <div
+                  style={{
+                    fontSize: 16,
+                    fontWeight: 700,
+                    color: colors.textPrimary,
+                    letterSpacing: "-0.5px",
+                  }}
+                >
+                  GameZoneBuddy
+                </div>
+                <div
+                  style={{
+                    fontSize: 11,
+                    color: colors.textMuted,
+                    fontWeight: 500,
+                  }}
+                >
+                  PlayTime Gaming Cafe
+                </div>
               </div>
             </div>
           </div>
@@ -1147,50 +1155,111 @@ export default function OwnerDashboardPage() {
               <h1
                 style={{
                   fontFamily: fonts.heading,
-                  fontSize: 24,
+                  fontSize: 28,
                   margin: 0,
-                  marginBottom: 4,
+                  marginBottom: 0,
+                  fontWeight: 700,
                 }}
               >
+                {activeTab === 'dashboard' && 'Dashboard'}
+                {activeTab === 'sessions' && 'Sessions'}
+                {activeTab === 'customers' && 'Customers'}
+                {activeTab === 'stations' && 'Stations'}
+                {activeTab === 'subscriptions' && 'Subscriptions'}
+                {activeTab === 'memberships' && 'Memberships'}
+                {activeTab === 'coupons' && 'Coupons'}
+                {activeTab === 'reports' && 'Reports'}
+                {activeTab === 'settings' && 'Settings'}
                 {activeTab === 'overview' && 'Dashboard Overview'}
                 {activeTab === 'live-status' && 'Live Console Status'}
                 {activeTab === 'bookings' && 'Manage Bookings'}
                 {activeTab === 'cafe-details' && 'Café Details'}
                 {activeTab === 'analytics' && 'Analytics & Reports'}
               </h1>
-              <p
-                style={{
-                  fontSize: 13,
-                  color: colors.textMuted,
-                  margin: 0,
-                }}
-              >
-                {activeTab === 'overview' && 'Track your café performance and bookings'}
-                {activeTab === 'live-status' && 'Real-time console occupancy and availability'}
-                {activeTab === 'bookings' && 'View and manage all customer bookings'}
-                {activeTab === 'cafe-details' && 'Manage your gaming café information and pricing'}
-                {activeTab === 'analytics' && 'Detailed insights and statistics'}
-              </p>
             </div>
-            <button
-              onClick={() => window.location.reload()}
-              style={{
-                padding: "10px 18px",
-                borderRadius: 10,
-                border: `1px solid ${colors.border}`,
-                background: "rgba(15,23,42,0.7)",
-                color: colors.textSecondary,
-                fontSize: 13,
-                fontWeight: 500,
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-              }}
-            >
-              <span>🔄</span>
-              Refresh
-            </button>
+            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+              <button
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 10,
+                  border: "none",
+                  background: "transparent",
+                  color: colors.textSecondary,
+                  fontSize: 20,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+                title="QR Code"
+              >
+                📱
+              </button>
+              <button
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 10,
+                  border: "none",
+                  background: "transparent",
+                  color: colors.textSecondary,
+                  fontSize: 20,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+                title="Dark Mode"
+              >
+                🌙
+              </button>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ textAlign: "right" }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: colors.textPrimary }}>
+                    {user?.user_metadata?.name || 'Mohit Bhai'}
+                  </div>
+                  <div style={{ fontSize: 12, color: colors.textMuted }}>
+                    Administrator
+                  </div>
+                </div>
+                <div
+                  style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 10,
+                    background: "linear-gradient(135deg, #3b82f6, #2563eb)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 16,
+                    fontWeight: 600,
+                    color: "#fff",
+                  }}
+                >
+                  MB
+                </div>
+                <button
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 8,
+                    border: "none",
+                    background: "transparent",
+                    color: "#ef4444",
+                    fontSize: 18,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                  title="Logout"
+                  onClick={() => router.push('/logout')}
+                >
+                  🚪
+                </button>
+              </div>
+            </div>
           </div>
         </header>
 
@@ -1209,6 +1278,228 @@ export default function OwnerDashboardPage() {
               }}
             >
               {error}
+            </div>
+          )}
+
+          {/* Dashboard Tab - New Design */}
+          {activeTab === 'dashboard' && cafes.length > 0 && (
+            <div>
+              {/* Top Stats Cards */}
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+                  gap: 20,
+                  marginBottom: 32,
+                }}
+              >
+                {/* Active Now Card */}
+                <div
+                  style={{
+                    padding: "24px",
+                    borderRadius: 16,
+                    background: "#fff",
+                    border: "1px solid #e5e7eb",
+                    position: "relative",
+                    overflow: "hidden",
+                  }}
+                >
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: 16,
+                      right: 16,
+                      width: 48,
+                      height: 48,
+                      borderRadius: 12,
+                      background: "rgba(239, 68, 68, 0.1)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 24,
+                    }}
+                  >
+                    ▶️
+                  </div>
+                  <div style={{ position: "relative", zIndex: 1 }}>
+                    <p
+                      style={{
+                        fontSize: 48,
+                        fontWeight: 700,
+                        color: "#111827",
+                        margin: 0,
+                        lineHeight: 1,
+                      }}
+                    >
+                      {loadingData ? "..." : bookings.filter(b => b.status === 'in-progress' && b.booking_date === new Date().toISOString().split('T')[0]).length}
+                    </p>
+                    <p
+                      style={{
+                        fontSize: 14,
+                        color: "#6b7280",
+                        marginTop: 8,
+                        marginBottom: 0,
+                      }}
+                    >
+                      Active Now
+                    </p>
+                  </div>
+                </div>
+
+                {/* Today's Revenue Card */}
+                <div
+                  style={{
+                    padding: "24px",
+                    borderRadius: 16,
+                    background: "#fff",
+                    border: "1px solid #e5e7eb",
+                    position: "relative",
+                    overflow: "hidden",
+                  }}
+                >
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: 16,
+                      right: 16,
+                      width: 48,
+                      height: 48,
+                      borderRadius: 12,
+                      background: "rgba(34, 197, 94, 0.1)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 24,
+                    }}
+                  >
+                    ₹
+                  </div>
+                  <div style={{ position: "relative", zIndex: 1 }}>
+                    <p
+                      style={{
+                        fontSize: 48,
+                        fontWeight: 700,
+                        color: "#111827",
+                        margin: 0,
+                        lineHeight: 1,
+                      }}
+                    >
+                      ₹{loadingData ? "..." : stats?.todayRevenue ?? 0}
+                    </p>
+                    <p
+                      style={{
+                        fontSize: 14,
+                        color: "#6b7280",
+                        marginTop: 8,
+                        marginBottom: 0,
+                      }}
+                    >
+                      Today's Revenue
+                    </p>
+                    <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 4 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
+                        <span style={{ color: "#6b7280" }}>Sessions</span>
+                        <span style={{ color: "#111827", fontWeight: 500 }}>₹{loadingData ? "0" : stats?.todayRevenue ?? 0}</span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
+                        <span style={{ color: "#6b7280" }}>Subscriptions</span>
+                        <span style={{ color: "#111827", fontWeight: 500 }}>₹0</span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
+                        <span style={{ color: "#6b7280" }}>Memberships</span>
+                        <span style={{ color: "#111827", fontWeight: 500 }}>₹0</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Today's Sessions Card */}
+                <div
+                  style={{
+                    padding: "24px",
+                    borderRadius: 16,
+                    background: "#fff",
+                    border: "1px solid #e5e7eb",
+                    position: "relative",
+                    overflow: "hidden",
+                  }}
+                >
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: 16,
+                      right: 16,
+                      width: 48,
+                      height: 48,
+                      borderRadius: 12,
+                      background: "rgba(249, 115, 22, 0.1)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 24,
+                    }}
+                  >
+                    🕐
+                  </div>
+                  <div style={{ position: "relative", zIndex: 1 }}>
+                    <p
+                      style={{
+                        fontSize: 48,
+                        fontWeight: 700,
+                        color: "#111827",
+                        margin: 0,
+                        lineHeight: 1,
+                      }}
+                    >
+                      {loadingData ? "..." : stats?.bookingsToday ?? 0}
+                    </p>
+                    <p
+                      style={{
+                        fontSize: 14,
+                        color: "#6b7280",
+                        marginTop: 8,
+                        marginBottom: 0,
+                      }}
+                    >
+                      Today's Sessions
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Stations Section */}
+              <div style={{ marginTop: 32 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+                  <h2
+                    style={{
+                      fontSize: 20,
+                      fontWeight: 600,
+                      color: "#111827",
+                      margin: 0,
+                    }}
+                  >
+                    Stations
+                  </h2>
+                  <button
+                    onClick={() => setActiveTab('stations')}
+                    style={{
+                      padding: "8px 16px",
+                      borderRadius: 8,
+                      border: "1px solid #e5e7eb",
+                      background: "#fff",
+                      color: "#3b82f6",
+                      fontSize: 13,
+                      fontWeight: 500,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Manage Stations
+                  </button>
+                </div>
+
+                {/* Station Cards Grid */}
+                <ConsoleStatusDashboard cafeId={cafes[0].id} />
+              </div>
             </div>
           )}
 
@@ -2746,6 +3037,160 @@ export default function OwnerDashboardPage() {
               </p>
               <p style={{ fontSize: 14, color: colors.textMuted }}>
                 Detailed insights and reports will be available here.
+              </p>
+            </div>
+          )}
+
+          {/* Sessions Tab */}
+          {activeTab === 'sessions' && (
+            <div
+              style={{
+                background: "rgba(15,23,42,0.6)",
+                borderRadius: 16,
+                border: `1px solid ${colors.border}`,
+                padding: "60px 20px",
+                textAlign: "center",
+              }}
+            >
+              <div style={{ fontSize: 64, marginBottom: 16, opacity: 0.3 }}>▶️</div>
+              <p style={{ fontSize: 18, color: colors.textSecondary, marginBottom: 8, fontWeight: 500 }}>
+                Sessions Management
+              </p>
+              <p style={{ fontSize: 14, color: colors.textMuted }}>
+                Detailed session tracking and management will be available here.
+              </p>
+            </div>
+          )}
+
+          {/* Customers Tab */}
+          {activeTab === 'customers' && (
+            <div
+              style={{
+                background: "rgba(15,23,42,0.6)",
+                borderRadius: 16,
+                border: `1px solid ${colors.border}`,
+                padding: "60px 20px",
+                textAlign: "center",
+              }}
+            >
+              <div style={{ fontSize: 64, marginBottom: 16, opacity: 0.3 }}>👥</div>
+              <p style={{ fontSize: 18, color: colors.textSecondary, marginBottom: 8, fontWeight: 500 }}>
+                Customer Directory
+              </p>
+              <p style={{ fontSize: 14, color: colors.textMuted }}>
+                View and manage your customer database here.
+              </p>
+            </div>
+          )}
+
+          {/* Stations Tab */}
+          {activeTab === 'stations' && cafes.length > 0 && (
+            <div>
+              <ConsoleStatusDashboard cafeId={cafes[0].id} />
+            </div>
+          )}
+
+          {/* Subscriptions Tab */}
+          {activeTab === 'subscriptions' && (
+            <div
+              style={{
+                background: "rgba(15,23,42,0.6)",
+                borderRadius: 16,
+                border: `1px solid ${colors.border}`,
+                padding: "60px 20px",
+                textAlign: "center",
+              }}
+            >
+              <div style={{ fontSize: 64, marginBottom: 16, opacity: 0.3 }}>🔄</div>
+              <p style={{ fontSize: 18, color: colors.textSecondary, marginBottom: 8, fontWeight: 500 }}>
+                Subscriptions
+              </p>
+              <p style={{ fontSize: 14, color: colors.textMuted }}>
+                Manage recurring subscriptions and plans here.
+              </p>
+            </div>
+          )}
+
+          {/* Memberships Tab */}
+          {activeTab === 'memberships' && (
+            <div
+              style={{
+                background: "rgba(15,23,42,0.6)",
+                borderRadius: 16,
+                border: `1px solid ${colors.border}`,
+                padding: "60px 20px",
+                textAlign: "center",
+              }}
+            >
+              <div style={{ fontSize: 64, marginBottom: 16, opacity: 0.3 }}>🎫</div>
+              <p style={{ fontSize: 18, color: colors.textSecondary, marginBottom: 8, fontWeight: 500 }}>
+                Memberships
+              </p>
+              <p style={{ fontSize: 14, color: colors.textMuted }}>
+                Manage membership tiers and benefits here.
+              </p>
+            </div>
+          )}
+
+          {/* Coupons Tab */}
+          {activeTab === 'coupons' && (
+            <div
+              style={{
+                background: "rgba(15,23,42,0.6)",
+                borderRadius: 16,
+                border: `1px solid ${colors.border}`,
+                padding: "60px 20px",
+                textAlign: "center",
+              }}
+            >
+              <div style={{ fontSize: 64, marginBottom: 16, opacity: 0.3 }}>🎟️</div>
+              <p style={{ fontSize: 18, color: colors.textSecondary, marginBottom: 8, fontWeight: 500 }}>
+                Coupons & Discounts
+              </p>
+              <p style={{ fontSize: 14, color: colors.textMuted }}>
+                Create and manage promotional coupons here.
+              </p>
+            </div>
+          )}
+
+          {/* Reports Tab */}
+          {activeTab === 'reports' && (
+            <div
+              style={{
+                background: "rgba(15,23,42,0.6)",
+                borderRadius: 16,
+                border: `1px solid ${colors.border}`,
+                padding: "60px 20px",
+                textAlign: "center",
+              }}
+            >
+              <div style={{ fontSize: 64, marginBottom: 16, opacity: 0.3 }}>📊</div>
+              <p style={{ fontSize: 18, color: colors.textSecondary, marginBottom: 8, fontWeight: 500 }}>
+                Reports
+              </p>
+              <p style={{ fontSize: 14, color: colors.textMuted }}>
+                Generate detailed reports and exports here.
+              </p>
+            </div>
+          )}
+
+          {/* Settings Tab */}
+          {activeTab === 'settings' && (
+            <div
+              style={{
+                background: "rgba(15,23,42,0.6)",
+                borderRadius: 16,
+                border: `1px solid ${colors.border}`,
+                padding: "60px 20px",
+                textAlign: "center",
+              }}
+            >
+              <div style={{ fontSize: 64, marginBottom: 16, opacity: 0.3 }}>⚙️</div>
+              <p style={{ fontSize: 18, color: colors.textSecondary, marginBottom: 8, fontWeight: 500 }}>
+                Settings
+              </p>
+              <p style={{ fontSize: 14, color: colors.textMuted }}>
+                Configure your café settings and preferences here.
               </p>
             </div>
           )}
