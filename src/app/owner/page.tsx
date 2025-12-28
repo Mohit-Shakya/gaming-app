@@ -974,18 +974,21 @@ export default function OwnerDashboardPage() {
     return null;
   }
 
-  // Theme colors
+  // Theme colors - improved light mode palette
   const theme = {
-    background: isDarkMode ? "#020617" : "#f8fafc",
+    background: isDarkMode ? "#020617" : "#f1f5f9",
     cardBackground: isDarkMode ? "rgba(15,23,42,0.6)" : "#ffffff",
     sidebarBackground: isDarkMode ? "linear-gradient(180deg, #0f172a 0%, #020617 100%)" : "#ffffff",
     border: isDarkMode ? "rgba(51,65,85,0.5)" : "#e2e8f0",
-    textPrimary: isDarkMode ? "#f8fafc" : "#0f172a",
-    textSecondary: isDarkMode ? "#cbd5e1" : "#475569",
+    textPrimary: isDarkMode ? "#f8fafc" : "#1e293b",
+    textSecondary: isDarkMode ? "#cbd5e1" : "#64748b",
     textMuted: isDarkMode ? "#64748b" : "#94a3b8",
-    headerBackground: isDarkMode ? "rgba(15,23,42,0.5)" : "rgba(255,255,255,0.8)",
-    statCardBackground: isDarkMode ? "#fff" : "#fff",
-    statCardText: isDarkMode ? "#111827" : "#111827",
+    headerBackground: isDarkMode ? "rgba(15,23,42,0.5)" : "#ffffff",
+    statCardBackground: "#ffffff",
+    statCardText: "#111827",
+    hoverBackground: isDarkMode ? "rgba(51,65,85,0.3)" : "#f8fafc",
+    activeNavBackground: isDarkMode ? "linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(37, 99, 235, 0.15))" : "linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(37, 99, 235, 0.08))",
+    activeNavText: "#3b82f6",
   };
 
   // Navigation items
@@ -1085,9 +1088,9 @@ export default function OwnerDashboardPage() {
                 borderRadius: 10,
                 border: "none",
                 background: activeTab === item.id
-                  ? "linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(37, 99, 235, 0.15))"
+                  ? theme.activeNavBackground
                   : "transparent",
-                color: activeTab === item.id ? "#3b82f6" : theme.textSecondary,
+                color: activeTab === item.id ? theme.activeNavText : theme.textSecondary,
                 fontSize: 14,
                 fontWeight: activeTab === item.id ? 600 : 500,
                 cursor: "pointer",
@@ -1099,7 +1102,7 @@ export default function OwnerDashboardPage() {
               }}
               onMouseEnter={(e) => {
                 if (activeTab !== item.id) {
-                  e.currentTarget.style.background = "rgba(51,65,85,0.3)";
+                  e.currentTarget.style.background = theme.hoverBackground;
                 }
               }}
               onMouseLeave={(e) => {
