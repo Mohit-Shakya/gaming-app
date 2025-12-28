@@ -993,7 +993,7 @@ export default function OwnerDashboardPage() {
   // Navigation items
   const navItems: { id: NavTab; label: string; icon: string }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: '🏠' },
-    { id: 'sessions', label: 'Sessions', icon: '▶️' },
+    { id: 'sessions', label: 'Bookings', icon: '📅' },
     { id: 'customers', label: 'Customers', icon: '👥' },
     { id: 'stations', label: 'Stations', icon: '🖥️' },
     { id: 'subscriptions', label: 'Subscriptions', icon: '🔄' },
@@ -1135,7 +1135,7 @@ export default function OwnerDashboardPage() {
                 }}
               >
                 {activeTab === 'dashboard' && 'Dashboard'}
-                {activeTab === 'sessions' && 'Sessions'}
+                {activeTab === 'sessions' && 'Bookings'}
                 {activeTab === 'customers' && 'Customers'}
                 {activeTab === 'stations' && 'Stations'}
                 {activeTab === 'subscriptions' && 'Subscriptions'}
@@ -2999,24 +2999,268 @@ export default function OwnerDashboardPage() {
             </div>
           )}
 
-          {/* Sessions Tab */}
+          {/* Bookings Tab */}
           {activeTab === 'sessions' && (
-            <div
-              style={{
-                background: theme.cardBackground,
-                borderRadius: 16,
-                border: `1px solid ${theme.border}`,
-                padding: "60px 20px",
-                textAlign: "center",
-              }}
-            >
-              <div style={{ fontSize: 64, marginBottom: 16, opacity: 0.3 }}>▶️</div>
-              <p style={{ fontSize: 18, color: theme.textSecondary, marginBottom: 8, fontWeight: 500 }}>
-                Sessions Management
-              </p>
-              <p style={{ fontSize: 14, color: theme.textMuted }}>
-                Detailed session tracking and management will be available here.
-              </p>
+            <div>
+              {/* Header with search and filters */}
+              <div style={{ marginBottom: 24 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+                  <div>
+                    <h2 style={{ fontSize: 24, fontWeight: 700, color: theme.textPrimary, margin: 0, marginBottom: 4 }}>Bookings</h2>
+                    <p style={{ fontSize: 14, color: theme.textMuted, margin: 0 }}>Manage gaming bookings</p>
+                  </div>
+                  <button
+                    onClick={() => router.push('/owner/walk-in')}
+                    style={{
+                      padding: '12px 24px',
+                      background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: 10,
+                      fontSize: 15,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                    }}
+                  >
+                    <span style={{ fontSize: 18 }}>+</span>
+                    New Booking
+                  </button>
+                </div>
+
+                {/* Search and filters row */}
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                  <div style={{ flex: 1, position: 'relative' }}>
+                    <input
+                      type="text"
+                      placeholder="Search customer name or phone..."
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px 12px 44px',
+                        background: theme.cardBackground,
+                        border: `1px solid ${theme.border}`,
+                        borderRadius: 10,
+                        color: theme.textPrimary,
+                        fontSize: 14,
+                        outline: 'none',
+                      }}
+                    />
+                    <span style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', fontSize: 18, opacity: 0.5 }}>🔍</span>
+                  </div>
+
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    style={{
+                      padding: '12px 16px',
+                      background: theme.cardBackground,
+                      border: `1px solid ${theme.border}`,
+                      borderRadius: 10,
+                      color: theme.textPrimary,
+                      fontSize: 14,
+                      cursor: 'pointer',
+                      minWidth: 140,
+                    }}
+                  >
+                    <option value="all">All Status</option>
+                    <option value="pending">Pending</option>
+                    <option value="confirmed">Confirmed</option>
+                    <option value="in-progress">In Progress</option>
+                    <option value="completed">Completed</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+
+                  <select
+                    value={sourceFilter}
+                    onChange={(e) => setSourceFilter(e.target.value)}
+                    style={{
+                      padding: '12px 16px',
+                      background: theme.cardBackground,
+                      border: `1px solid ${theme.border}`,
+                      borderRadius: 10,
+                      color: theme.textPrimary,
+                      fontSize: 14,
+                      cursor: 'pointer',
+                      minWidth: 140,
+                    }}
+                  >
+                    <option value="all">All Sources</option>
+                    <option value="online">Online</option>
+                    <option value="walk-in">Walk-in</option>
+                  </select>
+
+                  <input
+                    type="date"
+                    value={dateFilter}
+                    onChange={(e) => setDateFilter(e.target.value)}
+                    style={{
+                      padding: '12px 16px',
+                      background: theme.cardBackground,
+                      border: `1px solid ${theme.border}`,
+                      borderRadius: 10,
+                      color: theme.textPrimary,
+                      fontSize: 14,
+                      cursor: 'pointer',
+                      minWidth: 160,
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Bookings Table */}
+              <div
+                style={{
+                  background: theme.cardBackground,
+                  borderRadius: 16,
+                  border: `1px solid ${theme.border}`,
+                  overflow: 'hidden',
+                }}
+              >
+                {loadingData ? (
+                  <div style={{ padding: 60, textAlign: 'center' }}>
+                    <div style={{ fontSize: 48, marginBottom: 12, opacity: 0.3 }}>⏳</div>
+                    <p style={{ color: theme.textMuted, fontSize: 14 }}>Loading bookings...</p>
+                  </div>
+                ) : filteredBookings.length === 0 ? (
+                  <div style={{ padding: 60, textAlign: 'center' }}>
+                    <div style={{ fontSize: 48, marginBottom: 12, opacity: 0.3 }}>📅</div>
+                    <p style={{ fontSize: 16, color: theme.textSecondary, marginBottom: 6, fontWeight: 500 }}>No bookings yet</p>
+                    <p style={{ color: theme.textMuted, fontSize: 14 }}>Start a gaming session to see it here</p>
+                    <button
+                      onClick={() => router.push('/owner/walk-in')}
+                      style={{
+                        marginTop: 20,
+                        padding: '12px 24px',
+                        background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: 10,
+                        fontSize: 14,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 8,
+                      }}
+                    >
+                      <span style={{ fontSize: 18 }}>+</span>
+                      New Booking
+                    </button>
+                  </div>
+                ) : (
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ background: 'rgba(15,23,42,0.8)', borderBottom: `1px solid ${theme.border}` }}>
+                        <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Customer</th>
+                        <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Date</th>
+                        <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Time</th>
+                        <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Console</th>
+                        <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Duration</th>
+                        <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Amount</th>
+                        <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Status</th>
+                        <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Source</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredBookings.map((booking, index) => {
+                        const isWalkIn = booking.source === 'walk-in';
+                        const customerName = isWalkIn ? booking.customer_name : booking.user_name || booking.user_email;
+                        const customerPhone = isWalkIn ? booking.customer_phone : booking.user_phone;
+                        const consoleInfo = booking.booking_items?.[0];
+
+                        const statusColors: Record<string, { bg: string; text: string }> = {
+                          'pending': { bg: 'rgba(234, 179, 8, 0.15)', text: '#eab308' },
+                          'confirmed': { bg: 'rgba(59, 130, 246, 0.15)', text: '#3b82f6' },
+                          'in-progress': { bg: 'rgba(16, 185, 129, 0.15)', text: '#10b981' },
+                          'completed': { bg: 'rgba(100, 116, 139, 0.15)', text: '#64748b' },
+                          'cancelled': { bg: 'rgba(239, 68, 68, 0.15)', text: '#ef4444' },
+                        };
+
+                        const statusColor = statusColors[booking.status || 'pending'] || statusColors.pending;
+
+                        return (
+                          <tr
+                            key={booking.id}
+                            style={{
+                              borderBottom: index < filteredBookings.length - 1 ? `1px solid ${theme.border}` : 'none',
+                              cursor: 'pointer',
+                              transition: 'background 0.15s ease',
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(51,65,85,0.2)'}
+                            onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                            onClick={() => handleEditBooking(booking)}
+                          >
+                            <td style={{ padding: '16px 20px' }}>
+                              <div>
+                                <div style={{ fontSize: 14, fontWeight: 500, color: theme.textPrimary, marginBottom: 4 }}>
+                                  {customerName || 'Unknown'}
+                                </div>
+                                {customerPhone && (
+                                  <div style={{ fontSize: 13, color: theme.textMuted }}>
+                                    {customerPhone}
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                            <td style={{ padding: '16px 20px', fontSize: 14, color: theme.textSecondary }}>
+                              {booking.booking_date ? new Date(booking.booking_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
+                            </td>
+                            <td style={{ padding: '16px 20px', fontSize: 14, color: theme.textSecondary }}>
+                              {booking.start_time || '-'}
+                            </td>
+                            <td style={{ padding: '16px 20px' }}>
+                              <div style={{ fontSize: 14, color: theme.textPrimary, fontWeight: 500 }}>
+                                {consoleInfo?.console || '-'}
+                              </div>
+                              {consoleInfo?.quantity && (
+                                <div style={{ fontSize: 13, color: theme.textMuted }}>
+                                  {consoleInfo.quantity} {consoleInfo.quantity === 1 ? 'controller' : 'controllers'}
+                                </div>
+                              )}
+                            </td>
+                            <td style={{ padding: '16px 20px', fontSize: 14, color: theme.textSecondary }}>
+                              {booking.duration ? `${booking.duration} min` : '-'}
+                            </td>
+                            <td style={{ padding: '16px 20px', fontSize: 15, fontWeight: 600, color: theme.textPrimary }}>
+                              ₹{booking.total_amount || 0}
+                            </td>
+                            <td style={{ padding: '16px 20px' }}>
+                              <span style={{
+                                display: 'inline-block',
+                                padding: '6px 12px',
+                                borderRadius: 6,
+                                fontSize: 12,
+                                fontWeight: 600,
+                                textTransform: 'capitalize',
+                                background: statusColor.bg,
+                                color: statusColor.text,
+                              }}>
+                                {booking.status?.replace('-', ' ') || 'pending'}
+                              </span>
+                            </td>
+                            <td style={{ padding: '16px 20px' }}>
+                              <span style={{
+                                display: 'inline-block',
+                                padding: '6px 12px',
+                                borderRadius: 6,
+                                fontSize: 12,
+                                fontWeight: 500,
+                                textTransform: 'capitalize',
+                                background: booking.source === 'online' ? 'rgba(147, 51, 234, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                                color: booking.source === 'online' ? '#9333ea' : '#f59e0b',
+                              }}>
+                                {booking.source || 'unknown'}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
+              </div>
             </div>
           )}
 
