@@ -1165,31 +1165,13 @@ export default function OwnerDashboardPage() {
               </h1>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-              <button
-                style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 10,
-                  border: "none",
-                  background: "transparent",
-                  color: theme.textSecondary,
-                  fontSize: 20,
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-                title="QR Code"
-              >
-                📱
-              </button>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <div style={{ textAlign: "right" }}>
                   <div style={{ fontSize: 14, fontWeight: 600, color: theme.textPrimary }}>
-                    {user?.user_metadata?.name || 'Mohit Bhai'}
+                    {user?.user_metadata?.name || user?.email?.split('@')[0] || 'Owner'}
                   </div>
                   <div style={{ fontSize: 12, color: theme.textMuted }}>
-                    Administrator
+                    Owner
                   </div>
                 </div>
                 <div
@@ -1206,7 +1188,12 @@ export default function OwnerDashboardPage() {
                     color: "#fff",
                   }}
                 >
-                  MB
+                  {(user?.user_metadata?.name || user?.email?.split('@')[0] || 'Owner')
+                    .split(' ')
+                    .map((word: string) => word[0])
+                    .join('')
+                    .toUpperCase()
+                    .slice(0, 2)}
                 </div>
                 <button
                   style={{
@@ -1223,7 +1210,10 @@ export default function OwnerDashboardPage() {
                     justifyContent: "center",
                   }}
                   title="Logout"
-                  onClick={() => router.push('/logout')}
+                  onClick={async () => {
+                    await supabase.auth.signOut();
+                    router.push('/login');
+                  }}
                 >
                   🚪
                 </button>
