@@ -1098,36 +1098,6 @@ export default function OwnerDashboardPage() {
             </button>
           ))}
         </nav>
-
-        {/* Bottom actions */}
-        <div
-          style={{
-            padding: "16px",
-            borderTop: `1px solid ${colors.border}`,
-          }}
-        >
-          <button
-            onClick={() => router.push("/dashboard")}
-            style={{
-              width: "100%",
-              padding: "12px 16px",
-              borderRadius: 10,
-              border: `1px solid ${colors.border}`,
-              background: "rgba(51,65,85,0.3)",
-              color: colors.textSecondary,
-              fontSize: 13,
-              fontWeight: 500,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              justifyContent: "center",
-            }}
-          >
-            <span>🕹</span>
-            Player View
-          </button>
-        </div>
       </aside>
 
       {/* Main Content */}
