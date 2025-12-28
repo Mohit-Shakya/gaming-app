@@ -118,7 +118,6 @@ export default function OwnerDashboardPage() {
   const [checkingRole, setCheckingRole] = useState(true);
   const [allowed, setAllowed] = useState(false);
   const [activeTab, setActiveTab] = useState<NavTab>('dashboard');
-  const [isDarkMode, setIsDarkMode] = useState(false);
 
   const [stats, setStats] = useState<OwnerStats | null>(null);
   const [cafes, setCafes] = useState<CafeRow[]>([]);
@@ -974,20 +973,20 @@ export default function OwnerDashboardPage() {
     return null;
   }
 
-  // Theme colors - improved light mode palette
+  // Dark theme colors
   const theme = {
-    background: isDarkMode ? "#020617" : "#f1f5f9",
-    cardBackground: isDarkMode ? "rgba(15,23,42,0.6)" : "#ffffff",
-    sidebarBackground: isDarkMode ? "linear-gradient(180deg, #0f172a 0%, #020617 100%)" : "#ffffff",
-    border: isDarkMode ? "rgba(51,65,85,0.5)" : "#e2e8f0",
-    textPrimary: isDarkMode ? "#f8fafc" : "#1e293b",
-    textSecondary: isDarkMode ? "#cbd5e1" : "#64748b",
-    textMuted: isDarkMode ? "#64748b" : "#94a3b8",
-    headerBackground: isDarkMode ? "rgba(15,23,42,0.5)" : "#ffffff",
+    background: "#020617",
+    cardBackground: "rgba(15,23,42,0.6)",
+    sidebarBackground: "linear-gradient(180deg, #0f172a 0%, #020617 100%)",
+    border: "rgba(51,65,85,0.5)",
+    textPrimary: "#f8fafc",
+    textSecondary: "#cbd5e1",
+    textMuted: "#64748b",
+    headerBackground: "rgba(15,23,42,0.5)",
     statCardBackground: "#ffffff",
     statCardText: "#111827",
-    hoverBackground: isDarkMode ? "rgba(51,65,85,0.3)" : "#f8fafc",
-    activeNavBackground: isDarkMode ? "linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(37, 99, 235, 0.15))" : "linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(37, 99, 235, 0.08))",
+    hoverBackground: "rgba(51,65,85,0.3)",
+    activeNavBackground: "linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(37, 99, 235, 0.15))",
     activeNavText: "#3b82f6",
   };
 
@@ -1184,32 +1183,6 @@ export default function OwnerDashboardPage() {
               >
                 📱
               </button>
-              <button
-                onClick={() => setIsDarkMode(!isDarkMode)}
-                style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 10,
-                  border: "none",
-                  background: "transparent",
-                  color: theme.textSecondary,
-                  fontSize: 20,
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  transition: "transform 0.2s ease",
-                }}
-                title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = "scale(1.1)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = "scale(1)";
-                }}
-              >
-                {isDarkMode ? "☀️" : "🌙"}
-              </button>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <div style={{ textAlign: "right" }}>
                   <div style={{ fontSize: 14, fontWeight: 600, color: theme.textPrimary }}>
@@ -1266,7 +1239,7 @@ export default function OwnerDashboardPage() {
               style={{
                 padding: "16px 20px",
                 borderRadius: 12,
-                background: isDarkMode ? "rgba(239, 68, 68, 0.1)" : "rgba(239, 68, 68, 0.05)",
+                background: "rgba(239, 68, 68, 0.1)",
                 border: "1px solid rgba(239, 68, 68, 0.3)",
                 color: "#ef4444",
                 marginBottom: 24,
@@ -1308,7 +1281,7 @@ export default function OwnerDashboardPage() {
                       width: 48,
                       height: 48,
                       borderRadius: 12,
-                      background: isDarkMode ? "rgba(239, 68, 68, 0.1)" : "rgba(239, 68, 68, 0.05)",
+                      background: "rgba(239, 68, 68, 0.1)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
@@ -2499,7 +2472,7 @@ export default function OwnerDashboardPage() {
                     padding: "8px 16px",
                     borderRadius: 8,
                     border: `1px solid ${theme.border}`,
-                    background: isDarkMode ? "rgba(239, 68, 68, 0.1)" : "rgba(239, 68, 68, 0.05)",
+                    background: "rgba(239, 68, 68, 0.1)",
                     color: "#ef4444",
                     fontSize: 13,
                     fontWeight: 500,
