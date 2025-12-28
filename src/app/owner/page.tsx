@@ -2479,8 +2479,8 @@ export default function OwnerDashboardPage() {
                                           </button>
                                         )}
 
-                                        {/* Start button for confirmed bookings (not ended) */}
-                                        {status === "confirmed" && !isBookingEnded && (
+                                        {/* Start button for confirmed online bookings only (not walk-in, not ended) */}
+                                        {status === "confirmed" && source !== "Walk-in" && !isBookingEnded && (
                                           <button
                                             onClick={() => handleStartBooking(booking)}
                                             style={{
