@@ -154,6 +154,9 @@ export default function OwnerDashboardPage() {
   // Refresh trigger for bookings
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
+  // Time update trigger for active sessions (updates every second)
+  const [currentTime, setCurrentTime] = useState(new Date());
+
   // Check role
   useEffect(() => {
     async function checkRole() {
@@ -189,6 +192,15 @@ export default function OwnerDashboardPage() {
 
     checkRole();
   }, [user, userLoading, router]);
+
+  // Auto-refresh time every second for active sessions
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
 
   // Load data
   useEffect(() => {
@@ -1481,16 +1493,16 @@ export default function OwnerDashboardPage() {
                         gap: 20,
                       }}
                     >
-                      {activeBookings.map((booking) => {
+                      {activeBookings.map((booking, index) => {
                         const consoleInfo = booking.booking_items?.[0];
                         const isWalkIn = booking.source === 'walk-in';
                         const customerName = isWalkIn ? booking.customer_name : booking.user_name || booking.user_email;
 
-                        // Calculate time remaining
-                        const now = new Date();
-                        const currentMinutes = now.getHours() * 60 + now.getMinutes();
+                        // Calculate time remaining using currentTime state for auto-refresh
+                        const currentMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
 
                         let timeRemaining = 0;
+                        let endTime = '';
                         if (booking.start_time && booking.duration) {
                           const timeParts = booking.start_time.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
                           if (timeParts) {
@@ -1506,106 +1518,75 @@ export default function OwnerDashboardPage() {
                             const startMinutes = hours * 60 + minutes;
                             const endMinutes = startMinutes + booking.duration;
                             timeRemaining = Math.max(0, endMinutes - currentMinutes);
+
+                            // Calculate end time
+                            const endHours = Math.floor(endMinutes / 60) % 24;
+                            const endMins = endMinutes % 60;
+                            const endPeriod = endHours >= 12 ? 'pm' : 'am';
+                            const endHours12 = endHours === 0 ? 12 : endHours > 12 ? endHours - 12 : endHours;
+                            endTime = `${endHours12}:${endMins.toString().padStart(2, '0')} ${endPeriod}`;
                           }
                         }
+
+                        // Get station number from console name (e.g., "PS5" -> "#1")
+                        const stationNumber = `#${index + 1}`;
 
                         return (
                           <div
                             key={booking.id}
                             style={{
-                              padding: "20px",
+                              padding: "24px",
                               borderRadius: 16,
-                              background: theme.cardBackground,
-                              border: `1px solid ${theme.border}`,
+                              background: "rgba(15,23,42,0.6)",
+                              border: "1px solid rgba(239, 68, 68, 0.3)",
                               position: "relative",
                               overflow: "hidden",
                             }}
                           >
-                            {/* Console Type Badge */}
-                            <div
-                              style={{
-                                display: "inline-block",
-                                padding: "6px 12px",
-                                borderRadius: 8,
-                                background: "rgba(59, 130, 246, 0.15)",
-                                color: "#3b82f6",
-                                fontSize: 12,
-                                fontWeight: 600,
-                                marginBottom: 16,
-                              }}
-                            >
-                              {consoleInfo?.console || 'Unknown'}
+                            {/* Header with Console Icon and Number */}
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                                <div style={{ fontSize: 32 }}>🎮</div>
+                                <div>
+                                  <div style={{ fontSize: 20, fontWeight: 700, color: theme.textPrimary }}>
+                                    {stationNumber}
+                                  </div>
+                                  <div style={{ fontSize: 13, color: theme.textMuted, marginTop: 2 }}>
+                                    {consoleInfo?.console || 'Unknown'}
+                                  </div>
+                                </div>
+                              </div>
                             </div>
 
-                            {/* Customer Info */}
-                            <div style={{ marginBottom: 16 }}>
-                              <div style={{ fontSize: 16, fontWeight: 600, color: theme.textPrimary, marginBottom: 4 }}>
+                            {/* Customer Name */}
+                            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+                              <span style={{ fontSize: 18 }}>👤</span>
+                              <span style={{ fontSize: 16, color: theme.textPrimary, fontWeight: 500 }}>
                                 {customerName || 'Unknown Customer'}
-                              </div>
-                              {(isWalkIn ? booking.customer_phone : booking.user_phone) && (
-                                <div style={{ fontSize: 13, color: theme.textMuted }}>
-                                  {isWalkIn ? booking.customer_phone : booking.user_phone}
-                                </div>
-                              )}
+                              </span>
                             </div>
 
-                            {/* Time Info */}
+                            {/* Ends At */}
+                            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
+                              <span style={{ fontSize: 18 }}>🕐</span>
+                              <span style={{ fontSize: 14, color: theme.textMuted }}>
+                                Ends at {endTime}
+                              </span>
+                            </div>
+
+                            {/* Time Remaining Badge */}
                             <div
                               style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 12,
-                                padding: "12px",
-                                borderRadius: 10,
-                                background: "rgba(16, 185, 129, 0.1)",
-                                marginBottom: 12,
+                                padding: "16px",
+                                borderRadius: 12,
+                                background: "rgba(120, 40, 40, 0.4)",
+                                border: "1px solid rgba(239, 68, 68, 0.2)",
                               }}
                             >
-                              <span style={{ fontSize: 20 }}>⏱️</span>
-                              <div style={{ flex: 1 }}>
-                                <div style={{ fontSize: 13, color: theme.textMuted, marginBottom: 2 }}>
-                                  Time Remaining
-                                </div>
-                                <div style={{ fontSize: 18, fontWeight: 700, color: "#10b981" }}>
-                                  {timeRemaining} min
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Session Details */}
-                            <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 13 }}>
-                              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                                <span style={{ color: theme.textMuted }}>Started</span>
-                                <span style={{ color: theme.textSecondary, fontWeight: 500 }}>
-                                  {booking.start_time}
-                                </span>
-                              </div>
-                              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                                <span style={{ color: theme.textMuted }}>Duration</span>
-                                <span style={{ color: theme.textSecondary, fontWeight: 500 }}>
-                                  {booking.duration} min
-                                </span>
-                              </div>
-                              {consoleInfo?.quantity && (
-                                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                                  <span style={{ color: theme.textMuted }}>Controllers</span>
-                                  <span style={{ color: theme.textSecondary, fontWeight: 500 }}>
-                                    {consoleInfo.quantity}
-                                  </span>
-                                </div>
-                              )}
-                              <div
-                                style={{
-                                  display: "flex",
-                                  justifyContent: "space-between",
-                                  paddingTop: 8,
-                                  marginTop: 8,
-                                  borderTop: `1px solid ${theme.border}`,
-                                }}
-                              >
-                                <span style={{ color: theme.textMuted }}>Amount</span>
-                                <span style={{ color: theme.textPrimary, fontWeight: 700, fontSize: 15 }}>
-                                  ₹{booking.total_amount || 0}
+                              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                                <span style={{ fontSize: 24 }}>⏱️</span>
+                                <span style={{ fontSize: 20, fontWeight: 700, color: "#ef4444" }}>
+                                  {timeRemaining} min left
                                 </span>
                               </div>
                             </div>
