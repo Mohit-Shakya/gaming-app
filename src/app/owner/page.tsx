@@ -3264,6 +3264,29 @@ export default function OwnerDashboardPage() {
                                   </button>
                                 )}
 
+                                {/* Show Start button for confirmed bookings */}
+                                {booking.status === 'confirmed' && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleStartBooking(booking);
+                                    }}
+                                    style={{
+                                      padding: '6px 14px',
+                                      background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                                      color: 'white',
+                                      border: 'none',
+                                      borderRadius: 6,
+                                      fontSize: 12,
+                                      fontWeight: 600,
+                                      cursor: 'pointer',
+                                      whiteSpace: 'nowrap',
+                                    }}
+                                  >
+                                    Start
+                                  </button>
+                                )}
+
                                 {/* Edit/View button */}
                                 <button
                                   onClick={(e) => {
