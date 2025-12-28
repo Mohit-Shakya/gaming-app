@@ -130,6 +130,8 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
 
       // Get today's in-progress bookings (started by owner)
       const today = new Date().toISOString().split("T")[0];
+      console.log("[ConsoleStatus] Loading bookings for date:", today);
+
       const { data: bookings, error: bookingsError} = await supabase
         .from("bookings")
         .select(`
@@ -138,11 +140,19 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
           duration,
           customer_name,
           user_id,
+          booking_date,
+          status,
+          source,
           booking_items (console, quantity)
         `)
         .eq("cafe_id", cafeId)
         .eq("booking_date", today)
         .eq("status", "in-progress");
+
+      console.log("[ConsoleStatus] Found bookings:", bookings?.length || 0);
+      if (bookings && bookings.length > 0) {
+        console.log("[ConsoleStatus] Bookings details:", bookings);
+      }
 
       if (bookingsError) {
         logger.error("Error loading bookings:", bookingsError);
