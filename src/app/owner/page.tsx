@@ -118,6 +118,7 @@ export default function OwnerDashboardPage() {
   const [checkingRole, setCheckingRole] = useState(true);
   const [allowed, setAllowed] = useState(false);
   const [activeTab, setActiveTab] = useState<NavTab>('dashboard');
+  const [isDarkMode, setIsDarkMode] = useState(false);
 
   const [stats, setStats] = useState<OwnerStats | null>(null);
   const [cafes, setCafes] = useState<CafeRow[]>([]);
@@ -957,11 +958,11 @@ export default function OwnerDashboardPage() {
       <div
         style={{
           minHeight: "100vh",
-          background: colors.dark,
+          background: "#020617",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          color: colors.textPrimary,
+          color: "#f8fafc",
         }}
       >
         Loading...
@@ -972,6 +973,20 @@ export default function OwnerDashboardPage() {
   if (!allowed) {
     return null;
   }
+
+  // Theme colors
+  const theme = {
+    background: isDarkMode ? "#020617" : "#f8fafc",
+    cardBackground: isDarkMode ? "rgba(15,23,42,0.6)" : "#ffffff",
+    sidebarBackground: isDarkMode ? "linear-gradient(180deg, #0f172a 0%, #020617 100%)" : "#ffffff",
+    border: isDarkMode ? "rgba(51,65,85,0.5)" : "#e2e8f0",
+    textPrimary: isDarkMode ? "#f8fafc" : "#0f172a",
+    textSecondary: isDarkMode ? "#cbd5e1" : "#475569",
+    textMuted: isDarkMode ? "#64748b" : "#94a3b8",
+    headerBackground: isDarkMode ? "rgba(15,23,42,0.5)" : "rgba(255,255,255,0.8)",
+    statCardBackground: isDarkMode ? "#fff" : "#fff",
+    statCardText: isDarkMode ? "#111827" : "#111827",
+  };
 
   // Navigation items
   const navItems: { id: NavTab; label: string; icon: string }[] = [
@@ -990,18 +1005,18 @@ export default function OwnerDashboardPage() {
     <div
       style={{
         minHeight: "100vh",
-        background: "#020617",
+        background: theme.background,
         display: "flex",
         fontFamily: fonts.body,
-        color: colors.textPrimary,
+        color: theme.textPrimary,
       }}
     >
       {/* Sidebar Navigation */}
       <aside
         style={{
           width: 260,
-          background: "linear-gradient(180deg, #0f172a 0%, #020617 100%)",
-          borderRight: `1px solid ${colors.border}`,
+          background: theme.sidebarBackground,
+          borderRight: `1px solid ${theme.border}`,
           display: "flex",
           flexDirection: "column",
           position: "sticky",
@@ -1013,7 +1028,7 @@ export default function OwnerDashboardPage() {
         <div
           style={{
             padding: "24px 20px",
-            borderBottom: `1px solid ${colors.border}`,
+            borderBottom: `1px solid ${theme.border}`,
           }}
         >
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -1037,7 +1052,7 @@ export default function OwnerDashboardPage() {
                   style={{
                     fontSize: 16,
                     fontWeight: 700,
-                    color: colors.textPrimary,
+                    color: theme.textPrimary,
                     letterSpacing: "-0.5px",
                   }}
                 >
@@ -1046,7 +1061,7 @@ export default function OwnerDashboardPage() {
                 <div
                   style={{
                     fontSize: 11,
-                    color: colors.textMuted,
+                    color: theme.textMuted,
                     fontWeight: 500,
                   }}
                 >
@@ -1072,7 +1087,7 @@ export default function OwnerDashboardPage() {
                 background: activeTab === item.id
                   ? "linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(37, 99, 235, 0.15))"
                   : "transparent",
-                color: activeTab === item.id ? "#3b82f6" : colors.textSecondary,
+                color: activeTab === item.id ? "#3b82f6" : theme.textSecondary,
                 fontSize: 14,
                 fontWeight: activeTab === item.id ? 600 : 500,
                 cursor: "pointer",
@@ -1106,8 +1121,8 @@ export default function OwnerDashboardPage() {
         <header
           style={{
             padding: "24px 32px",
-            borderBottom: `1px solid ${colors.border}`,
-            background: "rgba(15,23,42,0.5)",
+            borderBottom: `1px solid ${theme.border}`,
+            background: theme.headerBackground,
             backdropFilter: "blur(10px)",
             position: "sticky",
             top: 0,
@@ -1155,7 +1170,7 @@ export default function OwnerDashboardPage() {
                   borderRadius: 10,
                   border: "none",
                   background: "transparent",
-                  color: colors.textSecondary,
+                  color: theme.textSecondary,
                   fontSize: 20,
                   cursor: "pointer",
                   display: "flex",
@@ -1167,29 +1182,37 @@ export default function OwnerDashboardPage() {
                 📱
               </button>
               <button
+                onClick={() => setIsDarkMode(!isDarkMode)}
                 style={{
                   width: 40,
                   height: 40,
                   borderRadius: 10,
                   border: "none",
                   background: "transparent",
-                  color: colors.textSecondary,
+                  color: theme.textSecondary,
                   fontSize: 20,
                   cursor: "pointer",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
+                  transition: "transform 0.2s ease",
                 }}
-                title="Dark Mode"
+                title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = "scale(1.1)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "scale(1)";
+                }}
               >
-                🌙
+                {isDarkMode ? "☀️" : "🌙"}
               </button>
               <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                 <div style={{ textAlign: "right" }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: colors.textPrimary }}>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: theme.textPrimary }}>
                     {user?.user_metadata?.name || 'Mohit Bhai'}
                   </div>
-                  <div style={{ fontSize: 12, color: colors.textMuted }}>
+                  <div style={{ fontSize: 12, color: theme.textMuted }}>
                     Administrator
                   </div>
                 </div>
@@ -1240,7 +1263,7 @@ export default function OwnerDashboardPage() {
               style={{
                 padding: "16px 20px",
                 borderRadius: 12,
-                background: "rgba(239, 68, 68, 0.1)",
+                background: isDarkMode ? "rgba(239, 68, 68, 0.1)" : "rgba(239, 68, 68, 0.05)",
                 border: "1px solid rgba(239, 68, 68, 0.3)",
                 color: "#ef4444",
                 marginBottom: 24,
@@ -1282,7 +1305,7 @@ export default function OwnerDashboardPage() {
                       width: 48,
                       height: 48,
                       borderRadius: 12,
-                      background: "rgba(239, 68, 68, 0.1)",
+                      background: isDarkMode ? "rgba(239, 68, 68, 0.1)" : "rgba(239, 68, 68, 0.05)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
@@ -1569,9 +1592,9 @@ export default function OwnerDashboardPage() {
               {/* Revenue Overview with Filters */}
               <div
                 style={{
-                  background: "rgba(15,23,42,0.6)",
+                  background: theme.cardBackground,
                   borderRadius: 16,
-                  border: `1px solid ${colors.border}`,
+                  border: `1px solid ${theme.border}`,
                   padding: "24px",
                   marginBottom: 24,
                 }}
@@ -1610,7 +1633,7 @@ export default function OwnerDashboardPage() {
                           padding: "8px 16px",
                           borderRadius: 8,
                           border: `1px solid ${
-                            revenueFilter === filter.value ? "#10b981" : colors.border
+                            revenueFilter === filter.value ? "#10b981" : theme.border
                           }`,
                           background:
                             revenueFilter === filter.value
@@ -1630,7 +1653,7 @@ export default function OwnerDashboardPage() {
                         }}
                         onMouseLeave={(e) => {
                           if (revenueFilter !== filter.value) {
-                            e.currentTarget.style.borderColor = colors.border;
+                            e.currentTarget.style.borderColor = theme.border;
                             e.currentTarget.style.background = "rgba(15,23,42,0.4)";
                           }
                         }}
@@ -1805,9 +1828,9 @@ export default function OwnerDashboardPage() {
               {/* Daily Earnings - Last 30 Days */}
               <div
                 style={{
-                  background: "rgba(15,23,42,0.6)",
+                  background: theme.cardBackground,
                   borderRadius: 16,
-                  border: `1px solid ${colors.border}`,
+                  border: `1px solid ${theme.border}`,
                   padding: "24px",
                   marginBottom: 24,
                 }}
@@ -1852,7 +1875,7 @@ export default function OwnerDashboardPage() {
                           style={{
                             textAlign: "left",
                             padding: "12px 16px",
-                            borderBottom: `1px solid ${colors.border}`,
+                            borderBottom: `1px solid ${theme.border}`,
                             fontSize: 13,
                             color: "#94a3b8",
                             fontWeight: 600,
@@ -1866,7 +1889,7 @@ export default function OwnerDashboardPage() {
                           style={{
                             textAlign: "right",
                             padding: "12px 16px",
-                            borderBottom: `1px solid ${colors.border}`,
+                            borderBottom: `1px solid ${theme.border}`,
                             fontSize: 13,
                             color: "#94a3b8",
                             fontWeight: 600,
@@ -1880,7 +1903,7 @@ export default function OwnerDashboardPage() {
                           style={{
                             textAlign: "right",
                             padding: "12px 16px",
-                            borderBottom: `1px solid ${colors.border}`,
+                            borderBottom: `1px solid ${theme.border}`,
                             fontSize: 13,
                             color: "#94a3b8",
                             fontWeight: 600,
@@ -1894,7 +1917,7 @@ export default function OwnerDashboardPage() {
                           style={{
                             textAlign: "right",
                             padding: "12px 16px",
-                            borderBottom: `1px solid ${colors.border}`,
+                            borderBottom: `1px solid ${theme.border}`,
                             fontSize: 13,
                             color: "#94a3b8",
                             fontWeight: 600,
@@ -1947,7 +1970,7 @@ export default function OwnerDashboardPage() {
                           <tr
                             key={day.date}
                             style={{
-                              borderBottom: `1px solid ${colors.border}40`,
+                              borderBottom: `1px solid ${theme.border}40`,
                               background: day.isToday ? "rgba(16, 185, 129, 0.05)" : "transparent",
                               transition: "background 0.2s ease",
                             }}
@@ -2029,7 +2052,7 @@ export default function OwnerDashboardPage() {
                   style={{
                     marginTop: 20,
                     paddingTop: 20,
-                    borderTop: `1px solid ${colors.border}`,
+                    borderTop: `1px solid ${theme.border}`,
                     display: "grid",
                     gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
                     gap: 16,
@@ -2105,9 +2128,9 @@ export default function OwnerDashboardPage() {
               {/* Recent Activity */}
               <div
                 style={{
-                  background: "rgba(15,23,42,0.6)",
+                  background: theme.cardBackground,
                   borderRadius: 16,
-                  border: `1px solid ${colors.border}`,
+                  border: `1px solid ${theme.border}`,
                   padding: "24px",
                   marginBottom: 24,
                 }}
@@ -2130,7 +2153,7 @@ export default function OwnerDashboardPage() {
                     style={{
                       textAlign: "center",
                       padding: "40px",
-                      color: colors.textMuted,
+                      color: theme.textMuted,
                     }}
                   >
                     No bookings yet
@@ -2139,12 +2162,12 @@ export default function OwnerDashboardPage() {
                   <div style={{ overflowX: "auto" }}>
                     <table style={{ width: "100%", fontSize: 13 }}>
                       <thead>
-                        <tr style={{ borderBottom: `1px solid ${colors.border}` }}>
-                          <th style={{ padding: "12px", textAlign: "left", color: colors.textMuted, fontWeight: 600 }}>Customer</th>
-                          <th style={{ padding: "12px", textAlign: "left", color: colors.textMuted, fontWeight: 600 }}>Café</th>
-                          <th style={{ padding: "12px", textAlign: "left", color: colors.textMuted, fontWeight: 600 }}>Date</th>
-                          <th style={{ padding: "12px", textAlign: "left", color: colors.textMuted, fontWeight: 600 }}>Status</th>
-                          <th style={{ padding: "12px", textAlign: "right", color: colors.textMuted, fontWeight: 600 }}>Amount</th>
+                        <tr style={{ borderBottom: `1px solid ${theme.border}` }}>
+                          <th style={{ padding: "12px", textAlign: "left", color: theme.textMuted, fontWeight: 600 }}>Customer</th>
+                          <th style={{ padding: "12px", textAlign: "left", color: theme.textMuted, fontWeight: 600 }}>Café</th>
+                          <th style={{ padding: "12px", textAlign: "left", color: theme.textMuted, fontWeight: 600 }}>Date</th>
+                          <th style={{ padding: "12px", textAlign: "left", color: theme.textMuted, fontWeight: 600 }}>Status</th>
+                          <th style={{ padding: "12px", textAlign: "right", color: theme.textMuted, fontWeight: 600 }}>Amount</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -2156,8 +2179,8 @@ export default function OwnerDashboardPage() {
                             }}
                           >
                             <td style={{ padding: "12px" }}>{booking.customer_name || booking.user_name || "Guest"}</td>
-                            <td style={{ padding: "12px", color: colors.textSecondary }}>{booking.cafe_name || "-"}</td>
-                            <td style={{ padding: "12px", color: colors.textSecondary }}>
+                            <td style={{ padding: "12px", color: theme.textSecondary }}>{booking.cafe_name || "-"}</td>
+                            <td style={{ padding: "12px", color: theme.textSecondary }}>
                               {booking.booking_date
                                 ? new Date(`${booking.booking_date}T00:00:00`).toLocaleDateString("en-IN", {
                                     day: "2-digit",
@@ -2184,7 +2207,7 @@ export default function OwnerDashboardPage() {
                       marginTop: 16,
                       padding: "10px 20px",
                       borderRadius: 8,
-                      border: `1px solid ${colors.border}`,
+                      border: `1px solid ${theme.border}`,
                       background: "rgba(59, 130, 246, 0.1)",
                       color: "#3b82f6",
                       fontSize: 13,
@@ -2208,20 +2231,20 @@ export default function OwnerDashboardPage() {
             <div style={{
               padding: "60px 20px",
               textAlign: "center",
-              background: "rgba(15,23,42,0.6)",
+              background: theme.cardBackground,
               borderRadius: 16,
-              border: `1px solid ${colors.border}`,
+              border: `1px solid ${theme.border}`,
             }}>
               <div style={{ fontSize: "64px", marginBottom: "16px" }}>🏪</div>
               <h3 style={{
                 fontFamily: fonts.heading,
                 fontSize: "20px",
-                color: colors.textPrimary,
+                color: theme.textPrimary,
                 marginBottom: "8px"
               }}>
                 No Café Found
               </h3>
-              <p style={{ fontSize: "14px", color: colors.textSecondary, marginBottom: "24px" }}>
+              <p style={{ fontSize: "14px", color: theme.textSecondary, marginBottom: "24px" }}>
                 Please add a café first to view live console status
               </p>
               <button
@@ -2249,9 +2272,9 @@ export default function OwnerDashboardPage() {
               {/* Filters */}
               <div
                 style={{
-                  background: "rgba(15,23,42,0.6)",
+                  background: theme.cardBackground,
                   borderRadius: 16,
-                  border: `1px solid ${colors.border}`,
+                  border: `1px solid ${theme.border}`,
                   padding: "20px",
                   marginBottom: 24,
                 }}
@@ -2261,7 +2284,7 @@ export default function OwnerDashboardPage() {
                   <label
                     style={{
                       fontSize: 12,
-                      color: colors.textMuted,
+                      color: theme.textMuted,
                       display: "block",
                       marginBottom: 12,
                       fontWeight: 600,
@@ -2284,9 +2307,9 @@ export default function OwnerDashboardPage() {
                         style={{
                           padding: "8px 16px",
                           borderRadius: 8,
-                          border: `1px solid ${dateRangeFilter === range.value ? "#3b82f6" : colors.border}`,
+                          border: `1px solid ${dateRangeFilter === range.value ? "#3b82f6" : theme.border}`,
                           background: dateRangeFilter === range.value ? "rgba(59, 130, 246, 0.15)" : "rgba(30,41,59,0.5)",
-                          color: dateRangeFilter === range.value ? "#3b82f6" : colors.textSecondary,
+                          color: dateRangeFilter === range.value ? "#3b82f6" : theme.textSecondary,
                           fontSize: 13,
                           fontWeight: dateRangeFilter === range.value ? 600 : 400,
                           cursor: "pointer",
@@ -2314,7 +2337,7 @@ export default function OwnerDashboardPage() {
                     }}
                   >
                     <div>
-                      <label style={{ fontSize: 12, color: colors.textMuted, display: "block", marginBottom: 8 }}>
+                      <label style={{ fontSize: 12, color: theme.textMuted, display: "block", marginBottom: 8 }}>
                         Start Date
                       </label>
                       <input
@@ -2325,15 +2348,15 @@ export default function OwnerDashboardPage() {
                           width: "100%",
                           padding: "10px 12px",
                           borderRadius: 8,
-                          border: `1px solid ${colors.border}`,
+                          border: `1px solid ${theme.border}`,
                           background: "rgba(30,41,59,0.5)",
-                          color: colors.textPrimary,
+                          color: theme.textPrimary,
                           fontSize: 14,
                         }}
                       />
                     </div>
                     <div>
-                      <label style={{ fontSize: 12, color: colors.textMuted, display: "block", marginBottom: 8 }}>
+                      <label style={{ fontSize: 12, color: theme.textMuted, display: "block", marginBottom: 8 }}>
                         End Date
                       </label>
                       <input
@@ -2344,9 +2367,9 @@ export default function OwnerDashboardPage() {
                           width: "100%",
                           padding: "10px 12px",
                           borderRadius: 8,
-                          border: `1px solid ${colors.border}`,
+                          border: `1px solid ${theme.border}`,
                           background: "rgba(30,41,59,0.5)",
-                          color: colors.textPrimary,
+                          color: theme.textPrimary,
                           fontSize: 14,
                         }}
                       />
@@ -2367,7 +2390,7 @@ export default function OwnerDashboardPage() {
                     <label
                       style={{
                         fontSize: 12,
-                        color: colors.textMuted,
+                        color: theme.textMuted,
                         display: "block",
                         marginBottom: 8,
                       }}
@@ -2383,9 +2406,9 @@ export default function OwnerDashboardPage() {
                         width: "100%",
                         padding: "10px 12px",
                         borderRadius: 8,
-                        border: `1px solid ${colors.border}`,
+                        border: `1px solid ${theme.border}`,
                         background: "rgba(30,41,59,0.5)",
-                        color: colors.textPrimary,
+                        color: theme.textPrimary,
                         fontSize: 14,
                       }}
                     />
@@ -2396,7 +2419,7 @@ export default function OwnerDashboardPage() {
                     <label
                       style={{
                         fontSize: 12,
-                        color: colors.textMuted,
+                        color: theme.textMuted,
                         display: "block",
                         marginBottom: 8,
                       }}
@@ -2410,9 +2433,9 @@ export default function OwnerDashboardPage() {
                         width: "100%",
                         padding: "10px 12px",
                         borderRadius: 8,
-                        border: `1px solid ${colors.border}`,
+                        border: `1px solid ${theme.border}`,
                         background: "rgba(30,41,59,0.5)",
-                        color: colors.textPrimary,
+                        color: theme.textPrimary,
                         fontSize: 14,
                         cursor: "pointer",
                       }}
@@ -2430,7 +2453,7 @@ export default function OwnerDashboardPage() {
                     <label
                       style={{
                         fontSize: 12,
-                        color: colors.textMuted,
+                        color: theme.textMuted,
                         display: "block",
                         marginBottom: 8,
                       }}
@@ -2444,9 +2467,9 @@ export default function OwnerDashboardPage() {
                         width: "100%",
                         padding: "10px 12px",
                         borderRadius: 8,
-                        border: `1px solid ${colors.border}`,
+                        border: `1px solid ${theme.border}`,
                         background: "rgba(30,41,59,0.5)",
-                        color: colors.textPrimary,
+                        color: theme.textPrimary,
                         fontSize: 14,
                         cursor: "pointer",
                       }}
@@ -2472,8 +2495,8 @@ export default function OwnerDashboardPage() {
                     marginTop: 16,
                     padding: "8px 16px",
                     borderRadius: 8,
-                    border: `1px solid ${colors.border}`,
-                    background: "rgba(239, 68, 68, 0.1)",
+                    border: `1px solid ${theme.border}`,
+                    background: isDarkMode ? "rgba(239, 68, 68, 0.1)" : "rgba(239, 68, 68, 0.05)",
                     color: "#ef4444",
                     fontSize: 13,
                     fontWeight: 500,
@@ -2486,7 +2509,7 @@ export default function OwnerDashboardPage() {
 
               {/* Active Filters Summary */}
               {(statusFilter !== "all" || sourceFilter !== "all" || dateRangeFilter !== "all" || searchQuery) && (
-                <div style={{ marginBottom: 16, fontSize: 13, color: colors.textMuted }}>
+                <div style={{ marginBottom: 16, fontSize: 13, color: theme.textMuted }}>
                   📊 Showing {filteredBookings.length} of {bookings.length} bookings
                 </div>
               )}
@@ -2496,7 +2519,7 @@ export default function OwnerDashboardPage() {
                 style={{
                   marginBottom: 16,
                   fontSize: 14,
-                  color: colors.textMuted,
+                  color: theme.textMuted,
                 }}
               >
                 Showing {filteredBookings.length} of {bookings.length} bookings
@@ -2505,9 +2528,9 @@ export default function OwnerDashboardPage() {
               {/* Bookings Table */}
               <div
                 style={{
-                  background: "rgba(15,23,42,0.6)",
+                  background: theme.cardBackground,
                   borderRadius: 16,
-                  border: `1px solid ${colors.border}`,
+                  border: `1px solid ${theme.border}`,
                   overflow: "hidden",
                 }}
               >
@@ -2516,7 +2539,7 @@ export default function OwnerDashboardPage() {
                     style={{
                       textAlign: "center",
                       padding: "60px 20px",
-                      color: colors.textMuted,
+                      color: theme.textMuted,
                     }}
                   >
                     <div style={{ fontSize: 48, marginBottom: 16 }}>📅</div>
@@ -2529,34 +2552,34 @@ export default function OwnerDashboardPage() {
                         <tr
                           style={{
                             background: "rgba(30,41,59,0.5)",
-                            borderBottom: `1px solid ${colors.border}`,
+                            borderBottom: `1px solid ${theme.border}`,
                           }}
                         >
-                          <th style={{ padding: "14px 16px", textAlign: "left", color: colors.textMuted, fontSize: 11, textTransform: "uppercase", fontWeight: 600 }}>
+                          <th style={{ padding: "14px 16px", textAlign: "left", color: theme.textMuted, fontSize: 11, textTransform: "uppercase", fontWeight: 600 }}>
                             Booking ID
                           </th>
-                          <th style={{ padding: "14px 16px", textAlign: "left", color: colors.textMuted, fontSize: 11, textTransform: "uppercase", fontWeight: 600 }}>
+                          <th style={{ padding: "14px 16px", textAlign: "left", color: theme.textMuted, fontSize: 11, textTransform: "uppercase", fontWeight: 600 }}>
                             Customer Name
                           </th>
-                          <th style={{ padding: "14px 16px", textAlign: "left", color: colors.textMuted, fontSize: 11, textTransform: "uppercase", fontWeight: 600 }}>
+                          <th style={{ padding: "14px 16px", textAlign: "left", color: theme.textMuted, fontSize: 11, textTransform: "uppercase", fontWeight: 600 }}>
                             Phone Number
                           </th>
-                          <th style={{ padding: "14px 16px", textAlign: "left", color: colors.textMuted, fontSize: 11, textTransform: "uppercase", fontWeight: 600 }}>
+                          <th style={{ padding: "14px 16px", textAlign: "left", color: theme.textMuted, fontSize: 11, textTransform: "uppercase", fontWeight: 600 }}>
                             Console
                           </th>
-                          <th style={{ padding: "14px 16px", textAlign: "left", color: colors.textMuted, fontSize: 11, textTransform: "uppercase", fontWeight: 600 }}>
+                          <th style={{ padding: "14px 16px", textAlign: "left", color: theme.textMuted, fontSize: 11, textTransform: "uppercase", fontWeight: 600 }}>
                             Duration
                           </th>
-                          <th style={{ padding: "14px 16px", textAlign: "left", color: colors.textMuted, fontSize: 11, textTransform: "uppercase", fontWeight: 600 }}>
+                          <th style={{ padding: "14px 16px", textAlign: "left", color: theme.textMuted, fontSize: 11, textTransform: "uppercase", fontWeight: 600 }}>
                             Source
                           </th>
-                          <th style={{ padding: "14px 16px", textAlign: "left", color: colors.textMuted, fontSize: 11, textTransform: "uppercase", fontWeight: 600 }}>
+                          <th style={{ padding: "14px 16px", textAlign: "left", color: theme.textMuted, fontSize: 11, textTransform: "uppercase", fontWeight: 600 }}>
                             Status
                           </th>
-                          <th style={{ padding: "14px 16px", textAlign: "right", color: colors.textMuted, fontSize: 11, textTransform: "uppercase", fontWeight: 600 }}>
+                          <th style={{ padding: "14px 16px", textAlign: "right", color: theme.textMuted, fontSize: 11, textTransform: "uppercase", fontWeight: 600 }}>
                             Amount
                           </th>
-                          <th style={{ padding: "14px 16px", textAlign: "center", color: colors.textMuted, fontSize: 11, textTransform: "uppercase", fontWeight: 600 }}>
+                          <th style={{ padding: "14px 16px", textAlign: "center", color: theme.textMuted, fontSize: 11, textTransform: "uppercase", fontWeight: 600 }}>
                             Actions
                           </th>
                         </tr>
@@ -2580,28 +2603,28 @@ export default function OwnerDashboardPage() {
                             >
                               {/* Booking ID */}
                               <td style={{ padding: "14px 16px" }}>
-                                <div style={{ fontFamily: "monospace", fontSize: 12, color: colors.textPrimary, fontWeight: 600 }}>
+                                <div style={{ fontFamily: "monospace", fontSize: 12, color: theme.textPrimary, fontWeight: 600 }}>
                                   #{booking.id.slice(0, 8).toUpperCase()}
                                 </div>
                               </td>
 
                               {/* Customer Name */}
                               <td style={{ padding: "14px 16px" }}>
-                                <div style={{ fontSize: 13, color: colors.textPrimary, fontWeight: 600 }}>
+                                <div style={{ fontSize: 13, color: theme.textPrimary, fontWeight: 600 }}>
                                   {booking.customer_name || booking.user_name || "Guest"}
                                 </div>
                               </td>
 
                               {/* Phone Number */}
                               <td style={{ padding: "14px 16px" }}>
-                                <div style={{ fontSize: 13, color: colors.textSecondary }}>
+                                <div style={{ fontSize: 13, color: theme.textSecondary }}>
                                   {booking.customer_phone || booking.user_phone || "-"}
                                 </div>
                               </td>
 
                               {/* Console */}
                               <td style={{ padding: "14px 16px" }}>
-                                <div style={{ fontSize: 13, color: colors.textPrimary, fontWeight: 500 }}>
+                                <div style={{ fontSize: 13, color: theme.textPrimary, fontWeight: 500 }}>
                                   {(() => {
                                     const items = booking.booking_items || [];
                                     if (items.length === 0) return "-";
@@ -2620,7 +2643,7 @@ export default function OwnerDashboardPage() {
                               {/* Duration */}
                               <td style={{ padding: "14px 16px" }}>
                                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                                  <div style={{ fontSize: 12, color: colors.textSecondary }}>
+                                  <div style={{ fontSize: 12, color: theme.textSecondary }}>
                                     {booking.booking_date
                                       ? (() => {
                                           const bookingDate = new Date(`${booking.booking_date}T00:00:00`);
@@ -2641,7 +2664,7 @@ export default function OwnerDashboardPage() {
                                         })()
                                       : "-"}
                                   </div>
-                                  <div style={{ fontSize: 13, color: colors.textPrimary, fontWeight: 600 }}>
+                                  <div style={{ fontSize: 13, color: theme.textPrimary, fontWeight: 600 }}>
                                     {(() => {
                                       if (!booking.start_time) return "-";
 
@@ -2834,7 +2857,7 @@ export default function OwnerDashboardPage() {
                                             style={{
                                               padding: "6px 12px",
                                               borderRadius: 6,
-                                              border: `1px solid ${colors.border}`,
+                                              border: `1px solid ${theme.border}`,
                                               background: "rgba(59, 130, 246, 0.1)",
                                               color: "#3b82f6",
                                               fontSize: 11,
@@ -2874,18 +2897,18 @@ export default function OwnerDashboardPage() {
               {cafes.length === 0 ? (
                 <div
                   style={{
-                    background: "rgba(15,23,42,0.6)",
+                    background: theme.cardBackground,
                     borderRadius: 16,
-                    border: `1px solid ${colors.border}`,
+                    border: `1px solid ${theme.border}`,
                     padding: "60px 20px",
                     textAlign: "center",
                   }}
                 >
                   <div style={{ fontSize: 64, marginBottom: 16, opacity: 0.3 }}>🏪</div>
-                  <p style={{ fontSize: 16, color: colors.textSecondary, marginBottom: 8, fontWeight: 500 }}>
+                  <p style={{ fontSize: 16, color: theme.textSecondary, marginBottom: 8, fontWeight: 500 }}>
                     No café found
                   </p>
-                  <p style={{ fontSize: 13, color: colors.textMuted, marginBottom: 20 }}>
+                  <p style={{ fontSize: 13, color: theme.textMuted, marginBottom: 20 }}>
                     Contact admin to set up your café.
                   </p>
                 </div>
@@ -2916,11 +2939,11 @@ export default function OwnerDashboardPage() {
                     }}>
                       🏪
                     </div>
-                    <h2 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8, color: colors.textPrimary }}>
+                    <h2 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8, color: theme.textPrimary }}>
                       {cafes[0].name || "Your Gaming Café"}
                     </h2>
                     {cafes[0].address && (
-                      <div style={{ fontSize: 15, color: colors.textSecondary, display: "flex", alignItems: "center", gap: 8, justifyContent: "center" }}>
+                      <div style={{ fontSize: 15, color: theme.textSecondary, display: "flex", alignItems: "center", gap: 8, justifyContent: "center" }}>
                         <span>📍</span>
                         {cafes[0].address}
                       </div>
@@ -2931,13 +2954,13 @@ export default function OwnerDashboardPage() {
                   {cafes[0].description && (
                     <div style={{
                       fontSize: 14,
-                      color: colors.textSecondary,
+                      color: theme.textSecondary,
                       lineHeight: 1.6,
                       marginBottom: 32,
                       padding: "20px",
                       background: "rgba(15,23,42,0.5)",
                       borderRadius: 12,
-                      border: `1px solid ${colors.border}`,
+                      border: `1px solid ${theme.border}`,
                     }}>
                       {cafes[0].description}
                     </div>
@@ -2979,7 +3002,7 @@ export default function OwnerDashboardPage() {
                   <p style={{
                     textAlign: "center",
                     fontSize: 13,
-                    color: colors.textMuted,
+                    color: theme.textMuted,
                     marginTop: 16,
                     fontStyle: "italic"
                   }}>
@@ -2994,18 +3017,18 @@ export default function OwnerDashboardPage() {
           {activeTab === 'analytics' && (
             <div
               style={{
-                background: "rgba(15,23,42,0.6)",
+                background: theme.cardBackground,
                 borderRadius: 16,
-                border: `1px solid ${colors.border}`,
+                border: `1px solid ${theme.border}`,
                 padding: "60px 20px",
                 textAlign: "center",
               }}
             >
               <div style={{ fontSize: 64, marginBottom: 16, opacity: 0.3 }}>📈</div>
-              <p style={{ fontSize: 18, color: colors.textSecondary, marginBottom: 8, fontWeight: 500 }}>
+              <p style={{ fontSize: 18, color: theme.textSecondary, marginBottom: 8, fontWeight: 500 }}>
                 Analytics Coming Soon
               </p>
-              <p style={{ fontSize: 14, color: colors.textMuted }}>
+              <p style={{ fontSize: 14, color: theme.textMuted }}>
                 Detailed insights and reports will be available here.
               </p>
             </div>
@@ -3015,18 +3038,18 @@ export default function OwnerDashboardPage() {
           {activeTab === 'sessions' && (
             <div
               style={{
-                background: "rgba(15,23,42,0.6)",
+                background: theme.cardBackground,
                 borderRadius: 16,
-                border: `1px solid ${colors.border}`,
+                border: `1px solid ${theme.border}`,
                 padding: "60px 20px",
                 textAlign: "center",
               }}
             >
               <div style={{ fontSize: 64, marginBottom: 16, opacity: 0.3 }}>▶️</div>
-              <p style={{ fontSize: 18, color: colors.textSecondary, marginBottom: 8, fontWeight: 500 }}>
+              <p style={{ fontSize: 18, color: theme.textSecondary, marginBottom: 8, fontWeight: 500 }}>
                 Sessions Management
               </p>
-              <p style={{ fontSize: 14, color: colors.textMuted }}>
+              <p style={{ fontSize: 14, color: theme.textMuted }}>
                 Detailed session tracking and management will be available here.
               </p>
             </div>
@@ -3036,18 +3059,18 @@ export default function OwnerDashboardPage() {
           {activeTab === 'customers' && (
             <div
               style={{
-                background: "rgba(15,23,42,0.6)",
+                background: theme.cardBackground,
                 borderRadius: 16,
-                border: `1px solid ${colors.border}`,
+                border: `1px solid ${theme.border}`,
                 padding: "60px 20px",
                 textAlign: "center",
               }}
             >
               <div style={{ fontSize: 64, marginBottom: 16, opacity: 0.3 }}>👥</div>
-              <p style={{ fontSize: 18, color: colors.textSecondary, marginBottom: 8, fontWeight: 500 }}>
+              <p style={{ fontSize: 18, color: theme.textSecondary, marginBottom: 8, fontWeight: 500 }}>
                 Customer Directory
               </p>
-              <p style={{ fontSize: 14, color: colors.textMuted }}>
+              <p style={{ fontSize: 14, color: theme.textMuted }}>
                 View and manage your customer database here.
               </p>
             </div>
@@ -3064,18 +3087,18 @@ export default function OwnerDashboardPage() {
           {activeTab === 'subscriptions' && (
             <div
               style={{
-                background: "rgba(15,23,42,0.6)",
+                background: theme.cardBackground,
                 borderRadius: 16,
-                border: `1px solid ${colors.border}`,
+                border: `1px solid ${theme.border}`,
                 padding: "60px 20px",
                 textAlign: "center",
               }}
             >
               <div style={{ fontSize: 64, marginBottom: 16, opacity: 0.3 }}>🔄</div>
-              <p style={{ fontSize: 18, color: colors.textSecondary, marginBottom: 8, fontWeight: 500 }}>
+              <p style={{ fontSize: 18, color: theme.textSecondary, marginBottom: 8, fontWeight: 500 }}>
                 Subscriptions
               </p>
-              <p style={{ fontSize: 14, color: colors.textMuted }}>
+              <p style={{ fontSize: 14, color: theme.textMuted }}>
                 Manage recurring subscriptions and plans here.
               </p>
             </div>
@@ -3085,18 +3108,18 @@ export default function OwnerDashboardPage() {
           {activeTab === 'memberships' && (
             <div
               style={{
-                background: "rgba(15,23,42,0.6)",
+                background: theme.cardBackground,
                 borderRadius: 16,
-                border: `1px solid ${colors.border}`,
+                border: `1px solid ${theme.border}`,
                 padding: "60px 20px",
                 textAlign: "center",
               }}
             >
               <div style={{ fontSize: 64, marginBottom: 16, opacity: 0.3 }}>🎫</div>
-              <p style={{ fontSize: 18, color: colors.textSecondary, marginBottom: 8, fontWeight: 500 }}>
+              <p style={{ fontSize: 18, color: theme.textSecondary, marginBottom: 8, fontWeight: 500 }}>
                 Memberships
               </p>
-              <p style={{ fontSize: 14, color: colors.textMuted }}>
+              <p style={{ fontSize: 14, color: theme.textMuted }}>
                 Manage membership tiers and benefits here.
               </p>
             </div>
@@ -3106,18 +3129,18 @@ export default function OwnerDashboardPage() {
           {activeTab === 'coupons' && (
             <div
               style={{
-                background: "rgba(15,23,42,0.6)",
+                background: theme.cardBackground,
                 borderRadius: 16,
-                border: `1px solid ${colors.border}`,
+                border: `1px solid ${theme.border}`,
                 padding: "60px 20px",
                 textAlign: "center",
               }}
             >
               <div style={{ fontSize: 64, marginBottom: 16, opacity: 0.3 }}>🎟️</div>
-              <p style={{ fontSize: 18, color: colors.textSecondary, marginBottom: 8, fontWeight: 500 }}>
+              <p style={{ fontSize: 18, color: theme.textSecondary, marginBottom: 8, fontWeight: 500 }}>
                 Coupons & Discounts
               </p>
-              <p style={{ fontSize: 14, color: colors.textMuted }}>
+              <p style={{ fontSize: 14, color: theme.textMuted }}>
                 Create and manage promotional coupons here.
               </p>
             </div>
@@ -3127,18 +3150,18 @@ export default function OwnerDashboardPage() {
           {activeTab === 'reports' && (
             <div
               style={{
-                background: "rgba(15,23,42,0.6)",
+                background: theme.cardBackground,
                 borderRadius: 16,
-                border: `1px solid ${colors.border}`,
+                border: `1px solid ${theme.border}`,
                 padding: "60px 20px",
                 textAlign: "center",
               }}
             >
               <div style={{ fontSize: 64, marginBottom: 16, opacity: 0.3 }}>📊</div>
-              <p style={{ fontSize: 18, color: colors.textSecondary, marginBottom: 8, fontWeight: 500 }}>
+              <p style={{ fontSize: 18, color: theme.textSecondary, marginBottom: 8, fontWeight: 500 }}>
                 Reports
               </p>
-              <p style={{ fontSize: 14, color: colors.textMuted }}>
+              <p style={{ fontSize: 14, color: theme.textMuted }}>
                 Generate detailed reports and exports here.
               </p>
             </div>
@@ -3148,18 +3171,18 @@ export default function OwnerDashboardPage() {
           {activeTab === 'settings' && (
             <div
               style={{
-                background: "rgba(15,23,42,0.6)",
+                background: theme.cardBackground,
                 borderRadius: 16,
-                border: `1px solid ${colors.border}`,
+                border: `1px solid ${theme.border}`,
                 padding: "60px 20px",
                 textAlign: "center",
               }}
             >
               <div style={{ fontSize: 64, marginBottom: 16, opacity: 0.3 }}>⚙️</div>
-              <p style={{ fontSize: 18, color: colors.textSecondary, marginBottom: 8, fontWeight: 500 }}>
+              <p style={{ fontSize: 18, color: theme.textSecondary, marginBottom: 8, fontWeight: 500 }}>
                 Settings
               </p>
-              <p style={{ fontSize: 14, color: colors.textMuted }}>
+              <p style={{ fontSize: 14, color: theme.textMuted }}>
                 Configure your café settings and preferences here.
               </p>
             </div>
@@ -3190,7 +3213,7 @@ export default function OwnerDashboardPage() {
             style={{
               background: "linear-gradient(135deg, #1e293b, #0f172a)",
               borderRadius: 20,
-              border: `1px solid ${colors.border}`,
+              border: `1px solid ${theme.border}`,
               maxWidth: 600,
               width: "100%",
               maxHeight: "90vh",
@@ -3200,10 +3223,10 @@ export default function OwnerDashboardPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <div style={{ marginBottom: 24 }}>
-              <h2 style={{ fontFamily: fonts.heading, fontSize: 24, margin: "0 0 8px 0", color: colors.textPrimary }}>
+              <h2 style={{ fontFamily: fonts.heading, fontSize: 24, margin: "0 0 8px 0", color: theme.textPrimary }}>
                 Edit Walk-In Booking
               </h2>
-              <p style={{ fontSize: 13, color: colors.textMuted, margin: 0 }}>
+              <p style={{ fontSize: 13, color: theme.textMuted, margin: 0 }}>
                 Booking ID: #{editingBooking.id.slice(0, 8).toUpperCase()}
               </p>
             </div>
@@ -3211,7 +3234,7 @@ export default function OwnerDashboardPage() {
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
               {/* Customer Info */}
               <div>
-                <label style={{ fontSize: 12, color: colors.textMuted, display: "block", marginBottom: 8 }}>
+                <label style={{ fontSize: 12, color: theme.textMuted, display: "block", marginBottom: 8 }}>
                   Customer
                 </label>
                 <div
@@ -3219,19 +3242,19 @@ export default function OwnerDashboardPage() {
                     padding: "12px",
                     background: "rgba(30,41,59,0.5)",
                     borderRadius: 8,
-                    border: `1px solid ${colors.border}`,
+                    border: `1px solid ${theme.border}`,
                   }}
                 >
-                  <div style={{ fontSize: 14, color: colors.textPrimary, marginBottom: 4 }}>
+                  <div style={{ fontSize: 14, color: theme.textPrimary, marginBottom: 4 }}>
                     {editingBooking.user_name || "Guest"}
                   </div>
                   {editingBooking.user_email && (
-                    <div style={{ fontSize: 12, color: colors.textSecondary }}>
+                    <div style={{ fontSize: 12, color: theme.textSecondary }}>
                       {editingBooking.user_email}
                     </div>
                   )}
                   {editingBooking.user_phone && (
-                    <div style={{ fontSize: 12, color: colors.textSecondary }}>
+                    <div style={{ fontSize: 12, color: theme.textSecondary }}>
                       📞 {editingBooking.user_phone}
                     </div>
                   )}
@@ -3240,7 +3263,7 @@ export default function OwnerDashboardPage() {
 
               {/* Date */}
               <div>
-                <label style={{ fontSize: 12, color: colors.textMuted, display: "block", marginBottom: 8 }}>
+                <label style={{ fontSize: 12, color: theme.textMuted, display: "block", marginBottom: 8 }}>
                   Booking Date *
                 </label>
                 <input
@@ -3251,9 +3274,9 @@ export default function OwnerDashboardPage() {
                     width: "100%",
                     padding: "12px",
                     background: "rgba(30,41,59,0.5)",
-                    border: `1px solid ${colors.border}`,
+                    border: `1px solid ${theme.border}`,
                     borderRadius: 8,
-                    color: colors.textPrimary,
+                    color: theme.textPrimary,
                     fontSize: 14,
                     fontFamily: fonts.body,
                   }}
@@ -3262,7 +3285,7 @@ export default function OwnerDashboardPage() {
 
               {/* Start Time */}
               <div>
-                <label style={{ fontSize: 12, color: colors.textMuted, display: "block", marginBottom: 8 }}>
+                <label style={{ fontSize: 12, color: theme.textMuted, display: "block", marginBottom: 8 }}>
                   Start Time *
                 </label>
                 <input
@@ -3273,9 +3296,9 @@ export default function OwnerDashboardPage() {
                     width: "100%",
                     padding: "12px",
                     background: "rgba(30,41,59,0.5)",
-                    border: `1px solid ${colors.border}`,
+                    border: `1px solid ${theme.border}`,
                     borderRadius: 8,
-                    color: colors.textPrimary,
+                    color: theme.textPrimary,
                     fontSize: 14,
                     fontFamily: fonts.body,
                   }}
@@ -3284,7 +3307,7 @@ export default function OwnerDashboardPage() {
 
               {/* Duration */}
               <div>
-                <label style={{ fontSize: 12, color: colors.textMuted, display: "block", marginBottom: 8 }}>
+                <label style={{ fontSize: 12, color: theme.textMuted, display: "block", marginBottom: 8 }}>
                   Duration *
                 </label>
                 <select
@@ -3294,9 +3317,9 @@ export default function OwnerDashboardPage() {
                     width: "100%",
                     padding: "12px",
                     background: "rgba(30,41,59,0.5)",
-                    border: `1px solid ${colors.border}`,
+                    border: `1px solid ${theme.border}`,
                     borderRadius: 8,
-                    color: colors.textPrimary,
+                    color: theme.textPrimary,
                     fontSize: 14,
                     fontFamily: fonts.body,
                     cursor: "pointer",
@@ -3317,7 +3340,7 @@ export default function OwnerDashboardPage() {
 
               {/* Console */}
               <div>
-                <label style={{ fontSize: 12, color: colors.textMuted, display: "block", marginBottom: 8 }}>
+                <label style={{ fontSize: 12, color: theme.textMuted, display: "block", marginBottom: 8 }}>
                   Console *
                 </label>
                 <select
@@ -3327,9 +3350,9 @@ export default function OwnerDashboardPage() {
                     width: "100%",
                     padding: "12px",
                     background: "rgba(30,41,59,0.5)",
-                    border: `1px solid ${colors.border}`,
+                    border: `1px solid ${theme.border}`,
                     borderRadius: 8,
-                    color: colors.textPrimary,
+                    color: theme.textPrimary,
                     fontSize: 14,
                     fontFamily: fonts.body,
                     cursor: "pointer",
@@ -3350,7 +3373,7 @@ export default function OwnerDashboardPage() {
 
               {/* Number of Controllers */}
               <div>
-                <label style={{ fontSize: 12, color: colors.textMuted, display: "block", marginBottom: 8 }}>
+                <label style={{ fontSize: 12, color: theme.textMuted, display: "block", marginBottom: 8 }}>
                   Number of Controllers *
                 </label>
                 <select
@@ -3360,9 +3383,9 @@ export default function OwnerDashboardPage() {
                     width: "100%",
                     padding: "12px",
                     background: "rgba(30,41,59,0.5)",
-                    border: `1px solid ${colors.border}`,
+                    border: `1px solid ${theme.border}`,
                     borderRadius: 8,
-                    color: colors.textPrimary,
+                    color: theme.textPrimary,
                     fontSize: 14,
                     fontFamily: fonts.body,
                     cursor: "pointer",
@@ -3377,7 +3400,7 @@ export default function OwnerDashboardPage() {
 
               {/* End Time */}
               <div>
-                <label style={{ fontSize: 12, color: colors.textMuted, display: "block", marginBottom: 8 }}>
+                <label style={{ fontSize: 12, color: theme.textMuted, display: "block", marginBottom: 8 }}>
                   End Time (Auto-calculated)
                 </label>
                 <input
@@ -3389,9 +3412,9 @@ export default function OwnerDashboardPage() {
                     width: "100%",
                     padding: "12px",
                     background: "rgba(30,41,59,0.3)",
-                    border: `1px solid ${colors.border}`,
+                    border: `1px solid ${theme.border}`,
                     borderRadius: 8,
-                    color: colors.textMuted,
+                    color: theme.textMuted,
                     fontSize: 14,
                     fontFamily: fonts.body,
                     cursor: "not-allowed",
@@ -3401,7 +3424,7 @@ export default function OwnerDashboardPage() {
 
               {/* Amount */}
               <div>
-                <label style={{ fontSize: 12, color: colors.textMuted, display: "block", marginBottom: 8 }}>
+                <label style={{ fontSize: 12, color: theme.textMuted, display: "block", marginBottom: 8 }}>
                   Total Amount (₹) * (Auto-calculated, editable)
                 </label>
                 <input
@@ -3414,7 +3437,7 @@ export default function OwnerDashboardPage() {
                     width: "100%",
                     padding: "12px",
                     background: "rgba(30,41,59,0.5)",
-                    border: `1px solid ${colors.border}`,
+                    border: `1px solid ${theme.border}`,
                     borderRadius: 8,
                     color: "#22c55e",
                     fontSize: 14,
@@ -3426,7 +3449,7 @@ export default function OwnerDashboardPage() {
 
               {/* Status */}
               <div>
-                <label style={{ fontSize: 12, color: colors.textMuted, display: "block", marginBottom: 8 }}>
+                <label style={{ fontSize: 12, color: theme.textMuted, display: "block", marginBottom: 8 }}>
                   Status *
                 </label>
                 <select
@@ -3436,9 +3459,9 @@ export default function OwnerDashboardPage() {
                     width: "100%",
                     padding: "12px",
                     background: "rgba(30,41,59,0.5)",
-                    border: `1px solid ${colors.border}`,
+                    border: `1px solid ${theme.border}`,
                     borderRadius: 8,
-                    color: colors.textPrimary,
+                    color: theme.textPrimary,
                     fontSize: 14,
                     fontFamily: fonts.body,
                     cursor: "pointer",
@@ -3461,9 +3484,9 @@ export default function OwnerDashboardPage() {
                   flex: 1,
                   padding: "12px 24px",
                   borderRadius: 10,
-                  border: `1px solid ${colors.border}`,
+                  border: `1px solid ${theme.border}`,
                   background: "rgba(51,65,85,0.5)",
-                  color: colors.textSecondary,
+                  color: theme.textSecondary,
                   fontSize: 14,
                   fontWeight: 600,
                   cursor: saving ? "not-allowed" : "pointer",
