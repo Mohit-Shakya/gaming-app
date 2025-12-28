@@ -3212,7 +3212,7 @@ export default function OwnerDashboardPage() {
                               </div>
                             </td>
                             <td style={{ padding: '16px 20px', fontSize: 14, color: theme.textSecondary }}>
-                              {booking.booking_date ? new Date(booking.booking_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '-'}
+                              {booking.booking_date ? new Date(booking.booking_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '-'}
                             </td>
                             <td style={{ padding: '16px 20px', fontSize: 14, color: theme.textSecondary }}>
                               {booking.start_time || '-'}
