@@ -1304,11 +1304,11 @@ export default function OwnerDashboardPage() {
                     </p>
                     <p
                       style={{
-                        fontSize: 16,
-                        color: theme.textMuted,
-                        marginTop: 8,
+                        fontSize: 18,
+                        color: theme.textSecondary,
+                        marginTop: 10,
                         marginBottom: 0,
-                        fontWeight: 500,
+                        fontWeight: 600,
                       }}
                     >
                       Active Now
@@ -1358,27 +1358,27 @@ export default function OwnerDashboardPage() {
                     </p>
                     <p
                       style={{
-                        fontSize: 16,
-                        color: theme.textMuted,
-                        marginTop: 8,
+                        fontSize: 18,
+                        color: theme.textSecondary,
+                        marginTop: 10,
                         marginBottom: 0,
-                        fontWeight: 500,
+                        fontWeight: 600,
                       }}
                     >
                       Today's Revenue
                     </p>
-                    <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 6 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>
-                        <span style={{ color: theme.textMuted, fontWeight: 500 }}>Sessions</span>
-                        <span style={{ color: theme.textSecondary, fontWeight: 600 }}>₹{loadingData ? "0" : stats?.todayRevenue ?? 0}</span>
+                    <div style={{ marginTop: 18, display: "flex", flexDirection: "column", gap: 8 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 15 }}>
+                        <span style={{ color: theme.textSecondary, fontWeight: 500 }}>Sessions</span>
+                        <span style={{ color: theme.textPrimary, fontWeight: 600 }}>₹{loadingData ? "0" : stats?.todayRevenue ?? 0}</span>
                       </div>
-                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>
-                        <span style={{ color: theme.textMuted, fontWeight: 500 }}>Subscriptions</span>
-                        <span style={{ color: theme.textSecondary, fontWeight: 600 }}>₹0</span>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 15 }}>
+                        <span style={{ color: theme.textSecondary, fontWeight: 500 }}>Subscriptions</span>
+                        <span style={{ color: theme.textPrimary, fontWeight: 600 }}>₹0</span>
                       </div>
-                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>
-                        <span style={{ color: theme.textMuted, fontWeight: 500 }}>Memberships</span>
-                        <span style={{ color: theme.textSecondary, fontWeight: 600 }}>₹0</span>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 15 }}>
+                        <span style={{ color: theme.textSecondary, fontWeight: 500 }}>Memberships</span>
+                        <span style={{ color: theme.textPrimary, fontWeight: 600 }}>₹0</span>
                       </div>
                     </div>
                   </div>
@@ -1426,11 +1426,11 @@ export default function OwnerDashboardPage() {
                     </p>
                     <p
                       style={{
-                        fontSize: 16,
-                        color: theme.textMuted,
-                        marginTop: 8,
+                        fontSize: 18,
+                        color: theme.textSecondary,
+                        marginTop: 10,
                         marginBottom: 0,
-                        fontWeight: 500,
+                        fontWeight: 600,
                       }}
                     >
                       Today's Sessions
