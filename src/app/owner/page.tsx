@@ -157,6 +157,14 @@ export default function OwnerDashboardPage() {
   // Time update trigger for active sessions (updates every second)
   const [currentTime, setCurrentTime] = useState(new Date());
 
+  // Station management state
+  const [stationSearch, setStationSearch] = useState("");
+  const [stationTypeFilter, setStationTypeFilter] = useState("all");
+  const [stationStatusFilter, setStationStatusFilter] = useState("all");
+  const [showAddStationModal, setShowAddStationModal] = useState(false);
+  const [editingStation, setEditingStation] = useState<any>(null);
+  const [stations, setStations] = useState<any[]>([]);
+
   // Check role
   useEffect(() => {
     async function checkRole() {
@@ -3480,7 +3488,392 @@ export default function OwnerDashboardPage() {
           {/* Stations Tab */}
           {activeTab === 'stations' && cafes.length > 0 && (
             <div>
-              <ConsoleStatusDashboard cafeId={cafes[0].id} />
+              {/* Header with Stats and Add Button */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+                <div>
+                  <h2 style={{ fontSize: 28, fontWeight: 700, color: theme.textPrimary, margin: 0, marginBottom: 8 }}>
+                    Gaming Stations
+                  </h2>
+                  <p style={{ fontSize: 14, color: theme.textMuted, margin: 0 }}>
+                    7 active, 0 occupied
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowAddStationModal(true)}
+                  style={{
+                    padding: '12px 24px',
+                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 10,
+                    fontSize: 15,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                  }}
+                >
+                  <span style={{ fontSize: 18 }}>+</span>
+                  Add Station
+                </button>
+              </div>
+
+              {/* Search and Filters */}
+              <div
+                style={{
+                  background: theme.cardBackground,
+                  borderRadius: 16,
+                  border: `1px solid ${theme.border}`,
+                  padding: '20px',
+                  marginBottom: 24,
+                }}
+              >
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                  {/* Search */}
+                  <div style={{ flex: 1, position: 'relative' }}>
+                    <input
+                      type="text"
+                      placeholder="Search stations..."
+                      value={stationSearch}
+                      onChange={(e) => setStationSearch(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px 12px 44px',
+                        background: 'rgba(15,23,42,0.6)',
+                        border: `1px solid ${theme.border}`,
+                        borderRadius: 10,
+                        color: theme.textPrimary,
+                        fontSize: 14,
+                        outline: 'none',
+                      }}
+                    />
+                    <span style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', fontSize: 18, opacity: 0.5 }}>🔍</span>
+                  </div>
+
+                  {/* Type Filter */}
+                  <select
+                    value={stationTypeFilter}
+                    onChange={(e) => setStationTypeFilter(e.target.value)}
+                    style={{
+                      padding: '12px 16px',
+                      background: 'rgba(15,23,42,0.6)',
+                      border: `1px solid ${theme.border}`,
+                      borderRadius: 10,
+                      color: theme.textPrimary,
+                      fontSize: 14,
+                      cursor: 'pointer',
+                      minWidth: 140,
+                    }}
+                  >
+                    <option value="all">All Types</option>
+                    <option value="PC">PC</option>
+                    <option value="PS5">PS5</option>
+                    <option value="PS4">PS4</option>
+                    <option value="Xbox">Xbox</option>
+                    <option value="VR">VR</option>
+                  </select>
+
+                  {/* Status Filter */}
+                  <select
+                    value={stationStatusFilter}
+                    onChange={(e) => setStationStatusFilter(e.target.value)}
+                    style={{
+                      padding: '12px 16px',
+                      background: 'rgba(15,23,42,0.6)',
+                      border: `1px solid ${theme.border}`,
+                      borderRadius: 10,
+                      color: theme.textPrimary,
+                      fontSize: 14,
+                      cursor: 'pointer',
+                      minWidth: 140,
+                    }}
+                  >
+                    <option value="all">All Status</option>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+
+                  {/* View Toggle */}
+                  <div style={{ display: 'flex', gap: 4, background: 'rgba(15,23,42,0.6)', borderRadius: 8, padding: 4, border: `1px solid ${theme.border}` }}>
+                    <button
+                      style={{
+                        padding: '8px 12px',
+                        background: 'rgba(59, 130, 246, 0.2)',
+                        border: 'none',
+                        borderRadius: 6,
+                        color: '#3b82f6',
+                        cursor: 'pointer',
+                        fontSize: 18,
+                      }}
+                    >
+                      ☰
+                    </button>
+                    <button
+                      style={{
+                        padding: '8px 12px',
+                        background: 'transparent',
+                        border: 'none',
+                        borderRadius: 6,
+                        color: theme.textMuted,
+                        cursor: 'pointer',
+                        fontSize: 18,
+                      }}
+                    >
+                      ▦
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Stations Table */}
+              <div
+                style={{
+                  background: theme.cardBackground,
+                  borderRadius: 16,
+                  border: `1px solid ${theme.border}`,
+                  overflow: 'hidden',
+                }}
+              >
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ background: 'rgba(15,23,42,0.8)', borderBottom: `1px solid ${theme.border}` }}>
+                      <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                        Station ↕️
+                      </th>
+                      <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                        Type ↕️
+                      </th>
+                      <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                        Rate ↕️
+                      </th>
+                      <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                        Sessions ↕️
+                      </th>
+                      <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                        Status
+                      </th>
+                      <th style={{ padding: '16px 20px', textAlign: 'right', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {/* Sample Station Row - PC-01 */}
+                    <tr style={{ borderBottom: `1px solid ${theme.border}` }}>
+                      <td style={{ padding: '16px 20px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                          <div
+                            style={{
+                              width: 40,
+                              height: 40,
+                              borderRadius: 10,
+                              background: 'rgba(59, 130, 246, 0.15)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: 20,
+                            }}
+                          >
+                            🖥️
+                          </div>
+                          <span style={{ fontSize: 15, fontWeight: 600, color: theme.textPrimary }}>PC-01</span>
+                        </div>
+                      </td>
+                      <td style={{ padding: '16px 20px' }}>
+                        <span
+                          style={{
+                            display: 'inline-block',
+                            padding: '6px 12px',
+                            borderRadius: 6,
+                            background: 'rgba(59, 130, 246, 0.15)',
+                            color: '#3b82f6',
+                            fontSize: 12,
+                            fontWeight: 600,
+                          }}
+                        >
+                          PC
+                        </span>
+                      </td>
+                      <td style={{ padding: '16px 20px', fontSize: 14, color: theme.textSecondary }}>
+                        ₹100/hr
+                      </td>
+                      <td style={{ padding: '16px 20px', fontSize: 14, color: theme.textSecondary }}>
+                        1
+                      </td>
+                      <td style={{ padding: '16px 20px' }}>
+                        <span
+                          style={{
+                            display: 'inline-block',
+                            padding: '6px 12px',
+                            borderRadius: 6,
+                            background: 'rgba(16, 185, 129, 0.15)',
+                            color: '#10b981',
+                            fontSize: 12,
+                            fontWeight: 600,
+                          }}
+                        >
+                          Active
+                        </span>
+                      </td>
+                      <td style={{ padding: '16px 20px' }}>
+                        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                          <button
+                            style={{
+                              padding: '8px',
+                              background: 'transparent',
+                              border: `1px solid ${theme.border}`,
+                              borderRadius: 6,
+                              color: theme.textSecondary,
+                              cursor: 'pointer',
+                              fontSize: 16,
+                            }}
+                            title="Edit"
+                          >
+                            ✏️
+                          </button>
+                          <button
+                            style={{
+                              padding: '8px',
+                              background: 'transparent',
+                              border: `1px solid ${theme.border}`,
+                              borderRadius: 6,
+                              color: theme.textSecondary,
+                              cursor: 'pointer',
+                              fontSize: 16,
+                            }}
+                            title="Power"
+                          >
+                            🔌
+                          </button>
+                          <button
+                            style={{
+                              padding: '8px',
+                              background: 'transparent',
+                              border: `1px solid ${theme.border}`,
+                              borderRadius: 6,
+                              color: '#ef4444',
+                              cursor: 'pointer',
+                              fontSize: 16,
+                            }}
+                            title="Delete"
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+
+                    {/* Add more sample rows */}
+                    <tr style={{ borderBottom: `1px solid ${theme.border}` }}>
+                      <td style={{ padding: '16px 20px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                          <div
+                            style={{
+                              width: 40,
+                              height: 40,
+                              borderRadius: 10,
+                              background: 'rgba(16, 185, 129, 0.15)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: 20,
+                            }}
+                          >
+                            🎮
+                          </div>
+                          <span style={{ fontSize: 15, fontWeight: 600, color: theme.textPrimary }}>PS5-01</span>
+                        </div>
+                      </td>
+                      <td style={{ padding: '16px 20px' }}>
+                        <span
+                          style={{
+                            display: 'inline-block',
+                            padding: '6px 12px',
+                            borderRadius: 6,
+                            background: 'rgba(16, 185, 129, 0.15)',
+                            color: '#10b981',
+                            fontSize: 12,
+                            fontWeight: 600,
+                          }}
+                        >
+                          Gaming Station
+                        </span>
+                      </td>
+                      <td style={{ padding: '16px 20px' }}>
+                        <div style={{ fontSize: 14, color: theme.textSecondary }}>
+                          <div>₹150 <span style={{ fontSize: 12, color: theme.textMuted }}>Single</span></div>
+                          <div>₹300 <span style={{ fontSize: 12, color: theme.textMuted }}>Multi</span></div>
+                        </div>
+                      </td>
+                      <td style={{ padding: '16px 20px', fontSize: 14, color: theme.textSecondary }}>
+                        0
+                      </td>
+                      <td style={{ padding: '16px 20px' }}>
+                        <span
+                          style={{
+                            display: 'inline-block',
+                            padding: '6px 12px',
+                            borderRadius: 6,
+                            background: 'rgba(16, 185, 129, 0.15)',
+                            color: '#10b981',
+                            fontSize: 12,
+                            fontWeight: 600,
+                          }}
+                        >
+                          Active
+                        </span>
+                      </td>
+                      <td style={{ padding: '16px 20px' }}>
+                        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                          <button
+                            style={{
+                              padding: '8px',
+                              background: 'transparent',
+                              border: `1px solid ${theme.border}`,
+                              borderRadius: 6,
+                              color: theme.textSecondary,
+                              cursor: 'pointer',
+                              fontSize: 16,
+                            }}
+                            title="Edit"
+                          >
+                            ✏️
+                          </button>
+                          <button
+                            style={{
+                              padding: '8px',
+                              background: 'transparent',
+                              border: `1px solid ${theme.border}`,
+                              borderRadius: 6,
+                              color: theme.textSecondary,
+                              cursor: 'pointer',
+                              fontSize: 16,
+                            }}
+                            title="Power"
+                          >
+                            🔌
+                          </button>
+                          <button
+                            style={{
+                              padding: '8px',
+                              background: 'transparent',
+                              border: `1px solid ${theme.border}`,
+                              borderRadius: 6,
+                              color: '#ef4444',
+                              cursor: 'pointer',
+                              fontSize: 16,
+                            }}
+                            title="Delete"
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 
