@@ -1010,6 +1010,7 @@ export default function OwnerDashboardPage() {
   // Navigation items
   const navItems: { id: NavTab; label: string; icon: string }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: '🏠' },
+    { id: 'live-status', label: 'Live Status', icon: '📡' },
     { id: 'sessions', label: 'Bookings', icon: '📅' },
     { id: 'customers', label: 'Customers', icon: '👥' },
     { id: 'stations', label: 'Stations', icon: '🖥️' },
@@ -1152,6 +1153,7 @@ export default function OwnerDashboardPage() {
                 }}
               >
                 {activeTab === 'dashboard' && 'Dashboard'}
+                {activeTab === 'live-status' && 'Live Console Status'}
                 {activeTab === 'sessions' && 'Bookings'}
                 {activeTab === 'customers' && 'Customers'}
                 {activeTab === 'stations' && 'Stations'}
@@ -1161,7 +1163,6 @@ export default function OwnerDashboardPage() {
                 {activeTab === 'reports' && 'Reports'}
                 {activeTab === 'settings' && 'Settings'}
                 {activeTab === 'overview' && 'Dashboard Overview'}
-                {activeTab === 'live-status' && 'Live Console Status'}
                 {activeTab === 'bookings' && 'Manage Bookings'}
                 {activeTab === 'cafe-details' && 'Café Details'}
                 {activeTab === 'analytics' && 'Analytics & Reports'}
