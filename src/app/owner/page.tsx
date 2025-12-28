@@ -1267,8 +1267,8 @@ export default function OwnerDashboardPage() {
                   style={{
                     padding: "24px",
                     borderRadius: 16,
-                    background: "#fff",
-                    border: "1px solid #e5e7eb",
+                    background: theme.cardBackground,
+                    border: `1px solid ${theme.border}`,
                     position: "relative",
                     overflow: "hidden",
                   }}
@@ -1281,7 +1281,7 @@ export default function OwnerDashboardPage() {
                       width: 48,
                       height: 48,
                       borderRadius: 12,
-                      background: "rgba(239, 68, 68, 0.1)",
+                      background: "rgba(239, 68, 68, 0.15)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
@@ -1295,7 +1295,7 @@ export default function OwnerDashboardPage() {
                       style={{
                         fontSize: 48,
                         fontWeight: 700,
-                        color: "#111827",
+                        color: theme.textPrimary,
                         margin: 0,
                         lineHeight: 1,
                       }}
@@ -1305,7 +1305,7 @@ export default function OwnerDashboardPage() {
                     <p
                       style={{
                         fontSize: 14,
-                        color: "#6b7280",
+                        color: theme.textMuted,
                         marginTop: 8,
                         marginBottom: 0,
                       }}
@@ -1320,8 +1320,8 @@ export default function OwnerDashboardPage() {
                   style={{
                     padding: "24px",
                     borderRadius: 16,
-                    background: "#fff",
-                    border: "1px solid #e5e7eb",
+                    background: theme.cardBackground,
+                    border: `1px solid ${theme.border}`,
                     position: "relative",
                     overflow: "hidden",
                   }}
@@ -1334,7 +1334,7 @@ export default function OwnerDashboardPage() {
                       width: 48,
                       height: 48,
                       borderRadius: 12,
-                      background: "rgba(34, 197, 94, 0.1)",
+                      background: "rgba(34, 197, 94, 0.15)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
@@ -1348,7 +1348,7 @@ export default function OwnerDashboardPage() {
                       style={{
                         fontSize: 48,
                         fontWeight: 700,
-                        color: "#111827",
+                        color: theme.textPrimary,
                         margin: 0,
                         lineHeight: 1,
                       }}
@@ -1358,7 +1358,7 @@ export default function OwnerDashboardPage() {
                     <p
                       style={{
                         fontSize: 14,
-                        color: "#6b7280",
+                        color: theme.textMuted,
                         marginTop: 8,
                         marginBottom: 0,
                       }}
@@ -1367,16 +1367,16 @@ export default function OwnerDashboardPage() {
                     </p>
                     <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 4 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
-                        <span style={{ color: "#6b7280" }}>Sessions</span>
-                        <span style={{ color: "#111827", fontWeight: 500 }}>₹{loadingData ? "0" : stats?.todayRevenue ?? 0}</span>
+                        <span style={{ color: theme.textMuted }}>Sessions</span>
+                        <span style={{ color: theme.textSecondary, fontWeight: 500 }}>₹{loadingData ? "0" : stats?.todayRevenue ?? 0}</span>
                       </div>
                       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
-                        <span style={{ color: "#6b7280" }}>Subscriptions</span>
-                        <span style={{ color: "#111827", fontWeight: 500 }}>₹0</span>
+                        <span style={{ color: theme.textMuted }}>Subscriptions</span>
+                        <span style={{ color: theme.textSecondary, fontWeight: 500 }}>₹0</span>
                       </div>
                       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
-                        <span style={{ color: "#6b7280" }}>Memberships</span>
-                        <span style={{ color: "#111827", fontWeight: 500 }}>₹0</span>
+                        <span style={{ color: theme.textMuted }}>Memberships</span>
+                        <span style={{ color: theme.textSecondary, fontWeight: 500 }}>₹0</span>
                       </div>
                     </div>
                   </div>
@@ -1387,8 +1387,8 @@ export default function OwnerDashboardPage() {
                   style={{
                     padding: "24px",
                     borderRadius: 16,
-                    background: "#fff",
-                    border: "1px solid #e5e7eb",
+                    background: theme.cardBackground,
+                    border: `1px solid ${theme.border}`,
                     position: "relative",
                     overflow: "hidden",
                   }}
@@ -1401,7 +1401,7 @@ export default function OwnerDashboardPage() {
                       width: 48,
                       height: 48,
                       borderRadius: 12,
-                      background: "rgba(249, 115, 22, 0.1)",
+                      background: "rgba(249, 115, 22, 0.15)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
@@ -1415,7 +1415,7 @@ export default function OwnerDashboardPage() {
                       style={{
                         fontSize: 48,
                         fontWeight: 700,
-                        color: "#111827",
+                        color: theme.textPrimary,
                         margin: 0,
                         lineHeight: 1,
                       }}
@@ -1425,7 +1425,7 @@ export default function OwnerDashboardPage() {
                     <p
                       style={{
                         fontSize: 14,
-                        color: "#6b7280",
+                        color: theme.textMuted,
                         marginTop: 8,
                         marginBottom: 0,
                       }}
