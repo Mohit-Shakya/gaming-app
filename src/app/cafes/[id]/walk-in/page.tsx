@@ -12,6 +12,9 @@ import { checkBookingCapacityWithOverlap } from "@/lib/capacityValidator";
 import { fetchLiveAvailability } from "@/lib/availabilityService";
 import { logger } from "@/lib/logger";
 
+// Walk-in bookings are ALWAYS in-progress since customers are already at the cafe
+const WALKIN_BOOKING_STATUS = "in-progress" as const;
+
 const CONSOLES = [
   { id: "ps5" as ConsoleId, label: CONSOLE_LABELS.ps5, icon: CONSOLE_ICONS.ps5, color: CONSOLE_COLORS.ps5 },
   { id: "ps4" as ConsoleId, label: CONSOLE_LABELS.ps4, icon: CONSOLE_ICONS.ps4, color: CONSOLE_COLORS.ps4 },
@@ -159,7 +162,7 @@ export default function WalkInBookingPage() {
             booking_date: bookingDate,
             start_time: startTime,
             duration: duration,
-            status: "in-progress", // Walk-in bookings auto-start immediately
+            status: WALKIN_BOOKING_STATUS, // Walk-in bookings auto-start immediately
             customer_name: customerName.trim(),
             customer_phone: customerPhone.trim(),
             source: "walk-in",
