@@ -1211,8 +1211,18 @@ export default function OwnerDashboardPage() {
                   }}
                   title="Logout"
                   onClick={async () => {
-                    await supabase.auth.signOut();
-                    router.push('/login');
+                    try {
+                      const { error } = await supabase.auth.signOut();
+                      if (error) {
+                        console.error('Logout error:', error);
+                      }
+                      // Force a full page reload to clear all state
+                      window.location.href = '/login';
+                    } catch (err) {
+                      console.error('Logout failed:', err);
+                      // Still redirect even if logout fails
+                      window.location.href = '/login';
+                    }
                   }}
                 >
                   🚪
