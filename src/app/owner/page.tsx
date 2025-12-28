@@ -292,23 +292,23 @@ export default function OwnerDashboardPage() {
         }
 
         // Auto-complete ended bookings before fetching
-        // This ensures old bookings don't stay in-progress forever
+        // This ensures old bookings don't stay in wrong status forever
 
-        // 1. Update all past date bookings to completed
+        // 1. Update all past date bookings to completed (both in-progress and confirmed)
         await supabase
           .from("bookings")
           .update({ status: "completed" })
           .in("cafe_id", cafeIds)
-          .eq("status", "in-progress")
+          .in("status", ["in-progress", "confirmed"])
           .lt("booking_date", todayStr);
 
-        // 2. Fetch today's in-progress bookings to check if they've ended
+        // 2. Fetch today's in-progress and confirmed bookings to check if they've ended
         const { data: todayBookings } = await supabase
           .from("bookings")
-          .select("id, start_time, duration")
+          .select("id, start_time, duration, status")
           .in("cafe_id", cafeIds)
           .eq("booking_date", todayStr)
-          .eq("status", "in-progress");
+          .in("status", ["in-progress", "confirmed"]);
 
         // 3. Complete today's bookings that have ended
         if (todayBookings && todayBookings.length > 0) {
