@@ -1429,40 +1429,6 @@ export default function OwnerDashboardPage() {
                   </div>
                 </div>
               </div>
-
-              {/* Stations Section */}
-              <div style={{ marginTop: 32 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-                  <h2
-                    style={{
-                      fontSize: 20,
-                      fontWeight: 600,
-                      color: "#111827",
-                      margin: 0,
-                    }}
-                  >
-                    Stations
-                  </h2>
-                  <button
-                    onClick={() => setActiveTab('stations')}
-                    style={{
-                      padding: "8px 16px",
-                      borderRadius: 8,
-                      border: "1px solid #e5e7eb",
-                      background: "#fff",
-                      color: "#3b82f6",
-                      fontSize: 13,
-                      fontWeight: 500,
-                      cursor: "pointer",
-                    }}
-                  >
-                    Manage Stations
-                  </button>
-                </div>
-
-                {/* Station Cards Grid */}
-                <ConsoleStatusDashboard cafeId={cafes[0].id} />
-              </div>
             </div>
           )}
 
