@@ -1016,7 +1016,7 @@ export default function OwnerDashboardPage() {
       {/* Sidebar Navigation */}
       <aside
         style={{
-          width: 260,
+          width: 280,
           background: theme.sidebarBackground,
           borderRight: `1px solid ${theme.border}`,
           display: "flex",
@@ -1029,22 +1029,22 @@ export default function OwnerDashboardPage() {
         {/* Logo */}
         <div
           style={{
-            padding: "24px 20px",
+            padding: "28px 24px",
             borderBottom: `1px solid ${theme.border}`,
           }}
         >
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
               <div
                 style={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: 12,
+                  width: 52,
+                  height: 52,
+                  borderRadius: 14,
                   background: "#fff",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  fontSize: 24,
+                  fontSize: 26,
                 }}
               >
                 🎮
@@ -1052,17 +1052,18 @@ export default function OwnerDashboardPage() {
               <div>
                 <div
                   style={{
-                    fontSize: 16,
+                    fontSize: 18,
                     fontWeight: 700,
                     color: theme.textPrimary,
                     letterSpacing: "-0.5px",
+                    marginBottom: 2,
                   }}
                 >
                   GameZoneBuddy
                 </div>
                 <div
                   style={{
-                    fontSize: 11,
+                    fontSize: 12,
                     color: theme.textMuted,
                     fontWeight: 500,
                   }}
@@ -1075,27 +1076,27 @@ export default function OwnerDashboardPage() {
         </div>
 
         {/* Navigation */}
-        <nav style={{ flex: 1, padding: "16px 12px" }}>
+        <nav style={{ flex: 1, padding: "20px 16px" }}>
           {navItems.map((item) => (
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
               style={{
                 width: "100%",
-                padding: "12px 16px",
-                marginBottom: 8,
-                borderRadius: 10,
+                padding: "14px 16px",
+                marginBottom: 4,
+                borderRadius: 12,
                 border: "none",
                 background: activeTab === item.id
                   ? theme.activeNavBackground
                   : "transparent",
                 color: activeTab === item.id ? theme.activeNavText : theme.textSecondary,
-                fontSize: 14,
+                fontSize: 15,
                 fontWeight: activeTab === item.id ? 600 : 500,
                 cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
-                gap: 12,
+                gap: 14,
                 transition: "all 0.2s ease",
                 textAlign: "left",
               }}
@@ -1110,7 +1111,7 @@ export default function OwnerDashboardPage() {
                 }
               }}
             >
-              <span style={{ fontSize: 18 }}>{item.icon}</span>
+              <span style={{ fontSize: 20, opacity: 0.8 }}>{item.icon}</span>
               {item.label}
             </button>
           ))}
