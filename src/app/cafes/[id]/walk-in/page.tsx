@@ -159,7 +159,7 @@ export default function WalkInBookingPage() {
             booking_date: bookingDate,
             start_time: startTime,
             duration: duration,
-            status: "confirmed",
+            status: "in-progress", // Walk-in bookings auto-start immediately
             customer_name: customerName.trim(),
             customer_phone: customerPhone.trim(),
             source: "walk-in",
