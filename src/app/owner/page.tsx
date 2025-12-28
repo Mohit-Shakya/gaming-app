@@ -899,8 +899,13 @@ export default function OwnerDashboardPage() {
 
     // Source filter
     if (sourceFilter !== "all") {
-      const bookingSource = booking.source?.toLowerCase() === "walk-in" ? "walk_in" : "online";
+      const bookingSource = booking.source?.toLowerCase() || "";
       if (bookingSource !== sourceFilter) return false;
+    }
+
+    // Specific date filter (for date picker)
+    if (dateFilter && booking.booking_date) {
+      if (booking.booking_date !== dateFilter) return false;
     }
 
     // Date Range filter
@@ -3036,6 +3041,8 @@ export default function OwnerDashboardPage() {
                     <input
                       type="text"
                       placeholder="Search customer name or phone..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
                       style={{
                         width: '100%',
                         padding: '12px 16px 12px 44px',
