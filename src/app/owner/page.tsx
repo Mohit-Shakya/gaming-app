@@ -1016,7 +1016,7 @@ export default function OwnerDashboardPage() {
       {/* Sidebar Navigation */}
       <aside
         style={{
-          width: 280,
+          width: 320,
           background: theme.sidebarBackground,
           borderRight: `1px solid ${theme.border}`,
           display: "flex",
@@ -1029,14 +1029,14 @@ export default function OwnerDashboardPage() {
         {/* Logo */}
         <div
           style={{
-            padding: "28px 24px",
+            padding: "32px 28px",
             borderBottom: `1px solid ${theme.border}`,
           }}
         >
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             <div
               style={{
-                fontSize: 22,
+                fontSize: 24,
                 fontWeight: 800,
                 color: theme.textPrimary,
                 letterSpacing: "-0.5px",
@@ -1061,27 +1061,27 @@ export default function OwnerDashboardPage() {
         </div>
 
         {/* Navigation */}
-        <nav style={{ flex: 1, padding: "20px 16px" }}>
+        <nav style={{ flex: 1, padding: "24px 20px" }}>
           {navItems.map((item) => (
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
               style={{
                 width: "100%",
-                padding: "14px 16px",
-                marginBottom: 4,
+                padding: "16px 18px",
+                marginBottom: 6,
                 borderRadius: 12,
                 border: "none",
                 background: activeTab === item.id
                   ? theme.activeNavBackground
                   : "transparent",
                 color: activeTab === item.id ? theme.activeNavText : theme.textSecondary,
-                fontSize: 15,
+                fontSize: 16,
                 fontWeight: activeTab === item.id ? 600 : 500,
                 cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
-                gap: 14,
+                gap: 16,
                 transition: "all 0.2s ease",
                 textAlign: "left",
               }}
@@ -1096,7 +1096,7 @@ export default function OwnerDashboardPage() {
                 }
               }}
             >
-              <span style={{ fontSize: 20, opacity: 0.8 }}>{item.icon}</span>
+              <span style={{ fontSize: 22, opacity: 0.8 }}>{item.icon}</span>
               {item.label}
             </button>
           ))}
