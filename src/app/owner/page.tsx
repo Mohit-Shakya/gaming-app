@@ -291,6 +291,67 @@ export default function OwnerDashboardPage() {
           setConsolePricing(pricingMap);
         }
 
+        // Auto-complete ended bookings before fetching
+        // This ensures old bookings don't stay in-progress forever
+
+        // 1. Update all past date bookings to completed
+        await supabase
+          .from("bookings")
+          .update({ status: "completed" })
+          .in("cafe_id", cafeIds)
+          .eq("status", "in-progress")
+          .lt("booking_date", todayStr);
+
+        // 2. Fetch today's in-progress bookings to check if they've ended
+        const { data: todayBookings } = await supabase
+          .from("bookings")
+          .select("id, start_time, duration")
+          .in("cafe_id", cafeIds)
+          .eq("booking_date", todayStr)
+          .eq("status", "in-progress");
+
+        // 3. Complete today's bookings that have ended
+        if (todayBookings && todayBookings.length > 0) {
+          const now = new Date();
+          const currentMinutes = now.getHours() * 60 + now.getMinutes();
+          const endedBookingIds: string[] = [];
+
+          todayBookings.forEach((booking) => {
+            if (!booking.start_time || !booking.duration) return;
+
+            // Parse start time
+            const timeParts = booking.start_time.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
+            if (!timeParts) return;
+
+            let hours = parseInt(timeParts[1]);
+            const minutes = parseInt(timeParts[2]);
+            const period = timeParts[3]?.toLowerCase();
+
+            // Convert to 24-hour format
+            if (period) {
+              if (period === 'pm' && hours !== 12) hours += 12;
+              else if (period === 'am' && hours === 12) hours = 0;
+            }
+
+            // Calculate end time
+            const startMinutes = hours * 60 + minutes;
+            const endMinutes = startMinutes + booking.duration;
+
+            // Check if session has ended
+            if (currentMinutes > endMinutes) {
+              endedBookingIds.push(booking.id);
+            }
+          });
+
+          // Batch update ended bookings
+          if (endedBookingIds.length > 0) {
+            await supabase
+              .from("bookings")
+              .update({ status: "completed" })
+              .in("id", endedBookingIds);
+          }
+        }
+
         // Fetch bookings with booking items
         const { data: bookingRows, error: bookingsError } = await supabase
           .from("bookings")
