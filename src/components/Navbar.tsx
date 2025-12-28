@@ -17,6 +17,12 @@ export default function Navbar() {
   const menuRef = useRef<HTMLDivElement>(null);
 
   const isLoginPage = pathname === "/login";
+  const isOwnerPage = pathname === "/owner";
+
+  // Don't render navbar on owner page
+  if (isOwnerPage) {
+    return null;
+  }
 
   // Handle scroll effect
   useEffect(() => {
