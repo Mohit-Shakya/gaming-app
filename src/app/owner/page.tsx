@@ -1033,44 +1033,29 @@ export default function OwnerDashboardPage() {
             borderBottom: `1px solid ${theme.border}`,
           }}
         >
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-              <div
-                style={{
-                  width: 52,
-                  height: 52,
-                  borderRadius: 14,
-                  background: "#fff",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: 26,
-                }}
-              >
-                🎮
-              </div>
-              <div>
-                <div
-                  style={{
-                    fontSize: 18,
-                    fontWeight: 700,
-                    color: theme.textPrimary,
-                    letterSpacing: "-0.5px",
-                    marginBottom: 2,
-                  }}
-                >
-                  GameZoneBuddy
-                </div>
-                <div
-                  style={{
-                    fontSize: 12,
-                    color: theme.textMuted,
-                    fontWeight: 500,
-                  }}
-                >
-                  PlayTime Gaming Cafe
-                </div>
-              </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <div
+              style={{
+                fontSize: 22,
+                fontWeight: 800,
+                color: theme.textPrimary,
+                letterSpacing: "-0.5px",
+                lineHeight: 1,
+              }}
+            >
+              <span style={{ color: "#ff073a" }}>BOOK</span>
+              <span style={{ color: theme.textPrimary }}>MYGAME</span>
+            </div>
+            <div
+              style={{
+                fontSize: 11,
+                color: theme.textMuted,
+                fontWeight: 500,
+                letterSpacing: "1.5px",
+                textTransform: "uppercase",
+              }}
+            >
+              Gaming Café Booking
             </div>
           </div>
         </div>
