@@ -3160,14 +3160,13 @@ export default function OwnerDashboardPage() {
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr style={{ background: 'rgba(15,23,42,0.8)', borderBottom: `1px solid ${theme.border}` }}>
-                        <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Customer</th>
-                        <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Date</th>
-                        <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Time</th>
-                        <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Console</th>
-                        <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Duration</th>
-                        <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Amount</th>
-                        <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Status</th>
-                        <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 13, fontWeight: 600, color: theme.textSecondary, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Source</th>
+                        <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Customer</th>
+                        <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Station</th>
+                        <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Duration</th>
+                        <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Started</th>
+                        <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Amount</th>
+                        <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Status</th>
+                        <th style={{ padding: '16px 20px', textAlign: 'center', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -3187,48 +3186,41 @@ export default function OwnerDashboardPage() {
 
                         const statusColor = statusColors[booking.status || 'pending'] || statusColors.pending;
 
+                        // Format started time as "28 Dec at 10:30 PM"
+                        const formattedStarted = booking.booking_date && booking.start_time
+                          ? `${new Date(booking.booking_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} at ${booking.start_time}`
+                          : '-';
+
                         return (
                           <tr
                             key={booking.id}
                             style={{
                               borderBottom: index < filteredBookings.length - 1 ? `1px solid ${theme.border}` : 'none',
-                              cursor: 'pointer',
                               transition: 'background 0.15s ease',
                             }}
                             onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(51,65,85,0.2)'}
                             onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                            onClick={() => handleEditBooking(booking)}
                           >
                             <td style={{ padding: '16px 20px' }}>
                               <div>
-                                <div style={{ fontSize: 14, fontWeight: 500, color: theme.textPrimary, marginBottom: 4 }}>
+                                <div style={{ fontSize: 14, fontWeight: 500, color: theme.textPrimary, marginBottom: 2 }}>
                                   {customerName || 'Unknown'}
                                 </div>
                                 {customerPhone && (
-                                  <div style={{ fontSize: 13, color: theme.textMuted }}>
+                                  <div style={{ fontSize: 12, color: theme.textMuted }}>
                                     {customerPhone}
                                   </div>
                                 )}
                               </div>
                             </td>
-                            <td style={{ padding: '16px 20px', fontSize: 14, color: theme.textSecondary }}>
-                              {booking.booking_date ? new Date(booking.booking_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : '-'}
+                            <td style={{ padding: '16px 20px', fontSize: 14, fontWeight: 500, color: theme.textPrimary }}>
+                              {consoleInfo?.console || '-'}
                             </td>
                             <td style={{ padding: '16px 20px', fontSize: 14, color: theme.textSecondary }}>
-                              {booking.start_time || '-'}
-                            </td>
-                            <td style={{ padding: '16px 20px' }}>
-                              <div style={{ fontSize: 14, color: theme.textPrimary, fontWeight: 500 }}>
-                                {consoleInfo?.console || '-'}
-                              </div>
-                              {consoleInfo?.quantity && (
-                                <div style={{ fontSize: 13, color: theme.textMuted }}>
-                                  {consoleInfo.quantity} {consoleInfo.quantity === 1 ? 'controller' : 'controllers'}
-                                </div>
-                              )}
+                              {booking.duration ? `${booking.duration}m` : '-'}
                             </td>
                             <td style={{ padding: '16px 20px', fontSize: 14, color: theme.textSecondary }}>
-                              {booking.duration ? `${booking.duration} min` : '-'}
+                              {formattedStarted}
                             </td>
                             <td style={{ padding: '16px 20px', fontSize: 15, fontWeight: 600, color: theme.textPrimary }}>
                               ₹{booking.total_amount || 0}
@@ -3248,18 +3240,53 @@ export default function OwnerDashboardPage() {
                               </span>
                             </td>
                             <td style={{ padding: '16px 20px' }}>
-                              <span style={{
-                                display: 'inline-block',
-                                padding: '6px 12px',
-                                borderRadius: 6,
-                                fontSize: 12,
-                                fontWeight: 500,
-                                textTransform: 'capitalize',
-                                background: booking.source === 'online' ? 'rgba(147, 51, 234, 0.15)' : 'rgba(245, 158, 11, 0.15)',
-                                color: booking.source === 'online' ? '#9333ea' : '#f59e0b',
-                              }}>
-                                {booking.source || 'unknown'}
-                              </span>
+                              <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'center' }}>
+                                {/* Show Confirm button for pending online bookings */}
+                                {booking.status === 'pending' && booking.source === 'online' && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleConfirmBooking(booking);
+                                    }}
+                                    style={{
+                                      padding: '6px 14px',
+                                      background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                                      color: 'white',
+                                      border: 'none',
+                                      borderRadius: 6,
+                                      fontSize: 12,
+                                      fontWeight: 600,
+                                      cursor: 'pointer',
+                                      whiteSpace: 'nowrap',
+                                    }}
+                                  >
+                                    Confirm
+                                  </button>
+                                )}
+
+                                {/* Edit/View button */}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEditBooking(booking);
+                                  }}
+                                  style={{
+                                    padding: '8px 12px',
+                                    background: 'transparent',
+                                    color: theme.textSecondary,
+                                    border: `1px solid ${theme.border}`,
+                                    borderRadius: 6,
+                                    fontSize: 18,
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                  }}
+                                  title="View details"
+                                >
+                                  👁️
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         );
