@@ -3726,8 +3726,27 @@ export default function OwnerDashboardPage() {
                               {station.type}
                             </span>
                           </td>
-                          <td style={{ padding: '16px 20px', fontSize: 14, color: theme.textSecondary }}>
-                            {station.rate}
+                          <td style={{ padding: '16px 20px' }}>
+                            <div style={{ fontSize: 13, color: theme.textSecondary, lineHeight: 1.6 }}>
+                              {['PS5', 'PS4', 'Xbox'].includes(station.type) ? (
+                                <>
+                                  <div style={{ marginBottom: 4 }}>
+                                    <span style={{ color: theme.textMuted, fontSize: 11 }}>Single: </span>
+                                    <span style={{ fontWeight: 600 }}>₹75/30m · ₹150/hr</span>
+                                  </div>
+                                  <div>
+                                    <span style={{ color: theme.textMuted, fontSize: 11 }}>Multi: </span>
+                                    <span style={{ fontWeight: 600 }}>₹150/30m · ₹300/hr</span>
+                                  </div>
+                                </>
+                              ) : (
+                                <div>
+                                  <span style={{ fontWeight: 600 }}>
+                                    ₹{station.type === 'PC' ? '50' : station.type === 'VR' ? '100' : station.type === 'Steering' ? '75' : '40'}/30m · ₹{station.type === 'PC' ? '100' : station.type === 'VR' ? '200' : station.type === 'Steering' ? '150' : '80'}/hr
+                                  </span>
+                                </div>
+                              )}
+                            </div>
                           </td>
                           <td style={{ padding: '16px 20px', fontSize: 14, color: theme.textSecondary }}>
                             {station.sessions}
@@ -4388,104 +4407,218 @@ export default function OwnerDashboardPage() {
               {/* Pricing Fields - Different based on console type */}
               {['PS5', 'PS4', 'Xbox'].includes(editingStation.type) ? (
                 <>
-                  {/* Gaming Console - Single and Multi player rates */}
-                  <div style={{ marginBottom: 24 }}>
-                    <label
-                      style={{
-                        display: "block",
-                        fontSize: 14,
-                        fontWeight: 600,
-                        color: theme.textSecondary,
-                        marginBottom: 8,
-                      }}
-                    >
-                      Single Player Rate (₹/hour)
-                    </label>
-                    <input
-                      type="number"
-                      placeholder="e.g., 150"
-                      defaultValue="150"
-                      style={{
-                        width: "100%",
-                        padding: "12px 16px",
-                        background: theme.background,
-                        border: `1px solid ${theme.border}`,
-                        borderRadius: 12,
-                        color: theme.textPrimary,
-                        fontSize: 15,
-                        outline: "none",
-                        transition: "border-color 0.2s",
-                      }}
-                      onFocus={(e) => (e.target.style.borderColor = "#3b82f6")}
-                      onBlur={(e) => (e.target.style.borderColor = theme.border)}
-                    />
+                  {/* Gaming Console - Single and Multi player rates with half/full hour */}
+                  <div style={{ marginBottom: 20 }}>
+                    <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.textPrimary, marginBottom: 12 }}>
+                      Single Player Pricing
+                    </h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                      <div>
+                        <label
+                          style={{
+                            display: "block",
+                            fontSize: 13,
+                            fontWeight: 600,
+                            color: theme.textSecondary,
+                            marginBottom: 8,
+                          }}
+                        >
+                          Half Hour (₹)
+                        </label>
+                        <input
+                          type="number"
+                          placeholder="e.g., 75"
+                          defaultValue="75"
+                          style={{
+                            width: "100%",
+                            padding: "12px 16px",
+                            background: theme.background,
+                            border: `1px solid ${theme.border}`,
+                            borderRadius: 12,
+                            color: theme.textPrimary,
+                            fontSize: 15,
+                            outline: "none",
+                            transition: "border-color 0.2s",
+                          }}
+                          onFocus={(e) => (e.target.style.borderColor = "#3b82f6")}
+                          onBlur={(e) => (e.target.style.borderColor = theme.border)}
+                        />
+                      </div>
+                      <div>
+                        <label
+                          style={{
+                            display: "block",
+                            fontSize: 13,
+                            fontWeight: 600,
+                            color: theme.textSecondary,
+                            marginBottom: 8,
+                          }}
+                        >
+                          Full Hour (₹)
+                        </label>
+                        <input
+                          type="number"
+                          placeholder="e.g., 150"
+                          defaultValue="150"
+                          style={{
+                            width: "100%",
+                            padding: "12px 16px",
+                            background: theme.background,
+                            border: `1px solid ${theme.border}`,
+                            borderRadius: 12,
+                            color: theme.textPrimary,
+                            fontSize: 15,
+                            outline: "none",
+                            transition: "border-color 0.2s",
+                          }}
+                          onFocus={(e) => (e.target.style.borderColor = "#3b82f6")}
+                          onBlur={(e) => (e.target.style.borderColor = theme.border)}
+                        />
+                      </div>
+                    </div>
                   </div>
 
                   <div style={{ marginBottom: 24 }}>
-                    <label
-                      style={{
-                        display: "block",
-                        fontSize: 14,
-                        fontWeight: 600,
-                        color: theme.textSecondary,
-                        marginBottom: 8,
-                      }}
-                    >
-                      Multi Player Rate (₹/hour)
-                    </label>
-                    <input
-                      type="number"
-                      placeholder="e.g., 300"
-                      defaultValue="300"
-                      style={{
-                        width: "100%",
-                        padding: "12px 16px",
-                        background: theme.background,
-                        border: `1px solid ${theme.border}`,
-                        borderRadius: 12,
-                        color: theme.textPrimary,
-                        fontSize: 15,
-                        outline: "none",
-                        transition: "border-color 0.2s",
-                      }}
-                      onFocus={(e) => (e.target.style.borderColor = "#3b82f6")}
-                      onBlur={(e) => (e.target.style.borderColor = theme.border)}
-                    />
+                    <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.textPrimary, marginBottom: 12 }}>
+                      Multi Player Pricing
+                    </h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                      <div>
+                        <label
+                          style={{
+                            display: "block",
+                            fontSize: 13,
+                            fontWeight: 600,
+                            color: theme.textSecondary,
+                            marginBottom: 8,
+                          }}
+                        >
+                          Half Hour (₹)
+                        </label>
+                        <input
+                          type="number"
+                          placeholder="e.g., 150"
+                          defaultValue="150"
+                          style={{
+                            width: "100%",
+                            padding: "12px 16px",
+                            background: theme.background,
+                            border: `1px solid ${theme.border}`,
+                            borderRadius: 12,
+                            color: theme.textPrimary,
+                            fontSize: 15,
+                            outline: "none",
+                            transition: "border-color 0.2s",
+                          }}
+                          onFocus={(e) => (e.target.style.borderColor = "#3b82f6")}
+                          onBlur={(e) => (e.target.style.borderColor = theme.border)}
+                        />
+                      </div>
+                      <div>
+                        <label
+                          style={{
+                            display: "block",
+                            fontSize: 13,
+                            fontWeight: 600,
+                            color: theme.textSecondary,
+                            marginBottom: 8,
+                          }}
+                        >
+                          Full Hour (₹)
+                        </label>
+                        <input
+                          type="number"
+                          placeholder="e.g., 300"
+                          defaultValue="300"
+                          style={{
+                            width: "100%",
+                            padding: "12px 16px",
+                            background: theme.background,
+                            border: `1px solid ${theme.border}`,
+                            borderRadius: 12,
+                            color: theme.textPrimary,
+                            fontSize: 15,
+                            outline: "none",
+                            transition: "border-color 0.2s",
+                          }}
+                          onFocus={(e) => (e.target.style.borderColor = "#3b82f6")}
+                          onBlur={(e) => (e.target.style.borderColor = theme.border)}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </>
               ) : (
                 <>
-                  {/* Other stations - Single hourly rate */}
+                  {/* Other stations - Half hour and full hour rates */}
                   <div style={{ marginBottom: 24 }}>
-                    <label
-                      style={{
-                        display: "block",
-                        fontSize: 14,
-                        fontWeight: 600,
-                        color: theme.textSecondary,
-                        marginBottom: 8,
-                      }}
-                    >
-                      Hourly Rate (₹/hour)
-                    </label>
-                    <input
-                      type="number"
-                      placeholder="e.g., 100"
-                      defaultValue={editingStation.type === 'PC' ? '100' : editingStation.type === 'VR' ? '200' : editingStation.type === 'Steering' ? '150' : '80'}
-                      style={{
-                        width: "100%",
-                        padding: "12px 16px",
-                        background: theme.background,
-                        border: `1px solid ${theme.border}`,
-                        borderRadius: 12,
-                        color: theme.textPrimary,
-                        fontSize: 15,
-                        outline: "none",
-                        transition: "border-color 0.2s",
-                      }}
-                      onFocus={(e) => (e.target.style.borderColor = "#3b82f6")}
-                      onBlur={(e) => (e.target.style.borderColor = theme.border)}
-                    />
+                    <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.textPrimary, marginBottom: 12 }}>
+                      Pricing
+                    </h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                      <div>
+                        <label
+                          style={{
+                            display: "block",
+                            fontSize: 13,
+                            fontWeight: 600,
+                            color: theme.textSecondary,
+                            marginBottom: 8,
+                          }}
+                        >
+                          Half Hour (₹)
+                        </label>
+                        <input
+                          type="number"
+                          placeholder="e.g., 50"
+                          defaultValue={editingStation.type === 'PC' ? '50' : editingStation.type === 'VR' ? '100' : editingStation.type === 'Steering' ? '75' : '40'}
+                          style={{
+                            width: "100%",
+                            padding: "12px 16px",
+                            background: theme.background,
+                            border: `1px solid ${theme.border}`,
+                            borderRadius: 12,
+                            color: theme.textPrimary,
+                            fontSize: 15,
+                            outline: "none",
+                            transition: "border-color 0.2s",
+                          }}
+                          onFocus={(e) => (e.target.style.borderColor = "#3b82f6")}
+                          onBlur={(e) => (e.target.style.borderColor = theme.border)}
+                        />
+                      </div>
+                      <div>
+                        <label
+                          style={{
+                            display: "block",
+                            fontSize: 13,
+                            fontWeight: 600,
+                            color: theme.textSecondary,
+                            marginBottom: 8,
+                          }}
+                        >
+                          Full Hour (₹)
+                        </label>
+                        <input
+                          type="number"
+                          placeholder="e.g., 100"
+                          defaultValue={editingStation.type === 'PC' ? '100' : editingStation.type === 'VR' ? '200' : editingStation.type === 'Steering' ? '150' : '80'}
+                          style={{
+                            width: "100%",
+                            padding: "12px 16px",
+                            background: theme.background,
+                            border: `1px solid ${theme.border}`,
+                            borderRadius: 12,
+                            color: theme.textPrimary,
+                            fontSize: 15,
+                            outline: "none",
+                            transition: "border-color 0.2s",
+                          }}
+                          onFocus={(e) => (e.target.style.borderColor = "#3b82f6")}
+                          onBlur={(e) => (e.target.style.borderColor = theme.border)}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </>
               )}
