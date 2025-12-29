@@ -162,6 +162,15 @@ export default function OwnerDashboardPage() {
   const [stationTypeFilter, setStationTypeFilter] = useState("all");
   const [stationStatusFilter, setStationStatusFilter] = useState("all");
   const [editingStation, setEditingStation] = useState<any>(null);
+  const [savingPricing, setSavingPricing] = useState(false);
+
+  // Pricing form state
+  const [singleHalfHour, setSingleHalfHour] = useState("");
+  const [singleFullHour, setSingleFullHour] = useState("");
+  const [multiHalfHour, setMultiHalfHour] = useState("");
+  const [multiFullHour, setMultiFullHour] = useState("");
+  const [halfHour, setHalfHour] = useState("");
+  const [fullHour, setFullHour] = useState("");
 
   // Check role
   useEffect(() => {
@@ -198,6 +207,31 @@ export default function OwnerDashboardPage() {
 
     checkRole();
   }, [user, userLoading, router]);
+
+  // Initialize pricing form when station is selected
+  useEffect(() => {
+    if (editingStation) {
+      const isGamingConsole = ['PS5', 'PS4', 'Xbox'].includes(editingStation.type);
+      if (isGamingConsole) {
+        setSingleHalfHour("75");
+        setSingleFullHour("150");
+        setMultiHalfHour("150");
+        setMultiFullHour("300");
+      } else {
+        const defaults: Record<string, {half: string, full: string}> = {
+          'PC': {half: '50', full: '100'},
+          'VR': {half: '100', full: '200'},
+          'Steering': {half: '75', full: '150'},
+          'Pool': {half: '40', full: '80'},
+          'Snooker': {half: '40', full: '80'},
+          'Arcade': {half: '40', full: '80'},
+        };
+        const stationDefaults = defaults[editingStation.type] || {half: '40', full: '80'};
+        setHalfHour(stationDefaults.half);
+        setFullHour(stationDefaults.full);
+      }
+    }
+  }, [editingStation]);
 
   // Auto-refresh time every second for active sessions
   useEffect(() => {
@@ -4428,7 +4462,8 @@ export default function OwnerDashboardPage() {
                         <input
                           type="number"
                           placeholder="e.g., 75"
-                          defaultValue="75"
+                          value={singleHalfHour}
+                          onChange={(e) => setSingleHalfHour(e.target.value)}
                           style={{
                             width: "100%",
                             padding: "12px 16px",
@@ -4459,7 +4494,8 @@ export default function OwnerDashboardPage() {
                         <input
                           type="number"
                           placeholder="e.g., 150"
-                          defaultValue="150"
+                          value={singleFullHour}
+                          onChange={(e) => setSingleFullHour(e.target.value)}
                           style={{
                             width: "100%",
                             padding: "12px 16px",
@@ -4498,7 +4534,8 @@ export default function OwnerDashboardPage() {
                         <input
                           type="number"
                           placeholder="e.g., 150"
-                          defaultValue="150"
+                          value={multiHalfHour}
+                          onChange={(e) => setMultiHalfHour(e.target.value)}
                           style={{
                             width: "100%",
                             padding: "12px 16px",
@@ -4529,7 +4566,8 @@ export default function OwnerDashboardPage() {
                         <input
                           type="number"
                           placeholder="e.g., 300"
-                          defaultValue="300"
+                          value={multiFullHour}
+                          onChange={(e) => setMultiFullHour(e.target.value)}
                           style={{
                             width: "100%",
                             padding: "12px 16px",
@@ -4571,7 +4609,8 @@ export default function OwnerDashboardPage() {
                         <input
                           type="number"
                           placeholder="e.g., 50"
-                          defaultValue={editingStation.type === 'PC' ? '50' : editingStation.type === 'VR' ? '100' : editingStation.type === 'Steering' ? '75' : '40'}
+                          value={halfHour}
+                          onChange={(e) => setHalfHour(e.target.value)}
                           style={{
                             width: "100%",
                             padding: "12px 16px",
@@ -4602,7 +4641,8 @@ export default function OwnerDashboardPage() {
                         <input
                           type="number"
                           placeholder="e.g., 100"
-                          defaultValue={editingStation.type === 'PC' ? '100' : editingStation.type === 'VR' ? '200' : editingStation.type === 'Steering' ? '150' : '80'}
+                          value={fullHour}
+                          onChange={(e) => setFullHour(e.target.value)}
                           style={{
                             width: "100%",
                             padding: "12px 16px",
@@ -4651,23 +4691,64 @@ export default function OwnerDashboardPage() {
               </button>
               <button
                 onClick={async () => {
-                  // TODO: Save to database
-                  console.log("Saving station pricing...");
-                  setEditingStation(null);
+                  if (!cafes[0]?.id) return;
+
+                  setSavingPricing(true);
+                  try {
+                    const isGamingConsole = ['PS5', 'PS4', 'Xbox'].includes(editingStation.type);
+                    const stationNumber = parseInt(editingStation.name.split('-')[1]);
+
+                    // Prepare pricing data
+                    const pricingData: any = {
+                      cafe_id: cafes[0].id,
+                      station_type: editingStation.type,
+                      station_number: stationNumber,
+                      station_name: editingStation.name,
+                      is_active: true,
+                    };
+
+                    if (isGamingConsole) {
+                      pricingData.single_player_half_hour_rate = parseFloat(singleHalfHour) || 0;
+                      pricingData.single_player_rate = parseFloat(singleFullHour) || 0;
+                      pricingData.multi_player_half_hour_rate = parseFloat(multiHalfHour) || 0;
+                      pricingData.multi_player_rate = parseFloat(multiFullHour) || 0;
+                    } else {
+                      pricingData.half_hour_rate = parseFloat(halfHour) || 0;
+                      pricingData.hourly_rate = parseFloat(fullHour) || 0;
+                    }
+
+                    // Upsert station pricing
+                    const { error } = await supabase
+                      .from('station_pricing')
+                      .upsert(pricingData, {
+                        onConflict: 'cafe_id,station_name'
+                      });
+
+                    if (error) throw error;
+
+                    alert('Pricing updated successfully!');
+                    setEditingStation(null);
+                  } catch (err) {
+                    console.error('Error saving pricing:', err);
+                    alert('Failed to save pricing. Please try again.');
+                  } finally {
+                    setSavingPricing(false);
+                  }
                 }}
+                disabled={savingPricing}
                 style={{
                   padding: "12px 32px",
-                  background: "linear-gradient(135deg, #10b981, #059669)",
+                  background: savingPricing ? "rgba(16, 185, 129, 0.5)" : "linear-gradient(135deg, #10b981, #059669)",
                   border: "none",
                   borderRadius: 12,
                   color: "#fff",
                   fontSize: 14,
                   fontWeight: 600,
-                  cursor: "pointer",
-                  boxShadow: "0 4px 16px rgba(16, 185, 129, 0.3)",
+                  cursor: savingPricing ? "not-allowed" : "pointer",
+                  boxShadow: savingPricing ? "none" : "0 4px 16px rgba(16, 185, 129, 0.3)",
                 }}
               >
-                Save Changes
+                {savingPricing ? "Saving..." : "Save Changes"}
               </button>
             </div>
           </div>
