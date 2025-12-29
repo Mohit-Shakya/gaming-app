@@ -173,6 +173,16 @@ export default function OwnerDashboardPage() {
   const [halfHour, setHalfHour] = useState("");
   const [fullHour, setFullHour] = useState("");
 
+  // Controller pricing state (for PS5, Xbox)
+  const [controller1HalfHour, setController1HalfHour] = useState("");
+  const [controller1FullHour, setController1FullHour] = useState("");
+  const [controller2HalfHour, setController2HalfHour] = useState("");
+  const [controller2FullHour, setController2FullHour] = useState("");
+  const [controller3HalfHour, setController3HalfHour] = useState("");
+  const [controller3FullHour, setController3FullHour] = useState("");
+  const [controller4HalfHour, setController4HalfHour] = useState("");
+  const [controller4FullHour, setController4FullHour] = useState("");
+
   // Check role
   useEffect(() => {
     async function checkRole() {
@@ -220,6 +230,18 @@ export default function OwnerDashboardPage() {
         setSingleFullHour(String(savedPricing?.single_player_rate || 150));
         setMultiHalfHour(String(savedPricing?.multi_player_half_hour_rate || 150));
         setMultiFullHour(String(savedPricing?.multi_player_rate || 300));
+
+        // Initialize controller pricing (for PS5, Xbox)
+        if (['PS5', 'Xbox'].includes(editingStation.type)) {
+          setController1HalfHour(String(savedPricing?.controller_1_half_hour || 75));
+          setController1FullHour(String(savedPricing?.controller_1_full_hour || 150));
+          setController2HalfHour(String(savedPricing?.controller_2_half_hour || 120));
+          setController2FullHour(String(savedPricing?.controller_2_full_hour || 240));
+          setController3HalfHour(String(savedPricing?.controller_3_half_hour || 165));
+          setController3FullHour(String(savedPricing?.controller_3_full_hour || 330));
+          setController4HalfHour(String(savedPricing?.controller_4_half_hour || 210));
+          setController4FullHour(String(savedPricing?.controller_4_full_hour || 420));
+        }
       } else {
         const defaults: Record<string, {half: number, full: number}> = {
           'PC': {half: 50, full: 100},
@@ -4482,149 +4504,201 @@ export default function OwnerDashboardPage() {
               </div>
 
               {/* Pricing Fields - Different based on console type */}
-              {['PS5', 'PS4', 'Xbox'].includes(editingStation.type) ? (
+              {['PS5', 'Xbox'].includes(editingStation.type) ? (
                 <>
-                  {/* Gaming Console - Single and Multi player rates with half/full hour */}
+                  {/* PS5/Xbox - Per Controller Pricing (1-4 controllers) */}
+                  <div style={{ marginBottom: 24 }}>
+                    <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.textPrimary, marginBottom: 16 }}>
+                      Per-Controller Pricing
+                    </h3>
+
+                    {/* 1 Controller */}
+                    <div style={{ marginBottom: 16, padding: 16, background: theme.background, borderRadius: 12, border: `1px solid ${theme.border}` }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: theme.textSecondary, marginBottom: 12 }}>1 Controller</div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                        <div>
+                          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: theme.textMuted, marginBottom: 6 }}>
+                            Half Hour (₹)
+                          </label>
+                          <input
+                            type="number"
+                            placeholder="e.g., 75"
+                            value={controller1HalfHour}
+                            onChange={(e) => setController1HalfHour(e.target.value)}
+                            style={{ width: "100%", padding: "10px 12px", background: theme.cardBackground, border: `1px solid ${theme.border}`, borderRadius: 8, color: theme.textPrimary, fontSize: 14, outline: "none" }}
+                            onFocus={(e) => (e.target.style.borderColor = "#3b82f6")}
+                            onBlur={(e) => (e.target.style.borderColor = theme.border)}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: theme.textMuted, marginBottom: 6 }}>
+                            Full Hour (₹)
+                          </label>
+                          <input
+                            type="number"
+                            placeholder="e.g., 150"
+                            value={controller1FullHour}
+                            onChange={(e) => setController1FullHour(e.target.value)}
+                            style={{ width: "100%", padding: "10px 12px", background: theme.cardBackground, border: `1px solid ${theme.border}`, borderRadius: 8, color: theme.textPrimary, fontSize: 14, outline: "none" }}
+                            onFocus={(e) => (e.target.style.borderColor = "#3b82f6")}
+                            onBlur={(e) => (e.target.style.borderColor = theme.border)}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 2 Controllers */}
+                    <div style={{ marginBottom: 16, padding: 16, background: theme.background, borderRadius: 12, border: `1px solid ${theme.border}` }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: theme.textSecondary, marginBottom: 12 }}>2 Controllers</div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                        <div>
+                          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: theme.textMuted, marginBottom: 6 }}>
+                            Half Hour (₹)
+                          </label>
+                          <input
+                            type="number"
+                            placeholder="e.g., 120"
+                            value={controller2HalfHour}
+                            onChange={(e) => setController2HalfHour(e.target.value)}
+                            style={{ width: "100%", padding: "10px 12px", background: theme.cardBackground, border: `1px solid ${theme.border}`, borderRadius: 8, color: theme.textPrimary, fontSize: 14, outline: "none" }}
+                            onFocus={(e) => (e.target.style.borderColor = "#3b82f6")}
+                            onBlur={(e) => (e.target.style.borderColor = theme.border)}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: theme.textMuted, marginBottom: 6 }}>
+                            Full Hour (₹)
+                          </label>
+                          <input
+                            type="number"
+                            placeholder="e.g., 240"
+                            value={controller2FullHour}
+                            onChange={(e) => setController2FullHour(e.target.value)}
+                            style={{ width: "100%", padding: "10px 12px", background: theme.cardBackground, border: `1px solid ${theme.border}`, borderRadius: 8, color: theme.textPrimary, fontSize: 14, outline: "none" }}
+                            onFocus={(e) => (e.target.style.borderColor = "#3b82f6")}
+                            onBlur={(e) => (e.target.style.borderColor = theme.border)}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 3 Controllers */}
+                    <div style={{ marginBottom: 16, padding: 16, background: theme.background, borderRadius: 12, border: `1px solid ${theme.border}` }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: theme.textSecondary, marginBottom: 12 }}>3 Controllers</div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                        <div>
+                          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: theme.textMuted, marginBottom: 6 }}>
+                            Half Hour (₹)
+                          </label>
+                          <input
+                            type="number"
+                            placeholder="e.g., 165"
+                            value={controller3HalfHour}
+                            onChange={(e) => setController3HalfHour(e.target.value)}
+                            style={{ width: "100%", padding: "10px 12px", background: theme.cardBackground, border: `1px solid ${theme.border}`, borderRadius: 8, color: theme.textPrimary, fontSize: 14, outline: "none" }}
+                            onFocus={(e) => (e.target.style.borderColor = "#3b82f6")}
+                            onBlur={(e) => (e.target.style.borderColor = theme.border)}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: theme.textMuted, marginBottom: 6 }}>
+                            Full Hour (₹)
+                          </label>
+                          <input
+                            type="number"
+                            placeholder="e.g., 330"
+                            value={controller3FullHour}
+                            onChange={(e) => setController3FullHour(e.target.value)}
+                            style={{ width: "100%", padding: "10px 12px", background: theme.cardBackground, border: `1px solid ${theme.border}`, borderRadius: 8, color: theme.textPrimary, fontSize: 14, outline: "none" }}
+                            onFocus={(e) => (e.target.style.borderColor = "#3b82f6")}
+                            onBlur={(e) => (e.target.style.borderColor = theme.border)}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 4 Controllers */}
+                    <div style={{ marginBottom: 16, padding: 16, background: theme.background, borderRadius: 12, border: `1px solid ${theme.border}` }}>
+                      <div style={{ fontSize: 14, fontWeight: 600, color: theme.textSecondary, marginBottom: 12 }}>4 Controllers (Max)</div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                        <div>
+                          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: theme.textMuted, marginBottom: 6 }}>
+                            Half Hour (₹)
+                          </label>
+                          <input
+                            type="number"
+                            placeholder="e.g., 210"
+                            value={controller4HalfHour}
+                            onChange={(e) => setController4HalfHour(e.target.value)}
+                            style={{ width: "100%", padding: "10px 12px", background: theme.cardBackground, border: `1px solid ${theme.border}`, borderRadius: 8, color: theme.textPrimary, fontSize: 14, outline: "none" }}
+                            onFocus={(e) => (e.target.style.borderColor = "#3b82f6")}
+                            onBlur={(e) => (e.target.style.borderColor = theme.border)}
+                          />
+                        </div>
+                        <div>
+                          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: theme.textMuted, marginBottom: 6 }}>
+                            Full Hour (₹)
+                          </label>
+                          <input
+                            type="number"
+                            placeholder="e.g., 420"
+                            value={controller4FullHour}
+                            onChange={(e) => setController4FullHour(e.target.value)}
+                            style={{ width: "100%", padding: "10px 12px", background: theme.cardBackground, border: `1px solid ${theme.border}`, borderRadius: 8, color: theme.textPrimary, fontSize: 14, outline: "none" }}
+                            onFocus={(e) => (e.target.style.borderColor = "#3b82f6")}
+                            onBlur={(e) => (e.target.style.borderColor = theme.border)}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : ['PS4'].includes(editingStation.type) ? (
+                <>
+                  {/* PS4 - Keep old Single/Multi format */}
                   <div style={{ marginBottom: 20 }}>
                     <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.textPrimary, marginBottom: 12 }}>
                       Single Player Pricing
                     </h3>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                       <div>
-                        <label
-                          style={{
-                            display: "block",
-                            fontSize: 13,
-                            fontWeight: 600,
-                            color: theme.textSecondary,
-                            marginBottom: 8,
-                          }}
-                        >
+                        <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: theme.textSecondary, marginBottom: 8 }}>
                           Half Hour (₹)
                         </label>
-                        <input
-                          type="number"
-                          placeholder="e.g., 75"
-                          value={singleHalfHour}
-                          onChange={(e) => setSingleHalfHour(e.target.value)}
-                          style={{
-                            width: "100%",
-                            padding: "12px 16px",
-                            background: theme.background,
-                            border: `1px solid ${theme.border}`,
-                            borderRadius: 12,
-                            color: theme.textPrimary,
-                            fontSize: 15,
-                            outline: "none",
-                            transition: "border-color 0.2s",
-                          }}
-                          onFocus={(e) => (e.target.style.borderColor = "#3b82f6")}
-                          onBlur={(e) => (e.target.style.borderColor = theme.border)}
-                        />
+                        <input type="number" placeholder="e.g., 75" value={singleHalfHour} onChange={(e) => setSingleHalfHour(e.target.value)}
+                          style={{ width: "100%", padding: "12px 16px", background: theme.background, border: `1px solid ${theme.border}`, borderRadius: 12, color: theme.textPrimary, fontSize: 15, outline: "none", transition: "border-color 0.2s" }}
+                          onFocus={(e) => (e.target.style.borderColor = "#3b82f6")} onBlur={(e) => (e.target.style.borderColor = theme.border)} />
                       </div>
                       <div>
-                        <label
-                          style={{
-                            display: "block",
-                            fontSize: 13,
-                            fontWeight: 600,
-                            color: theme.textSecondary,
-                            marginBottom: 8,
-                          }}
-                        >
+                        <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: theme.textSecondary, marginBottom: 8 }}>
                           Full Hour (₹)
                         </label>
-                        <input
-                          type="number"
-                          placeholder="e.g., 150"
-                          value={singleFullHour}
-                          onChange={(e) => setSingleFullHour(e.target.value)}
-                          style={{
-                            width: "100%",
-                            padding: "12px 16px",
-                            background: theme.background,
-                            border: `1px solid ${theme.border}`,
-                            borderRadius: 12,
-                            color: theme.textPrimary,
-                            fontSize: 15,
-                            outline: "none",
-                            transition: "border-color 0.2s",
-                          }}
-                          onFocus={(e) => (e.target.style.borderColor = "#3b82f6")}
-                          onBlur={(e) => (e.target.style.borderColor = theme.border)}
-                        />
+                        <input type="number" placeholder="e.g., 150" value={singleFullHour} onChange={(e) => setSingleFullHour(e.target.value)}
+                          style={{ width: "100%", padding: "12px 16px", background: theme.background, border: `1px solid ${theme.border}`, borderRadius: 12, color: theme.textPrimary, fontSize: 15, outline: "none", transition: "border-color 0.2s" }}
+                          onFocus={(e) => (e.target.style.borderColor = "#3b82f6")} onBlur={(e) => (e.target.style.borderColor = theme.border)} />
                       </div>
                     </div>
                   </div>
-
                   <div style={{ marginBottom: 24 }}>
                     <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.textPrimary, marginBottom: 12 }}>
                       Multi Player Pricing
                     </h3>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                       <div>
-                        <label
-                          style={{
-                            display: "block",
-                            fontSize: 13,
-                            fontWeight: 600,
-                            color: theme.textSecondary,
-                            marginBottom: 8,
-                          }}
-                        >
+                        <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: theme.textSecondary, marginBottom: 8 }}>
                           Half Hour (₹)
                         </label>
-                        <input
-                          type="number"
-                          placeholder="e.g., 150"
-                          value={multiHalfHour}
-                          onChange={(e) => setMultiHalfHour(e.target.value)}
-                          style={{
-                            width: "100%",
-                            padding: "12px 16px",
-                            background: theme.background,
-                            border: `1px solid ${theme.border}`,
-                            borderRadius: 12,
-                            color: theme.textPrimary,
-                            fontSize: 15,
-                            outline: "none",
-                            transition: "border-color 0.2s",
-                          }}
-                          onFocus={(e) => (e.target.style.borderColor = "#3b82f6")}
-                          onBlur={(e) => (e.target.style.borderColor = theme.border)}
-                        />
+                        <input type="number" placeholder="e.g., 150" value={multiHalfHour} onChange={(e) => setMultiHalfHour(e.target.value)}
+                          style={{ width: "100%", padding: "12px 16px", background: theme.background, border: `1px solid ${theme.border}`, borderRadius: 12, color: theme.textPrimary, fontSize: 15, outline: "none", transition: "border-color 0.2s" }}
+                          onFocus={(e) => (e.target.style.borderColor = "#3b82f6")} onBlur={(e) => (e.target.style.borderColor = theme.border)} />
                       </div>
                       <div>
-                        <label
-                          style={{
-                            display: "block",
-                            fontSize: 13,
-                            fontWeight: 600,
-                            color: theme.textSecondary,
-                            marginBottom: 8,
-                          }}
-                        >
+                        <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: theme.textSecondary, marginBottom: 8 }}>
                           Full Hour (₹)
                         </label>
-                        <input
-                          type="number"
-                          placeholder="e.g., 300"
-                          value={multiFullHour}
-                          onChange={(e) => setMultiFullHour(e.target.value)}
-                          style={{
-                            width: "100%",
-                            padding: "12px 16px",
-                            background: theme.background,
-                            border: `1px solid ${theme.border}`,
-                            borderRadius: 12,
-                            color: theme.textPrimary,
-                            fontSize: 15,
-                            outline: "none",
-                            transition: "border-color 0.2s",
-                          }}
-                          onFocus={(e) => (e.target.style.borderColor = "#3b82f6")}
-                          onBlur={(e) => (e.target.style.borderColor = theme.border)}
-                        />
+                        <input type="number" placeholder="e.g., 300" value={multiFullHour} onChange={(e) => setMultiFullHour(e.target.value)}
+                          style={{ width: "100%", padding: "12px 16px", background: theme.background, border: `1px solid ${theme.border}`, borderRadius: 12, color: theme.textPrimary, fontSize: 15, outline: "none", transition: "border-color 0.2s" }}
+                          onFocus={(e) => (e.target.style.borderColor = "#3b82f6")} onBlur={(e) => (e.target.style.borderColor = theme.border)} />
                       </div>
                     </div>
                   </div>
