@@ -164,6 +164,7 @@ export default function OwnerDashboardPage() {
   const [editingStation, setEditingStation] = useState<any>(null);
   const [savingPricing, setSavingPricing] = useState(false);
   const [stationPricing, setStationPricing] = useState<Record<string, any>>({});
+  const [applyToAll, setApplyToAll] = useState(false);
 
   // Pricing form state
   const [singleHalfHour, setSingleHalfHour] = useState("");
@@ -4522,6 +4523,31 @@ export default function OwnerDashboardPage() {
                 </div>
               </div>
 
+              {/* Apply to All Checkbox */}
+              <div style={{ marginBottom: 24, padding: 16, background: 'rgba(59, 130, 246, 0.08)', border: `1px solid rgba(59, 130, 246, 0.2)`, borderRadius: 12 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={applyToAll}
+                    onChange={(e) => setApplyToAll(e.target.checked)}
+                    style={{
+                      width: 20,
+                      height: 20,
+                      cursor: 'pointer',
+                      accentColor: '#3b82f6',
+                    }}
+                  />
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: theme.textPrimary, marginBottom: 4 }}>
+                      Apply to all {editingStation.type} stations
+                    </div>
+                    <div style={{ fontSize: 12, color: theme.textMuted }}>
+                      Set this pricing for all {editingStation.type} stations in your cafe
+                    </div>
+                  </div>
+                </label>
+              </div>
+
               {/* Pricing Fields - Different based on console type */}
               {['PS5', 'Xbox'].includes(editingStation.type) ? (
                 <>
@@ -4864,14 +4890,39 @@ export default function OwnerDashboardPage() {
                       pricingData.hourly_rate = parseFloat(fullHour) || 0;
                     }
 
-                    // Upsert station pricing
-                    const { error } = await supabase
-                      .from('station_pricing')
-                      .upsert(pricingData, {
-                        onConflict: 'cafe_id,station_name'
-                      });
+                    // Apply to all stations of same type if checkbox is checked
+                    if (applyToAll) {
+                      // Get console count for this type
+                      const cafe = cafes[0];
+                      const consoleTypeKey = `${editingStation.type.toLowerCase()}_count` as keyof typeof cafe;
+                      const count = (cafe[consoleTypeKey] as number) || 0;
 
-                    if (error) throw error;
+                      // Create pricing data for all stations of this type
+                      const allPricingData = [];
+                      for (let i = 1; i <= count; i++) {
+                        const stationName = `${editingStation.type}-${String(i).padStart(2, '0')}`;
+                        const data = { ...pricingData, station_number: i, station_name: stationName };
+                        allPricingData.push(data);
+                      }
+
+                      // Upsert all at once
+                      const { error } = await supabase
+                        .from('station_pricing')
+                        .upsert(allPricingData, {
+                          onConflict: 'cafe_id,station_name'
+                        });
+
+                      if (error) throw error;
+                    } else {
+                      // Just save this one station
+                      const { error } = await supabase
+                        .from('station_pricing')
+                        .upsert(pricingData, {
+                          onConflict: 'cafe_id,station_name'
+                        });
+
+                      if (error) throw error;
+                    }
 
                     // Reload station pricing to update the table
                     const { data: updatedPricing } = await supabase
@@ -4887,8 +4938,12 @@ export default function OwnerDashboardPage() {
                       setStationPricing(pricingMap);
                     }
 
-                    alert('Pricing updated successfully!');
+                    const successMsg = applyToAll
+                      ? `Pricing updated for all ${editingStation.type} stations!`
+                      : 'Pricing updated successfully!';
+                    alert(successMsg);
                     setEditingStation(null);
+                    setApplyToAll(false);
                   } catch (err) {
                     console.error('Error saving pricing:', err);
                     alert('Failed to save pricing. Please try again.');
