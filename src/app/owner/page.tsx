@@ -3659,218 +3659,165 @@ export default function OwnerDashboardPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {/* Sample Station Row - PC-01 */}
-                    <tr style={{ borderBottom: `1px solid ${theme.border}` }}>
-                      <td style={{ padding: '16px 20px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                          <div
-                            style={{
-                              width: 40,
-                              height: 40,
-                              borderRadius: 10,
-                              background: 'rgba(59, 130, 246, 0.15)',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontSize: 20,
-                            }}
-                          >
-                            🖥️
-                          </div>
-                          <span style={{ fontSize: 15, fontWeight: 600, color: theme.textPrimary }}>PC-01</span>
-                        </div>
-                      </td>
-                      <td style={{ padding: '16px 20px' }}>
-                        <span
-                          style={{
-                            display: 'inline-block',
-                            padding: '6px 12px',
-                            borderRadius: 6,
-                            background: 'rgba(59, 130, 246, 0.15)',
-                            color: '#3b82f6',
-                            fontSize: 12,
-                            fontWeight: 600,
-                          }}
-                        >
-                          PC
-                        </span>
-                      </td>
-                      <td style={{ padding: '16px 20px', fontSize: 14, color: theme.textSecondary }}>
-                        ₹100/hr
-                      </td>
-                      <td style={{ padding: '16px 20px', fontSize: 14, color: theme.textSecondary }}>
-                        1
-                      </td>
-                      <td style={{ padding: '16px 20px' }}>
-                        <span
-                          style={{
-                            display: 'inline-block',
-                            padding: '6px 12px',
-                            borderRadius: 6,
-                            background: 'rgba(16, 185, 129, 0.15)',
-                            color: '#10b981',
-                            fontSize: 12,
-                            fontWeight: 600,
-                          }}
-                        >
-                          Active
-                        </span>
-                      </td>
-                      <td style={{ padding: '16px 20px' }}>
-                        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                          <button
-                            style={{
-                              padding: '8px',
-                              background: 'transparent',
-                              border: `1px solid ${theme.border}`,
-                              borderRadius: 6,
-                              color: theme.textSecondary,
-                              cursor: 'pointer',
-                              fontSize: 16,
-                            }}
-                            title="Edit"
-                          >
-                            ✏️
-                          </button>
-                          <button
-                            style={{
-                              padding: '8px',
-                              background: 'transparent',
-                              border: `1px solid ${theme.border}`,
-                              borderRadius: 6,
-                              color: theme.textSecondary,
-                              cursor: 'pointer',
-                              fontSize: 16,
-                            }}
-                            title="Power"
-                          >
-                            🔌
-                          </button>
-                          <button
-                            style={{
-                              padding: '8px',
-                              background: 'transparent',
-                              border: `1px solid ${theme.border}`,
-                              borderRadius: 6,
-                              color: '#ef4444',
-                              cursor: 'pointer',
-                              fontSize: 16,
-                            }}
-                            title="Delete"
-                          >
-                            🗑️
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
+                    {/* Dynamically generate station rows from cafe console counts */}
+                    {(() => {
+                      const cafe = cafes[0];
+                      const allStations: any[] = [];
 
-                    {/* Add more sample rows */}
-                    <tr style={{ borderBottom: `1px solid ${theme.border}` }}>
-                      <td style={{ padding: '16px 20px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                          <div
-                            style={{
-                              width: 40,
-                              height: 40,
-                              borderRadius: 10,
-                              background: 'rgba(16, 185, 129, 0.15)',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontSize: 20,
-                            }}
-                          >
-                            🎮
-                          </div>
-                          <span style={{ fontSize: 15, fontWeight: 600, color: theme.textPrimary }}>PS5-01</span>
-                        </div>
-                      </td>
-                      <td style={{ padding: '16px 20px' }}>
-                        <span
-                          style={{
-                            display: 'inline-block',
-                            padding: '6px 12px',
-                            borderRadius: 6,
-                            background: 'rgba(16, 185, 129, 0.15)',
-                            color: '#10b981',
-                            fontSize: 12,
-                            fontWeight: 600,
-                          }}
-                        >
-                          Gaming Station
-                        </span>
-                      </td>
-                      <td style={{ padding: '16px 20px' }}>
-                        <div style={{ fontSize: 14, color: theme.textSecondary }}>
-                          <div>₹150 <span style={{ fontSize: 12, color: theme.textMuted }}>Single</span></div>
-                          <div>₹300 <span style={{ fontSize: 12, color: theme.textMuted }}>Multi</span></div>
-                        </div>
-                      </td>
-                      <td style={{ padding: '16px 20px', fontSize: 14, color: theme.textSecondary }}>
-                        0
-                      </td>
-                      <td style={{ padding: '16px 20px' }}>
-                        <span
-                          style={{
-                            display: 'inline-block',
-                            padding: '6px 12px',
-                            borderRadius: 6,
-                            background: 'rgba(16, 185, 129, 0.15)',
-                            color: '#10b981',
-                            fontSize: 12,
-                            fontWeight: 600,
-                          }}
-                        >
-                          Active
-                        </span>
-                      </td>
-                      <td style={{ padding: '16px 20px' }}>
-                        <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                          <button
-                            style={{
-                              padding: '8px',
-                              background: 'transparent',
-                              border: `1px solid ${theme.border}`,
-                              borderRadius: 6,
-                              color: theme.textSecondary,
-                              cursor: 'pointer',
-                              fontSize: 16,
-                            }}
-                            title="Edit"
-                          >
-                            ✏️
-                          </button>
-                          <button
-                            style={{
-                              padding: '8px',
-                              background: 'transparent',
-                              border: `1px solid ${theme.border}`,
-                              borderRadius: 6,
-                              color: theme.textSecondary,
-                              cursor: 'pointer',
-                              fontSize: 16,
-                            }}
-                            title="Power"
-                          >
-                            🔌
-                          </button>
-                          <button
-                            style={{
-                              padding: '8px',
-                              background: 'transparent',
-                              border: `1px solid ${theme.border}`,
-                              borderRadius: 6,
-                              color: '#ef4444',
-                              cursor: 'pointer',
-                              fontSize: 16,
-                            }}
-                            title="Delete"
-                          >
-                            🗑️
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
+                      // Console type configurations
+                      const consoleTypes = [
+                        { key: 'pc_count', name: 'PC', icon: '🖥️', bgColor: 'rgba(59, 130, 246, 0.15)', color: '#3b82f6', rate: '₹100/hr' },
+                        { key: 'ps5_count', name: 'PS5', icon: '🎮', bgColor: 'rgba(16, 185, 129, 0.15)', color: '#10b981', rate: '₹150 Single / ₹300 Multi' },
+                        { key: 'ps4_count', name: 'PS4', icon: '🎮', bgColor: 'rgba(139, 92, 246, 0.15)', color: '#8b5cf6', rate: '₹100 Single / ₹200 Multi' },
+                        { key: 'xbox_count', name: 'Xbox', icon: '🎮', bgColor: 'rgba(34, 197, 94, 0.15)', color: '#22c55e', rate: '₹120 Single / ₹240 Multi' },
+                        { key: 'vr_count', name: 'VR', icon: '🥽', bgColor: 'rgba(236, 72, 153, 0.15)', color: '#ec4899', rate: '₹200/hr' },
+                        { key: 'steering_wheel_count', name: 'Steering', icon: '🏎️', bgColor: 'rgba(251, 146, 60, 0.15)', color: '#fb923c', rate: '₹150/hr' },
+                        { key: 'pool_count', name: 'Pool', icon: '🎱', bgColor: 'rgba(14, 165, 233, 0.15)', color: '#0ea5e9', rate: '₹80/hr' },
+                        { key: 'snooker_count', name: 'Snooker', icon: '🎱', bgColor: 'rgba(132, 204, 22, 0.15)', color: '#84cc16', rate: '₹80/hr' },
+                        { key: 'arcade_count', name: 'Arcade', icon: '🕹️', bgColor: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', rate: '₹50/hr' },
+                      ];
+
+                      // Generate stations for each console type
+                      consoleTypes.forEach((consoleType) => {
+                        const count = cafe[consoleType.key as keyof CafeRow] as number || 0;
+                        for (let i = 1; i <= count; i++) {
+                          allStations.push({
+                            id: `${consoleType.name}-${String(i).padStart(2, '0')}`,
+                            name: `${consoleType.name}-${String(i).padStart(2, '0')}`,
+                            type: consoleType.name,
+                            icon: consoleType.icon,
+                            bgColor: consoleType.bgColor,
+                            color: consoleType.color,
+                            rate: consoleType.rate,
+                            sessions: 0, // TODO: Calculate from bookings
+                            status: 'Active',
+                          });
+                        }
+                      });
+
+                      if (allStations.length === 0) {
+                        return (
+                          <tr>
+                            <td colSpan={6} style={{ padding: '60px 20px', textAlign: 'center' }}>
+                              <div style={{ fontSize: 48, marginBottom: 12, opacity: 0.3 }}>🎮</div>
+                              <p style={{ fontSize: 16, color: theme.textSecondary, marginBottom: 6, fontWeight: 500 }}>
+                                No stations configured
+                              </p>
+                              <p style={{ fontSize: 14, color: theme.textMuted }}>
+                                Add your first gaming station to get started
+                              </p>
+                            </td>
+                          </tr>
+                        );
+                      }
+
+                      return allStations.map((station, index) => (
+                        <tr key={station.id} style={{ borderBottom: index < allStations.length - 1 ? `1px solid ${theme.border}` : 'none' }}>
+                          <td style={{ padding: '16px 20px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                              <div
+                                style={{
+                                  width: 40,
+                                  height: 40,
+                                  borderRadius: 10,
+                                  background: station.bgColor,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  fontSize: 20,
+                                }}
+                              >
+                                {station.icon}
+                              </div>
+                              <span style={{ fontSize: 15, fontWeight: 600, color: theme.textPrimary }}>{station.name}</span>
+                            </div>
+                          </td>
+                          <td style={{ padding: '16px 20px' }}>
+                            <span
+                              style={{
+                                display: 'inline-block',
+                                padding: '6px 12px',
+                                borderRadius: 6,
+                                background: station.bgColor,
+                                color: station.color,
+                                fontSize: 12,
+                                fontWeight: 600,
+                              }}
+                            >
+                              {station.type}
+                            </span>
+                          </td>
+                          <td style={{ padding: '16px 20px', fontSize: 14, color: theme.textSecondary }}>
+                            {station.rate}
+                          </td>
+                          <td style={{ padding: '16px 20px', fontSize: 14, color: theme.textSecondary }}>
+                            {station.sessions}
+                          </td>
+                          <td style={{ padding: '16px 20px' }}>
+                            <span
+                              style={{
+                                display: 'inline-block',
+                                padding: '6px 12px',
+                                borderRadius: 6,
+                                background: station.status === 'Active' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                                color: station.status === 'Active' ? '#10b981' : '#ef4444',
+                                fontSize: 12,
+                                fontWeight: 600,
+                              }}
+                            >
+                              {station.status}
+                            </span>
+                          </td>
+                          <td style={{ padding: '16px 20px' }}>
+                            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                              <button
+                                style={{
+                                  padding: '8px',
+                                  background: 'transparent',
+                                  border: `1px solid ${theme.border}`,
+                                  borderRadius: 6,
+                                  color: theme.textSecondary,
+                                  cursor: 'pointer',
+                                  fontSize: 16,
+                                }}
+                                title="Edit"
+                                onClick={() => setEditingStation(station)}
+                              >
+                                ✏️
+                              </button>
+                              <button
+                                style={{
+                                  padding: '8px',
+                                  background: 'transparent',
+                                  border: `1px solid ${theme.border}`,
+                                  borderRadius: 6,
+                                  color: theme.textSecondary,
+                                  cursor: 'pointer',
+                                  fontSize: 16,
+                                }}
+                                title="Power"
+                              >
+                                🔌
+                              </button>
+                              <button
+                                style={{
+                                  padding: '8px',
+                                  background: 'transparent',
+                                  border: `1px solid ${theme.border}`,
+                                  borderRadius: 6,
+                                  color: '#ef4444',
+                                  cursor: 'pointer',
+                                  fontSize: 16,
+                                }}
+                                title="Delete"
+                              >
+                                🗑️
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ));
+                    })()}
                   </tbody>
                 </table>
               </div>
