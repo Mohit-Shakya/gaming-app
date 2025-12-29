@@ -3803,9 +3803,28 @@ export default function OwnerDashboardPage() {
                             <div style={{ fontSize: 13, color: theme.textSecondary, lineHeight: 1.6 }}>
                               {(() => {
                                 const savedPricing = stationPricing[station.name];
-                                const isGamingConsole = ['PS5', 'PS4', 'Xbox'].includes(station.type);
 
-                                if (isGamingConsole) {
+                                // PS5/Xbox - Show controller pricing
+                                if (['PS5', 'Xbox'].includes(station.type)) {
+                                  const c1Half = savedPricing?.controller_1_half_hour || 75;
+                                  const c1Full = savedPricing?.controller_1_full_hour || 150;
+                                  const c2Half = savedPricing?.controller_2_half_hour || 120;
+                                  const c2Full = savedPricing?.controller_2_full_hour || 240;
+                                  const c3Half = savedPricing?.controller_3_half_hour || 165;
+                                  const c3Full = savedPricing?.controller_3_full_hour || 330;
+                                  const c4Half = savedPricing?.controller_4_half_hour || 210;
+                                  const c4Full = savedPricing?.controller_4_full_hour || 420;
+
+                                  return (
+                                    <div style={{ fontSize: 11, lineHeight: 1.8 }}>
+                                      <div><span style={{ color: theme.textMuted }}>1C: </span><span style={{ fontWeight: 600 }}>₹{c1Half}/30m · ₹{c1Full}/hr</span></div>
+                                      <div><span style={{ color: theme.textMuted }}>2C: </span><span style={{ fontWeight: 600 }}>₹{c2Half}/30m · ₹{c2Full}/hr</span></div>
+                                      <div><span style={{ color: theme.textMuted }}>3C: </span><span style={{ fontWeight: 600 }}>₹{c3Half}/30m · ₹{c3Full}/hr</span></div>
+                                      <div><span style={{ color: theme.textMuted }}>4C: </span><span style={{ fontWeight: 600 }}>₹{c4Half}/30m · ₹{c4Full}/hr</span></div>
+                                    </div>
+                                  );
+                                } else if (['PS4'].includes(station.type)) {
+                                  // PS4 - Show single/multi
                                   const singleHalf = savedPricing?.single_player_half_hour_rate || 75;
                                   const singleFull = savedPricing?.single_player_rate || 150;
                                   const multiHalf = savedPricing?.multi_player_half_hour_rate || 150;
@@ -4824,7 +4843,18 @@ export default function OwnerDashboardPage() {
                       is_active: true,
                     };
 
-                    if (isGamingConsole) {
+                    // Save controller pricing for PS5/Xbox
+                    if (['PS5', 'Xbox'].includes(editingStation.type)) {
+                      pricingData.controller_1_half_hour = parseFloat(controller1HalfHour) || 0;
+                      pricingData.controller_1_full_hour = parseFloat(controller1FullHour) || 0;
+                      pricingData.controller_2_half_hour = parseFloat(controller2HalfHour) || 0;
+                      pricingData.controller_2_full_hour = parseFloat(controller2FullHour) || 0;
+                      pricingData.controller_3_half_hour = parseFloat(controller3HalfHour) || 0;
+                      pricingData.controller_3_full_hour = parseFloat(controller3FullHour) || 0;
+                      pricingData.controller_4_half_hour = parseFloat(controller4HalfHour) || 0;
+                      pricingData.controller_4_full_hour = parseFloat(controller4FullHour) || 0;
+                    } else if (isGamingConsole) {
+                      // PS4 - keep old format
                       pricingData.single_player_half_hour_rate = parseFloat(singleHalfHour) || 0;
                       pricingData.single_player_rate = parseFloat(singleFullHour) || 0;
                       pricingData.multi_player_half_hour_rate = parseFloat(multiHalfHour) || 0;
