@@ -161,9 +161,7 @@ export default function OwnerDashboardPage() {
   const [stationSearch, setStationSearch] = useState("");
   const [stationTypeFilter, setStationTypeFilter] = useState("all");
   const [stationStatusFilter, setStationStatusFilter] = useState("all");
-  const [showAddStationModal, setShowAddStationModal] = useState(false);
   const [editingStation, setEditingStation] = useState<any>(null);
-  const [stations, setStations] = useState<any[]>([]);
 
   // Check role
   useEffect(() => {
@@ -3495,28 +3493,9 @@ export default function OwnerDashboardPage() {
                     Gaming Stations
                   </h2>
                   <p style={{ fontSize: 14, color: theme.textMuted, margin: 0 }}>
-                    7 active, 0 occupied
+                    Configure pricing for all your gaming stations
                   </p>
                 </div>
-                <button
-                  onClick={() => setShowAddStationModal(true)}
-                  style={{
-                    padding: '12px 24px',
-                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: 10,
-                    fontSize: 15,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                  }}
-                >
-                  <span style={{ fontSize: 18 }}>+</span>
-                  Add Station
-                </button>
               </div>
 
               {/* Search and Filters */}
@@ -4259,6 +4238,303 @@ export default function OwnerDashboardPage() {
                 }}
               >
                 {saving ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Station Pricing Modal */}
+      {editingStation && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(0, 0, 0, 0.75)",
+            backdropFilter: "blur(8px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 9999,
+            padding: 20,
+          }}
+          onClick={() => setEditingStation(null)}
+        >
+          <div
+            style={{
+              background: theme.cardBackground,
+              borderRadius: 24,
+              border: `1px solid ${theme.border}`,
+              maxWidth: 600,
+              width: "100%",
+              maxHeight: "90vh",
+              overflow: "auto",
+              boxShadow: "0 25px 50px rgba(0, 0, 0, 0.5)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div
+              style={{
+                padding: "32px 32px 24px",
+                borderBottom: `1px solid ${theme.border}`,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 12 }}>
+                <div
+                  style={{
+                    width: 56,
+                    height: 56,
+                    borderRadius: 16,
+                    background: editingStation.bgColor,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 28,
+                  }}
+                >
+                  {editingStation.icon}
+                </div>
+                <div>
+                  <h2
+                    style={{
+                      fontSize: 24,
+                      fontWeight: 700,
+                      color: theme.textPrimary,
+                      margin: 0,
+                      marginBottom: 4,
+                    }}
+                  >
+                    Edit {editingStation.name}
+                  </h2>
+                  <p style={{ fontSize: 14, color: theme.textMuted, margin: 0 }}>
+                    Configure pricing for this station
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div style={{ padding: "32px" }}>
+              <div style={{ marginBottom: 24 }}>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: theme.textSecondary,
+                    marginBottom: 8,
+                  }}
+                >
+                  Station Name
+                </label>
+                <input
+                  type="text"
+                  value={editingStation.name}
+                  disabled
+                  style={{
+                    width: "100%",
+                    padding: "12px 16px",
+                    background: theme.background,
+                    border: `1px solid ${theme.border}`,
+                    borderRadius: 12,
+                    color: theme.textMuted,
+                    fontSize: 15,
+                    outline: "none",
+                    cursor: "not-allowed",
+                  }}
+                />
+              </div>
+
+              <div style={{ marginBottom: 24 }}>
+                <label
+                  style={{
+                    display: "block",
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: theme.textSecondary,
+                    marginBottom: 8,
+                  }}
+                >
+                  Station Type
+                </label>
+                <div
+                  style={{
+                    padding: "12px 16px",
+                    background: theme.background,
+                    border: `1px solid ${theme.border}`,
+                    borderRadius: 12,
+                  }}
+                >
+                  <span
+                    style={{
+                      display: "inline-block",
+                      padding: "6px 12px",
+                      borderRadius: 8,
+                      background: editingStation.bgColor,
+                      color: editingStation.color,
+                      fontSize: 13,
+                      fontWeight: 600,
+                    }}
+                  >
+                    {editingStation.type}
+                  </span>
+                </div>
+              </div>
+
+              {/* Pricing Fields - Different based on console type */}
+              {['PS5', 'PS4', 'Xbox'].includes(editingStation.type) ? (
+                <>
+                  {/* Gaming Console - Single and Multi player rates */}
+                  <div style={{ marginBottom: 24 }}>
+                    <label
+                      style={{
+                        display: "block",
+                        fontSize: 14,
+                        fontWeight: 600,
+                        color: theme.textSecondary,
+                        marginBottom: 8,
+                      }}
+                    >
+                      Single Player Rate (₹/hour)
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="e.g., 150"
+                      defaultValue="150"
+                      style={{
+                        width: "100%",
+                        padding: "12px 16px",
+                        background: theme.background,
+                        border: `1px solid ${theme.border}`,
+                        borderRadius: 12,
+                        color: theme.textPrimary,
+                        fontSize: 15,
+                        outline: "none",
+                        transition: "border-color 0.2s",
+                      }}
+                      onFocus={(e) => (e.target.style.borderColor = "#3b82f6")}
+                      onBlur={(e) => (e.target.style.borderColor = theme.border)}
+                    />
+                  </div>
+
+                  <div style={{ marginBottom: 24 }}>
+                    <label
+                      style={{
+                        display: "block",
+                        fontSize: 14,
+                        fontWeight: 600,
+                        color: theme.textSecondary,
+                        marginBottom: 8,
+                      }}
+                    >
+                      Multi Player Rate (₹/hour)
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="e.g., 300"
+                      defaultValue="300"
+                      style={{
+                        width: "100%",
+                        padding: "12px 16px",
+                        background: theme.background,
+                        border: `1px solid ${theme.border}`,
+                        borderRadius: 12,
+                        color: theme.textPrimary,
+                        fontSize: 15,
+                        outline: "none",
+                        transition: "border-color 0.2s",
+                      }}
+                      onFocus={(e) => (e.target.style.borderColor = "#3b82f6")}
+                      onBlur={(e) => (e.target.style.borderColor = theme.border)}
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Other stations - Single hourly rate */}
+                  <div style={{ marginBottom: 24 }}>
+                    <label
+                      style={{
+                        display: "block",
+                        fontSize: 14,
+                        fontWeight: 600,
+                        color: theme.textSecondary,
+                        marginBottom: 8,
+                      }}
+                    >
+                      Hourly Rate (₹/hour)
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="e.g., 100"
+                      defaultValue={editingStation.type === 'PC' ? '100' : editingStation.type === 'VR' ? '200' : editingStation.type === 'Steering' ? '150' : '80'}
+                      style={{
+                        width: "100%",
+                        padding: "12px 16px",
+                        background: theme.background,
+                        border: `1px solid ${theme.border}`,
+                        borderRadius: 12,
+                        color: theme.textPrimary,
+                        fontSize: 15,
+                        outline: "none",
+                        transition: "border-color 0.2s",
+                      }}
+                      onFocus={(e) => (e.target.style.borderColor = "#3b82f6")}
+                      onBlur={(e) => (e.target.style.borderColor = theme.border)}
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div
+              style={{
+                padding: "24px 32px",
+                borderTop: `1px solid ${theme.border}`,
+                display: "flex",
+                gap: 12,
+                justifyContent: "flex-end",
+              }}
+            >
+              <button
+                onClick={() => setEditingStation(null)}
+                style={{
+                  padding: "12px 24px",
+                  background: "transparent",
+                  border: `1px solid ${theme.border}`,
+                  borderRadius: 12,
+                  color: theme.textSecondary,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  // TODO: Save to database
+                  console.log("Saving station pricing...");
+                  setEditingStation(null);
+                }}
+                style={{
+                  padding: "12px 32px",
+                  background: "linear-gradient(135deg, #10b981, #059669)",
+                  border: "none",
+                  borderRadius: 12,
+                  color: "#fff",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  boxShadow: "0 4px 16px rgba(16, 185, 129, 0.3)",
+                }}
+              >
+                Save Changes
               </button>
             </div>
           </div>
