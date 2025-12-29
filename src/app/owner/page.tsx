@@ -163,6 +163,7 @@ export default function OwnerDashboardPage() {
   const [stationStatusFilter, setStationStatusFilter] = useState("all");
   const [editingStation, setEditingStation] = useState<any>(null);
   const [savingPricing, setSavingPricing] = useState(false);
+  const [stationPricing, setStationPricing] = useState<Record<string, any>>({});
 
   // Pricing form state
   const [singleHalfHour, setSingleHalfHour] = useState("");
@@ -211,27 +212,29 @@ export default function OwnerDashboardPage() {
   // Initialize pricing form when station is selected
   useEffect(() => {
     if (editingStation) {
+      const savedPricing = stationPricing[editingStation.name];
       const isGamingConsole = ['PS5', 'PS4', 'Xbox'].includes(editingStation.type);
+
       if (isGamingConsole) {
-        setSingleHalfHour("75");
-        setSingleFullHour("150");
-        setMultiHalfHour("150");
-        setMultiFullHour("300");
+        setSingleHalfHour(String(savedPricing?.single_player_half_hour_rate || 75));
+        setSingleFullHour(String(savedPricing?.single_player_rate || 150));
+        setMultiHalfHour(String(savedPricing?.multi_player_half_hour_rate || 150));
+        setMultiFullHour(String(savedPricing?.multi_player_rate || 300));
       } else {
-        const defaults: Record<string, {half: string, full: string}> = {
-          'PC': {half: '50', full: '100'},
-          'VR': {half: '100', full: '200'},
-          'Steering': {half: '75', full: '150'},
-          'Pool': {half: '40', full: '80'},
-          'Snooker': {half: '40', full: '80'},
-          'Arcade': {half: '40', full: '80'},
+        const defaults: Record<string, {half: number, full: number}> = {
+          'PC': {half: 50, full: 100},
+          'VR': {half: 100, full: 200},
+          'Steering': {half: 75, full: 150},
+          'Pool': {half: 40, full: 80},
+          'Snooker': {half: 40, full: 80},
+          'Arcade': {half: 40, full: 80},
         };
-        const stationDefaults = defaults[editingStation.type] || {half: '40', full: '80'};
-        setHalfHour(stationDefaults.half);
-        setFullHour(stationDefaults.full);
+        const stationDefaults = defaults[editingStation.type] || {half: 40, full: 80};
+        setHalfHour(String(savedPricing?.half_hour_rate || stationDefaults.half));
+        setFullHour(String(savedPricing?.hourly_rate || stationDefaults.full));
       }
     }
-  }, [editingStation]);
+  }, [editingStation, stationPricing]);
 
   // Auto-refresh time every second for active sessions
   useEffect(() => {
@@ -301,6 +304,20 @@ export default function OwnerDashboardPage() {
         }
 
         const cafeIds = ownerCafes.map((c) => c.id);
+
+        // Fetch station pricing for all cafes
+        const { data: stationPricingData, error: stationPricingError } = await supabase
+          .from("station_pricing")
+          .select("*")
+          .in("cafe_id", cafeIds);
+
+        if (!stationPricingError && stationPricingData) {
+          const pricingMap: Record<string, any> = {};
+          stationPricingData.forEach((pricing: any) => {
+            pricingMap[pricing.station_name] = pricing;
+          });
+          setStationPricing(pricingMap);
+        }
 
         // Fetch console pricing for all cafes
         const { data: pricingData, error: pricingError } = await supabase
@@ -3762,24 +3779,50 @@ export default function OwnerDashboardPage() {
                           </td>
                           <td style={{ padding: '16px 20px' }}>
                             <div style={{ fontSize: 13, color: theme.textSecondary, lineHeight: 1.6 }}>
-                              {['PS5', 'PS4', 'Xbox'].includes(station.type) ? (
-                                <>
-                                  <div style={{ marginBottom: 4 }}>
-                                    <span style={{ color: theme.textMuted, fontSize: 11 }}>Single: </span>
-                                    <span style={{ fontWeight: 600 }}>₹75/30m · ₹150/hr</span>
-                                  </div>
-                                  <div>
-                                    <span style={{ color: theme.textMuted, fontSize: 11 }}>Multi: </span>
-                                    <span style={{ fontWeight: 600 }}>₹150/30m · ₹300/hr</span>
-                                  </div>
-                                </>
-                              ) : (
-                                <div>
-                                  <span style={{ fontWeight: 600 }}>
-                                    ₹{station.type === 'PC' ? '50' : station.type === 'VR' ? '100' : station.type === 'Steering' ? '75' : '40'}/30m · ₹{station.type === 'PC' ? '100' : station.type === 'VR' ? '200' : station.type === 'Steering' ? '150' : '80'}/hr
-                                  </span>
-                                </div>
-                              )}
+                              {(() => {
+                                const savedPricing = stationPricing[station.name];
+                                const isGamingConsole = ['PS5', 'PS4', 'Xbox'].includes(station.type);
+
+                                if (isGamingConsole) {
+                                  const singleHalf = savedPricing?.single_player_half_hour_rate || 75;
+                                  const singleFull = savedPricing?.single_player_rate || 150;
+                                  const multiHalf = savedPricing?.multi_player_half_hour_rate || 150;
+                                  const multiFull = savedPricing?.multi_player_rate || 300;
+
+                                  return (
+                                    <>
+                                      <div style={{ marginBottom: 4 }}>
+                                        <span style={{ color: theme.textMuted, fontSize: 11 }}>Single: </span>
+                                        <span style={{ fontWeight: 600 }}>₹{singleHalf}/30m · ₹{singleFull}/hr</span>
+                                      </div>
+                                      <div>
+                                        <span style={{ color: theme.textMuted, fontSize: 11 }}>Multi: </span>
+                                        <span style={{ fontWeight: 600 }}>₹{multiHalf}/30m · ₹{multiFull}/hr</span>
+                                      </div>
+                                    </>
+                                  );
+                                } else {
+                                  const defaults: Record<string, {half: number, full: number}> = {
+                                    'PC': {half: 50, full: 100},
+                                    'VR': {half: 100, full: 200},
+                                    'Steering': {half: 75, full: 150},
+                                    'Pool': {half: 40, full: 80},
+                                    'Snooker': {half: 40, full: 80},
+                                    'Arcade': {half: 40, full: 80},
+                                  };
+                                  const stationDefaults = defaults[station.type] || {half: 40, full: 80};
+                                  const halfRate = savedPricing?.half_hour_rate || stationDefaults.half;
+                                  const fullRate = savedPricing?.hourly_rate || stationDefaults.full;
+
+                                  return (
+                                    <div>
+                                      <span style={{ fontWeight: 600 }}>
+                                        ₹{halfRate}/30m · ₹{fullRate}/hr
+                                      </span>
+                                    </div>
+                                  );
+                                }
+                              })()}
                             </div>
                           </td>
                           <td style={{ padding: '16px 20px', fontSize: 14, color: theme.textSecondary }}>
@@ -4725,6 +4768,20 @@ export default function OwnerDashboardPage() {
                       });
 
                     if (error) throw error;
+
+                    // Reload station pricing to update the table
+                    const { data: updatedPricing } = await supabase
+                      .from("station_pricing")
+                      .select("*")
+                      .eq("cafe_id", cafes[0].id);
+
+                    if (updatedPricing) {
+                      const pricingMap: Record<string, any> = {};
+                      updatedPricing.forEach((pricing: any) => {
+                        pricingMap[pricing.station_name] = pricing;
+                      });
+                      setStationPricing(pricingMap);
+                    }
 
                     alert('Pricing updated successfully!');
                     setEditingStation(null);
