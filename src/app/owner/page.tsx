@@ -1153,7 +1153,7 @@ export default function OwnerDashboardPage() {
     { id: 'sessions', label: 'Bookings', icon: '📅' },
     { id: 'customers', label: 'Customers', icon: '👥' },
     { id: 'stations', label: 'Stations', icon: '🖥️' },
-    { id: 'subscriptions', label: 'Subscriptions', icon: '🔄' },
+    { id: 'subscriptions', label: 'Tournament', icon: '🏆' },
     { id: 'memberships', label: 'Memberships', icon: '🎫' },
     { id: 'coupons', label: 'Coupons', icon: '🎟️' },
     { id: 'reports', label: 'Reports', icon: '📊' },
@@ -1296,7 +1296,7 @@ export default function OwnerDashboardPage() {
                 {activeTab === 'sessions' && 'Bookings'}
                 {activeTab === 'customers' && 'Customers'}
                 {activeTab === 'stations' && 'Stations'}
-                {activeTab === 'subscriptions' && 'Subscriptions'}
+                {activeTab === 'subscriptions' && 'Tournament'}
                 {activeTab === 'memberships' && 'Memberships'}
                 {activeTab === 'coupons' && 'Coupons'}
                 {activeTab === 'reports' && 'Reports'}
@@ -1516,7 +1516,7 @@ export default function OwnerDashboardPage() {
                         <span style={{ color: theme.textPrimary, fontWeight: 600 }}>₹{loadingData ? "0" : stats?.todayRevenue ?? 0}</span>
                       </div>
                       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 15 }}>
-                        <span style={{ color: theme.textSecondary, fontWeight: 500 }}>Subscriptions</span>
+                        <span style={{ color: theme.textSecondary, fontWeight: 500 }}>Tournament</span>
                         <span style={{ color: theme.textPrimary, fontWeight: 600 }}>₹0</span>
                       </div>
                       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 15 }}>
@@ -4805,7 +4805,7 @@ export default function OwnerDashboardPage() {
             </div>
           )}
 
-          {/* Subscriptions Tab */}
+          {/* Tournament Tab */}
           {activeTab === 'subscriptions' && (
             <div
               style={{
@@ -4816,12 +4816,12 @@ export default function OwnerDashboardPage() {
                 textAlign: "center",
               }}
             >
-              <div style={{ fontSize: 64, marginBottom: 16, opacity: 0.3 }}>🔄</div>
+              <div style={{ fontSize: 64, marginBottom: 16, opacity: 0.3 }}>🏆</div>
               <p style={{ fontSize: 18, color: theme.textSecondary, marginBottom: 8, fontWeight: 500 }}>
-                Subscriptions
+                Tournament
               </p>
               <p style={{ fontSize: 14, color: theme.textMuted }}>
-                Manage recurring subscriptions and plans here.
+                Manage tournaments and competitions here.
               </p>
             </div>
           )}
