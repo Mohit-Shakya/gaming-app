@@ -195,6 +195,11 @@ export default function OwnerDashboardPage() {
   // Station power status (tracks which stations are powered off)
   const [poweredOffStations, setPoweredOffStations] = useState<Set<string>>(new Set());
 
+  // Image upload state
+  const [uploadingProfilePhoto, setUploadingProfilePhoto] = useState(false);
+  const [uploadingGalleryPhoto, setUploadingGalleryPhoto] = useState(false);
+  const [galleryImages, setGalleryImages] = useState<Array<{id: string, image_url: string}>>([]);
+
   const [editAmount, setEditAmount] = useState<string>("");
   const [editStatus, setEditStatus] = useState<string>("");
   const [editDate, setEditDate] = useState<string>("");
@@ -747,6 +752,28 @@ export default function OwnerDashboardPage() {
     }
   }, [cafes]);
 
+  // Fetch gallery images when cafes data loads
+  useEffect(() => {
+    async function fetchGalleryImages() {
+      if (cafes.length === 0) return;
+
+      const { data, error } = await supabase
+        .from('gallery_images')
+        .select('id, image_url')
+        .eq('cafe_id', cafes[0].id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching gallery images:', error);
+        return;
+      }
+
+      setGalleryImages(data || []);
+    }
+
+    fetchGalleryImages();
+  }, [cafes]);
+
   // Real-time subscription for bookings
   useEffect(() => {
     if (!allowed || !user || cafes.length === 0) return;
@@ -1238,6 +1265,159 @@ export default function OwnerDashboardPage() {
       }
       return newSet;
     });
+  };
+
+  // Handle profile photo upload
+  const handleProfilePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files || event.target.files.length === 0 || cafes.length === 0) return;
+
+    const file = event.target.files[0];
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${cafes[0].id}/profile-${Date.now()}.${fileExt}`;
+
+    setUploadingProfilePhoto(true);
+    try {
+      // Delete old profile photo if exists
+      if (cafes[0].cover_url) {
+        const oldPath = cafes[0].cover_url.split('/').pop();
+        if (oldPath) {
+          await supabase.storage.from('cafe_images').remove([`${cafes[0].id}/${oldPath}`]);
+        }
+      }
+
+      // Upload new photo
+      const { error: uploadError } = await supabase.storage
+        .from('cafe_images')
+        .upload(fileName, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('cafe_images')
+        .getPublicUrl(fileName);
+
+      // Update database
+      const { error: updateError } = await supabase
+        .from('cafes')
+        .update({ cover_url: publicUrl })
+        .eq('id', cafes[0].id);
+
+      if (updateError) throw updateError;
+
+      // Update local state
+      setCafes(prev => prev.map((c, i) => i === 0 ? { ...c, cover_url: publicUrl } : c));
+      alert('Profile photo updated successfully!');
+    } catch (error) {
+      console.error('Error uploading profile photo:', error);
+      alert('Failed to upload profile photo. Please try again.');
+    } finally {
+      setUploadingProfilePhoto(false);
+      // Reset input
+      event.target.value = '';
+    }
+  };
+
+  // Handle profile photo delete
+  const handleProfilePhotoDelete = async () => {
+    if (cafes.length === 0 || !cafes[0].cover_url) return;
+
+    if (!confirm('Are you sure you want to delete the profile photo?')) return;
+
+    try {
+      const oldPath = cafes[0].cover_url.split('/').pop();
+      if (oldPath) {
+        await supabase.storage.from('cafe_images').remove([`${cafes[0].id}/${oldPath}`]);
+      }
+
+      // Update database
+      const { error } = await supabase
+        .from('cafes')
+        .update({ cover_url: null })
+        .eq('id', cafes[0].id);
+
+      if (error) throw error;
+
+      // Update local state
+      setCafes(prev => prev.map((c, i) => i === 0 ? { ...c, cover_url: null } : c));
+      alert('Profile photo deleted successfully!');
+    } catch (error) {
+      console.error('Error deleting profile photo:', error);
+      alert('Failed to delete profile photo. Please try again.');
+    }
+  };
+
+  // Handle gallery photo upload
+  const handleGalleryPhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files || event.target.files.length === 0 || cafes.length === 0) return;
+
+    const file = event.target.files[0];
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${cafes[0].id}/gallery-${Date.now()}.${fileExt}`;
+
+    setUploadingGalleryPhoto(true);
+    try {
+      // Upload photo
+      const { error: uploadError } = await supabase.storage
+        .from('cafe_images')
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('cafe_images')
+        .getPublicUrl(fileName);
+
+      // Insert into gallery_images table
+      const { data, error: insertError } = await supabase
+        .from('gallery_images')
+        .insert({ cafe_id: cafes[0].id, image_url: publicUrl })
+        .select('id, image_url')
+        .single();
+
+      if (insertError) throw insertError;
+
+      // Update local state
+      if (data) {
+        setGalleryImages(prev => [data, ...prev]);
+      }
+      alert('Gallery photo added successfully!');
+    } catch (error) {
+      console.error('Error uploading gallery photo:', error);
+      alert('Failed to upload gallery photo. Please try again.');
+    } finally {
+      setUploadingGalleryPhoto(false);
+      // Reset input
+      event.target.value = '';
+    }
+  };
+
+  // Handle gallery photo delete
+  const handleGalleryPhotoDelete = async (imageId: string, imageUrl: string) => {
+    if (!confirm('Are you sure you want to delete this gallery photo?')) return;
+
+    try {
+      const fileName = imageUrl.split('/').slice(-2).join('/');
+
+      // Delete from storage
+      await supabase.storage.from('cafe_images').remove([fileName]);
+
+      // Delete from database
+      const { error } = await supabase
+        .from('gallery_images')
+        .delete()
+        .eq('id', imageId);
+
+      if (error) throw error;
+
+      // Update local state
+      setGalleryImages(prev => prev.filter(img => img.id !== imageId));
+      alert('Gallery photo deleted successfully!');
+    } catch (error) {
+      console.error('Error deleting gallery photo:', error);
+      alert('Failed to delete gallery photo. Please try again.');
+    }
   };
 
   // Handle delete station
@@ -5919,6 +6099,225 @@ export default function OwnerDashboardPage() {
                             }}
                           />
                         </div>
+                      </div>
+                    </div>
+
+                    {/* Photos Section */}
+                    <div>
+                      <h3 style={{
+                        fontSize: 16,
+                        fontWeight: 700,
+                        color: theme.textPrimary,
+                        margin: "0 0 16px 0",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.5px",
+                      }}>
+                        Photos
+                      </h3>
+
+                      {/* Profile Photo */}
+                      <div style={{ marginBottom: 24 }}>
+                        <label style={{
+                          display: "block",
+                          fontSize: 13,
+                          fontWeight: 600,
+                          color: theme.textSecondary,
+                          marginBottom: 12,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.5px",
+                        }}>
+                          Profile Photo
+                        </label>
+
+                        {cafes[0].cover_url ? (
+                          <div style={{ display: "flex", alignItems: "flex-start", gap: 16 }}>
+                            <img
+                              src={cafes[0].cover_url}
+                              alt="Profile"
+                              style={{
+                                width: 200,
+                                height: 200,
+                                objectFit: "cover",
+                                borderRadius: 12,
+                                border: `2px solid ${theme.border}`,
+                              }}
+                            />
+                            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                              <label style={{
+                                padding: "12px 20px",
+                                background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
+                                border: "none",
+                                borderRadius: 12,
+                                color: "#ffffff",
+                                fontSize: 14,
+                                fontWeight: 600,
+                                cursor: uploadingProfilePhoto ? "not-allowed" : "pointer",
+                                textAlign: "center",
+                                transition: "all 0.2s",
+                                opacity: uploadingProfilePhoto ? 0.5 : 1,
+                              }}>
+                                {uploadingProfilePhoto ? "Uploading..." : "Change Photo"}
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={handleProfilePhotoUpload}
+                                  disabled={uploadingProfilePhoto}
+                                  style={{ display: "none" }}
+                                />
+                              </label>
+                              <button
+                                onClick={handleProfilePhotoDelete}
+                                style={{
+                                  padding: "12px 20px",
+                                  background: "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
+                                  border: "none",
+                                  borderRadius: 12,
+                                  color: "#ffffff",
+                                  fontSize: 14,
+                                  fontWeight: 600,
+                                  cursor: "pointer",
+                                  transition: "all 0.2s",
+                                }}
+                              >
+                                Delete Photo
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <label style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            width: 200,
+                            height: 200,
+                            background: "rgba(15, 23, 42, 0.8)",
+                            border: `2px dashed ${theme.border}`,
+                            borderRadius: 12,
+                            cursor: uploadingProfilePhoto ? "not-allowed" : "pointer",
+                            transition: "all 0.2s",
+                            opacity: uploadingProfilePhoto ? 0.5 : 1,
+                          }}>
+                            <div style={{ textAlign: "center" }}>
+                              <div style={{ fontSize: 40, marginBottom: 8 }}>📷</div>
+                              <p style={{ fontSize: 14, color: theme.textSecondary, margin: 0 }}>
+                                {uploadingProfilePhoto ? "Uploading..." : "Upload Photo"}
+                              </p>
+                            </div>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={handleProfilePhotoUpload}
+                              disabled={uploadingProfilePhoto}
+                              style={{ display: "none" }}
+                            />
+                          </label>
+                        )}
+                        <p style={{ fontSize: 12, color: theme.textMuted, margin: "8px 0 0 0" }}>
+                          Recommended: Square image, at least 400x400px
+                        </p>
+                      </div>
+
+                      {/* Gallery Photos */}
+                      <div>
+                        <label style={{
+                          display: "block",
+                          fontSize: 13,
+                          fontWeight: 600,
+                          color: theme.textSecondary,
+                          marginBottom: 12,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.5px",
+                        }}>
+                          Gallery Photos
+                        </label>
+
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 16 }}>
+                          {/* Upload Button */}
+                          <label style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            aspectRatio: "1",
+                            background: "rgba(15, 23, 42, 0.8)",
+                            border: `2px dashed ${theme.border}`,
+                            borderRadius: 12,
+                            cursor: uploadingGalleryPhoto ? "not-allowed" : "pointer",
+                            transition: "all 0.2s",
+                            opacity: uploadingGalleryPhoto ? 0.5 : 1,
+                          }}>
+                            <div style={{ textAlign: "center" }}>
+                              <div style={{ fontSize: 32, marginBottom: 4 }}>+</div>
+                              <p style={{ fontSize: 12, color: theme.textSecondary, margin: 0 }}>
+                                {uploadingGalleryPhoto ? "Uploading..." : "Add Photo"}
+                              </p>
+                            </div>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={handleGalleryPhotoUpload}
+                              disabled={uploadingGalleryPhoto}
+                              style={{ display: "none" }}
+                            />
+                          </label>
+
+                          {/* Gallery Images */}
+                          {galleryImages.map((image) => (
+                            <div
+                              key={image.id}
+                              style={{
+                                position: "relative",
+                                aspectRatio: "1",
+                                borderRadius: 12,
+                                overflow: "hidden",
+                                border: `2px solid ${theme.border}`,
+                                group: true,
+                              }}
+                            >
+                              <img
+                                src={image.image_url}
+                                alt="Gallery"
+                                style={{
+                                  width: "100%",
+                                  height: "100%",
+                                  objectFit: "cover",
+                                }}
+                              />
+                              <button
+                                onClick={() => handleGalleryPhotoDelete(image.id, image.image_url)}
+                                style={{
+                                  position: "absolute",
+                                  top: 8,
+                                  right: 8,
+                                  width: 32,
+                                  height: 32,
+                                  background: "rgba(239, 68, 68, 0.9)",
+                                  border: "none",
+                                  borderRadius: 8,
+                                  color: "#ffffff",
+                                  fontSize: 16,
+                                  cursor: "pointer",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  transition: "all 0.2s",
+                                }}
+                                onMouseEnter={(e) => {
+                                  e.currentTarget.style.background = "rgba(220, 38, 38, 1)";
+                                  e.currentTarget.style.transform = "scale(1.1)";
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.background = "rgba(239, 68, 68, 0.9)";
+                                  e.currentTarget.style.transform = "scale(1)";
+                                }}
+                              >
+                                🗑️
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                        <p style={{ fontSize: 12, color: theme.textMuted, margin: "8px 0 0 0" }}>
+                          Add up to 10 photos to showcase your gaming café
+                        </p>
                       </div>
                     </div>
 
