@@ -42,13 +42,22 @@ export default function WalkInBookingPage() {
   const [consoleQuantity, setConsoleQuantity] = useState(1); // Number of consoles
   const [numControllers, setNumControllers] = useState(1); // Number of controllers/players
   const [duration, setDuration] = useState<30 | 60>(60);
+  const [paymentMode, setPaymentMode] = useState<string>("cash");
 
   // UI state
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const [bookingId, setBookingId] = useState<string>("");
   const [confirmedAmount, setConfirmedAmount] = useState<number>(0);
+  const [confirmedBooking, setConfirmedBooking] = useState<{
+    name: string;
+    phone: string;
+    console: string;
+    duration: number;
+    startTime: string;
+    endTime: string;
+    paymentMode: string;
+  } | null>(null);
 
   // Get max controllers for selected console type
   const getMaxControllers = (): number => {
@@ -166,6 +175,7 @@ export default function WalkInBookingPage() {
             customer_name: customerName.trim(),
             customer_phone: customerPhone.trim(),
             source: "walk-in",
+            payment_mode: paymentMode,
             total_amount: pricePerConsole,
           })
           .select()
@@ -200,9 +210,32 @@ export default function WalkInBookingPage() {
         }
       }
 
-      // Save the confirmed amount before resetting the form
+      // Calculate end time
+      const [startHours, startMinutesPart] = startTime.split(':');
+      const startMinutes = parseInt(startMinutesPart.split(' ')[0]);
+      const startIsPM = startTime.includes('pm');
+      let startHour24 = parseInt(startHours);
+      if (startIsPM && startHour24 !== 12) startHour24 += 12;
+      if (!startIsPM && startHour24 === 12) startHour24 = 0;
+
+      const totalMinutes = (startHour24 * 60 + startMinutes + duration) % (24 * 60);
+      const endHour24 = Math.floor(totalMinutes / 60);
+      const endMin = totalMinutes % 60;
+      const endHour12 = endHour24 % 12 || 12;
+      const endAmPm = endHour24 >= 12 ? 'pm' : 'am';
+      const endTime = `${endHour12}:${endMin.toString().padStart(2, '0')} ${endAmPm}`;
+
+      // Save the confirmed booking details
       setConfirmedAmount(totalPrice);
-      setBookingId(createdBookingIds[0]); // Show first booking ID
+      setConfirmedBooking({
+        name: customerName.trim(),
+        phone: customerPhone.trim(),
+        console: CONSOLE_LABELS[selectedConsole],
+        duration: duration,
+        startTime: startTime,
+        endTime: endTime,
+        paymentMode: paymentMode,
+      });
       setSuccess(true);
 
       // Reset form
@@ -212,6 +245,7 @@ export default function WalkInBookingPage() {
       setConsoleQuantity(1);
       setNumControllers(1);
       setDuration(60);
+      setPaymentMode("cash");
     } catch (err) {
       logger.error("Error creating walk-in booking:", err);
       setError("An unexpected error occurred");
@@ -319,82 +353,125 @@ export default function WalkInBookingPage() {
                 fontWeight: 800,
                 color: "#10B981",
                 fontFamily: fonts.heading,
-                marginBottom: "12px",
+                marginBottom: "8px",
                 letterSpacing: "0.5px"
               }}>
                 Booking Confirmed!
               </h2>
 
-              {/* Booking ID */}
+              {/* Cafe Name */}
               <div style={{
-                background: "rgba(15, 15, 20, 0.8)",
-                padding: "16px 20px",
-                borderRadius: "16px",
-                marginBottom: "24px",
-                border: "1px solid rgba(255, 255, 255, 0.08)"
+                fontSize: "16px",
+                fontWeight: 700,
+                color: "#E5E5E7",
+                fontFamily: fonts.heading,
+                marginBottom: "4px",
+                letterSpacing: "0.5px"
               }}>
-                <div style={{
-                  fontSize: "12px",
-                  color: "#999",
-                  marginBottom: "6px",
-                  textTransform: "uppercase",
-                  letterSpacing: "1px"
-                }}>
-                  Booking ID
-                </div>
-                <div style={{
-                  fontSize: "24px",
-                  fontWeight: 700,
-                  color: "#00D9FF",
-                  fontFamily: fonts.heading,
-                  letterSpacing: "1px"
-                }}>
-                  {bookingId}
-                </div>
+                {cafeName || "Gaming Cafe"}
               </div>
 
-              {/* Pay at Counter */}
+              {/* Subtitle */}
               <div style={{
-                background: "linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(239, 68, 68, 0.08) 100%)",
-                padding: "20px",
-                borderRadius: "16px",
-                marginBottom: "28px",
-                border: "1px solid rgba(239, 68, 68, 0.2)"
+                fontSize: "13px",
+                fontWeight: 400,
+                color: "#8B8B8E",
+                marginBottom: "20px",
+                letterSpacing: "0.3px"
               }}>
+                Walk-In Booking
+              </div>
+
+              {/* Booking Details */}
+              {confirmedBooking && (
                 <div style={{
-                  fontSize: "14px",
-                  color: "#B4B4B7",
-                  marginBottom: "12px"
+                  background: "rgba(15, 15, 20, 0.8)",
+                  padding: "24px",
+                  borderRadius: "16px",
+                  marginBottom: "20px",
+                  border: "1px solid rgba(255, 255, 255, 0.08)",
+                  textAlign: "left"
                 }}>
-                  Total Amount
+                  {/* Name */}
+                  <div style={{ marginBottom: "16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div style={{ fontSize: "12px", color: "#999", textTransform: "uppercase", letterSpacing: "0.5px" }}>Name</div>
+                    <div style={{ fontSize: "15px", fontWeight: 600, color: "#E5E5E7" }}>{confirmedBooking.name}</div>
+                  </div>
+
+                  {/* Phone */}
+                  <div style={{ marginBottom: "16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div style={{ fontSize: "12px", color: "#999", textTransform: "uppercase", letterSpacing: "0.5px" }}>Phone</div>
+                    <div style={{ fontSize: "15px", fontWeight: 600, color: "#E5E5E7" }}>{confirmedBooking.phone}</div>
+                  </div>
+
+                  {/* Console */}
+                  <div style={{ marginBottom: "16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div style={{ fontSize: "12px", color: "#999", textTransform: "uppercase", letterSpacing: "0.5px" }}>Console</div>
+                    <div style={{ fontSize: "15px", fontWeight: 600, color: "#00D9FF" }}>{confirmedBooking.console}</div>
+                  </div>
+
+                  {/* Duration */}
+                  <div style={{ marginBottom: "16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div style={{ fontSize: "12px", color: "#999", textTransform: "uppercase", letterSpacing: "0.5px" }}>Duration</div>
+                    <div style={{ fontSize: "15px", fontWeight: 600, color: "#E5E5E7" }}>{confirmedBooking.duration} min</div>
+                  </div>
+
+                  {/* Start Time */}
+                  <div style={{ marginBottom: "16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div style={{ fontSize: "12px", color: "#999", textTransform: "uppercase", letterSpacing: "0.5px" }}>Start Time</div>
+                    <div style={{ fontSize: "15px", fontWeight: 600, color: "#10B981" }}>{confirmedBooking.startTime}</div>
+                  </div>
+
+                  {/* End Time */}
+                  <div style={{ marginBottom: "16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div style={{ fontSize: "12px", color: "#999", textTransform: "uppercase", letterSpacing: "0.5px" }}>End Time</div>
+                    <div style={{ fontSize: "15px", fontWeight: 600, color: "#EF4444" }}>{confirmedBooking.endTime}</div>
+                  </div>
+
+                  {/* Payment Mode */}
+                  <div style={{ marginBottom: "16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div style={{ fontSize: "12px", color: "#999", textTransform: "uppercase", letterSpacing: "0.5px" }}>Payment</div>
+                    <div style={{ fontSize: "15px", fontWeight: 600, color: "#a855f7", textTransform: "capitalize" }}>
+                      {confirmedBooking.paymentMode === 'cash' ? '💵' : '📱'} {confirmedBooking.paymentMode}
+                    </div>
+                  </div>
+
+                  {/* Amount - highlighted */}
+                  <div style={{
+                    marginTop: "20px",
+                    paddingTop: "20px",
+                    borderTop: "1px solid rgba(255, 255, 255, 0.08)",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center"
+                  }}>
+                    <div style={{ fontSize: "14px", color: "#B4B4B7", textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 600 }}>
+                      Total Amount
+                    </div>
+                    <div style={{ fontSize: "28px", fontWeight: 900, color: "#EF4444", fontFamily: fonts.heading }}>
+                      ₹{confirmedAmount}
+                    </div>
+                  </div>
                 </div>
-                <div style={{
-                  fontSize: "42px",
-                  fontWeight: 900,
-                  color: "#EF4444",
-                  fontFamily: fonts.heading,
-                  marginBottom: "12px",
-                  lineHeight: "1"
-                }}>
-                  ₹{confirmedAmount}
-                </div>
-                <div style={{
-                  fontSize: "13px",
-                  color: "#E5E5E7",
-                  fontWeight: 600,
-                  textTransform: "uppercase",
-                  letterSpacing: "1px"
-                }}>
-                  💳 Pay at Counter
-                </div>
+              )}
+
+              {/* Screenshot Note */}
+              <div style={{
+                fontSize: "11px",
+                color: "#8B8B8E",
+                textAlign: "center",
+                marginBottom: "16px",
+                fontStyle: "italic"
+              }}>
+                📸 Take a screenshot of this booking as proof
               </div>
 
               {/* Close Button */}
               <button
                 onClick={() => {
                   setSuccess(false);
-                  setBookingId("");
                   setConfirmedAmount(0);
+                  setConfirmedBooking(null);
                 }}
                 style={{
                   width: "100%",
@@ -732,6 +809,80 @@ export default function WalkInBookingPage() {
                       letterSpacing: "0.5px"
                     }}>
                       60 min
+                    </div>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Payment Mode */}
+            {selectedConsole && (
+              <div style={{ marginBottom: "36px" }}>
+                <label style={{
+                  display: "block",
+                  fontSize: "13px",
+                  fontWeight: 500,
+                  color: "#E5E5E7",
+                  marginBottom: "14px",
+                  letterSpacing: "0.3px"
+                }}>
+                  Payment Mode
+                </label>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "14px" }}>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMode("cash")}
+                    style={{
+                      padding: "22px 20px",
+                      borderRadius: "18px",
+                      border: paymentMode === "cash" ? "2px solid #00D9FF" : "1px solid rgba(255, 255, 255, 0.08)",
+                      background: paymentMode === "cash"
+                        ? "linear-gradient(135deg, rgba(0, 217, 255, 0.1) 0%, rgba(0, 217, 255, 0.05) 100%)"
+                        : "rgba(30, 30, 36, 0.6)",
+                      cursor: "pointer",
+                      transition: "all 0.15s ease",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center"
+                    }}
+                  >
+                    <div style={{
+                      fontSize: "24px",
+                      fontWeight: 600,
+                      color: paymentMode === "cash" ? "#00D9FF" : "#E5E5E7",
+                      fontFamily: fonts.heading,
+                      lineHeight: "1",
+                      letterSpacing: "0.5px"
+                    }}>
+                      💵 Cash
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMode("upi")}
+                    style={{
+                      padding: "22px 20px",
+                      borderRadius: "18px",
+                      border: paymentMode === "upi" ? "2px solid #00D9FF" : "1px solid rgba(255, 255, 255, 0.08)",
+                      background: paymentMode === "upi"
+                        ? "linear-gradient(135deg, rgba(0, 217, 255, 0.1) 0%, rgba(0, 217, 255, 0.05) 100%)"
+                        : "rgba(30, 30, 36, 0.6)",
+                      cursor: "pointer",
+                      transition: "all 0.15s ease",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center"
+                    }}
+                  >
+                    <div style={{
+                      fontSize: "24px",
+                      fontWeight: 600,
+                      color: paymentMode === "upi" ? "#00D9FF" : "#E5E5E7",
+                      fontFamily: fonts.heading,
+                      lineHeight: "1",
+                      letterSpacing: "0.5px"
+                    }}>
+                      📱 UPI
                     </div>
                   </button>
                 </div>

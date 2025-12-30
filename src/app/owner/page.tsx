@@ -57,6 +57,7 @@ type BookingRow = {
   total_amount: number | null;
   status: string | null;
   source: string | null;
+  payment_mode?: string | null;
   created_at: string | null;
   customer_name?: string | null; // For walk-in bookings only
   customer_phone?: string | null; // For walk-in bookings only
@@ -137,6 +138,13 @@ export default function OwnerDashboardPage() {
   // Revenue filter for overview
   const [revenueFilter, setRevenueFilter] = useState<string>("today"); // today, week, month, quarter, all
 
+  // Customer tab state
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [hasSubscription, setHasSubscription] = useState(false);
+  const [hasMembership, setHasMembership] = useState(false);
+  const [customerSortBy, setCustomerSortBy] = useState<'name' | 'sessions' | 'totalSpent' | 'lastVisit'>('lastVisit');
+  const [customerSortOrder, setCustomerSortOrder] = useState<'asc' | 'desc'>('desc');
+
   // Edit modal state
   const [editingBooking, setEditingBooking] = useState<BookingRow | null>(null);
   const [editAmount, setEditAmount] = useState<string>("");
@@ -183,6 +191,9 @@ export default function OwnerDashboardPage() {
   const [controller3FullHour, setController3FullHour] = useState("");
   const [controller4HalfHour, setController4HalfHour] = useState("");
   const [controller4FullHour, setController4FullHour] = useState("");
+
+  // Controller enable/disable state
+  const [enabledControllers, setEnabledControllers] = useState<number[]>([1]); // At least 1 controller enabled
 
   // Check role
   useEffect(() => {
@@ -242,6 +253,13 @@ export default function OwnerDashboardPage() {
           setController3FullHour(String(savedPricing?.controller_3_full_hour || 330));
           setController4HalfHour(String(savedPricing?.controller_4_half_hour || 210));
           setController4FullHour(String(savedPricing?.controller_4_full_hour || 420));
+
+          // Determine which controllers are enabled based on saved pricing
+          const enabled = [1]; // Controller 1 is always enabled
+          if (savedPricing?.controller_2_half_hour || savedPricing?.controller_2_full_hour) enabled.push(2);
+          if (savedPricing?.controller_3_half_hour || savedPricing?.controller_3_full_hour) enabled.push(3);
+          if (savedPricing?.controller_4_half_hour || savedPricing?.controller_4_full_hour) enabled.push(4);
+          setEnabledControllers(enabled);
         }
       } else {
         const defaults: Record<string, {half: number, full: number}> = {
@@ -259,14 +277,29 @@ export default function OwnerDashboardPage() {
     }
   }, [editingStation, stationPricing]);
 
-  // Auto-refresh time every second for active sessions
+  // Auto-refresh time every second for active sessions (only when sessions tab is active)
   useEffect(() => {
+    // Only run timer when viewing sessions or live-status tabs
+    if (activeTab !== 'sessions' && activeTab !== 'live-status') return;
+
     const timer = setInterval(() => {
       setCurrentTime(new Date());
     }, 1000);
 
     return () => clearInterval(timer);
-  }, []);
+  }, [activeTab]);
+
+  // Auto-refresh bookings data every 30 seconds to detect ended sessions
+  // Real-time subscription handles most updates, this is just a fallback
+  useEffect(() => {
+    if (!allowed || !user) return;
+
+    const refreshInterval = setInterval(() => {
+      setRefreshTrigger(prev => prev + 1);
+    }, 30000); // Refresh every 30 seconds (reduced from 5)
+
+    return () => clearInterval(refreshInterval);
+  }, [allowed, user]);
 
   // Load data
   useEffect(() => {
@@ -274,7 +307,10 @@ export default function OwnerDashboardPage() {
 
     async function loadData() {
       try {
-        setLoadingData(true);
+        // Only show loading indicator on initial load (when refreshTrigger is 0)
+        if (refreshTrigger === 0) {
+          setLoadingData(true);
+        }
         setError(null);
 
         if (!user) return;
@@ -387,20 +423,28 @@ export default function OwnerDashboardPage() {
         // This ensures old bookings don't stay in wrong status forever
 
         // 1. Update all past date bookings to completed (both in-progress and confirmed)
-        await supabase
+        const { error: pastBookingsError } = await supabase
           .from("bookings")
           .update({ status: "completed" })
           .in("cafe_id", cafeIds)
           .in("status", ["in-progress", "confirmed"])
           .lt("booking_date", todayStr);
 
+        if (pastBookingsError) {
+          console.error("Error updating past bookings:", pastBookingsError);
+        }
+
         // 2. Fetch today's in-progress and confirmed bookings to check if they've ended
-        const { data: todayBookings } = await supabase
+        const { data: todayBookings, error: fetchTodayError } = await supabase
           .from("bookings")
           .select("id, start_time, duration, status")
           .in("cafe_id", cafeIds)
           .eq("booking_date", todayStr)
           .in("status", ["in-progress", "confirmed"]);
+
+        if (fetchTodayError) {
+          console.error("Error fetching today's bookings:", fetchTodayError);
+        }
 
         // 3. Complete today's bookings that have ended
         if (todayBookings && todayBookings.length > 0) {
@@ -437,10 +481,14 @@ export default function OwnerDashboardPage() {
 
           // Batch update ended bookings
           if (endedBookingIds.length > 0) {
-            await supabase
+            const { error: updateEndedError } = await supabase
               .from("bookings")
               .update({ status: "completed" })
               .in("id", endedBookingIds);
+
+            if (updateEndedError) {
+              console.error("Error updating ended bookings:", updateEndedError);
+            }
           }
         }
 
@@ -457,6 +505,7 @@ export default function OwnerDashboardPage() {
             total_amount,
             status,
             source,
+            payment_mode,
             created_at,
             customer_name,
             customer_phone,
@@ -593,7 +642,10 @@ export default function OwnerDashboardPage() {
         console.error("[OwnerDashboard] loadData error:", err);
         setError((err instanceof Error ? err.message : String(err)) || "Could not load café owner dashboard.");
       } finally {
-        setLoadingData(false);
+        // Only set loading to false if this was the initial load
+        if (refreshTrigger === 0) {
+          setLoadingData(false);
+        }
       }
     }
 
@@ -620,159 +672,163 @@ export default function OwnerDashboardPage() {
         async (payload) => {
           console.log('[Real-time] Booking changed:', payload);
 
-          // Refresh bookings data when any change occurs
-          try {
-            const { data: bookingRows, error: bookingsError } = await supabase
-              .from("bookings")
-              .select(`
-                id,
-                cafe_id,
-                user_id,
-                booking_date,
-                start_time,
-                duration,
-                total_amount,
-                status,
-                source,
-                created_at,
-                customer_name,
-                customer_phone,
-                booking_items (
+          // Handle different event types
+          if (payload.eventType === 'DELETE') {
+            // Remove deleted booking from state
+            setBookings(prev => prev.filter(b => b.id !== payload.old.id));
+          } else {
+            // For INSERT and UPDATE, fetch only the changed booking
+            try {
+              const { data: bookingRow, error: bookingError } = await supabase
+                .from("bookings")
+                .select(`
                   id,
-                  console,
-                  quantity
-                )
-              `)
-              .in("cafe_id", cafeIds)
-              .order("created_at", { ascending: false })
-              .limit(100);
+                  cafe_id,
+                  user_id,
+                  booking_date,
+                  start_time,
+                  duration,
+                  total_amount,
+                  status,
+                  source,
+                  payment_mode,
+                  created_at,
+                  customer_name,
+                  customer_phone,
+                  booking_items (
+                    id,
+                    console,
+                    quantity
+                  )
+                `)
+                .eq("id", payload.new.id)
+                .single();
 
-            if (bookingsError) {
-              console.error('[Real-time] Error fetching bookings:', bookingsError);
-              return;
-            }
+              if (bookingError) {
+                console.error('[Real-time] Error fetching booking:', bookingError);
+                return;
+              }
 
-            const ownerBookings = (bookingRows as BookingRow[]) ?? [];
-
-            // Get all unique user IDs
-            const userIds = [...new Set(ownerBookings.map(b => b.user_id).filter(Boolean))];
-
-            // Fetch all user profiles at once
-            const userProfiles = new Map();
-            if (userIds.length > 0) {
-              try {
-                const { data: profiles } = await supabase
+              // Fetch user profile if needed
+              let userProfile = null;
+              if (bookingRow.user_id) {
+                const { data: profile } = await supabase
                   .from("profiles")
                   .select("id, first_name, last_name, phone")
-                  .in("id", userIds);
+                  .eq("id", bookingRow.user_id)
+                  .single();
 
-                if (profiles && profiles.length > 0) {
-                  profiles.forEach((profile: { id: string; first_name: string | null; last_name: string | null; phone: string | null }) => {
-                    const fullName = [profile.first_name, profile.last_name]
-                      .filter(Boolean)
-                      .join(" ") || null;
+                if (profile) {
+                  const fullName = [profile.first_name, profile.last_name]
+                    .filter(Boolean)
+                    .join(" ") || null;
 
-                    userProfiles.set(profile.id, {
-                      name: fullName,
-                      email: null,
-                      phone: profile.phone || null,
-                    });
-                  });
+                  userProfile = {
+                    name: fullName,
+                    email: null,
+                    phone: profile.phone || null,
+                  };
                 }
-              } catch (err) {
-                console.error("[Real-time] Error fetching profiles:", err);
               }
-            }
 
-            // Enrich bookings with user and cafe data
-            const enrichedBookings = ownerBookings.map((booking: BookingRow) => {
-              const cafe = cafes.find((c) => c.id === booking.cafe_id);
-              const cafe_name = cafe?.name || null;
-
-              // Get user data from profiles map
-              const userProfile = booking.user_id ? userProfiles.get(booking.user_id) : null;
-
-              // If no profile found, show user ID as fallback
-              const user_name = userProfile?.name || (booking.user_id ? `User ${booking.user_id.slice(0, 8)}` : null);
-              const user_email = userProfile?.email || null;
-              const user_phone = userProfile?.phone || null;
-
-              return {
-                ...booking,
-                user_name,
-                user_email,
-                user_phone,
-                cafe_name,
+              // Enrich booking with user and cafe data
+              const cafe = cafes.find((c) => c.id === bookingRow.cafe_id);
+              const enrichedBooking: BookingRow = {
+                ...bookingRow,
+                user_name: userProfile?.name || (bookingRow.user_id ? `User ${bookingRow.user_id.slice(0, 8)}` : null),
+                user_email: userProfile?.email || null,
+                user_phone: userProfile?.phone || null,
+                cafe_name: cafe?.name || null,
               };
-            });
 
-            setBookings(enrichedBookings);
-
-            // Update stats
-            const now = new Date();
-            const todayStr = now.toISOString().slice(0, 10);
-            const startOfWeek = new Date(now);
-            startOfWeek.setDate(now.getDate() - now.getDay()); // Sunday
-            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-            const currentQuarter = Math.floor(now.getMonth() / 3);
-            const startOfQuarter = new Date(now.getFullYear(), currentQuarter * 3, 1);
-
-            const bookingsToday = enrichedBookings.filter(
-              (b) => b.booking_date === todayStr
-            ).length;
-
-            const pendingBookings = enrichedBookings.filter(
-              (b) => b.status?.toLowerCase() === "pending"
-            ).length;
-
-            const recentRevenue = enrichedBookings
-              .slice(0, 20)
-              .reduce((sum, b) => sum + (b.total_amount || 0), 0);
-
-            const todayRevenue = enrichedBookings
-              .filter((b) => b.booking_date === todayStr)
-              .reduce((sum, b) => sum + (b.total_amount || 0), 0);
-
-            const weekRevenue = enrichedBookings
-              .filter((b) => {
-                const bookingDate = new Date(b.booking_date || "");
-                return bookingDate >= startOfWeek;
-              })
-              .reduce((sum, b) => sum + (b.total_amount || 0), 0);
-
-            const monthRevenue = enrichedBookings
-              .filter((b) => {
-                const bookingDate = new Date(b.booking_date || "");
-                return bookingDate >= startOfMonth;
-              })
-              .reduce((sum, b) => sum + (b.total_amount || 0), 0);
-
-            const quarterRevenue = enrichedBookings
-              .filter((b) => {
-                const bookingDate = new Date(b.booking_date || "");
-                return bookingDate >= startOfQuarter;
-              })
-              .reduce((sum, b) => sum + (b.total_amount || 0), 0);
-
-            const totalRevenue = enrichedBookings
-              .reduce((sum, b) => sum + (b.total_amount || 0), 0);
-
-            setStats(prevStats => ({
-              cafesCount: cafes.length,
-              bookingsToday,
-              recentBookings: Math.min(enrichedBookings.length, 20),
-              recentRevenue,
-              todayRevenue,
-              weekRevenue,
-              monthRevenue,
-              quarterRevenue,
-              totalRevenue,
-              totalBookings: enrichedBookings.length,
-              pendingBookings,
-            }));
-          } catch (err) {
-            console.error('[Real-time] Error updating bookings:', err);
+              // Update or insert in bookings array
+              setBookings(prev => {
+                const index = prev.findIndex(b => b.id === enrichedBooking.id);
+                if (index >= 0) {
+                  // Update existing
+                  const updated = [...prev];
+                  updated[index] = enrichedBooking;
+                  return updated;
+                } else {
+                  // Insert new at beginning
+                  return [enrichedBooking, ...prev];
+                }
+              });
+            } catch (err) {
+              console.error('[Real-time] Error processing booking change:', err);
+              return;
+            }
           }
+
+          // Recalculate stats from updated bookings state
+          // Use timeout to ensure state has been updated
+          setTimeout(() => {
+            setBookings(currentBookings => {
+              const now = new Date();
+              const todayStr = now.toISOString().slice(0, 10);
+              const startOfWeek = new Date(now);
+              startOfWeek.setDate(now.getDate() - now.getDay());
+              const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+              const currentQuarter = Math.floor(now.getMonth() / 3);
+              const startOfQuarter = new Date(now.getFullYear(), currentQuarter * 3, 1);
+
+              const bookingsToday = currentBookings.filter(
+                (b) => b.booking_date === todayStr
+              ).length;
+
+              const pendingBookings = currentBookings.filter(
+                (b) => b.status?.toLowerCase() === "pending"
+              ).length;
+
+              const recentRevenue = currentBookings
+                .slice(0, 20)
+                .reduce((sum, b) => sum + (b.total_amount || 0), 0);
+
+              const todayRevenue = currentBookings
+                .filter((b) => b.booking_date === todayStr)
+                .reduce((sum, b) => sum + (b.total_amount || 0), 0);
+
+              const weekRevenue = currentBookings
+                .filter((b) => {
+                  const bookingDate = new Date(b.booking_date || "");
+                  return bookingDate >= startOfWeek;
+                })
+                .reduce((sum, b) => sum + (b.total_amount || 0), 0);
+
+              const monthRevenue = currentBookings
+                .filter((b) => {
+                  const bookingDate = new Date(b.booking_date || "");
+                  return bookingDate >= startOfMonth;
+                })
+                .reduce((sum, b) => sum + (b.total_amount || 0), 0);
+
+              const quarterRevenue = currentBookings
+                .filter((b) => {
+                  const bookingDate = new Date(b.booking_date || "");
+                  return bookingDate >= startOfQuarter;
+                })
+                .reduce((sum, b) => sum + (b.total_amount || 0), 0);
+
+              const totalRevenue = currentBookings
+                .reduce((sum, b) => sum + (b.total_amount || 0), 0);
+
+              setStats({
+                cafesCount: cafes.length,
+                bookingsToday,
+                recentBookings: Math.min(currentBookings.length, 20),
+                recentRevenue,
+                todayRevenue,
+                weekRevenue,
+                monthRevenue,
+                quarterRevenue,
+                totalRevenue,
+                totalBookings: currentBookings.length,
+                pendingBookings,
+              });
+
+              return currentBookings; // Return unchanged bookings
+            });
+          }, 100);
         }
       )
       .subscribe();
@@ -1012,15 +1068,18 @@ export default function OwnerDashboardPage() {
       } else if (dateRangeFilter === "week") {
         const weekAgo = new Date(todayStart);
         weekAgo.setDate(todayStart.getDate() - 7);
-        if (bookingDate < weekAgo || bookingDate > todayStart) return false;
+        const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
+        if (bookingDate < weekAgo || bookingDate > todayEnd) return false;
       } else if (dateRangeFilter === "month") {
         const monthAgo = new Date(todayStart);
         monthAgo.setMonth(todayStart.getMonth() - 1);
-        if (bookingDate < monthAgo || bookingDate > todayStart) return false;
+        const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
+        if (bookingDate < monthAgo || bookingDate > todayEnd) return false;
       } else if (dateRangeFilter === "quarter") {
         const quarterAgo = new Date(todayStart);
         quarterAgo.setMonth(todayStart.getMonth() - 3);
-        if (bookingDate < quarterAgo || bookingDate > todayStart) return false;
+        const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
+        if (bookingDate < quarterAgo || bookingDate > todayEnd) return false;
       } else if (dateRangeFilter === "custom") {
         if (customStartDate) {
           const startDate = new Date(customStartDate + 'T00:00:00');
@@ -1609,8 +1668,14 @@ export default function OwnerDashboardPage() {
                           }
                         }
 
-                        // Get station number from console name (e.g., "PS5" -> "#1")
-                        const stationNumber = `#${index + 1}`;
+                        // Generate station name based on console type and index
+                        // Group bookings by console type to get proper numbering
+                        const consoleType = consoleInfo?.console?.toUpperCase() || 'UNKNOWN';
+                        const sameTypeBookings = activeBookings.filter(
+                          (b, i) => i <= index && b.booking_items?.[0]?.console === consoleInfo?.console
+                        );
+                        const stationNumber = sameTypeBookings.length;
+                        const stationName = `${consoleType}-${String(stationNumber).padStart(2, '0')}`;
 
                         return (
                           <div
@@ -1630,10 +1695,10 @@ export default function OwnerDashboardPage() {
                                 <div style={{ fontSize: 32 }}>🎮</div>
                                 <div>
                                   <div style={{ fontSize: 20, fontWeight: 700, color: theme.textPrimary }}>
-                                    {stationNumber}
+                                    {stationName}
                                   </div>
                                   <div style={{ fontSize: 13, color: theme.textMuted, marginTop: 2 }}>
-                                    {consoleInfo?.console || 'Unknown'}
+                                    {consoleType}
                                   </div>
                                 </div>
                               </div>
@@ -1674,6 +1739,279 @@ export default function OwnerDashboardPage() {
                           </div>
                         );
                       })}
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Today's Bookings Section */}
+              <div style={{ marginTop: 40 }}>
+                <div
+                  style={{
+                    marginBottom: 20,
+                  }}
+                >
+                  <h2
+                    style={{
+                      fontSize: 20,
+                      fontWeight: 600,
+                      color: theme.textPrimary,
+                      margin: 0,
+                    }}
+                  >
+                    Today's Bookings
+                  </h2>
+                </div>
+
+                {(() => {
+                  const today = new Date().toISOString().split('T')[0];
+                  const todaysBookings = bookings.filter(b => b.booking_date === today);
+                  const totalAmount = todaysBookings.reduce((sum, booking) => sum + (booking.total_amount || 0), 0);
+
+                  if (todaysBookings.length === 0) {
+                    return (
+                      <div
+                        style={{
+                          padding: "60px 20px",
+                          textAlign: "center",
+                          background: theme.cardBackground,
+                          borderRadius: 16,
+                          border: `1px solid ${theme.border}`,
+                        }}
+                      >
+                        <div style={{ fontSize: 48, marginBottom: 12, opacity: 0.3 }}>📅</div>
+                        <p style={{ fontSize: 16, color: theme.textSecondary, marginBottom: 6, fontWeight: 500 }}>
+                          No bookings today
+                        </p>
+                        <p style={{ fontSize: 14, color: theme.textMuted }}>
+                          Today's bookings will appear here
+                        </p>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div
+                      style={{
+                        background: theme.cardBackground,
+                        borderRadius: 16,
+                        border: `1px solid ${theme.border}`,
+                        overflow: 'hidden',
+                      }}
+                    >
+                      {/* Table Header */}
+                      <div
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: '150px 120px 110px 100px 100px 100px 100px 110px 110px 110px 90px',
+                          gap: 12,
+                          padding: '16px 24px',
+                          background: theme.hoverBackground,
+                          borderBottom: `1px solid ${theme.border}`,
+                        }}
+                      >
+                        <div style={{ fontSize: 12, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                          Customer
+                        </div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                          Phone
+                        </div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                          Console
+                        </div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                          Start Time
+                        </div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                          End Time
+                        </div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                          Duration
+                        </div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                          Status
+                        </div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                          Source
+                        </div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                          Payment
+                        </div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'right' }}>
+                          Amount
+                        </div>
+                      </div>
+
+                      {/* Table Body */}
+                      {todaysBookings.map((booking, index) => {
+                        const isWalkIn = booking.source === 'walk-in';
+                        const customerName = isWalkIn ? booking.customer_name : booking.user_name || booking.user_email || 'Unknown';
+                        const customerPhone = isWalkIn ? booking.customer_phone : booking.user_phone || 'N/A';
+                        const consoleInfo = booking.booking_items?.[0];
+                        const consoleName = consoleInfo?.console?.toUpperCase() || 'N/A';
+
+                        const paymentMode = booking.payment_mode || 'cash';
+                        const getPaymentIcon = (mode: string) => {
+                          switch(mode) {
+                            case 'cash': return '💵';
+                            case 'card': return '💳';
+                            case 'upi': return '📱';
+                            case 'online': return '🌐';
+                            default: return '💵';
+                          }
+                        };
+
+                        // Calculate end time
+                        const calculateEndTime = (startTime: string | null, duration: number | null) => {
+                          if (!startTime || !duration) return 'N/A';
+                          const [hours, minutesPart] = startTime.split(':');
+                          const minutes = parseInt(minutesPart.split(' ')[0]);
+                          const isPM = startTime.includes('pm');
+                          let hour24 = parseInt(hours);
+                          if (isPM && hour24 !== 12) hour24 += 12;
+                          if (!isPM && hour24 === 12) hour24 = 0;
+
+                          const totalMinutes = (hour24 * 60 + minutes + duration) % (24 * 60);
+                          const endHour24 = Math.floor(totalMinutes / 60);
+                          const endMin = totalMinutes % 60;
+                          const endHour12 = endHour24 % 12 || 12;
+                          const endAmPm = endHour24 >= 12 ? 'pm' : 'am';
+                          return `${endHour12}:${endMin.toString().padStart(2, '0')} ${endAmPm}`;
+                        };
+
+                        const endTime = calculateEndTime(booking.start_time, booking.duration ?? null);
+
+                        return (
+                          <div
+                            key={booking.id}
+                            style={{
+                              display: 'grid',
+                              gridTemplateColumns: '150px 120px 110px 100px 100px 100px 100px 110px 110px 110px 90px',
+                              gap: 12,
+                              padding: '18px 24px',
+                              borderBottom: index < todaysBookings.length - 1 ? `1px solid ${theme.border}` : 'none',
+                              transition: 'background 0.2s',
+                            }}
+                            onMouseOver={(e) => e.currentTarget.style.background = theme.hoverBackground}
+                            onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+                          >
+                            {/* Customer */}
+                            <div style={{ display: 'flex', alignItems: 'center', fontSize: 14, color: theme.textPrimary, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {customerName}
+                            </div>
+
+                            {/* Phone */}
+                            <div style={{ display: 'flex', alignItems: 'center', fontSize: 13, color: theme.textSecondary }}>
+                              {customerPhone}
+                            </div>
+
+                            {/* Console */}
+                            <div style={{ display: 'flex', alignItems: 'center', fontSize: 14, color: theme.textSecondary }}>
+                              {consoleName}
+                            </div>
+
+                            {/* Start Time */}
+                            <div style={{ display: 'flex', alignItems: 'center', fontSize: 14, color: theme.textSecondary }}>
+                              {booking.start_time || 'N/A'}
+                            </div>
+
+                            {/* End Time */}
+                            <div style={{ display: 'flex', alignItems: 'center', fontSize: 14, color: theme.textSecondary }}>
+                              {endTime}
+                            </div>
+
+                            {/* Duration */}
+                            <div style={{ display: 'flex', alignItems: 'center', fontSize: 14, color: theme.textSecondary }}>
+                              {booking.duration ? `${booking.duration}m` : 'N/A'}
+                            </div>
+
+                            {/* Status */}
+                            <div style={{ display: 'flex', alignItems: 'center' }}>
+                              <span style={{
+                                padding: '4px 10px',
+                                borderRadius: 6,
+                                fontSize: 11,
+                                fontWeight: 600,
+                                textTransform: 'capitalize',
+                                background:
+                                  booking.status === 'confirmed' ? 'rgba(34, 197, 94, 0.1)' :
+                                  booking.status === 'in-progress' ? 'rgba(59, 130, 246, 0.1)' :
+                                  booking.status === 'completed' ? 'rgba(107, 114, 128, 0.1)' :
+                                  'rgba(239, 68, 68, 0.1)',
+                                color:
+                                  booking.status === 'confirmed' ? '#22c55e' :
+                                  booking.status === 'in-progress' ? '#3b82f6' :
+                                  booking.status === 'completed' ? '#6b7280' :
+                                  '#ef4444',
+                              }}>
+                                {booking.status || 'Unknown'}
+                              </span>
+                            </div>
+
+                            {/* Source */}
+                            <div style={{ display: 'flex', alignItems: 'center' }}>
+                              <span style={{
+                                padding: '4px 10px',
+                                borderRadius: 6,
+                                fontSize: 11,
+                                fontWeight: 600,
+                                background: booking.source === 'walk-in' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(59, 130, 246, 0.1)',
+                                color: booking.source === 'walk-in' ? '#ef4444' : '#3b82f6',
+                              }}>
+                                {booking.source === 'walk-in' ? 'Walk-in' : 'Online'}
+                              </span>
+                            </div>
+
+                            {/* Payment Mode */}
+                            <div style={{ display: 'flex', alignItems: 'center' }}>
+                              <span style={{
+                                padding: '4px 10px',
+                                borderRadius: 6,
+                                fontSize: 11,
+                                fontWeight: 600,
+                                background: 'rgba(168, 85, 247, 0.1)',
+                                color: '#a855f7',
+                                textTransform: 'capitalize',
+                              }}>
+                                {getPaymentIcon(paymentMode)} {paymentMode}
+                              </span>
+                            </div>
+
+                            {/* Amount */}
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', fontSize: 15, fontWeight: 600, color: theme.textPrimary }}>
+                              ₹{booking.total_amount || 0}
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {/* Total Row */}
+                      <div
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: '150px 120px 110px 100px 100px 100px 100px 110px 110px 110px 90px',
+                          gap: 12,
+                          padding: '18px 24px',
+                          background: theme.hoverBackground,
+                          borderTop: `2px solid ${theme.border}`,
+                        }}
+                      >
+                        <div></div>
+                        <div></div>
+                        <div></div>
+                        <div></div>
+                        <div></div>
+                        <div></div>
+                        <div></div>
+                        <div></div>
+                        <div></div>
+                        <div style={{ display: 'flex', alignItems: 'center', fontSize: 14, fontWeight: 700, color: theme.textPrimary }}>
+                          Total ({todaysBookings.length})
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', fontSize: 18, fontWeight: 700, color: '#22c55e' }}>
+                          ₹{totalAmount}
+                        </div>
+                      </div>
                     </div>
                   );
                 })()}
@@ -2661,7 +2999,7 @@ export default function OwnerDashboardPage() {
                     >
                       <option value="all">All Sources</option>
                       <option value="online">Online</option>
-                      <option value="walk_in">Walk-in</option>
+                      <option value="walk-in">Walk-in</option>
                     </select>
                   </div>
                 </div>
@@ -2757,6 +3095,9 @@ export default function OwnerDashboardPage() {
                           </th>
                           <th style={{ padding: "14px 16px", textAlign: "left", color: theme.textMuted, fontSize: 11, textTransform: "uppercase", fontWeight: 600 }}>
                             Source
+                          </th>
+                          <th style={{ padding: "14px 16px", textAlign: "left", color: theme.textMuted, fontSize: 11, textTransform: "uppercase", fontWeight: 600 }}>
+                            Payment
                           </th>
                           <th style={{ padding: "14px 16px", textAlign: "left", color: theme.textMuted, fontSize: 11, textTransform: "uppercase", fontWeight: 600 }}>
                             Status
@@ -2908,6 +3249,39 @@ export default function OwnerDashboardPage() {
                                   {source}
                                 </span>
                               </td>
+
+                              {/* Payment Mode */}
+                              <td style={{ padding: "14px 16px" }}>
+                                {(() => {
+                                  const paymentMode = booking.payment_mode || 'cash';
+                                  const getPaymentIcon = (mode: string) => {
+                                    switch(mode) {
+                                      case 'cash': return '💵';
+                                      case 'upi': return '📱';
+                                      default: return '💵';
+                                    }
+                                  };
+                                  return (
+                                    <span
+                                      style={{
+                                        padding: "4px 10px",
+                                        borderRadius: 6,
+                                        fontSize: 11,
+                                        fontWeight: 500,
+                                        background: "rgba(168, 85, 247, 0.1)",
+                                        color: "#a855f7",
+                                        display: "inline-flex",
+                                        alignItems: "center",
+                                        gap: 6,
+                                        textTransform: "capitalize",
+                                      }}
+                                    >
+                                      {getPaymentIcon(paymentMode)} {paymentMode}
+                                    </span>
+                                  );
+                                })()}
+                              </td>
+
                               <td style={{ padding: "14px 16px" }}>
                                 <StatusBadge status={booking.status || "pending"} />
                               </td>
@@ -3376,9 +3750,12 @@ export default function OwnerDashboardPage() {
                     <thead>
                       <tr style={{ background: 'rgba(15,23,42,0.8)', borderBottom: `1px solid ${theme.border}` }}>
                         <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Customer</th>
+                        <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Phone</th>
                         <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Station</th>
                         <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Duration</th>
                         <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Started</th>
+                        <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>End Time</th>
+                        <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Payment</th>
                         <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Amount</th>
                         <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Status</th>
                         <th style={{ padding: '16px 20px', textAlign: 'center', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Actions</th>
@@ -3406,6 +3783,26 @@ export default function OwnerDashboardPage() {
                           ? `${new Date(booking.booking_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} at ${booking.start_time}`
                           : '-';
 
+                        // Calculate end time
+                        const calculateEndTime = (startTime: string | null, duration: number | null) => {
+                          if (!startTime || !duration) return '-';
+                          const [hours, minutesPart] = startTime.split(':');
+                          const minutes = parseInt(minutesPart.split(' ')[0]);
+                          const isPM = startTime.includes('pm');
+                          let hour24 = parseInt(hours);
+                          if (isPM && hour24 !== 12) hour24 += 12;
+                          if (!isPM && hour24 === 12) hour24 = 0;
+
+                          const totalMinutes = (hour24 * 60 + minutes + duration) % (24 * 60);
+                          const endHour24 = Math.floor(totalMinutes / 60);
+                          const endMin = totalMinutes % 60;
+                          const endHour12 = endHour24 % 12 || 12;
+                          const endAmPm = endHour24 >= 12 ? 'pm' : 'am';
+                          return `${endHour12}:${endMin.toString().padStart(2, '0')} ${endAmPm}`;
+                        };
+
+                        const endTime = calculateEndTime(booking.start_time, booking.duration ?? null);
+
                         return (
                           <tr
                             key={booking.id}
@@ -3417,16 +3814,12 @@ export default function OwnerDashboardPage() {
                             onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
                           >
                             <td style={{ padding: '16px 20px' }}>
-                              <div>
-                                <div style={{ fontSize: 14, fontWeight: 500, color: theme.textPrimary, marginBottom: 2 }}>
-                                  {customerName || 'Unknown'}
-                                </div>
-                                {customerPhone && (
-                                  <div style={{ fontSize: 12, color: theme.textMuted }}>
-                                    {customerPhone}
-                                  </div>
-                                )}
+                              <div style={{ fontSize: 14, fontWeight: 500, color: theme.textPrimary }}>
+                                {customerName || 'Unknown'}
                               </div>
+                            </td>
+                            <td style={{ padding: '16px 20px', fontSize: 13, color: theme.textSecondary }}>
+                              {customerPhone || '-'}
                             </td>
                             <td style={{ padding: '16px 20px', fontSize: 14, fontWeight: 500, color: theme.textPrimary }}>
                               {consoleInfo?.console || '-'}
@@ -3437,6 +3830,38 @@ export default function OwnerDashboardPage() {
                             <td style={{ padding: '16px 20px', fontSize: 14, color: theme.textSecondary }}>
                               {formattedStarted}
                             </td>
+                            <td style={{ padding: '16px 20px', fontSize: 14, color: theme.textSecondary }}>
+                              {endTime}
+                            </td>
+
+                            {/* Payment Mode */}
+                            <td style={{ padding: '16px 20px' }}>
+                              {(() => {
+                                const paymentMode = booking.payment_mode || 'cash';
+                                const getPaymentIcon = (mode: string) => {
+                                  switch(mode) {
+                                    case 'cash': return '💵';
+                                    case 'upi': return '📱';
+                                    default: return '💵';
+                                  }
+                                };
+                                return (
+                                  <span style={{
+                                    display: 'inline-block',
+                                    padding: '6px 12px',
+                                    borderRadius: 6,
+                                    fontSize: 12,
+                                    fontWeight: 600,
+                                    textTransform: 'capitalize',
+                                    background: 'rgba(168, 85, 247, 0.1)',
+                                    color: '#a855f7',
+                                  }}>
+                                    {getPaymentIcon(paymentMode)} {paymentMode}
+                                  </span>
+                                );
+                              })()}
+                            </td>
+
                             <td style={{ padding: '16px 20px', fontSize: 15, fontWeight: 600, color: theme.textPrimary }}>
                               ₹{booking.total_amount || 0}
                             </td>
@@ -3537,25 +3962,434 @@ export default function OwnerDashboardPage() {
           )}
 
           {/* Customers Tab */}
-          {activeTab === 'customers' && (
-            <div
-              style={{
-                background: theme.cardBackground,
-                borderRadius: 16,
-                border: `1px solid ${theme.border}`,
-                padding: "60px 20px",
-                textAlign: "center",
-              }}
-            >
-              <div style={{ fontSize: 64, marginBottom: 16, opacity: 0.3 }}>👥</div>
-              <p style={{ fontSize: 18, color: theme.textSecondary, marginBottom: 8, fontWeight: 500 }}>
-                Customer Directory
-              </p>
-              <p style={{ fontSize: 14, color: theme.textMuted }}>
-                View and manage your customer database here.
-              </p>
-            </div>
-          )}
+          {activeTab === 'customers' && (() => {
+            // Aggregate customer data from bookings
+            const customerMap = new Map<string, {
+              id: string;
+              name: string;
+              phone: string | null;
+              email: string | null;
+              sessions: number;
+              totalSpent: number;
+              lastVisit: string;
+              source: string;
+            }>();
+
+            bookings.forEach(booking => {
+              // Handle both walk-in and online bookings
+              const customerId = booking.user_id || booking.customer_phone || booking.customer_name || 'unknown';
+              const customerName = booking.customer_name || booking.user_name || 'Unknown';
+              const customerPhone = booking.customer_phone || booking.user_phone || null;
+              const customerEmail = booking.user_email || null;
+
+              if (customerMap.has(customerId)) {
+                const existing = customerMap.get(customerId)!;
+                existing.sessions += 1;
+                existing.totalSpent += booking.total_amount || 0;
+                // Update last visit if this booking is more recent
+                if (new Date(booking.booking_date || '') > new Date(existing.lastVisit)) {
+                  existing.lastVisit = booking.booking_date || '';
+                }
+              } else {
+                customerMap.set(customerId, {
+                  id: customerId,
+                  name: customerName,
+                  phone: customerPhone,
+                  email: customerEmail,
+                  sessions: 1,
+                  totalSpent: booking.total_amount || 0,
+                  lastVisit: booking.booking_date || '',
+                  source: booking.source || 'online'
+                });
+              }
+            });
+
+            let customers = Array.from(customerMap.values());
+
+            // Apply filters
+            if (customerSearch) {
+              const search = customerSearch.toLowerCase();
+              customers = customers.filter(c =>
+                c.name.toLowerCase().includes(search) ||
+                (c.phone && c.phone.includes(search)) ||
+                (c.email && c.email.toLowerCase().includes(search))
+              );
+            }
+
+            // Apply sorting
+            customers.sort((a, b) => {
+              let comparison = 0;
+
+              switch (customerSortBy) {
+                case 'name':
+                  comparison = a.name.localeCompare(b.name);
+                  break;
+                case 'sessions':
+                  comparison = a.sessions - b.sessions;
+                  break;
+                case 'totalSpent':
+                  comparison = a.totalSpent - b.totalSpent;
+                  break;
+                case 'lastVisit':
+                  comparison = new Date(a.lastVisit).getTime() - new Date(b.lastVisit).getTime();
+                  break;
+              }
+
+              return customerSortOrder === 'asc' ? comparison : -comparison;
+            });
+
+            // Helper function to toggle sort
+            const handleSort = (column: 'name' | 'sessions' | 'totalSpent' | 'lastVisit') => {
+              if (customerSortBy === column) {
+                setCustomerSortOrder(customerSortOrder === 'asc' ? 'desc' : 'asc');
+              } else {
+                setCustomerSortBy(column);
+                setCustomerSortOrder('desc');
+              }
+            };
+
+            const getSortIcon = (column: 'name' | 'sessions' | 'totalSpent' | 'lastVisit') => {
+              if (customerSortBy !== column) return '↕';
+              return customerSortOrder === 'asc' ? '↑' : '↓';
+            };
+
+            // Calculate "Today" for last visit display
+            const today = new Date().toISOString().split('T')[0];
+            const getLastVisitDisplay = (date: string) => {
+              if (date === today) return 'Today';
+              const visitDate = new Date(date);
+              const now = new Date();
+              const diffTime = Math.abs(now.getTime() - visitDate.getTime());
+              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+              if (diffDays === 1) return 'Yesterday';
+              if (diffDays <= 7) return `${diffDays} days ago`;
+              return visitDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+            };
+
+            return (
+              <div>
+                {/* Header */}
+                <div style={{ marginBottom: 32 }}>
+                  <div style={{ marginBottom: 20 }}>
+                    <div>
+                      <h2 style={{ fontSize: 28, fontWeight: 700, color: theme.textPrimary, margin: 0, marginBottom: 6 }}>
+                        Customers
+                      </h2>
+                      <p style={{ fontSize: 15, color: theme.textMuted, margin: 0 }}>
+                        Manage your customer database
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Search and Filters */}
+                  <div style={{
+                    background: theme.cardBackground,
+                    borderRadius: 16,
+                    border: `1px solid ${theme.border}`,
+                    padding: 20,
+                  }}>
+                    <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+                      {/* Search */}
+                      <div style={{ flex: 1, minWidth: 300, position: 'relative' }}>
+                        <span style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', fontSize: 18 }}>
+                          🔍
+                        </span>
+                        <input
+                          type="text"
+                          placeholder="Search by name, phone, email..."
+                          value={customerSearch}
+                          onChange={(e) => setCustomerSearch(e.target.value)}
+                          style={{
+                            width: '100%',
+                            padding: '12px 16px 12px 48px',
+                            background: theme.background,
+                            border: `1px solid ${theme.border}`,
+                            borderRadius: 10,
+                            color: theme.textPrimary,
+                            fontSize: 14,
+                            outline: 'none',
+                          }}
+                          onFocus={(e) => e.currentTarget.style.borderColor = '#10b981'}
+                          onBlur={(e) => e.currentTarget.style.borderColor = theme.border}
+                        />
+                      </div>
+
+                      {/* Filter Checkboxes */}
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none' }}>
+                        <input
+                          type="checkbox"
+                          checked={hasSubscription}
+                          onChange={(e) => setHasSubscription(e.target.checked)}
+                          style={{ width: 18, height: 18, cursor: 'pointer' }}
+                        />
+                        <span style={{ fontSize: 14, color: theme.textSecondary }}>Has Subscription</span>
+                      </label>
+
+                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none' }}>
+                        <input
+                          type="checkbox"
+                          checked={hasMembership}
+                          onChange={(e) => setHasMembership(e.target.checked)}
+                          style={{ width: 18, height: 18, cursor: 'pointer' }}
+                        />
+                        <span style={{ fontSize: 14, color: theme.textSecondary }}>Has Membership</span>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Customer Table */}
+                <div style={{
+                  background: theme.cardBackground,
+                  borderRadius: 16,
+                  border: `1px solid ${theme.border}`,
+                  overflow: 'hidden',
+                }}>
+                  {/* Table Header */}
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: '200px 120px 180px 120px 100px 130px 150px 60px',
+                    gap: 16,
+                    padding: '16px 24px',
+                    background: theme.hoverBackground,
+                    borderBottom: `1px solid ${theme.border}`,
+                  }}>
+                    <button
+                      onClick={() => handleSort('name')}
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 700,
+                        color: customerSortBy === 'name' ? theme.textPrimary : theme.textMuted,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        padding: 0,
+                        textAlign: 'left',
+                      }}
+                    >
+                      CUSTOMER {getSortIcon('name')}
+                    </button>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      PHONE
+                    </div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      EMAIL
+                    </div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      MODE
+                    </div>
+                    <button
+                      onClick={() => handleSort('sessions')}
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 700,
+                        color: customerSortBy === 'sessions' ? theme.textPrimary : theme.textMuted,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        padding: 0,
+                        textAlign: 'left',
+                      }}
+                    >
+                      SESSIONS {getSortIcon('sessions')}
+                    </button>
+                    <button
+                      onClick={() => handleSort('totalSpent')}
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 700,
+                        color: customerSortBy === 'totalSpent' ? theme.textPrimary : theme.textMuted,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        padding: 0,
+                        textAlign: 'left',
+                      }}
+                    >
+                      TOTAL SPENT {getSortIcon('totalSpent')}
+                    </button>
+                    <button
+                      onClick={() => handleSort('lastVisit')}
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 700,
+                        color: customerSortBy === 'lastVisit' ? theme.textPrimary : theme.textMuted,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        background: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        padding: 0,
+                        textAlign: 'left',
+                      }}
+                    >
+                      LAST VISIT {getSortIcon('lastVisit')}
+                    </button>
+                    <div></div>
+                  </div>
+
+                  {/* Table Body */}
+                  {customers.length === 0 ? (
+                    <div style={{ padding: 60, textAlign: 'center' }}>
+                      <div style={{ fontSize: 48, marginBottom: 16, opacity: 0.3 }}>👥</div>
+                      <p style={{ fontSize: 16, color: theme.textSecondary, marginBottom: 8 }}>
+                        No customers found
+                      </p>
+                      <p style={{ fontSize: 14, color: theme.textMuted }}>
+                        {customerSearch ? 'Try adjusting your search criteria' : 'Customers will appear here after bookings'}
+                      </p>
+                    </div>
+                  ) : (
+                    customers.map((customer, index) => (
+                      <div
+                        key={customer.id}
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: '200px 120px 180px 120px 100px 130px 150px 60px',
+                          gap: 16,
+                          padding: '18px 24px',
+                          borderBottom: index < customers.length - 1 ? `1px solid ${theme.border}` : 'none',
+                          transition: 'background 0.2s',
+                        }}
+                        onMouseOver={(e) => e.currentTarget.style.background = theme.hoverBackground}
+                        onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+                      >
+                        {/* Customer Name */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                          <div style={{
+                            width: 40,
+                            height: 40,
+                            borderRadius: '50%',
+                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: 16,
+                            fontWeight: 700,
+                            color: 'white',
+                            flexShrink: 0,
+                          }}>
+                            {customer.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontSize: 15, fontWeight: 600, color: theme.textPrimary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {customer.name}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Phone */}
+                        <div style={{ display: 'flex', alignItems: 'center', fontSize: 14, color: theme.textSecondary }}>
+                          {customer.phone || '-'}
+                        </div>
+
+                        {/* Email */}
+                        <div style={{ display: 'flex', alignItems: 'center', fontSize: 14, color: theme.textSecondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {customer.email || '-'}
+                        </div>
+
+                        {/* Mode */}
+                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                          <span style={{
+                            padding: '4px 12px',
+                            borderRadius: 6,
+                            fontSize: 12,
+                            fontWeight: 600,
+                            background: customer.source === 'walk-in'
+                              ? 'rgba(239, 68, 68, 0.1)'
+                              : 'rgba(59, 130, 246, 0.1)',
+                            color: customer.source === 'walk-in'
+                              ? '#ef4444'
+                              : '#3b82f6',
+                            textTransform: 'capitalize',
+                          }}>
+                            {customer.source === 'walk-in' ? 'Walk-in' : 'Online'}
+                          </span>
+                        </div>
+
+                        {/* Sessions */}
+                        <div style={{ display: 'flex', alignItems: 'center', fontSize: 15, fontWeight: 600, color: theme.textPrimary }}>
+                          {customer.sessions}
+                        </div>
+
+                        {/* Total Spent */}
+                        <div style={{ display: 'flex', alignItems: 'center', fontSize: 15, fontWeight: 600, color: theme.textPrimary }}>
+                          ₹{customer.totalSpent}
+                        </div>
+
+                        {/* Last Visit */}
+                        <div style={{ display: 'flex', alignItems: 'center', fontSize: 14, color: theme.textSecondary }}>
+                          {getLastVisitDisplay(customer.lastVisit)}
+                        </div>
+
+                        {/* View Button */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <button
+                            style={{
+                              padding: '8px 12px',
+                              background: 'transparent',
+                              border: `1px solid ${theme.border}`,
+                              borderRadius: 8,
+                              color: theme.textSecondary,
+                              fontSize: 18,
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                            onMouseOver={(e) => {
+                              e.currentTarget.style.background = theme.hoverBackground;
+                              e.currentTarget.style.borderColor = theme.textMuted;
+                            }}
+                            onMouseOut={(e) => {
+                              e.currentTarget.style.background = 'transparent';
+                              e.currentTarget.style.borderColor = theme.border;
+                            }}
+                          >
+                            👁
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* Customer count */}
+                {customers.length > 0 && (
+                  <div style={{ marginTop: 24, textAlign: 'center', color: theme.textSecondary, fontSize: 14 }}>
+                    Showing {customers.length} customer{customers.length !== 1 ? 's' : ''}
+                  </div>
+                )}
+
+                {/* Footer */}
+                {customers.length > 0 && (
+                  <div style={{ marginTop: 16, textAlign: 'center' }}>
+                    <p style={{ fontSize: 14, color: theme.textMuted }}>
+                      Showing 1 to {customers.length} of {customers.length} customers
+                    </p>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Stations Tab */}
           {activeTab === 'stations' && cafes.length > 0 && (
@@ -3805,23 +4639,16 @@ export default function OwnerDashboardPage() {
                               {(() => {
                                 const savedPricing = stationPricing[station.name];
 
-                                // PS5/Xbox - Show controller pricing
+                                // PS5/Xbox - Show base pricing only (half hour and full hour)
                                 if (['PS5', 'Xbox'].includes(station.type)) {
                                   const c1Half = savedPricing?.controller_1_half_hour || 75;
                                   const c1Full = savedPricing?.controller_1_full_hour || 150;
-                                  const c2Half = savedPricing?.controller_2_half_hour || 120;
-                                  const c2Full = savedPricing?.controller_2_full_hour || 240;
-                                  const c3Half = savedPricing?.controller_3_half_hour || 165;
-                                  const c3Full = savedPricing?.controller_3_full_hour || 330;
-                                  const c4Half = savedPricing?.controller_4_half_hour || 210;
-                                  const c4Full = savedPricing?.controller_4_full_hour || 420;
 
                                   return (
-                                    <div style={{ fontSize: 11, lineHeight: 1.8 }}>
-                                      <div><span style={{ color: theme.textMuted }}>1C: </span><span style={{ fontWeight: 600 }}>₹{c1Half}/30m · ₹{c1Full}/hr</span></div>
-                                      <div><span style={{ color: theme.textMuted }}>2C: </span><span style={{ fontWeight: 600 }}>₹{c2Half}/30m · ₹{c2Full}/hr</span></div>
-                                      <div><span style={{ color: theme.textMuted }}>3C: </span><span style={{ fontWeight: 600 }}>₹{c3Half}/30m · ₹{c3Full}/hr</span></div>
-                                      <div><span style={{ color: theme.textMuted }}>4C: </span><span style={{ fontWeight: 600 }}>₹{c4Half}/30m · ₹{c4Full}/hr</span></div>
+                                    <div>
+                                      <span style={{ fontWeight: 600 }}>
+                                        ₹{c1Half}/30m · ₹{c1Full}/hr
+                                      </span>
                                     </div>
                                   );
                                 } else if (['PS4'].includes(station.type)) {
@@ -4069,287 +4896,386 @@ export default function OwnerDashboardPage() {
         >
           <div
             style={{
-              background: "linear-gradient(135deg, #1e293b, #0f172a)",
-              borderRadius: 20,
+              background: theme.cardBackground,
+              borderRadius: 24,
               border: `1px solid ${theme.border}`,
-              maxWidth: 600,
+              maxWidth: 650,
               width: "100%",
               maxHeight: "90vh",
               overflowY: "auto",
-              padding: "32px",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ marginBottom: 24 }}>
-              <h2 style={{ fontFamily: fonts.heading, fontSize: 24, margin: "0 0 8px 0", color: theme.textPrimary }}>
-                Edit Walk-In Booking
+            {/* Header */}
+            <div style={{
+              padding: "28px 32px",
+              borderBottom: `1px solid ${theme.border}`,
+              background: "linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(79, 70, 229, 0.05))",
+            }}>
+              <h2 style={{
+                fontFamily: fonts.heading,
+                fontSize: 26,
+                margin: "0 0 8px 0",
+                color: theme.textPrimary,
+                fontWeight: 700,
+              }}>
+                📝 Edit Walk-In Booking
               </h2>
-              <p style={{ fontSize: 13, color: theme.textMuted, margin: 0 }}>
-                Booking ID: #{editingBooking.id.slice(0, 8).toUpperCase()}
+              <p style={{
+                fontSize: 14,
+                color: theme.textSecondary,
+                margin: 0,
+                fontWeight: 500,
+              }}>
+                Booking ID: <span style={{ color: theme.textPrimary, fontWeight: 600 }}>#{editingBooking.id.slice(0, 8).toUpperCase()}</span>
               </p>
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-              {/* Customer Info */}
-              <div>
-                <label style={{ fontSize: 12, color: theme.textMuted, display: "block", marginBottom: 8 }}>
-                  Customer
-                </label>
-                <div
-                  style={{
-                    padding: "12px",
-                    background: "rgba(30,41,59,0.5)",
-                    borderRadius: 8,
-                    border: `1px solid ${theme.border}`,
-                  }}
-                >
-                  <div style={{ fontSize: 14, color: theme.textPrimary, marginBottom: 4 }}>
-                    {editingBooking.user_name || "Guest"}
+            {/* Content */}
+            <div style={{
+              padding: "32px",
+              display: "flex",
+              flexDirection: "column",
+              gap: 28,
+            }}>
+              {/* Customer Info Section */}
+              <div style={{
+                padding: "20px",
+                background: "rgba(99, 102, 241, 0.05)",
+                borderRadius: 12,
+                border: "1px solid rgba(99, 102, 241, 0.2)",
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                  <span style={{ fontSize: 18 }}>👤</span>
+                  <label style={{ fontSize: 13, color: theme.textSecondary, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                    Customer Information
+                  </label>
+                </div>
+                <div style={{ fontSize: 16, color: theme.textPrimary, fontWeight: 600, marginBottom: 4 }}>
+                  {editingBooking.user_name || "Guest"}
+                </div>
+                {editingBooking.user_email && (
+                  <div style={{ fontSize: 13, color: theme.textSecondary, display: "flex", alignItems: "center", gap: 6 }}>
+                    <span>✉️</span> {editingBooking.user_email}
                   </div>
-                  {editingBooking.user_email && (
-                    <div style={{ fontSize: 12, color: theme.textSecondary }}>
-                      {editingBooking.user_email}
-                    </div>
-                  )}
-                  {editingBooking.user_phone && (
-                    <div style={{ fontSize: 12, color: theme.textSecondary }}>
-                      📞 {editingBooking.user_phone}
-                    </div>
-                  )}
+                )}
+                {editingBooking.user_phone && (
+                  <div style={{ fontSize: 13, color: theme.textSecondary, display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
+                    <span>📞</span> {editingBooking.user_phone}
+                  </div>
+                )}
+              </div>
+
+              {/* Booking Details Section */}
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+                  <span style={{ fontSize: 18 }}>📅</span>
+                  <h3 style={{ fontSize: 14, color: theme.textSecondary, fontWeight: 600, margin: 0, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                    Booking Details
+                  </h3>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                  {/* Date */}
+                  <div>
+                    <label style={{ fontSize: 12, color: theme.textMuted, display: "block", marginBottom: 8, fontWeight: 600 }}>
+                      Booking Date *
+                    </label>
+                    <input
+                      type="date"
+                      value={editDate}
+                      onChange={(e) => setEditDate(e.target.value)}
+                      style={{
+                        width: "100%",
+                        padding: "14px",
+                        background: theme.background,
+                        border: `2px solid ${theme.border}`,
+                        borderRadius: 10,
+                        color: theme.textPrimary,
+                        fontSize: 14,
+                        fontFamily: fonts.body,
+                        fontWeight: 500,
+                        transition: "all 0.2s",
+                      }}
+                      onFocus={(e) => e.target.style.borderColor = "#6366f1"}
+                      onBlur={(e) => e.target.style.borderColor = theme.border}
+                    />
+                  </div>
+
+                  {/* Start Time */}
+                  <div>
+                    <label style={{ fontSize: 12, color: theme.textMuted, display: "block", marginBottom: 8, fontWeight: 600 }}>
+                      Start Time *
+                    </label>
+                    <input
+                      type="time"
+                      value={editStartTime}
+                      onChange={(e) => setEditStartTime(e.target.value)}
+                      style={{
+                        width: "100%",
+                        padding: "14px",
+                        background: theme.background,
+                        border: `2px solid ${theme.border}`,
+                        borderRadius: 10,
+                        color: theme.textPrimary,
+                        fontSize: 14,
+                        fontFamily: fonts.body,
+                        fontWeight: 500,
+                        transition: "all 0.2s",
+                      }}
+                      onFocus={(e) => e.target.style.borderColor = "#6366f1"}
+                      onBlur={(e) => e.target.style.borderColor = theme.border}
+                    />
+                  </div>
+                </div>
+
+                {/* Duration */}
+                <div style={{ marginTop: 16 }}>
+                  <label style={{ fontSize: 12, color: theme.textMuted, display: "block", marginBottom: 8, fontWeight: 600 }}>
+                    Duration *
+                  </label>
+                  <select
+                    value={editDuration}
+                    onChange={(e) => setEditDuration(parseInt(e.target.value))}
+                    style={{
+                      width: "100%",
+                      padding: "14px",
+                      background: theme.background,
+                      border: `2px solid ${theme.border}`,
+                      borderRadius: 10,
+                      color: theme.textPrimary,
+                      fontSize: 14,
+                      fontFamily: fonts.body,
+                      fontWeight: 500,
+                      cursor: "pointer",
+                      transition: "all 0.2s",
+                    }}
+                    onFocus={(e) => e.target.style.borderColor = "#6366f1"}
+                    onBlur={(e) => e.target.style.borderColor = theme.border}
+                  >
+                    <option value={30}>30 Minutes</option>
+                    <option value={60}>1 Hour</option>
+                    <option value={90}>1.5 Hours</option>
+                    <option value={120}>2 Hours</option>
+                    <option value={150}>2.5 Hours</option>
+                    <option value={180}>3 Hours</option>
+                    <option value={210}>3.5 Hours</option>
+                    <option value={240}>4 Hours</option>
+                    <option value={270}>4.5 Hours</option>
+                    <option value={300}>5 Hours</option>
+                  </select>
+                </div>
+
+                {/* End Time */}
+                <div style={{ marginTop: 16 }}>
+                  <label style={{ fontSize: 12, color: theme.textMuted, display: "block", marginBottom: 8, fontWeight: 600 }}>
+                    End Time <span style={{ color: theme.textSecondary, fontSize: 11 }}>(Auto-calculated)</span>
+                  </label>
+                  <div style={{
+                    padding: "14px",
+                    background: "rgba(100, 116, 139, 0.1)",
+                    border: `2px dashed ${theme.border}`,
+                    borderRadius: 10,
+                    color: theme.textSecondary,
+                    fontSize: 14,
+                    fontFamily: fonts.body,
+                    fontWeight: 500,
+                  }}>
+                    {editStartTime ? getEndTime(convertTo12Hour(editStartTime), editDuration) : "—"}
+                  </div>
                 </div>
               </div>
 
-              {/* Date */}
+              {/* Console & Controllers Section */}
               <div>
-                <label style={{ fontSize: 12, color: theme.textMuted, display: "block", marginBottom: 8 }}>
-                  Booking Date *
-                </label>
-                <input
-                  type="date"
-                  value={editDate}
-                  onChange={(e) => setEditDate(e.target.value)}
-                  style={{
-                    width: "100%",
-                    padding: "12px",
-                    background: "rgba(30,41,59,0.5)",
-                    border: `1px solid ${theme.border}`,
-                    borderRadius: 8,
-                    color: theme.textPrimary,
-                    fontSize: 14,
-                    fontFamily: fonts.body,
-                  }}
-                />
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+                  <span style={{ fontSize: 18 }}>🎮</span>
+                  <h3 style={{ fontSize: 14, color: theme.textSecondary, fontWeight: 600, margin: 0, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                    Console & Controllers
+                  </h3>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                  {/* Console */}
+                  <div>
+                    <label style={{ fontSize: 12, color: theme.textMuted, display: "block", marginBottom: 8, fontWeight: 600 }}>
+                      Console *
+                    </label>
+                    <select
+                      value={editConsole}
+                      onChange={(e) => setEditConsole(e.target.value)}
+                      style={{
+                        width: "100%",
+                        padding: "14px",
+                        background: theme.background,
+                        border: `2px solid ${theme.border}`,
+                        borderRadius: 10,
+                        color: theme.textPrimary,
+                        fontSize: 14,
+                        fontFamily: fonts.body,
+                        fontWeight: 500,
+                        cursor: "pointer",
+                        transition: "all 0.2s",
+                      }}
+                      onFocus={(e) => e.target.style.borderColor = "#6366f1"}
+                      onBlur={(e) => e.target.style.borderColor = theme.border}
+                    >
+                      <option value="">Select Console</option>
+                      <option value="ps5">🎮 PS5</option>
+                      <option value="ps4">🎮 PS4</option>
+                      <option value="xbox">🎮 Xbox</option>
+                      <option value="pc">💻 PC</option>
+                      <option value="pool">🎱 Pool</option>
+                      <option value="snooker">🎱 Snooker</option>
+                      <option value="arcade">🕹️ Arcade</option>
+                      <option value="vr">🥽 VR</option>
+                      <option value="steering_wheel">🏎️ Racing</option>
+                    </select>
+                  </div>
+
+                  {/* Number of Controllers */}
+                  <div>
+                    <label style={{ fontSize: 12, color: theme.textMuted, display: "block", marginBottom: 8, fontWeight: 600 }}>
+                      Controllers *
+                    </label>
+                    <select
+                      value={editControllers}
+                      onChange={(e) => setEditControllers(parseInt(e.target.value))}
+                      style={{
+                        width: "100%",
+                        padding: "14px",
+                        background: theme.background,
+                        border: `2px solid ${theme.border}`,
+                        borderRadius: 10,
+                        color: theme.textPrimary,
+                        fontSize: 14,
+                        fontFamily: fonts.body,
+                        fontWeight: 500,
+                        cursor: "pointer",
+                        transition: "all 0.2s",
+                      }}
+                      onFocus={(e) => e.target.style.borderColor = "#6366f1"}
+                      onBlur={(e) => e.target.style.borderColor = theme.border}
+                    >
+                      <option value={1}>1 Controller</option>
+                      <option value={2}>2 Controllers</option>
+                      <option value={3}>3 Controllers</option>
+                      <option value={4}>4 Controllers</option>
+                    </select>
+                  </div>
+                </div>
               </div>
 
-              {/* Start Time */}
+              {/* Payment & Status Section */}
               <div>
-                <label style={{ fontSize: 12, color: theme.textMuted, display: "block", marginBottom: 8 }}>
-                  Start Time *
-                </label>
-                <input
-                  type="time"
-                  value={editStartTime}
-                  onChange={(e) => setEditStartTime(e.target.value)}
-                  style={{
-                    width: "100%",
-                    padding: "12px",
-                    background: "rgba(30,41,59,0.5)",
-                    border: `1px solid ${theme.border}`,
-                    borderRadius: 8,
-                    color: theme.textPrimary,
-                    fontSize: 14,
-                    fontFamily: fonts.body,
-                  }}
-                />
-              </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+                  <span style={{ fontSize: 18 }}>💰</span>
+                  <h3 style={{ fontSize: 14, color: theme.textSecondary, fontWeight: 600, margin: 0, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                    Payment & Status
+                  </h3>
+                </div>
 
-              {/* Duration */}
-              <div>
-                <label style={{ fontSize: 12, color: theme.textMuted, display: "block", marginBottom: 8 }}>
-                  Duration *
-                </label>
-                <select
-                  value={editDuration}
-                  onChange={(e) => setEditDuration(parseInt(e.target.value))}
-                  style={{
-                    width: "100%",
-                    padding: "12px",
-                    background: "rgba(30,41,59,0.5)",
-                    border: `1px solid ${theme.border}`,
-                    borderRadius: 8,
-                    color: theme.textPrimary,
-                    fontSize: 14,
-                    fontFamily: fonts.body,
-                    cursor: "pointer",
-                  }}
-                >
-                  <option value={30}>30 Minutes</option>
-                  <option value={60}>1 Hour</option>
-                  <option value={90}>1.5 Hours</option>
-                  <option value={120}>2 Hours</option>
-                  <option value={150}>2.5 Hours</option>
-                  <option value={180}>3 Hours</option>
-                  <option value={210}>3.5 Hours</option>
-                  <option value={240}>4 Hours</option>
-                  <option value={270}>4.5 Hours</option>
-                  <option value={300}>5 Hours</option>
-                </select>
-              </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                  {/* Amount */}
+                  <div>
+                    <label style={{ fontSize: 12, color: theme.textMuted, display: "block", marginBottom: 8, fontWeight: 600 }}>
+                      Total Amount * <span style={{ color: theme.textSecondary, fontSize: 11 }}>(Editable)</span>
+                    </label>
+                    <div style={{ position: "relative" }}>
+                      <span style={{
+                        position: "absolute",
+                        left: 14,
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        fontSize: 16,
+                        color: "#22c55e",
+                        fontWeight: 700,
+                      }}>₹</span>
+                      <input
+                        type="number"
+                        value={editAmount}
+                        onChange={(e) => setEditAmount(e.target.value)}
+                        min="0"
+                        step="1"
+                        style={{
+                          width: "100%",
+                          padding: "14px 14px 14px 32px",
+                          background: "rgba(34, 197, 94, 0.1)",
+                          border: `2px solid rgba(34, 197, 94, 0.3)`,
+                          borderRadius: 10,
+                          color: "#22c55e",
+                          fontSize: 16,
+                          fontFamily: fonts.body,
+                          fontWeight: 700,
+                          transition: "all 0.2s",
+                        }}
+                        onFocus={(e) => e.target.style.borderColor = "#22c55e"}
+                        onBlur={(e) => e.target.style.borderColor = "rgba(34, 197, 94, 0.3)"}
+                      />
+                    </div>
+                  </div>
 
-              {/* Console */}
-              <div>
-                <label style={{ fontSize: 12, color: theme.textMuted, display: "block", marginBottom: 8 }}>
-                  Console *
-                </label>
-                <select
-                  value={editConsole}
-                  onChange={(e) => setEditConsole(e.target.value)}
-                  style={{
-                    width: "100%",
-                    padding: "12px",
-                    background: "rgba(30,41,59,0.5)",
-                    border: `1px solid ${theme.border}`,
-                    borderRadius: 8,
-                    color: theme.textPrimary,
-                    fontSize: 14,
-                    fontFamily: fonts.body,
-                    cursor: "pointer",
-                  }}
-                >
-                  <option value="">Select Console</option>
-                  <option value="ps5">PS5</option>
-                  <option value="ps4">PS4</option>
-                  <option value="xbox">Xbox</option>
-                  <option value="pc">PC</option>
-                  <option value="pool">Pool</option>
-                  <option value="snooker">Snooker</option>
-                  <option value="arcade">Arcade</option>
-                  <option value="vr">VR</option>
-                  <option value="steering_wheel">Racing</option>
-                </select>
-              </div>
-
-              {/* Number of Controllers */}
-              <div>
-                <label style={{ fontSize: 12, color: theme.textMuted, display: "block", marginBottom: 8 }}>
-                  Number of Controllers *
-                </label>
-                <select
-                  value={editControllers}
-                  onChange={(e) => setEditControllers(parseInt(e.target.value))}
-                  style={{
-                    width: "100%",
-                    padding: "12px",
-                    background: "rgba(30,41,59,0.5)",
-                    border: `1px solid ${theme.border}`,
-                    borderRadius: 8,
-                    color: theme.textPrimary,
-                    fontSize: 14,
-                    fontFamily: fonts.body,
-                    cursor: "pointer",
-                  }}
-                >
-                  <option value={1}>1 Controller</option>
-                  <option value={2}>2 Controllers</option>
-                  <option value={3}>3 Controllers</option>
-                  <option value={4}>4 Controllers</option>
-                </select>
-              </div>
-
-              {/* End Time */}
-              <div>
-                <label style={{ fontSize: 12, color: theme.textMuted, display: "block", marginBottom: 8 }}>
-                  End Time (Auto-calculated)
-                </label>
-                <input
-                  type="text"
-                  value={editStartTime ? getEndTime(convertTo12Hour(editStartTime), editDuration) : ""}
-                  readOnly
-                  disabled
-                  style={{
-                    width: "100%",
-                    padding: "12px",
-                    background: "rgba(30,41,59,0.3)",
-                    border: `1px solid ${theme.border}`,
-                    borderRadius: 8,
-                    color: theme.textMuted,
-                    fontSize: 14,
-                    fontFamily: fonts.body,
-                    cursor: "not-allowed",
-                  }}
-                />
-              </div>
-
-              {/* Amount */}
-              <div>
-                <label style={{ fontSize: 12, color: theme.textMuted, display: "block", marginBottom: 8 }}>
-                  Total Amount (₹) * (Auto-calculated, editable)
-                </label>
-                <input
-                  type="number"
-                  value={editAmount}
-                  onChange={(e) => setEditAmount(e.target.value)}
-                  min="0"
-                  step="1"
-                  style={{
-                    width: "100%",
-                    padding: "12px",
-                    background: "rgba(30,41,59,0.5)",
-                    border: `1px solid ${theme.border}`,
-                    borderRadius: 8,
-                    color: "#22c55e",
-                    fontSize: 14,
-                    fontFamily: fonts.body,
-                    fontWeight: 600,
-                  }}
-                />
-              </div>
-
-              {/* Status */}
-              <div>
-                <label style={{ fontSize: 12, color: theme.textMuted, display: "block", marginBottom: 8 }}>
-                  Status *
-                </label>
-                <select
-                  value={editStatus}
-                  onChange={(e) => setEditStatus(e.target.value)}
-                  style={{
-                    width: "100%",
-                    padding: "12px",
-                    background: "rgba(30,41,59,0.5)",
-                    border: `1px solid ${theme.border}`,
-                    borderRadius: 8,
-                    color: theme.textPrimary,
-                    fontSize: 14,
-                    fontFamily: fonts.body,
-                    cursor: "pointer",
-                  }}
-                >
-                  <option value="pending">Pending</option>
-                  <option value="confirmed">Confirmed</option>
-                  <option value="cancelled">Cancelled</option>
-                  <option value="completed">Completed</option>
-                </select>
+                  {/* Status */}
+                  <div>
+                    <label style={{ fontSize: 12, color: theme.textMuted, display: "block", marginBottom: 8, fontWeight: 600 }}>
+                      Status *
+                    </label>
+                    <select
+                      value={editStatus}
+                      onChange={(e) => setEditStatus(e.target.value)}
+                      style={{
+                        width: "100%",
+                        padding: "14px",
+                        background: theme.background,
+                        border: `2px solid ${theme.border}`,
+                        borderRadius: 10,
+                        color: theme.textPrimary,
+                        fontSize: 14,
+                        fontFamily: fonts.body,
+                        fontWeight: 500,
+                        cursor: "pointer",
+                        transition: "all 0.2s",
+                      }}
+                      onFocus={(e) => e.target.style.borderColor = "#6366f1"}
+                      onBlur={(e) => e.target.style.borderColor = theme.border}
+                    >
+                      <option value="pending">⏳ Pending</option>
+                      <option value="confirmed">✅ Confirmed</option>
+                      <option value="cancelled">❌ Cancelled</option>
+                      <option value="completed">✔️ Completed</option>
+                    </select>
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* Action Buttons */}
-            <div style={{ display: "flex", gap: 12, marginTop: 32 }}>
+            {/* Footer with Action Buttons */}
+            <div style={{
+              padding: "24px 32px",
+              borderTop: `1px solid ${theme.border}`,
+              background: "rgba(15, 23, 42, 0.3)",
+              display: "flex",
+              gap: 12,
+            }}>
               <button
                 onClick={() => setEditingBooking(null)}
                 disabled={saving}
                 style={{
                   flex: 1,
-                  padding: "12px 24px",
-                  borderRadius: 10,
-                  border: `1px solid ${theme.border}`,
-                  background: "rgba(51,65,85,0.5)",
-                  color: theme.textSecondary,
-                  fontSize: 14,
+                  padding: "14px 24px",
+                  borderRadius: 12,
+                  border: `2px solid ${theme.border}`,
+                  background: theme.background,
+                  color: theme.textPrimary,
+                  fontSize: 15,
                   fontWeight: 600,
                   cursor: saving ? "not-allowed" : "pointer",
                   opacity: saving ? 0.5 : 1,
+                  transition: "all 0.2s",
                 }}
+                onMouseEnter={(e) => !saving && (e.currentTarget.style.background = theme.cardBackground)}
+                onMouseLeave={(e) => !saving && (e.currentTarget.style.background = theme.background)}
               >
                 Cancel
               </button>
@@ -4358,24 +5284,37 @@ export default function OwnerDashboardPage() {
                 disabled={saving || !editAmount || !editDate || !editStartTime}
                 style={{
                   flex: 1,
-                  padding: "12px 24px",
-                  borderRadius: 10,
+                  padding: "14px 24px",
+                  borderRadius: 12,
                   border: "none",
                   background:
                     saving || !editAmount || !editDate || !editStartTime
-                      ? "rgba(59, 130, 246, 0.3)"
-                      : "linear-gradient(135deg, #3b82f6, #2563eb)",
+                      ? "rgba(99, 102, 241, 0.3)"
+                      : "linear-gradient(135deg, #6366f1, #4f46e5)",
                   color: "#fff",
-                  fontSize: 14,
-                  fontWeight: 600,
+                  fontSize: 15,
+                  fontWeight: 700,
                   cursor: saving || !editAmount || !editDate || !editStartTime ? "not-allowed" : "pointer",
                   boxShadow:
                     saving || !editAmount || !editDate || !editStartTime
                       ? "none"
-                      : "0 4px 16px rgba(59, 130, 246, 0.3)",
+                      : "0 8px 24px rgba(99, 102, 241, 0.4)",
+                  transition: "all 0.2s",
+                }}
+                onMouseEnter={(e) => {
+                  if (!saving && editAmount && editDate && editStartTime) {
+                    e.currentTarget.style.transform = "translateY(-2px)";
+                    e.currentTarget.style.boxShadow = "0 12px 32px rgba(99, 102, 241, 0.5)";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.boxShadow = saving || !editAmount || !editDate || !editStartTime
+                    ? "none"
+                    : "0 8px 24px rgba(99, 102, 241, 0.4)";
                 }}
               >
-                {saving ? "Saving..." : "Save Changes"}
+                {saving ? "💾 Saving..." : "💾 Save Changes"}
               </button>
             </div>
           </div>
@@ -4553,149 +5492,251 @@ export default function OwnerDashboardPage() {
                 <>
                   {/* PS5/Xbox - Per Controller Pricing (1-4 controllers) */}
                   <div style={{ marginBottom: 24 }}>
-                    <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.textPrimary, marginBottom: 16 }}>
-                      Per-Controller Pricing
-                    </h3>
-
-                    {/* 1 Controller */}
-                    <div style={{ marginBottom: 16, padding: 16, background: theme.background, borderRadius: 12, border: `1px solid ${theme.border}` }}>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: theme.textSecondary, marginBottom: 12 }}>1 Controller</div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                        <div>
-                          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: theme.textMuted, marginBottom: 6 }}>
-                            Half Hour (₹)
-                          </label>
-                          <input
-                            type="number"
-                            placeholder="e.g., 75"
-                            value={controller1HalfHour}
-                            onChange={(e) => setController1HalfHour(e.target.value)}
-                            style={{ width: "100%", padding: "10px 12px", background: theme.cardBackground, border: `1px solid ${theme.border}`, borderRadius: 8, color: theme.textPrimary, fontSize: 14, outline: "none" }}
-                            onFocus={(e) => (e.target.style.borderColor = "#3b82f6")}
-                            onBlur={(e) => (e.target.style.borderColor = theme.border)}
-                          />
-                        </div>
-                        <div>
-                          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: theme.textMuted, marginBottom: 6 }}>
-                            Full Hour (₹)
-                          </label>
-                          <input
-                            type="number"
-                            placeholder="e.g., 150"
-                            value={controller1FullHour}
-                            onChange={(e) => setController1FullHour(e.target.value)}
-                            style={{ width: "100%", padding: "10px 12px", background: theme.cardBackground, border: `1px solid ${theme.border}`, borderRadius: 8, color: theme.textPrimary, fontSize: 14, outline: "none" }}
-                            onFocus={(e) => (e.target.style.borderColor = "#3b82f6")}
-                            onBlur={(e) => (e.target.style.borderColor = theme.border)}
-                          />
-                        </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                      <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.textPrimary, margin: 0 }}>
+                        Per-Controller Pricing
+                      </h3>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        {enabledControllers.length < 4 && (
+                          <button
+                            onClick={() => {
+                              const nextController = Math.max(...enabledControllers) + 1;
+                              if (nextController <= 4) {
+                                setEnabledControllers([...enabledControllers, nextController]);
+                              }
+                            }}
+                            style={{
+                              padding: '6px 12px',
+                              background: '#10b981',
+                              border: 'none',
+                              borderRadius: 8,
+                              color: 'white',
+                              fontSize: 12,
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 4,
+                            }}
+                          >
+                            <span>+</span> Add Controller
+                          </button>
+                        )}
                       </div>
                     </div>
+
+                    {/* Controller 1 - Always shown */}
+                    {enabledControllers.includes(1) && (
+                      <div style={{ marginBottom: 16, padding: 16, background: theme.background, borderRadius: 12, border: `1px solid ${theme.border}` }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                          <div style={{ fontSize: 14, fontWeight: 600, color: theme.textSecondary }}>1 Controller</div>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                          <div>
+                            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: theme.textMuted, marginBottom: 6 }}>
+                              Half Hour (₹)
+                            </label>
+                            <input
+                              type="number"
+                              placeholder="e.g., 75"
+                              value={controller1HalfHour}
+                              onChange={(e) => setController1HalfHour(e.target.value)}
+                              style={{ width: "100%", padding: "10px 12px", background: theme.cardBackground, border: `1px solid ${theme.border}`, borderRadius: 8, color: theme.textPrimary, fontSize: 14, outline: "none" }}
+                              onFocus={(e) => (e.target.style.borderColor = "#3b82f6")}
+                              onBlur={(e) => (e.target.style.borderColor = theme.border)}
+                            />
+                          </div>
+                          <div>
+                            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: theme.textMuted, marginBottom: 6 }}>
+                              Full Hour (₹)
+                            </label>
+                            <input
+                              type="number"
+                              placeholder="e.g., 150"
+                              value={controller1FullHour}
+                              onChange={(e) => setController1FullHour(e.target.value)}
+                              style={{ width: "100%", padding: "10px 12px", background: theme.cardBackground, border: `1px solid ${theme.border}`, borderRadius: 8, color: theme.textPrimary, fontSize: 14, outline: "none" }}
+                              onFocus={(e) => (e.target.style.borderColor = "#3b82f6")}
+                              onBlur={(e) => (e.target.style.borderColor = theme.border)}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     {/* 2 Controllers */}
-                    <div style={{ marginBottom: 16, padding: 16, background: theme.background, borderRadius: 12, border: `1px solid ${theme.border}` }}>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: theme.textSecondary, marginBottom: 12 }}>2 Controllers</div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                        <div>
-                          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: theme.textMuted, marginBottom: 6 }}>
-                            Half Hour (₹)
-                          </label>
-                          <input
-                            type="number"
-                            placeholder="e.g., 120"
-                            value={controller2HalfHour}
-                            onChange={(e) => setController2HalfHour(e.target.value)}
-                            style={{ width: "100%", padding: "10px 12px", background: theme.cardBackground, border: `1px solid ${theme.border}`, borderRadius: 8, color: theme.textPrimary, fontSize: 14, outline: "none" }}
-                            onFocus={(e) => (e.target.style.borderColor = "#3b82f6")}
-                            onBlur={(e) => (e.target.style.borderColor = theme.border)}
-                          />
+                    {enabledControllers.includes(2) && (
+                      <div style={{ marginBottom: 16, padding: 16, background: theme.background, borderRadius: 12, border: `1px solid ${theme.border}` }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                          <div style={{ fontSize: 14, fontWeight: 600, color: theme.textSecondary }}>2 Controllers</div>
+                          <button
+                            onClick={() => {
+                              setEnabledControllers(enabledControllers.filter(c => c !== 2));
+                              setController2HalfHour("");
+                              setController2FullHour("");
+                            }}
+                            style={{
+                              padding: '4px 10px',
+                              background: '#ef4444',
+                              border: 'none',
+                              borderRadius: 6,
+                              color: 'white',
+                              fontSize: 11,
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Remove
+                          </button>
                         </div>
-                        <div>
-                          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: theme.textMuted, marginBottom: 6 }}>
-                            Full Hour (₹)
-                          </label>
-                          <input
-                            type="number"
-                            placeholder="e.g., 240"
-                            value={controller2FullHour}
-                            onChange={(e) => setController2FullHour(e.target.value)}
-                            style={{ width: "100%", padding: "10px 12px", background: theme.cardBackground, border: `1px solid ${theme.border}`, borderRadius: 8, color: theme.textPrimary, fontSize: 14, outline: "none" }}
-                            onFocus={(e) => (e.target.style.borderColor = "#3b82f6")}
-                            onBlur={(e) => (e.target.style.borderColor = theme.border)}
-                          />
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                          <div>
+                            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: theme.textMuted, marginBottom: 6 }}>
+                              Half Hour (₹)
+                            </label>
+                            <input
+                              type="number"
+                              placeholder="e.g., 120"
+                              value={controller2HalfHour}
+                              onChange={(e) => setController2HalfHour(e.target.value)}
+                              style={{ width: "100%", padding: "10px 12px", background: theme.cardBackground, border: `1px solid ${theme.border}`, borderRadius: 8, color: theme.textPrimary, fontSize: 14, outline: "none" }}
+                              onFocus={(e) => (e.target.style.borderColor = "#3b82f6")}
+                              onBlur={(e) => (e.target.style.borderColor = theme.border)}
+                            />
+                          </div>
+                          <div>
+                            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: theme.textMuted, marginBottom: 6 }}>
+                              Full Hour (₹)
+                            </label>
+                            <input
+                              type="number"
+                              placeholder="e.g., 240"
+                              value={controller2FullHour}
+                              onChange={(e) => setController2FullHour(e.target.value)}
+                              style={{ width: "100%", padding: "10px 12px", background: theme.cardBackground, border: `1px solid ${theme.border}`, borderRadius: 8, color: theme.textPrimary, fontSize: 14, outline: "none" }}
+                              onFocus={(e) => (e.target.style.borderColor = "#3b82f6")}
+                              onBlur={(e) => (e.target.style.borderColor = theme.border)}
+                            />
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    )}
 
                     {/* 3 Controllers */}
-                    <div style={{ marginBottom: 16, padding: 16, background: theme.background, borderRadius: 12, border: `1px solid ${theme.border}` }}>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: theme.textSecondary, marginBottom: 12 }}>3 Controllers</div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                        <div>
-                          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: theme.textMuted, marginBottom: 6 }}>
-                            Half Hour (₹)
-                          </label>
-                          <input
-                            type="number"
-                            placeholder="e.g., 165"
-                            value={controller3HalfHour}
-                            onChange={(e) => setController3HalfHour(e.target.value)}
-                            style={{ width: "100%", padding: "10px 12px", background: theme.cardBackground, border: `1px solid ${theme.border}`, borderRadius: 8, color: theme.textPrimary, fontSize: 14, outline: "none" }}
-                            onFocus={(e) => (e.target.style.borderColor = "#3b82f6")}
-                            onBlur={(e) => (e.target.style.borderColor = theme.border)}
-                          />
+                    {enabledControllers.includes(3) && (
+                      <div style={{ marginBottom: 16, padding: 16, background: theme.background, borderRadius: 12, border: `1px solid ${theme.border}` }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                          <div style={{ fontSize: 14, fontWeight: 600, color: theme.textSecondary }}>3 Controllers</div>
+                          <button
+                            onClick={() => {
+                              setEnabledControllers(enabledControllers.filter(c => c !== 3));
+                              setController3HalfHour("");
+                              setController3FullHour("");
+                            }}
+                            style={{
+                              padding: '4px 10px',
+                              background: '#ef4444',
+                              border: 'none',
+                              borderRadius: 6,
+                              color: 'white',
+                              fontSize: 11,
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Remove
+                          </button>
                         </div>
-                        <div>
-                          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: theme.textMuted, marginBottom: 6 }}>
-                            Full Hour (₹)
-                          </label>
-                          <input
-                            type="number"
-                            placeholder="e.g., 330"
-                            value={controller3FullHour}
-                            onChange={(e) => setController3FullHour(e.target.value)}
-                            style={{ width: "100%", padding: "10px 12px", background: theme.cardBackground, border: `1px solid ${theme.border}`, borderRadius: 8, color: theme.textPrimary, fontSize: 14, outline: "none" }}
-                            onFocus={(e) => (e.target.style.borderColor = "#3b82f6")}
-                            onBlur={(e) => (e.target.style.borderColor = theme.border)}
-                          />
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                          <div>
+                            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: theme.textMuted, marginBottom: 6 }}>
+                              Half Hour (₹)
+                            </label>
+                            <input
+                              type="number"
+                              placeholder="e.g., 165"
+                              value={controller3HalfHour}
+                              onChange={(e) => setController3HalfHour(e.target.value)}
+                              style={{ width: "100%", padding: "10px 12px", background: theme.cardBackground, border: `1px solid ${theme.border}`, borderRadius: 8, color: theme.textPrimary, fontSize: 14, outline: "none" }}
+                              onFocus={(e) => (e.target.style.borderColor = "#3b82f6")}
+                              onBlur={(e) => (e.target.style.borderColor = theme.border)}
+                            />
+                          </div>
+                          <div>
+                            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: theme.textMuted, marginBottom: 6 }}>
+                              Full Hour (₹)
+                            </label>
+                            <input
+                              type="number"
+                              placeholder="e.g., 330"
+                              value={controller3FullHour}
+                              onChange={(e) => setController3FullHour(e.target.value)}
+                              style={{ width: "100%", padding: "10px 12px", background: theme.cardBackground, border: `1px solid ${theme.border}`, borderRadius: 8, color: theme.textPrimary, fontSize: 14, outline: "none" }}
+                              onFocus={(e) => (e.target.style.borderColor = "#3b82f6")}
+                              onBlur={(e) => (e.target.style.borderColor = theme.border)}
+                            />
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    )}
 
                     {/* 4 Controllers */}
-                    <div style={{ marginBottom: 16, padding: 16, background: theme.background, borderRadius: 12, border: `1px solid ${theme.border}` }}>
-                      <div style={{ fontSize: 14, fontWeight: 600, color: theme.textSecondary, marginBottom: 12 }}>4 Controllers (Max)</div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                        <div>
-                          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: theme.textMuted, marginBottom: 6 }}>
-                            Half Hour (₹)
-                          </label>
-                          <input
-                            type="number"
-                            placeholder="e.g., 210"
-                            value={controller4HalfHour}
-                            onChange={(e) => setController4HalfHour(e.target.value)}
-                            style={{ width: "100%", padding: "10px 12px", background: theme.cardBackground, border: `1px solid ${theme.border}`, borderRadius: 8, color: theme.textPrimary, fontSize: 14, outline: "none" }}
-                            onFocus={(e) => (e.target.style.borderColor = "#3b82f6")}
-                            onBlur={(e) => (e.target.style.borderColor = theme.border)}
-                          />
+                    {enabledControllers.includes(4) && (
+                      <div style={{ marginBottom: 16, padding: 16, background: theme.background, borderRadius: 12, border: `1px solid ${theme.border}` }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                          <div style={{ fontSize: 14, fontWeight: 600, color: theme.textSecondary }}>4 Controllers (Max)</div>
+                          <button
+                            onClick={() => {
+                              setEnabledControllers(enabledControllers.filter(c => c !== 4));
+                              setController4HalfHour("");
+                              setController4FullHour("");
+                            }}
+                            style={{
+                              padding: '4px 10px',
+                              background: '#ef4444',
+                              border: 'none',
+                              borderRadius: 6,
+                              color: 'white',
+                              fontSize: 11,
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Remove
+                          </button>
                         </div>
-                        <div>
-                          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: theme.textMuted, marginBottom: 6 }}>
-                            Full Hour (₹)
-                          </label>
-                          <input
-                            type="number"
-                            placeholder="e.g., 420"
-                            value={controller4FullHour}
-                            onChange={(e) => setController4FullHour(e.target.value)}
-                            style={{ width: "100%", padding: "10px 12px", background: theme.cardBackground, border: `1px solid ${theme.border}`, borderRadius: 8, color: theme.textPrimary, fontSize: 14, outline: "none" }}
-                            onFocus={(e) => (e.target.style.borderColor = "#3b82f6")}
-                            onBlur={(e) => (e.target.style.borderColor = theme.border)}
-                          />
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                          <div>
+                            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: theme.textMuted, marginBottom: 6 }}>
+                              Half Hour (₹)
+                            </label>
+                            <input
+                              type="number"
+                              placeholder="e.g., 210"
+                              value={controller4HalfHour}
+                              onChange={(e) => setController4HalfHour(e.target.value)}
+                              style={{ width: "100%", padding: "10px 12px", background: theme.cardBackground, border: `1px solid ${theme.border}`, borderRadius: 8, color: theme.textPrimary, fontSize: 14, outline: "none" }}
+                              onFocus={(e) => (e.target.style.borderColor = "#3b82f6")}
+                              onBlur={(e) => (e.target.style.borderColor = theme.border)}
+                            />
+                          </div>
+                          <div>
+                            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: theme.textMuted, marginBottom: 6 }}>
+                              Full Hour (₹)
+                            </label>
+                            <input
+                              type="number"
+                              placeholder="e.g., 420"
+                              value={controller4FullHour}
+                              onChange={(e) => setController4FullHour(e.target.value)}
+                              style={{ width: "100%", padding: "10px 12px", background: theme.cardBackground, border: `1px solid ${theme.border}`, borderRadius: 8, color: theme.textPrimary, fontSize: 14, outline: "none" }}
+                              onFocus={(e) => (e.target.style.borderColor = "#3b82f6")}
+                              onBlur={(e) => (e.target.style.borderColor = theme.border)}
+                            />
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 </>
               ) : ['PS4'].includes(editingStation.type) ? (
@@ -4869,16 +5910,38 @@ export default function OwnerDashboardPage() {
                       is_active: true,
                     };
 
-                    // Save controller pricing for PS5/Xbox
+                    // Save controller pricing for PS5/Xbox - only save enabled controllers
                     if (['PS5', 'Xbox'].includes(editingStation.type)) {
+                      // Controller 1 - always enabled
                       pricingData.controller_1_half_hour = parseFloat(controller1HalfHour) || 0;
                       pricingData.controller_1_full_hour = parseFloat(controller1FullHour) || 0;
-                      pricingData.controller_2_half_hour = parseFloat(controller2HalfHour) || 0;
-                      pricingData.controller_2_full_hour = parseFloat(controller2FullHour) || 0;
-                      pricingData.controller_3_half_hour = parseFloat(controller3HalfHour) || 0;
-                      pricingData.controller_3_full_hour = parseFloat(controller3FullHour) || 0;
-                      pricingData.controller_4_half_hour = parseFloat(controller4HalfHour) || 0;
-                      pricingData.controller_4_full_hour = parseFloat(controller4FullHour) || 0;
+
+                      // Controller 2 - only if enabled
+                      if (enabledControllers.includes(2)) {
+                        pricingData.controller_2_half_hour = parseFloat(controller2HalfHour) || 0;
+                        pricingData.controller_2_full_hour = parseFloat(controller2FullHour) || 0;
+                      } else {
+                        pricingData.controller_2_half_hour = null;
+                        pricingData.controller_2_full_hour = null;
+                      }
+
+                      // Controller 3 - only if enabled
+                      if (enabledControllers.includes(3)) {
+                        pricingData.controller_3_half_hour = parseFloat(controller3HalfHour) || 0;
+                        pricingData.controller_3_full_hour = parseFloat(controller3FullHour) || 0;
+                      } else {
+                        pricingData.controller_3_half_hour = null;
+                        pricingData.controller_3_full_hour = null;
+                      }
+
+                      // Controller 4 - only if enabled
+                      if (enabledControllers.includes(4)) {
+                        pricingData.controller_4_half_hour = parseFloat(controller4HalfHour) || 0;
+                        pricingData.controller_4_full_hour = parseFloat(controller4FullHour) || 0;
+                      } else {
+                        pricingData.controller_4_half_hour = null;
+                        pricingData.controller_4_full_hour = null;
+                      }
                     } else if (isGamingConsole) {
                       // PS4 - keep old format
                       pricingData.single_player_half_hour_rate = parseFloat(singleHalfHour) || 0;

@@ -18,11 +18,7 @@ export default function Navbar() {
 
   const isLoginPage = pathname === "/login";
   const isOwnerPage = pathname === "/owner";
-
-  // Don't render navbar on owner page
-  if (isOwnerPage) {
-    return null;
-  }
+  const isBookingPage = pathname?.includes("/book");
 
   // Handle scroll effect
   useEffect(() => {
@@ -81,6 +77,11 @@ export default function Navbar() {
       router.push("/login");
     }
   };
+
+  // Don't render navbar on owner page or booking page
+  if (isOwnerPage || isBookingPage) {
+    return null;
+  }
 
   return (
     <>

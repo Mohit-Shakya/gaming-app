@@ -110,7 +110,6 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
   const [consoleData, setConsoleData] = useState<ConsoleSummary[]>([]);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [loading, setLoading] = useState(true);
-  const [autoRefresh, setAutoRefresh] = useState(true);
 
   const loadConsoleStatus = async () => {
     try {
@@ -224,10 +223,19 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
       // Get bookings for this console type
       // NOTE: quantity in booking_items represents number of controllers, not console units
       // Each booking occupies exactly 1 console unit regardless of controller count
+      // Handle console name mapping: "steering_wheel" in DB maps to "steering" in app
       const consoleBookings = activeBookings
-        .filter(b => b.booking_items?.some(item => item.console === id))
+        .filter(b => b.booking_items?.some(item => {
+          // Map steering_wheel to steering for comparison
+          const itemConsole = (item.console as string) === 'steering_wheel' ? 'steering' : item.console;
+          return itemConsole === id;
+        }))
         .map(b => {
-          const controllerCount = b.booking_items?.find(item => item.console === id)?.quantity || 1;
+          const itemConsole = b.booking_items?.find(item => {
+            const mappedConsole = (item.console as string) === 'steering_wheel' ? 'steering' : item.console;
+            return mappedConsole === id;
+          });
+          const controllerCount = itemConsole?.quantity || 1;
           return {
             ...b,
             quantity: 1, // Always 1 console unit per booking
@@ -346,11 +354,10 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
   useEffect(() => {
     loadConsoleStatus();
 
-    if (autoRefresh) {
-      const interval = setInterval(loadConsoleStatus, 10000);
-      return () => clearInterval(interval);
-    }
-  }, [cafeId, autoRefresh]);
+    // Auto-refresh every 1 second
+    const interval = setInterval(loadConsoleStatus, 1000);
+    return () => clearInterval(interval);
+  }, [cafeId]);
 
   if (loading && consoleData.length === 0) {
     return (
@@ -396,7 +403,7 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
               fontFamily: fonts.heading,
               fontSize: "28px",
               color: colors.textPrimary,
-              marginBottom: "8px",
+              marginBottom: "12px",
               display: "flex",
               alignItems: "center",
               gap: "12px",
@@ -404,115 +411,23 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
               <span style={{ animation: "pulse 2s ease-in-out infinite" }}>🔴</span>
               Live Console Status
             </h2>
-            <p style={{ fontSize: "14px", color: colors.textSecondary }}>
-              Last updated: {formatTimeAgo(lastUpdated)}
-            </p>
-          </div>
-
-          {/* Stats Cards */}
-          <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
-            <div style={{
-              background: "rgba(34, 197, 94, 0.15)",
-              border: "2px solid rgba(34, 197, 94, 0.3)",
-              borderRadius: "12px",
-              padding: "12px 20px",
-              textAlign: "center",
-              minWidth: "100px",
-            }}>
-              <div style={{ fontSize: "24px", fontWeight: 700, color: "#22c55e", fontFamily: fonts.heading }}>
-                {totalFree}
-              </div>
-              <div style={{ fontSize: "12px", color: colors.textSecondary, marginTop: "4px" }}>
-                Free
-              </div>
-            </div>
-
-            <div style={{
-              background: "rgba(239, 68, 68, 0.15)",
-              border: "2px solid rgba(239, 68, 68, 0.3)",
-              borderRadius: "12px",
-              padding: "12px 20px",
-              textAlign: "center",
-              minWidth: "100px",
-            }}>
-              <div style={{ fontSize: "24px", fontWeight: 700, color: "#ef4444", fontFamily: fonts.heading }}>
-                {totalBusy}
-              </div>
-              <div style={{ fontSize: "12px", color: colors.textSecondary, marginTop: "4px" }}>
-                Busy
-              </div>
-            </div>
-
-            <div style={{
-              background: "rgba(99, 102, 241, 0.15)",
-              border: "2px solid rgba(99, 102, 241, 0.3)",
-              borderRadius: "12px",
-              padding: "12px 20px",
-              textAlign: "center",
-              minWidth: "100px",
-            }}>
-              <div style={{ fontSize: "24px", fontWeight: 700, color: "#6366f1", fontFamily: fonts.heading }}>
-                {occupancyRate}%
-              </div>
-              <div style={{ fontSize: "12px", color: colors.textSecondary, marginTop: "4px" }}>
-                Occupancy
+            <div style={{ display: "flex", gap: "20px", flexWrap: "wrap", alignItems: "center" }}>
+              <p style={{ fontSize: "14px", color: colors.textSecondary, margin: 0 }}>
+                Total: {totalFree} / {totalConsoles} Available
+              </p>
+              <div style={{ height: "16px", width: "1px", background: colors.border }} />
+              <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
+                {consoleData.map((console) => (
+                  <span key={console.type} style={{ fontSize: "13px", color: colors.textSecondary }}>
+                    {console.icon} {console.label}: <span style={{ color: console.free > 0 ? "#22c55e" : "#ef4444", fontWeight: 600 }}>{console.free}</span>
+                  </span>
+                ))}
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Controls */}
-        <div style={{
-          display: "flex",
-          gap: "12px",
-          alignItems: "center",
-          marginTop: "20px",
-          paddingTop: "20px",
-          borderTop: `1px solid ${colors.border}`,
-        }}>
-          <label style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            cursor: "pointer",
-            padding: "8px 12px",
-            background: colors.darkCard,
-            borderRadius: "8px",
-            border: `1px solid ${colors.border}`,
-          }}>
-            <input
-              type="checkbox"
-              checked={autoRefresh}
-              onChange={(e) => setAutoRefresh(e.target.checked)}
-              style={{ cursor: "pointer", width: "16px", height: "16px" }}
-            />
-            <span style={{ fontSize: "13px", color: colors.textPrimary }}>
-              Auto-refresh (10s)
-            </span>
-          </label>
-
-          <button
-            onClick={loadConsoleStatus}
-            disabled={loading}
-            style={{
-              padding: "8px 16px",
-              background: loading ? colors.border : colors.cyan,
-              border: "none",
-              borderRadius: "8px",
-              color: loading ? colors.textSecondary : colors.dark,
-              fontSize: "13px",
-              cursor: loading ? "not-allowed" : "pointer",
-              fontFamily: fonts.body,
-              fontWeight: 600,
-              transition: "all 0.2s",
-              opacity: loading ? 0.6 : 1,
-            }}
-          >
-            {loading ? "🔄 Refreshing..." : "🔄 Refresh Now"}
-          </button>
-
+          {/* Legend */}
           <div style={{
-            marginLeft: "auto",
             fontSize: "12px",
             color: colors.textSecondary,
             display: "flex",
@@ -650,10 +565,10 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
                           fontWeight: 700,
                           color: colors.textPrimary,
                         }}>
-                          #{status.consoleNumber}
+                          {console.label}-{String(status.consoleNumber).padStart(2, '0')}
                         </div>
                         <div style={{ fontSize: "12px", color: colors.textSecondary, marginTop: "2px" }}>
-                          {console.label}
+                          {console.type.toUpperCase()}
                         </div>
                       </div>
                     </div>
