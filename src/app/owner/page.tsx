@@ -1803,7 +1803,7 @@ export default function OwnerDashboardPage() {
                       <div
                         style={{
                           display: 'grid',
-                          gridTemplateColumns: '150px 120px 110px 100px 100px 100px 100px 110px 110px 110px 90px',
+                          gridTemplateColumns: '150px 120px 110px 90px 100px 100px 100px 100px 110px 110px 110px 90px',
                           gap: 12,
                           padding: '16px 24px',
                           background: theme.hoverBackground,
@@ -1818,6 +1818,9 @@ export default function OwnerDashboardPage() {
                         </div>
                         <div style={{ fontSize: 12, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                           Console
+                        </div>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                          Controllers
                         </div>
                         <div style={{ fontSize: 12, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                           Start Time
@@ -1886,7 +1889,7 @@ export default function OwnerDashboardPage() {
                             key={booking.id}
                             style={{
                               display: 'grid',
-                              gridTemplateColumns: '150px 120px 110px 100px 100px 100px 100px 110px 110px 110px 90px',
+                              gridTemplateColumns: '150px 120px 110px 90px 100px 100px 100px 100px 110px 110px 110px 90px',
                               gap: 12,
                               padding: '18px 24px',
                               borderBottom: index < todaysBookings.length - 1 ? `1px solid ${theme.border}` : 'none',
@@ -1908,6 +1911,16 @@ export default function OwnerDashboardPage() {
                             {/* Console */}
                             <div style={{ display: 'flex', alignItems: 'center', fontSize: 14, color: theme.textSecondary }}>
                               {consoleName}
+                            </div>
+
+                            {/* Controllers */}
+                            <div style={{ display: 'flex', alignItems: 'center', fontSize: 13, color: theme.textSecondary }}>
+                              {(() => {
+                                const items = booking.booking_items || [];
+                                if (items.length === 0) return '-';
+                                const totalControllers = items.reduce((sum, item) => sum + (item.quantity || 1), 0);
+                                return totalControllers;
+                              })()}
                             </div>
 
                             {/* Start Time */}
