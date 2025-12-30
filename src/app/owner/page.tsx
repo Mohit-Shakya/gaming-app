@@ -166,6 +166,12 @@ export default function OwnerDashboardPage() {
     opening_time: '09:00 AM',
     closing_time: '11:00 PM',
   });
+  // Add Station modal state
+  const [showAddStationModal, setShowAddStationModal] = useState(false);
+  const [newStationType, setNewStationType] = useState<string>('ps5');
+  const [newStationCount, setNewStationCount] = useState<number>(1);
+  const [addingStation, setAddingStation] = useState(false);
+
   const [editAmount, setEditAmount] = useState<string>("");
   const [editStatus, setEditStatus] = useState<string>("");
   const [editDate, setEditDate] = useState<string>("");
@@ -1126,6 +1132,42 @@ export default function OwnerDashboardPage() {
       alert('Failed to save settings. Please try again.');
     } finally {
       setSavingSettings(false);
+    }
+  };
+
+  // Handle add new station
+  const handleAddStation = async () => {
+    if (cafes.length === 0 || newStationCount < 1) return;
+
+    setAddingStation(true);
+    try {
+      const columnName = `${newStationType}_count`;
+      const currentCount = (cafes[0] as any)[columnName] || 0;
+      const newCount = currentCount + newStationCount;
+
+      const { error } = await supabase
+        .from("cafes")
+        .update({ [columnName]: newCount })
+        .eq("id", cafes[0].id);
+
+      if (error) throw error;
+
+      // Update local state
+      setCafes(prev => prev.map((c, i) => i === 0 ? {
+        ...c,
+        [columnName]: newCount,
+      } : c));
+
+      setShowAddStationModal(false);
+      alert(`Successfully added ${newStationCount} ${newStationType.toUpperCase()} station(s)!`);
+
+      // Trigger a refresh to update the stations list
+      setRefreshTrigger(prev => prev + 1);
+    } catch (error) {
+      console.error('Error adding station:', error);
+      alert('Failed to add station. Please try again.');
+    } finally {
+      setAddingStation(false);
     }
   };
 
@@ -4532,6 +4574,42 @@ export default function OwnerDashboardPage() {
                     Configure pricing for all your gaming stations
                   </p>
                 </div>
+
+                {/* Add New Station Button */}
+                <button
+                  onClick={() => {
+                    setNewStationType('ps5');
+                    setNewStationCount(1);
+                    setShowAddStationModal(true);
+                  }}
+                  style={{
+                    padding: '12px 24px',
+                    background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                    border: 'none',
+                    borderRadius: 12,
+                    color: '#ffffff',
+                    fontSize: 14,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    transition: 'all 0.2s',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'scale(1.05)';
+                    e.currentTarget.style.boxShadow = '0 8px 20px rgba(59, 130, 246, 0.4)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'scale(1)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                >
+                  <span style={{ fontSize: 18 }}>+</span>
+                  Add New Station
+                </button>
               </div>
 
               {/* Search and Filters */}
@@ -6529,6 +6607,205 @@ export default function OwnerDashboardPage() {
                 }}
               >
                 {savingPricing ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add New Station Modal */}
+      {showAddStationModal && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(0, 0, 0, 0.7)",
+            backdropFilter: "blur(4px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+            padding: "20px",
+          }}
+          onClick={() => setShowAddStationModal(false)}
+        >
+          <div
+            style={{
+              background: theme.cardBackground,
+              borderRadius: 24,
+              border: `1px solid ${theme.border}`,
+              maxWidth: 500,
+              width: "100%",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div style={{
+              padding: "28px 32px",
+              borderBottom: `1px solid ${theme.border}`,
+              background: "linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(37, 99, 235, 0.05))",
+            }}>
+              <h2 style={{
+                fontFamily: fonts.heading,
+                fontSize: 26,
+                margin: "0 0 8px 0",
+                color: theme.textPrimary,
+                fontWeight: 700,
+              }}>
+                ➕ Add New Station
+              </h2>
+              <p style={{
+                fontSize: 14,
+                color: theme.textSecondary,
+                margin: 0,
+                fontWeight: 500,
+              }}>
+                Add gaming stations to your café
+              </p>
+            </div>
+
+            {/* Content */}
+            <div style={{
+              padding: "32px",
+              display: "flex",
+              flexDirection: "column",
+              gap: 24,
+            }}>
+              {/* Station Type */}
+              <div>
+                <label style={{
+                  display: "block",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: theme.textSecondary,
+                  marginBottom: 10,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.5px",
+                }}>
+                  Station Type
+                </label>
+                <select
+                  value={newStationType}
+                  onChange={(e) => setNewStationType(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "14px 16px",
+                    background: "rgba(15, 23, 42, 0.8)",
+                    border: `1px solid ${theme.border}`,
+                    borderRadius: 12,
+                    color: theme.textPrimary,
+                    fontSize: 15,
+                    outline: "none",
+                    cursor: "pointer",
+                  }}
+                >
+                  <option value="ps5">PlayStation 5 (PS5)</option>
+                  <option value="ps4">PlayStation 4 (PS4)</option>
+                  <option value="xbox">Xbox</option>
+                  <option value="pc">PC Gaming</option>
+                  <option value="pool">Pool Table</option>
+                  <option value="snooker">Snooker Table</option>
+                  <option value="arcade">Arcade Machine</option>
+                  <option value="vr">VR Station</option>
+                  <option value="steering_wheel">Racing Wheel</option>
+                </select>
+              </div>
+
+              {/* Number of Stations */}
+              <div>
+                <label style={{
+                  display: "block",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: theme.textSecondary,
+                  marginBottom: 10,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.5px",
+                }}>
+                  Number of Stations
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="50"
+                  value={newStationCount}
+                  onChange={(e) => setNewStationCount(parseInt(e.target.value) || 1)}
+                  style={{
+                    width: "100%",
+                    padding: "14px 16px",
+                    background: "rgba(15, 23, 42, 0.8)",
+                    border: `1px solid ${theme.border}`,
+                    borderRadius: 12,
+                    color: theme.textPrimary,
+                    fontSize: 15,
+                    outline: "none",
+                  }}
+                />
+                <p style={{ fontSize: 12, color: theme.textMuted, margin: "6px 0 0 0" }}>
+                  How many {newStationType.toUpperCase()} stations do you want to add?
+                </p>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div style={{
+              padding: "20px 32px",
+              borderTop: `1px solid ${theme.border}`,
+              display: "flex",
+              gap: 12,
+              justifyContent: "flex-end",
+            }}>
+              <button
+                onClick={() => setShowAddStationModal(false)}
+                disabled={addingStation}
+                style={{
+                  padding: "12px 24px",
+                  background: "transparent",
+                  border: `1px solid ${theme.border}`,
+                  borderRadius: 12,
+                  color: theme.textSecondary,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: addingStation ? "not-allowed" : "pointer",
+                  opacity: addingStation ? 0.5 : 1,
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddStation}
+                disabled={addingStation || newStationCount < 1}
+                style={{
+                  padding: "12px 24px",
+                  background: addingStation || newStationCount < 1
+                    ? "rgba(100, 116, 139, 0.3)"
+                    : "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
+                  border: "none",
+                  borderRadius: 12,
+                  color: "#ffffff",
+                  fontSize: 14,
+                  fontWeight: 700,
+                  cursor: addingStation || newStationCount < 1 ? "not-allowed" : "pointer",
+                  transition: "all 0.2s",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.5px",
+                }}
+                onMouseEnter={(e) => {
+                  if (!addingStation && newStationCount >= 1) {
+                    e.currentTarget.style.transform = "scale(1.05)";
+                    e.currentTarget.style.boxShadow = "0 8px 20px rgba(59, 130, 246, 0.4)";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "scale(1)";
+                  e.currentTarget.style.boxShadow = "none";
+                }}
+              >
+                {addingStation ? "Adding..." : `Add ${newStationCount} Station${newStationCount > 1 ? 's' : ''}`}
               </button>
             </div>
           </div>
