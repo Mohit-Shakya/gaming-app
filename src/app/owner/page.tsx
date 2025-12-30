@@ -3091,6 +3091,9 @@ export default function OwnerDashboardPage() {
                             Console
                           </th>
                           <th style={{ padding: "14px 16px", textAlign: "left", color: theme.textMuted, fontSize: 11, textTransform: "uppercase", fontWeight: 600 }}>
+                            Controllers
+                          </th>
+                          <th style={{ padding: "14px 16px", textAlign: "left", color: theme.textMuted, fontSize: 11, textTransform: "uppercase", fontWeight: 600 }}>
                             Duration
                           </th>
                           <th style={{ padding: "14px 16px", textAlign: "left", color: theme.textMuted, fontSize: 11, textTransform: "uppercase", fontWeight: 600 }}>
@@ -3157,11 +3160,23 @@ export default function OwnerDashboardPage() {
 
                                     const consoles = items.map((item) => {
                                       const consoleName = item.console || "Unknown";
-                                      const controllers = item.quantity || 1;
-                                      return controllers > 1 ? `${consoleName} (${controllers} controllers)` : consoleName;
+                                      return consoleName;
                                     });
 
                                     return consoles.join(", ");
+                                  })()}
+                                </div>
+                              </td>
+
+                              {/* Controllers */}
+                              <td style={{ padding: "14px 16px" }}>
+                                <div style={{ fontSize: 13, color: theme.textSecondary, fontWeight: 500 }}>
+                                  {(() => {
+                                    const items = booking.booking_items || [];
+                                    if (items.length === 0) return "-";
+
+                                    const totalControllers = items.reduce((sum, item) => sum + (item.quantity || 1), 0);
+                                    return totalControllers;
                                   })()}
                                 </div>
                               </td>
