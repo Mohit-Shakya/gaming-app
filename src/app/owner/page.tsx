@@ -172,6 +172,13 @@ export default function OwnerDashboardPage() {
   const [newStationCount, setNewStationCount] = useState<number>(1);
   const [addingStation, setAddingStation] = useState(false);
 
+  // Delete Station state
+  const [stationToDelete, setStationToDelete] = useState<{name: string, type: string} | null>(null);
+  const [deletingStation, setDeletingStation] = useState(false);
+
+  // Station power status (tracks which stations are powered off)
+  const [poweredOffStations, setPoweredOffStations] = useState<Set<string>>(new Set());
+
   const [editAmount, setEditAmount] = useState<string>("");
   const [editStatus, setEditStatus] = useState<string>("");
   const [editDate, setEditDate] = useState<string>("");
@@ -1168,6 +1175,63 @@ export default function OwnerDashboardPage() {
       alert('Failed to add station. Please try again.');
     } finally {
       setAddingStation(false);
+    }
+  };
+
+  // Handle toggle station power
+  const handleTogglePower = (stationName: string) => {
+    setPoweredOffStations(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(stationName)) {
+        newSet.delete(stationName);
+      } else {
+        newSet.add(stationName);
+      }
+      return newSet;
+    });
+  };
+
+  // Handle delete station
+  const handleDeleteStation = async () => {
+    if (!stationToDelete || cafes.length === 0) return;
+
+    setDeletingStation(true);
+    try {
+      // Map station type to column name (e.g., "PS5" -> "ps5_count")
+      const columnName = `${stationToDelete.type.toLowerCase().replace(/\s+/g, '_')}_count`;
+      const currentCount = (cafes[0] as any)[columnName] || 0;
+
+      if (currentCount <= 0) {
+        alert('No stations to delete');
+        setStationToDelete(null);
+        return;
+      }
+
+      const newCount = currentCount - 1;
+
+      const { error } = await supabase
+        .from("cafes")
+        .update({ [columnName]: newCount })
+        .eq("id", cafes[0].id);
+
+      if (error) throw error;
+
+      // Update local state
+      setCafes(prev => prev.map((c, i) => i === 0 ? {
+        ...c,
+        [columnName]: newCount,
+      } : c));
+
+      setStationToDelete(null);
+      alert(`Successfully deleted ${stationToDelete.name}!`);
+
+      // Trigger a refresh to update the stations list
+      setRefreshTrigger(prev => prev + 1);
+    } catch (error) {
+      console.error('Error deleting station:', error);
+      alert('Failed to delete station. Please try again.');
+    } finally {
+      setDeletingStation(false);
     }
   };
 
@@ -4804,169 +4868,178 @@ export default function OwnerDashboardPage() {
                         );
                       }
 
-                      return allStations.map((station, index) => (
-                        <tr key={station.id} style={{ borderBottom: index < allStations.length - 1 ? `1px solid ${theme.border}` : 'none' }}>
-                          <td style={{ padding: '16px 20px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                              <div
-                                style={{
-                                  width: 40,
-                                  height: 40,
-                                  borderRadius: 10,
-                                  background: station.bgColor,
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  fontSize: 20,
-                                }}
-                              >
-                                {station.icon}
+                      return allStations.map((station, index) => {
+                        const isPoweredOff = poweredOffStations.has(station.name);
+                        const stationStatus = isPoweredOff ? 'Inactive' : 'Active';
+
+                        return (
+                          <tr key={station.id} style={{ borderBottom: index < allStations.length - 1 ? `1px solid ${theme.border}` : 'none' }}>
+                            <td style={{ padding: '16px 20px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                <div
+                                  style={{
+                                    width: 40,
+                                    height: 40,
+                                    borderRadius: 10,
+                                    background: station.bgColor,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: 20,
+                                    opacity: isPoweredOff ? 0.4 : 1,
+                                  }}
+                                >
+                                  {station.icon}
+                                </div>
+                                <span style={{ fontSize: 15, fontWeight: 600, color: theme.textPrimary, opacity: isPoweredOff ? 0.5 : 1 }}>{station.name}</span>
                               </div>
-                              <span style={{ fontSize: 15, fontWeight: 600, color: theme.textPrimary }}>{station.name}</span>
-                            </div>
-                          </td>
-                          <td style={{ padding: '16px 20px' }}>
-                            <span
-                              style={{
-                                display: 'inline-block',
-                                padding: '6px 12px',
-                                borderRadius: 6,
-                                background: station.bgColor,
-                                color: station.color,
-                                fontSize: 12,
-                                fontWeight: 600,
-                              }}
-                            >
-                              {station.type}
-                            </span>
-                          </td>
-                          <td style={{ padding: '16px 20px' }}>
-                            <div style={{ fontSize: 13, color: theme.textSecondary, lineHeight: 1.6 }}>
-                              {(() => {
-                                const savedPricing = stationPricing[station.name];
+                            </td>
+                            <td style={{ padding: '16px 20px' }}>
+                              <span
+                                style={{
+                                  display: 'inline-block',
+                                  padding: '6px 12px',
+                                  borderRadius: 6,
+                                  background: station.bgColor,
+                                  color: station.color,
+                                  fontSize: 12,
+                                  fontWeight: 600,
+                                  opacity: isPoweredOff ? 0.5 : 1,
+                                }}
+                              >
+                                {station.type}
+                              </span>
+                            </td>
+                            <td style={{ padding: '16px 20px' }}>
+                              <div style={{ fontSize: 13, color: theme.textSecondary, lineHeight: 1.6, opacity: isPoweredOff ? 0.5 : 1 }}>
+                                {(() => {
+                                  const savedPricing = stationPricing[station.name];
 
-                                // PS5/Xbox - Show base pricing only (half hour and full hour)
-                                if (['PS5', 'Xbox'].includes(station.type)) {
-                                  const c1Half = savedPricing?.controller_1_half_hour || 75;
-                                  const c1Full = savedPricing?.controller_1_full_hour || 150;
+                                  // PS5/Xbox - Show base pricing only (half hour and full hour)
+                                  if (['PS5', 'Xbox'].includes(station.type)) {
+                                    const c1Half = savedPricing?.controller_1_half_hour || 75;
+                                    const c1Full = savedPricing?.controller_1_full_hour || 150;
 
-                                  return (
-                                    <div>
-                                      <span style={{ fontWeight: 600 }}>
-                                        ₹{c1Half}/30m · ₹{c1Full}/hr
-                                      </span>
-                                    </div>
-                                  );
-                                } else if (['PS4'].includes(station.type)) {
-                                  // PS4 - Show single/multi
-                                  const singleHalf = savedPricing?.single_player_half_hour_rate || 75;
-                                  const singleFull = savedPricing?.single_player_rate || 150;
-                                  const multiHalf = savedPricing?.multi_player_half_hour_rate || 150;
-                                  const multiFull = savedPricing?.multi_player_rate || 300;
-
-                                  return (
-                                    <>
-                                      <div style={{ marginBottom: 4 }}>
-                                        <span style={{ color: theme.textMuted, fontSize: 11 }}>Single: </span>
-                                        <span style={{ fontWeight: 600 }}>₹{singleHalf}/30m · ₹{singleFull}/hr</span>
-                                      </div>
+                                    return (
                                       <div>
-                                        <span style={{ color: theme.textMuted, fontSize: 11 }}>Multi: </span>
-                                        <span style={{ fontWeight: 600 }}>₹{multiHalf}/30m · ₹{multiFull}/hr</span>
+                                        <span style={{ fontWeight: 600 }}>
+                                          ₹{c1Half}/30m · ₹{c1Full}/hr
+                                        </span>
                                       </div>
-                                    </>
-                                  );
-                                } else {
-                                  const defaults: Record<string, {half: number, full: number}> = {
-                                    'PC': {half: 50, full: 100},
-                                    'VR': {half: 100, full: 200},
-                                    'Steering': {half: 75, full: 150},
-                                    'Pool': {half: 40, full: 80},
-                                    'Snooker': {half: 40, full: 80},
-                                    'Arcade': {half: 40, full: 80},
-                                  };
-                                  const stationDefaults = defaults[station.type] || {half: 40, full: 80};
-                                  const halfRate = savedPricing?.half_hour_rate || stationDefaults.half;
-                                  const fullRate = savedPricing?.hourly_rate || stationDefaults.full;
+                                    );
+                                  } else if (['PS4'].includes(station.type)) {
+                                    // PS4 - Show single/multi
+                                    const singleHalf = savedPricing?.single_player_half_hour_rate || 75;
+                                    const singleFull = savedPricing?.single_player_rate || 150;
+                                    const multiHalf = savedPricing?.multi_player_half_hour_rate || 150;
+                                    const multiFull = savedPricing?.multi_player_rate || 300;
 
-                                  return (
-                                    <div>
-                                      <span style={{ fontWeight: 600 }}>
-                                        ₹{halfRate}/30m · ₹{fullRate}/hr
-                                      </span>
-                                    </div>
-                                  );
-                                }
-                              })()}
-                            </div>
-                          </td>
-                          <td style={{ padding: '16px 20px', fontSize: 14, color: theme.textSecondary }}>
-                            {station.sessions}
-                          </td>
-                          <td style={{ padding: '16px 20px' }}>
-                            <span
-                              style={{
-                                display: 'inline-block',
-                                padding: '6px 12px',
-                                borderRadius: 6,
-                                background: station.status === 'Active' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-                                color: station.status === 'Active' ? '#10b981' : '#ef4444',
-                                fontSize: 12,
-                                fontWeight: 600,
-                              }}
-                            >
-                              {station.status}
-                            </span>
-                          </td>
-                          <td style={{ padding: '16px 20px' }}>
-                            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                              <button
+                                    return (
+                                      <>
+                                        <div style={{ marginBottom: 4 }}>
+                                          <span style={{ color: theme.textMuted, fontSize: 11 }}>Single: </span>
+                                          <span style={{ fontWeight: 600 }}>₹{singleHalf}/30m · ₹{singleFull}/hr</span>
+                                        </div>
+                                        <div>
+                                          <span style={{ color: theme.textMuted, fontSize: 11 }}>Multi: </span>
+                                          <span style={{ fontWeight: 600 }}>₹{multiHalf}/30m · ₹{multiFull}/hr</span>
+                                        </div>
+                                      </>
+                                    );
+                                  } else {
+                                    const defaults: Record<string, {half: number, full: number}> = {
+                                      'PC': {half: 50, full: 100},
+                                      'VR': {half: 100, full: 200},
+                                      'Steering': {half: 75, full: 150},
+                                      'Pool': {half: 40, full: 80},
+                                      'Snooker': {half: 40, full: 80},
+                                      'Arcade': {half: 40, full: 80},
+                                    };
+                                    const stationDefaults = defaults[station.type] || {half: 40, full: 80};
+                                    const halfRate = savedPricing?.half_hour_rate || stationDefaults.half;
+                                    const fullRate = savedPricing?.hourly_rate || stationDefaults.full;
+
+                                    return (
+                                      <div>
+                                        <span style={{ fontWeight: 600 }}>
+                                          ₹{halfRate}/30m · ₹{fullRate}/hr
+                                        </span>
+                                      </div>
+                                    );
+                                  }
+                                })()}
+                              </div>
+                            </td>
+                            <td style={{ padding: '16px 20px', fontSize: 14, color: theme.textSecondary, opacity: isPoweredOff ? 0.5 : 1 }}>
+                              {station.sessions}
+                            </td>
+                            <td style={{ padding: '16px 20px' }}>
+                              <span
                                 style={{
-                                  padding: '8px',
-                                  background: 'transparent',
-                                  border: `1px solid ${theme.border}`,
+                                  display: 'inline-block',
+                                  padding: '6px 12px',
                                   borderRadius: 6,
-                                  color: theme.textSecondary,
-                                  cursor: 'pointer',
-                                  fontSize: 16,
+                                  background: stationStatus === 'Active' ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                                  color: stationStatus === 'Active' ? '#10b981' : '#ef4444',
+                                  fontSize: 12,
+                                  fontWeight: 600,
                                 }}
-                                title="Edit"
-                                onClick={() => setEditingStation(station)}
                               >
-                                ✏️
-                              </button>
-                              <button
-                                style={{
-                                  padding: '8px',
-                                  background: 'transparent',
-                                  border: `1px solid ${theme.border}`,
-                                  borderRadius: 6,
-                                  color: theme.textSecondary,
-                                  cursor: 'pointer',
-                                  fontSize: 16,
-                                }}
-                                title="Power"
-                              >
-                                🔌
-                              </button>
-                              <button
-                                style={{
-                                  padding: '8px',
-                                  background: 'transparent',
-                                  border: `1px solid ${theme.border}`,
-                                  borderRadius: 6,
-                                  color: '#ef4444',
-                                  cursor: 'pointer',
-                                  fontSize: 16,
-                                }}
-                                title="Delete"
-                              >
-                                🗑️
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ));
+                                {stationStatus}
+                              </span>
+                            </td>
+                            <td style={{ padding: '16px 20px' }}>
+                              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                                <button
+                                  style={{
+                                    padding: '8px',
+                                    background: 'transparent',
+                                    border: `1px solid ${theme.border}`,
+                                    borderRadius: 6,
+                                    color: theme.textSecondary,
+                                    cursor: 'pointer',
+                                    fontSize: 16,
+                                  }}
+                                  title="Edit"
+                                  onClick={() => setEditingStation(station)}
+                                >
+                                  ✏️
+                                </button>
+                                <button
+                                  style={{
+                                    padding: '8px',
+                                    background: 'transparent',
+                                    border: `1px solid ${theme.border}`,
+                                    borderRadius: 6,
+                                    color: isPoweredOff ? '#ef4444' : '#10b981',
+                                    cursor: 'pointer',
+                                    fontSize: 16,
+                                  }}
+                                  title={isPoweredOff ? 'Power On' : 'Power Off'}
+                                  onClick={() => handleTogglePower(station.name)}
+                                >
+                                  🔌
+                                </button>
+                                <button
+                                  style={{
+                                    padding: '8px',
+                                    background: 'transparent',
+                                    border: `1px solid ${theme.border}`,
+                                    borderRadius: 6,
+                                    color: '#ef4444',
+                                    cursor: 'pointer',
+                                    fontSize: 16,
+                                  }}
+                                  title="Delete"
+                                  onClick={() => setStationToDelete({ name: station.name, type: station.type })}
+                                >
+                                  🗑️
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      });
                     })()}
                   </tbody>
                 </table>
@@ -6806,6 +6879,145 @@ export default function OwnerDashboardPage() {
                 }}
               >
                 {addingStation ? "Adding..." : `Add ${newStationCount} Station${newStationCount > 1 ? 's' : ''}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Station Confirmation Modal */}
+      {stationToDelete && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(0, 0, 0, 0.7)",
+            backdropFilter: "blur(8px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 10000,
+            padding: "20px",
+          }}
+          onClick={() => !deletingStation && setStationToDelete(null)}
+        >
+          <div
+            style={{
+              background: theme.cardBackground,
+              borderRadius: 20,
+              border: `1px solid ${theme.border}`,
+              maxWidth: "500px",
+              width: "100%",
+              boxShadow: "0 25px 50px rgba(0, 0, 0, 0.3)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div style={{
+              padding: "24px 32px",
+              borderBottom: `1px solid ${theme.border}`,
+            }}>
+              <h2 style={{
+                margin: 0,
+                fontSize: 20,
+                fontWeight: 700,
+                color: theme.textPrimary,
+              }}>
+                Delete Station
+              </h2>
+              <p style={{
+                margin: "8px 0 0 0",
+                fontSize: 14,
+                color: theme.textSecondary,
+              }}>
+                Are you sure you want to delete this station?
+              </p>
+            </div>
+
+            {/* Body */}
+            <div style={{ padding: "24px 32px" }}>
+              <div style={{
+                padding: "16px",
+                borderRadius: 12,
+                background: "rgba(239, 68, 68, 0.1)",
+                border: "1px solid rgba(239, 68, 68, 0.3)",
+              }}>
+                <p style={{
+                  margin: 0,
+                  fontSize: 14,
+                  color: theme.textPrimary,
+                  fontWeight: 600,
+                }}>
+                  {stationToDelete.name}
+                </p>
+                <p style={{
+                  margin: "8px 0 0 0",
+                  fontSize: 13,
+                  color: theme.textSecondary,
+                }}>
+                  This will permanently remove this {stationToDelete.type} station from your café. This action cannot be undone.
+                </p>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div style={{
+              padding: "20px 32px",
+              borderTop: `1px solid ${theme.border}`,
+              display: "flex",
+              gap: 12,
+              justifyContent: "flex-end",
+            }}>
+              <button
+                onClick={() => setStationToDelete(null)}
+                disabled={deletingStation}
+                style={{
+                  padding: "12px 24px",
+                  background: "transparent",
+                  border: `1px solid ${theme.border}`,
+                  borderRadius: 12,
+                  color: theme.textSecondary,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: deletingStation ? "not-allowed" : "pointer",
+                  opacity: deletingStation ? 0.5 : 1,
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteStation}
+                disabled={deletingStation}
+                style={{
+                  padding: "12px 24px",
+                  background: deletingStation
+                    ? "rgba(100, 116, 139, 0.3)"
+                    : "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
+                  border: "none",
+                  borderRadius: 12,
+                  color: "#ffffff",
+                  fontSize: 14,
+                  fontWeight: 700,
+                  cursor: deletingStation ? "not-allowed" : "pointer",
+                  transition: "all 0.2s",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.5px",
+                }}
+                onMouseEnter={(e) => {
+                  if (!deletingStation) {
+                    e.currentTarget.style.transform = "scale(1.05)";
+                    e.currentTarget.style.boxShadow = "0 8px 20px rgba(239, 68, 68, 0.4)";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "scale(1)";
+                  e.currentTarget.style.boxShadow = "none";
+                }}
+              >
+                {deletingStation ? "Deleting..." : "Delete Station"}
               </button>
             </div>
           </div>
