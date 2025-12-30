@@ -5606,6 +5606,64 @@ export default function OwnerDashboardPage() {
                       />
                     </div>
 
+                    {/* Save Button for Café Information */}
+                    <button
+                      onClick={handleSaveSettings}
+                      disabled={!settingsChanged || savingSettings}
+                      style={{
+                        padding: "14px 20px",
+                        background: settingsChanged ? "linear-gradient(135deg, #10b981 0%, #059669 100%)" : "rgba(100, 116, 139, 0.3)",
+                        border: "none",
+                        borderRadius: 10,
+                        color: settingsChanged ? "#ffffff" : theme.textMuted,
+                        fontSize: 14,
+                        fontWeight: 600,
+                        cursor: settingsChanged && !savingSettings ? "pointer" : "not-allowed",
+                        transition: "all 0.2s",
+                        opacity: settingsChanged ? 1 : 0.5,
+                        alignSelf: "flex-end",
+                      }}
+                    >
+                      {savingSettings ? "Saving..." : "Save Changes"}
+                    </button>
+                  </div>
+                )}
+
+                {cafes.length === 0 && (
+                  <div style={{ textAlign: "center", padding: "40px 20px" }}>
+                    <div style={{ fontSize: 48, marginBottom: 16, opacity: 0.3 }}>🏢</div>
+                    <p style={{ fontSize: 16, color: theme.textSecondary }}>
+                      No café information available
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Operational Hours Card */}
+              {cafes.length > 0 && (
+                <div
+                  style={{
+                    background: theme.cardBackground,
+                    borderRadius: 16,
+                    border: `1px solid ${theme.border}`,
+                    padding: "32px",
+                  }}
+                >
+                  <div style={{ marginBottom: 24 }}>
+                    <h2 style={{
+                      fontSize: 18,
+                      margin: "0 0 4px 0",
+                      color: theme.textPrimary,
+                      fontWeight: 700,
+                    }}>
+                      Operational Hours
+                    </h2>
+                    <p style={{ fontSize: 13, color: theme.textSecondary, margin: 0 }}>
+                      Set your café's operating hours
+                    </p>
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
                     {/* Operational Hours Section */}
                     <div>
                       <h3 style={{
@@ -5708,6 +5766,55 @@ export default function OwnerDashboardPage() {
                       </div>
                     </div>
 
+                    {/* Save Button for Operational Hours */}
+                    <button
+                      onClick={handleSaveSettings}
+                      disabled={!settingsChanged || savingSettings}
+                      style={{
+                        padding: "14px 20px",
+                        background: settingsChanged ? "linear-gradient(135deg, #10b981 0%, #059669 100%)" : "rgba(100, 116, 139, 0.3)",
+                        border: "none",
+                        borderRadius: 10,
+                        color: settingsChanged ? "#ffffff" : theme.textMuted,
+                        fontSize: 14,
+                        fontWeight: 600,
+                        cursor: settingsChanged && !savingSettings ? "pointer" : "not-allowed",
+                        transition: "all 0.2s",
+                        opacity: settingsChanged ? 1 : 0.5,
+                        alignSelf: "flex-end",
+                      }}
+                    >
+                      {savingSettings ? "Saving..." : "Save Changes"}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Social Links & Pricing Card */}
+              {cafes.length > 0 && (
+                <div
+                  style={{
+                    background: theme.cardBackground,
+                    borderRadius: 16,
+                    border: `1px solid ${theme.border}`,
+                    padding: "32px",
+                  }}
+                >
+                  <div style={{ marginBottom: 24 }}>
+                    <h2 style={{
+                      fontSize: 18,
+                      margin: "0 0 4px 0",
+                      color: theme.textPrimary,
+                      fontWeight: 700,
+                    }}>
+                      Social Links & Pricing
+                    </h2>
+                    <p style={{ fontSize: 13, color: theme.textSecondary, margin: 0 }}>
+                      Add your social media links and pricing information
+                    </p>
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
                     {/* Social Links Section */}
                     <div>
                       <h3 style={{
@@ -5869,6 +5976,55 @@ export default function OwnerDashboardPage() {
                       </div>
                     </div>
 
+                    {/* Save Button for Social Links & Pricing */}
+                    <button
+                      onClick={handleSaveSettings}
+                      disabled={!settingsChanged || savingSettings}
+                      style={{
+                        padding: "14px 20px",
+                        background: settingsChanged ? "linear-gradient(135deg, #10b981 0%, #059669 100%)" : "rgba(100, 116, 139, 0.3)",
+                        border: "none",
+                        borderRadius: 10,
+                        color: settingsChanged ? "#ffffff" : theme.textMuted,
+                        fontSize: 14,
+                        fontWeight: 600,
+                        cursor: settingsChanged && !savingSettings ? "pointer" : "not-allowed",
+                        transition: "all 0.2s",
+                        opacity: settingsChanged ? 1 : 0.5,
+                        alignSelf: "flex-end",
+                      }}
+                    >
+                      {savingSettings ? "Saving..." : "Save Changes"}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Device Specifications Card */}
+              {cafes.length > 0 && (
+                <div
+                  style={{
+                    background: theme.cardBackground,
+                    borderRadius: 16,
+                    border: `1px solid ${theme.border}`,
+                    padding: "32px",
+                  }}
+                >
+                  <div style={{ marginBottom: 24 }}>
+                    <h2 style={{
+                      fontSize: 18,
+                      margin: "0 0 4px 0",
+                      color: theme.textPrimary,
+                      fontWeight: 700,
+                    }}>
+                      Device Specifications
+                    </h2>
+                    <p style={{ fontSize: 13, color: theme.textSecondary, margin: 0 }}>
+                      Add details about your gaming equipment
+                    </p>
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
                     {/* Device Specifications Section */}
                     <div>
                       <h3 style={{
@@ -6102,21 +6258,57 @@ export default function OwnerDashboardPage() {
                       </div>
                     </div>
 
-                    {/* Photos Section */}
-                    <div>
-                      <h3 style={{
-                        fontSize: 16,
-                        fontWeight: 700,
-                        color: theme.textPrimary,
-                        margin: "0 0 16px 0",
-                        textTransform: "uppercase",
-                        letterSpacing: "0.5px",
-                      }}>
-                        Photos
-                      </h3>
+                    {/* Save Button for Device Specifications */}
+                    <button
+                      onClick={handleSaveSettings}
+                      disabled={!settingsChanged || savingSettings}
+                      style={{
+                        padding: "14px 20px",
+                        background: settingsChanged ? "linear-gradient(135deg, #10b981 0%, #059669 100%)" : "rgba(100, 116, 139, 0.3)",
+                        border: "none",
+                        borderRadius: 10,
+                        color: settingsChanged ? "#ffffff" : theme.textMuted,
+                        fontSize: 14,
+                        fontWeight: 600,
+                        cursor: settingsChanged && !savingSettings ? "pointer" : "not-allowed",
+                        transition: "all 0.2s",
+                        opacity: settingsChanged ? 1 : 0.5,
+                        alignSelf: "flex-end",
+                      }}
+                    >
+                      {savingSettings ? "Saving..." : "Save Changes"}
+                    </button>
+                  </div>
+                </div>
+              )}
 
-                      {/* Profile Photo */}
-                      <div style={{ marginBottom: 24 }}>
+              {/* Photos Card */}
+              {cafes.length > 0 && (
+                <div
+                  style={{
+                    background: theme.cardBackground,
+                    borderRadius: 16,
+                    border: `1px solid ${theme.border}`,
+                    padding: "32px",
+                  }}
+                >
+                  <div style={{ marginBottom: 24 }}>
+                    <h2 style={{
+                      fontSize: 18,
+                      margin: "0 0 4px 0",
+                      color: theme.textPrimary,
+                      fontWeight: 700,
+                    }}>
+                      Photos
+                    </h2>
+                    <p style={{ fontSize: 13, color: theme.textSecondary, margin: 0 }}>
+                      Upload your café's profile photo and gallery images
+                    </p>
+                  </div>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+                    {/* Profile Photo */}
+                    <div style={{ marginBottom: 24 }}>
                         <label style={{
                           display: "block",
                           fontSize: 13,
@@ -6319,51 +6511,30 @@ export default function OwnerDashboardPage() {
                           Add up to 10 photos to showcase your gaming café
                         </p>
                       </div>
-                    </div>
 
-                    {/* Save Button */}
+                    {/* Save Button for Photos */}
                     <button
                       onClick={handleSaveSettings}
                       disabled={!settingsChanged || savingSettings}
                       style={{
-                        padding: "16px 24px",
-                        background: settingsChanged ? "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)" : "rgba(100, 116, 139, 0.3)",
+                        padding: "14px 20px",
+                        background: settingsChanged ? "linear-gradient(135deg, #10b981 0%, #059669 100%)" : "rgba(100, 116, 139, 0.3)",
                         border: "none",
-                        borderRadius: 12,
+                        borderRadius: 10,
                         color: settingsChanged ? "#ffffff" : theme.textMuted,
-                        fontSize: 15,
-                        fontWeight: 700,
+                        fontSize: 14,
+                        fontWeight: 600,
                         cursor: settingsChanged && !savingSettings ? "pointer" : "not-allowed",
                         transition: "all 0.2s",
-                        textTransform: "uppercase",
-                        letterSpacing: "0.5px",
                         opacity: settingsChanged ? 1 : 0.5,
-                      }}
-                      onMouseEnter={(e) => {
-                        if (settingsChanged && !savingSettings) {
-                          e.currentTarget.style.transform = "scale(1.02)";
-                          e.currentTarget.style.boxShadow = "0 8px 20px rgba(59, 130, 246, 0.3)";
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = "scale(1)";
-                        e.currentTarget.style.boxShadow = "none";
+                        alignSelf: "flex-end",
                       }}
                     >
-                      {savingSettings ? "Saving..." : settingsChanged ? "Save Changes" : "No Changes"}
+                      {savingSettings ? "Saving..." : "Save Changes"}
                     </button>
                   </div>
-                )}
-
-                {cafes.length === 0 && (
-                  <div style={{ textAlign: "center", padding: "40px 20px" }}>
-                    <div style={{ fontSize: 48, marginBottom: 16, opacity: 0.3 }}>🏢</div>
-                    <p style={{ fontSize: 16, color: theme.textSecondary }}>
-                      No café information available
-                    </p>
-                  </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           )}
         </div>
