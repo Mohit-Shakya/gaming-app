@@ -27,6 +27,7 @@ type OwnerStats = {
 type CafeRow = {
   id: string;
   name: string | null;
+  slug?: string | null;
   city?: string | null;
   address?: string | null;
   description?: string | null;
@@ -36,6 +37,18 @@ type CafeRow = {
   opening_hours?: string | null;
   status?: string | null;
   hourly_price?: number | null;
+  price_starts_from?: number | null;
+  google_maps_url?: string | null;
+  instagram_url?: string | null;
+  cover_url?: string | null;
+  monitor_details?: string | null;
+  processor_details?: string | null;
+  gpu_details?: string | null;
+  ram_details?: string | null;
+  accessories_details?: string | null;
+  peak_hours?: string | null;
+  popular_games?: string | null;
+  offers?: string | null;
   ps5_count?: number | null;
   ps4_count?: number | null;
   xbox_count?: number | null;
@@ -45,6 +58,10 @@ type CafeRow = {
   arcade_count?: number | null;
   vr_count?: number | null;
   steering_wheel_count?: number | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+  user_id?: string | null;
+  is_active?: boolean | null;
 };
 
 type BookingRow = {
@@ -376,6 +393,7 @@ export default function OwnerDashboardPage() {
           .select(`
             id,
             name,
+            slug,
             address,
             description,
             phone,
@@ -399,7 +417,14 @@ export default function OwnerDashboardPage() {
             snooker_count,
             arcade_count,
             vr_count,
-            steering_wheel_count
+            steering_wheel_count,
+            created_at,
+            updated_at,
+            user_id,
+            is_active,
+            peak_hours,
+            popular_games,
+            offers
           `)
           .eq("owner_id", ownerId)
           .order("created_at", { ascending: false});
@@ -6462,7 +6487,6 @@ export default function OwnerDashboardPage() {
                                 borderRadius: 12,
                                 overflow: "hidden",
                                 border: `2px solid ${theme.border}`,
-                                group: true,
                               }}
                             >
                               <img
