@@ -20,10 +20,17 @@ export interface CafeRow {
   user_id: string;
   is_active: boolean;
 
+  // Contact information
+  phone: string | null;
+  email: string | null;
+
   // URLs
   google_maps_url: string | null;
   instagram_url: string | null;
   cover_url: string | null;
+
+  // Pricing
+  price_starts_from: number | null;
 
   // Console counts
   ps5_count: number;

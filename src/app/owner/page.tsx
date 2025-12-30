@@ -158,6 +158,14 @@ export default function OwnerDashboardPage() {
     description: string;
     opening_time: string;
     closing_time: string;
+    google_maps_url: string;
+    instagram_url: string;
+    price_starts_from: string;
+    monitor_details: string;
+    processor_details: string;
+    gpu_details: string;
+    ram_details: string;
+    accessories_details: string;
   }>({
     address: '',
     phone: '',
@@ -165,6 +173,14 @@ export default function OwnerDashboardPage() {
     description: '',
     opening_time: '09:00 AM',
     closing_time: '11:00 PM',
+    google_maps_url: '',
+    instagram_url: '',
+    price_starts_from: '',
+    monitor_details: '',
+    processor_details: '',
+    gpu_details: '',
+    ram_details: '',
+    accessories_details: '',
   });
   // Add Station modal state
   const [showAddStationModal, setShowAddStationModal] = useState(false);
@@ -361,6 +377,15 @@ export default function OwnerDashboardPage() {
             email,
             opening_hours,
             hourly_price,
+            google_maps_url,
+            instagram_url,
+            cover_url,
+            price_starts_from,
+            monitor_details,
+            processor_details,
+            gpu_details,
+            ram_details,
+            accessories_details,
             ps5_count,
             ps4_count,
             xbox_count,
@@ -710,6 +735,14 @@ export default function OwnerDashboardPage() {
         description: cafe.description || '',
         opening_time: openingTime,
         closing_time: closingTime,
+        google_maps_url: cafe.google_maps_url || '',
+        instagram_url: cafe.instagram_url || '',
+        price_starts_from: cafe.price_starts_from?.toString() || '',
+        monitor_details: cafe.monitor_details || '',
+        processor_details: cafe.processor_details || '',
+        gpu_details: cafe.gpu_details || '',
+        ram_details: cafe.ram_details || '',
+        accessories_details: cafe.accessories_details || '',
       });
     }
   }, [cafes]);
@@ -1117,6 +1150,14 @@ export default function OwnerDashboardPage() {
           email: editedCafe.email,
           description: editedCafe.description,
           opening_hours: opening_hours,
+          google_maps_url: editedCafe.google_maps_url || null,
+          instagram_url: editedCafe.instagram_url || null,
+          price_starts_from: editedCafe.price_starts_from ? parseInt(editedCafe.price_starts_from) : null,
+          monitor_details: editedCafe.monitor_details || null,
+          processor_details: editedCafe.processor_details || null,
+          gpu_details: editedCafe.gpu_details || null,
+          ram_details: editedCafe.ram_details || null,
+          accessories_details: editedCafe.accessories_details || null,
         })
         .eq("id", cafes[0].id);
 
@@ -1130,6 +1171,14 @@ export default function OwnerDashboardPage() {
         email: editedCafe.email,
         description: editedCafe.description,
         opening_hours: opening_hours,
+        google_maps_url: editedCafe.google_maps_url || null,
+        instagram_url: editedCafe.instagram_url || null,
+        price_starts_from: editedCafe.price_starts_from ? parseInt(editedCafe.price_starts_from) : null,
+        monitor_details: editedCafe.monitor_details || null,
+        processor_details: editedCafe.processor_details || null,
+        gpu_details: editedCafe.gpu_details || null,
+        ram_details: editedCafe.ram_details || null,
+        accessories_details: editedCafe.accessories_details || null,
       } : c));
 
       setSettingsChanged(false);
@@ -5464,6 +5513,400 @@ export default function OwnerDashboardPage() {
                               color: theme.textPrimary,
                               fontSize: 15,
                               outline: "none",
+                              transition: "all 0.2s",
+                            }}
+                            onFocus={(e) => {
+                              e.currentTarget.style.borderColor = "#3b82f6";
+                              e.currentTarget.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)";
+                            }}
+                            onBlur={(e) => {
+                              e.currentTarget.style.borderColor = theme.border;
+                              e.currentTarget.style.boxShadow = "none";
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Social Links Section */}
+                    <div>
+                      <h3 style={{
+                        fontSize: 16,
+                        fontWeight: 700,
+                        color: theme.textPrimary,
+                        margin: "0 0 16px 0",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.5px",
+                      }}>
+                        Social Links
+                      </h3>
+
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+                        {/* Google Maps URL */}
+                        <div>
+                          <label style={{
+                            display: "block",
+                            fontSize: 13,
+                            fontWeight: 600,
+                            color: theme.textSecondary,
+                            marginBottom: 8,
+                            textTransform: "uppercase",
+                            letterSpacing: "0.5px",
+                          }}>
+                            Google Maps URL
+                          </label>
+                          <input
+                            type="url"
+                            value={editedCafe.google_maps_url}
+                            onChange={(e) => {
+                              setEditedCafe(prev => ({ ...prev, google_maps_url: e.target.value }));
+                              setSettingsChanged(true);
+                            }}
+                            placeholder="https://maps.google.com/..."
+                            style={{
+                              width: "100%",
+                              padding: "14px 16px",
+                              background: "rgba(15, 23, 42, 0.8)",
+                              border: `1px solid ${theme.border}`,
+                              borderRadius: 12,
+                              color: theme.textPrimary,
+                              fontSize: 15,
+                              outline: "none",
+                              transition: "all 0.2s",
+                            }}
+                            onFocus={(e) => {
+                              e.currentTarget.style.borderColor = "#3b82f6";
+                              e.currentTarget.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)";
+                            }}
+                            onBlur={(e) => {
+                              e.currentTarget.style.borderColor = theme.border;
+                              e.currentTarget.style.boxShadow = "none";
+                            }}
+                          />
+                        </div>
+
+                        {/* Instagram URL */}
+                        <div>
+                          <label style={{
+                            display: "block",
+                            fontSize: 13,
+                            fontWeight: 600,
+                            color: theme.textSecondary,
+                            marginBottom: 8,
+                            textTransform: "uppercase",
+                            letterSpacing: "0.5px",
+                          }}>
+                            Instagram URL
+                          </label>
+                          <input
+                            type="url"
+                            value={editedCafe.instagram_url}
+                            onChange={(e) => {
+                              setEditedCafe(prev => ({ ...prev, instagram_url: e.target.value }));
+                              setSettingsChanged(true);
+                            }}
+                            placeholder="https://instagram.com/..."
+                            style={{
+                              width: "100%",
+                              padding: "14px 16px",
+                              background: "rgba(15, 23, 42, 0.8)",
+                              border: `1px solid ${theme.border}`,
+                              borderRadius: 12,
+                              color: theme.textPrimary,
+                              fontSize: 15,
+                              outline: "none",
+                              transition: "all 0.2s",
+                            }}
+                            onFocus={(e) => {
+                              e.currentTarget.style.borderColor = "#3b82f6";
+                              e.currentTarget.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)";
+                            }}
+                            onBlur={(e) => {
+                              e.currentTarget.style.borderColor = theme.border;
+                              e.currentTarget.style.boxShadow = "none";
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Pricing Section */}
+                    <div>
+                      <h3 style={{
+                        fontSize: 16,
+                        fontWeight: 700,
+                        color: theme.textPrimary,
+                        margin: "0 0 16px 0",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.5px",
+                      }}>
+                        Pricing
+                      </h3>
+
+                      <div>
+                        <label style={{
+                          display: "block",
+                          fontSize: 13,
+                          fontWeight: 600,
+                          color: theme.textSecondary,
+                          marginBottom: 8,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.5px",
+                        }}>
+                          Price Starts From (₹)
+                        </label>
+                        <input
+                          type="number"
+                          value={editedCafe.price_starts_from}
+                          onChange={(e) => {
+                            setEditedCafe(prev => ({ ...prev, price_starts_from: e.target.value }));
+                            setSettingsChanged(true);
+                          }}
+                          placeholder="50"
+                          style={{
+                            width: "100%",
+                            padding: "14px 16px",
+                            background: "rgba(15, 23, 42, 0.8)",
+                            border: `1px solid ${theme.border}`,
+                            borderRadius: 12,
+                            color: theme.textPrimary,
+                            fontSize: 15,
+                            outline: "none",
+                            transition: "all 0.2s",
+                          }}
+                          onFocus={(e) => {
+                            e.currentTarget.style.borderColor = "#3b82f6";
+                            e.currentTarget.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)";
+                          }}
+                          onBlur={(e) => {
+                            e.currentTarget.style.borderColor = theme.border;
+                            e.currentTarget.style.boxShadow = "none";
+                          }}
+                        />
+                        <p style={{ fontSize: 12, color: theme.textMuted, margin: "6px 0 0 0" }}>
+                          Display starting price for your services (e.g., ₹50/hour)
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Device Specifications Section */}
+                    <div>
+                      <h3 style={{
+                        fontSize: 16,
+                        fontWeight: 700,
+                        color: theme.textPrimary,
+                        margin: "0 0 16px 0",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.5px",
+                      }}>
+                        Device Specifications
+                      </h3>
+
+                      <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+                        {/* Monitor Details */}
+                        <div>
+                          <label style={{
+                            display: "block",
+                            fontSize: 13,
+                            fontWeight: 600,
+                            color: theme.textSecondary,
+                            marginBottom: 8,
+                            textTransform: "uppercase",
+                            letterSpacing: "0.5px",
+                          }}>
+                            Monitor Details
+                          </label>
+                          <input
+                            type="text"
+                            value={editedCafe.monitor_details}
+                            onChange={(e) => {
+                              setEditedCafe(prev => ({ ...prev, monitor_details: e.target.value }));
+                              setSettingsChanged(true);
+                            }}
+                            placeholder="e.g., 27-inch 144Hz Gaming Monitor"
+                            style={{
+                              width: "100%",
+                              padding: "14px 16px",
+                              background: "rgba(15, 23, 42, 0.8)",
+                              border: `1px solid ${theme.border}`,
+                              borderRadius: 12,
+                              color: theme.textPrimary,
+                              fontSize: 15,
+                              outline: "none",
+                              transition: "all 0.2s",
+                            }}
+                            onFocus={(e) => {
+                              e.currentTarget.style.borderColor = "#3b82f6";
+                              e.currentTarget.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)";
+                            }}
+                            onBlur={(e) => {
+                              e.currentTarget.style.borderColor = theme.border;
+                              e.currentTarget.style.boxShadow = "none";
+                            }}
+                          />
+                        </div>
+
+                        {/* Processor Details */}
+                        <div>
+                          <label style={{
+                            display: "block",
+                            fontSize: 13,
+                            fontWeight: 600,
+                            color: theme.textSecondary,
+                            marginBottom: 8,
+                            textTransform: "uppercase",
+                            letterSpacing: "0.5px",
+                          }}>
+                            Processor Details
+                          </label>
+                          <input
+                            type="text"
+                            value={editedCafe.processor_details}
+                            onChange={(e) => {
+                              setEditedCafe(prev => ({ ...prev, processor_details: e.target.value }));
+                              setSettingsChanged(true);
+                            }}
+                            placeholder="e.g., Intel Core i7-12700K"
+                            style={{
+                              width: "100%",
+                              padding: "14px 16px",
+                              background: "rgba(15, 23, 42, 0.8)",
+                              border: `1px solid ${theme.border}`,
+                              borderRadius: 12,
+                              color: theme.textPrimary,
+                              fontSize: 15,
+                              outline: "none",
+                              transition: "all 0.2s",
+                            }}
+                            onFocus={(e) => {
+                              e.currentTarget.style.borderColor = "#3b82f6";
+                              e.currentTarget.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)";
+                            }}
+                            onBlur={(e) => {
+                              e.currentTarget.style.borderColor = theme.border;
+                              e.currentTarget.style.boxShadow = "none";
+                            }}
+                          />
+                        </div>
+
+                        {/* GPU Details */}
+                        <div>
+                          <label style={{
+                            display: "block",
+                            fontSize: 13,
+                            fontWeight: 600,
+                            color: theme.textSecondary,
+                            marginBottom: 8,
+                            textTransform: "uppercase",
+                            letterSpacing: "0.5px",
+                          }}>
+                            GPU Details
+                          </label>
+                          <input
+                            type="text"
+                            value={editedCafe.gpu_details}
+                            onChange={(e) => {
+                              setEditedCafe(prev => ({ ...prev, gpu_details: e.target.value }));
+                              setSettingsChanged(true);
+                            }}
+                            placeholder="e.g., NVIDIA RTX 4070"
+                            style={{
+                              width: "100%",
+                              padding: "14px 16px",
+                              background: "rgba(15, 23, 42, 0.8)",
+                              border: `1px solid ${theme.border}`,
+                              borderRadius: 12,
+                              color: theme.textPrimary,
+                              fontSize: 15,
+                              outline: "none",
+                              transition: "all 0.2s",
+                            }}
+                            onFocus={(e) => {
+                              e.currentTarget.style.borderColor = "#3b82f6";
+                              e.currentTarget.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)";
+                            }}
+                            onBlur={(e) => {
+                              e.currentTarget.style.borderColor = theme.border;
+                              e.currentTarget.style.boxShadow = "none";
+                            }}
+                          />
+                        </div>
+
+                        {/* RAM Details */}
+                        <div>
+                          <label style={{
+                            display: "block",
+                            fontSize: 13,
+                            fontWeight: 600,
+                            color: theme.textSecondary,
+                            marginBottom: 8,
+                            textTransform: "uppercase",
+                            letterSpacing: "0.5px",
+                          }}>
+                            RAM Details
+                          </label>
+                          <input
+                            type="text"
+                            value={editedCafe.ram_details}
+                            onChange={(e) => {
+                              setEditedCafe(prev => ({ ...prev, ram_details: e.target.value }));
+                              setSettingsChanged(true);
+                            }}
+                            placeholder="e.g., 32GB DDR5"
+                            style={{
+                              width: "100%",
+                              padding: "14px 16px",
+                              background: "rgba(15, 23, 42, 0.8)",
+                              border: `1px solid ${theme.border}`,
+                              borderRadius: 12,
+                              color: theme.textPrimary,
+                              fontSize: 15,
+                              outline: "none",
+                              transition: "all 0.2s",
+                            }}
+                            onFocus={(e) => {
+                              e.currentTarget.style.borderColor = "#3b82f6";
+                              e.currentTarget.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)";
+                            }}
+                            onBlur={(e) => {
+                              e.currentTarget.style.borderColor = theme.border;
+                              e.currentTarget.style.boxShadow = "none";
+                            }}
+                          />
+                        </div>
+
+                        {/* Accessories Details */}
+                        <div>
+                          <label style={{
+                            display: "block",
+                            fontSize: 13,
+                            fontWeight: 600,
+                            color: theme.textSecondary,
+                            marginBottom: 8,
+                            textTransform: "uppercase",
+                            letterSpacing: "0.5px",
+                          }}>
+                            Accessories Details
+                          </label>
+                          <textarea
+                            value={editedCafe.accessories_details}
+                            onChange={(e) => {
+                              setEditedCafe(prev => ({ ...prev, accessories_details: e.target.value }));
+                              setSettingsChanged(true);
+                            }}
+                            rows={3}
+                            placeholder="e.g., Mechanical Keyboard, Gaming Mouse, Headset"
+                            style={{
+                              width: "100%",
+                              padding: "14px 16px",
+                              background: "rgba(15, 23, 42, 0.8)",
+                              border: `1px solid ${theme.border}`,
+                              borderRadius: 12,
+                              color: theme.textPrimary,
+                              fontSize: 15,
+                              outline: "none",
+                              resize: "vertical",
+                              fontFamily: fonts.body,
                               transition: "all 0.2s",
                             }}
                             onFocus={(e) => {
