@@ -3767,6 +3767,7 @@ export default function OwnerDashboardPage() {
                         <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Customer</th>
                         <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Phone</th>
                         <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Station</th>
+                        <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Controllers</th>
                         <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Duration</th>
                         <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Started</th>
                         <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>End Time</th>
@@ -3838,6 +3839,14 @@ export default function OwnerDashboardPage() {
                             </td>
                             <td style={{ padding: '16px 20px', fontSize: 14, fontWeight: 500, color: theme.textPrimary }}>
                               {consoleInfo?.console || '-'}
+                            </td>
+                            <td style={{ padding: '16px 20px', fontSize: 14, color: theme.textSecondary }}>
+                              {(() => {
+                                const items = booking.booking_items || [];
+                                if (items.length === 0) return '-';
+                                const totalControllers = items.reduce((sum, item) => sum + (item.quantity || 1), 0);
+                                return totalControllers;
+                              })()}
                             </td>
                             <td style={{ padding: '16px 20px', fontSize: 14, color: theme.textSecondary }}>
                               {booking.duration ? `${booking.duration}m` : '-'}
