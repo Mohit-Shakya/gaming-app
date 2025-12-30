@@ -147,6 +147,25 @@ export default function OwnerDashboardPage() {
 
   // Edit modal state
   const [editingBooking, setEditingBooking] = useState<BookingRow | null>(null);
+
+  // Settings state
+  const [settingsChanged, setSettingsChanged] = useState(false);
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [editedCafe, setEditedCafe] = useState<{
+    address: string;
+    phone: string;
+    email: string;
+    description: string;
+    opening_time: string;
+    closing_time: string;
+  }>({
+    address: '',
+    phone: '',
+    email: '',
+    description: '',
+    opening_time: '09:00 AM',
+    closing_time: '11:00 PM',
+  });
   const [editAmount, setEditAmount] = useState<string>("");
   const [editStatus, setEditStatus] = useState<string>("");
   const [editDate, setEditDate] = useState<string>("");
@@ -325,6 +344,9 @@ export default function OwnerDashboardPage() {
             name,
             address,
             description,
+            phone,
+            email,
+            opening_hours,
             hourly_price,
             ps5_count,
             ps4_count,
@@ -651,6 +673,33 @@ export default function OwnerDashboardPage() {
 
     loadData();
   }, [allowed, user, refreshTrigger]);
+
+  // Populate editedCafe when cafes data loads
+  useEffect(() => {
+    if (cafes.length > 0) {
+      const cafe = cafes[0];
+      // Parse opening_hours if it exists (format: "Mon-Sun: 10:00 AM - 11:00 PM")
+      let openingTime = '09:00 AM';
+      let closingTime = '11:00 PM';
+
+      if (cafe.opening_hours) {
+        const timeMatch = cafe.opening_hours.match(/(\d{1,2}:\d{2}\s*[AP]M)\s*-\s*(\d{1,2}:\d{2}\s*[AP]M)/i);
+        if (timeMatch) {
+          openingTime = timeMatch[1].trim();
+          closingTime = timeMatch[2].trim();
+        }
+      }
+
+      setEditedCafe({
+        address: cafe.address || '',
+        phone: cafe.phone || '',
+        email: cafe.email || '',
+        description: cafe.description || '',
+        opening_time: openingTime,
+        closing_time: closingTime,
+      });
+    }
+  }, [cafes]);
 
   // Real-time subscription for bookings
   useEffect(() => {
@@ -1037,6 +1086,48 @@ export default function OwnerDashboardPage() {
     const newAmount = calculatePrice();
     setEditAmount(newAmount.toString());
   }, [editDuration, editConsole, editControllers, editingBooking, cafes, consolePricing]);
+
+  // Handle settings save
+  const handleSaveSettings = async () => {
+    if (cafes.length === 0) return;
+
+    setSavingSettings(true);
+    try {
+      // Combine opening and closing time into opening_hours format
+      const opening_hours = `Mon-Sun: ${editedCafe.opening_time} - ${editedCafe.closing_time}`;
+
+      const { error } = await supabase
+        .from("cafes")
+        .update({
+          address: editedCafe.address,
+          phone: editedCafe.phone,
+          email: editedCafe.email,
+          description: editedCafe.description,
+          opening_hours: opening_hours,
+        })
+        .eq("id", cafes[0].id);
+
+      if (error) throw error;
+
+      // Update local state
+      setCafes(prev => prev.map((c, i) => i === 0 ? {
+        ...c,
+        address: editedCafe.address,
+        phone: editedCafe.phone,
+        email: editedCafe.email,
+        description: editedCafe.description,
+        opening_hours: opening_hours,
+      } : c));
+
+      setSettingsChanged(false);
+      alert('Settings saved successfully!');
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      alert('Failed to save settings. Please try again.');
+    } finally {
+      setSavingSettings(false);
+    }
+  };
 
   // Filter bookings
   const filteredBookings = bookings.filter((booking) => {
@@ -4970,20 +5061,13 @@ export default function OwnerDashboardPage() {
                         Address
                       </label>
                       <textarea
-                        value={cafes[0].address || ''}
-                        onChange={async (e) => {
-                          const newAddress = e.target.value;
-                          setCafes(prev => prev.map((c, i) => i === 0 ? { ...c, address: newAddress } : c));
-
-                          // Auto-save after 1 second of no typing
-                          const { error } = await supabase
-                            .from("cafes")
-                            .update({ address: newAddress })
-                            .eq("id", cafes[0].id);
-
-                          if (error) console.error("Error updating address:", error);
+                        value={editedCafe.address}
+                        onChange={(e) => {
+                          setEditedCafe(prev => ({ ...prev, address: e.target.value }));
+                          setSettingsChanged(true);
                         }}
                         rows={3}
+                        placeholder="Enter café address"
                         style={{
                           width: "100%",
                           padding: "14px 16px",
@@ -5025,17 +5109,10 @@ export default function OwnerDashboardPage() {
                         </label>
                         <input
                           type="tel"
-                          value={cafes[0].phone || ''}
-                          onChange={async (e) => {
-                            const newPhone = e.target.value;
-                            setCafes(prev => prev.map((c, i) => i === 0 ? { ...c, phone: newPhone } : c));
-
-                            const { error } = await supabase
-                              .from("cafes")
-                              .update({ phone: newPhone })
-                              .eq("id", cafes[0].id);
-
-                            if (error) console.error("Error updating phone:", error);
+                          value={editedCafe.phone}
+                          onChange={(e) => {
+                            setEditedCafe(prev => ({ ...prev, phone: e.target.value }));
+                            setSettingsChanged(true);
                           }}
                           placeholder="Enter phone number"
                           style={{
@@ -5075,17 +5152,10 @@ export default function OwnerDashboardPage() {
                         </label>
                         <input
                           type="email"
-                          value={cafes[0].email || ''}
-                          onChange={async (e) => {
-                            const newEmail = e.target.value;
-                            setCafes(prev => prev.map((c, i) => i === 0 ? { ...c, email: newEmail } : c));
-
-                            const { error } = await supabase
-                              .from("cafes")
-                              .update({ email: newEmail })
-                              .eq("id", cafes[0].id);
-
-                            if (error) console.error("Error updating email:", error);
+                          value={editedCafe.email}
+                          onChange={(e) => {
+                            setEditedCafe(prev => ({ ...prev, email: e.target.value }));
+                            setSettingsChanged(true);
                           }}
                           placeholder="Enter email address"
                           style={{
@@ -5125,17 +5195,10 @@ export default function OwnerDashboardPage() {
                         Description
                       </label>
                       <textarea
-                        value={cafes[0].description || ''}
-                        onChange={async (e) => {
-                          const newDescription = e.target.value;
-                          setCafes(prev => prev.map((c, i) => i === 0 ? { ...c, description: newDescription } : c));
-
-                          const { error } = await supabase
-                            .from("cafes")
-                            .update({ description: newDescription })
-                            .eq("id", cafes[0].id);
-
-                          if (error) console.error("Error updating description:", error);
+                        value={editedCafe.description}
+                        onChange={(e) => {
+                          setEditedCafe(prev => ({ ...prev, description: e.target.value }));
+                          setSettingsChanged(true);
                         }}
                         rows={4}
                         placeholder="Describe your gaming café..."
@@ -5163,71 +5226,139 @@ export default function OwnerDashboardPage() {
                       />
                     </div>
 
-                    {/* Opening Hours */}
+                    {/* Operational Hours Section */}
                     <div>
-                      <label style={{
-                        display: "block",
-                        fontSize: 13,
-                        fontWeight: 600,
-                        color: theme.textSecondary,
-                        marginBottom: 8,
+                      <h3 style={{
+                        fontSize: 16,
+                        fontWeight: 700,
+                        color: theme.textPrimary,
+                        margin: "0 0 16px 0",
                         textTransform: "uppercase",
                         letterSpacing: "0.5px",
                       }}>
-                        Opening Hours
-                      </label>
-                      <input
-                        type="text"
-                        value={cafes[0].opening_hours || ''}
-                        onChange={async (e) => {
-                          const newHours = e.target.value;
-                          setCafes(prev => prev.map((c, i) => i === 0 ? { ...c, opening_hours: newHours } : c));
+                        Operational Hours
+                      </h3>
 
-                          const { error } = await supabase
-                            .from("cafes")
-                            .update({ opening_hours: newHours })
-                            .eq("id", cafes[0].id);
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+                        {/* Opening Time */}
+                        <div>
+                          <label style={{
+                            display: "block",
+                            fontSize: 13,
+                            fontWeight: 600,
+                            color: theme.textSecondary,
+                            marginBottom: 8,
+                            textTransform: "uppercase",
+                            letterSpacing: "0.5px",
+                          }}>
+                            Opening Time
+                          </label>
+                          <input
+                            type="text"
+                            value={editedCafe.opening_time}
+                            onChange={(e) => {
+                              setEditedCafe(prev => ({ ...prev, opening_time: e.target.value }));
+                              setSettingsChanged(true);
+                            }}
+                            placeholder="09:00 AM"
+                            style={{
+                              width: "100%",
+                              padding: "14px 16px",
+                              background: "rgba(15, 23, 42, 0.8)",
+                              border: `1px solid ${theme.border}`,
+                              borderRadius: 12,
+                              color: theme.textPrimary,
+                              fontSize: 15,
+                              outline: "none",
+                              transition: "all 0.2s",
+                            }}
+                            onFocus={(e) => {
+                              e.currentTarget.style.borderColor = "#3b82f6";
+                              e.currentTarget.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)";
+                            }}
+                            onBlur={(e) => {
+                              e.currentTarget.style.borderColor = theme.border;
+                              e.currentTarget.style.boxShadow = "none";
+                            }}
+                          />
+                        </div>
 
-                          if (error) console.error("Error updating hours:", error);
-                        }}
-                        placeholder="e.g., Mon-Sun: 10:00 AM - 11:00 PM"
-                        style={{
-                          width: "100%",
-                          padding: "14px 16px",
-                          background: "rgba(15, 23, 42, 0.8)",
-                          border: `1px solid ${theme.border}`,
-                          borderRadius: 12,
-                          color: theme.textPrimary,
-                          fontSize: 15,
-                          outline: "none",
-                          transition: "all 0.2s",
-                        }}
-                        onFocus={(e) => {
-                          e.currentTarget.style.borderColor = "#3b82f6";
-                          e.currentTarget.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)";
-                        }}
-                        onBlur={(e) => {
-                          e.currentTarget.style.borderColor = theme.border;
-                          e.currentTarget.style.boxShadow = "none";
-                        }}
-                      />
+                        {/* Closing Time */}
+                        <div>
+                          <label style={{
+                            display: "block",
+                            fontSize: 13,
+                            fontWeight: 600,
+                            color: theme.textSecondary,
+                            marginBottom: 8,
+                            textTransform: "uppercase",
+                            letterSpacing: "0.5px",
+                          }}>
+                            Closing Time
+                          </label>
+                          <input
+                            type="text"
+                            value={editedCafe.closing_time}
+                            onChange={(e) => {
+                              setEditedCafe(prev => ({ ...prev, closing_time: e.target.value }));
+                              setSettingsChanged(true);
+                            }}
+                            placeholder="11:00 PM"
+                            style={{
+                              width: "100%",
+                              padding: "14px 16px",
+                              background: "rgba(15, 23, 42, 0.8)",
+                              border: `1px solid ${theme.border}`,
+                              borderRadius: 12,
+                              color: theme.textPrimary,
+                              fontSize: 15,
+                              outline: "none",
+                              transition: "all 0.2s",
+                            }}
+                            onFocus={(e) => {
+                              e.currentTarget.style.borderColor = "#3b82f6";
+                              e.currentTarget.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)";
+                            }}
+                            onBlur={(e) => {
+                              e.currentTarget.style.borderColor = theme.border;
+                              e.currentTarget.style.boxShadow = "none";
+                            }}
+                          />
+                        </div>
+                      </div>
                     </div>
 
-                    {/* Save Indicator */}
-                    <div style={{
-                      padding: "12px 16px",
-                      background: "rgba(34, 197, 94, 0.1)",
-                      border: "1px solid rgba(34, 197, 94, 0.3)",
-                      borderRadius: 12,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                    }}>
-                      <span style={{ fontSize: 16 }}>✓</span>
-                      <span style={{ fontSize: 13, color: "#22c55e", fontWeight: 600 }}>
-                        Changes are saved automatically
-                      </span>
-                    </div>
+                    {/* Save Button */}
+                    <button
+                      onClick={handleSaveSettings}
+                      disabled={!settingsChanged || savingSettings}
+                      style={{
+                        padding: "16px 24px",
+                        background: settingsChanged ? "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)" : "rgba(100, 116, 139, 0.3)",
+                        border: "none",
+                        borderRadius: 12,
+                        color: settingsChanged ? "#ffffff" : theme.textMuted,
+                        fontSize: 15,
+                        fontWeight: 700,
+                        cursor: settingsChanged && !savingSettings ? "pointer" : "not-allowed",
+                        transition: "all 0.2s",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.5px",
+                        opacity: settingsChanged ? 1 : 0.5,
+                      }}
+                      onMouseEnter={(e) => {
+                        if (settingsChanged && !savingSettings) {
+                          e.currentTarget.style.transform = "scale(1.02)";
+                          e.currentTarget.style.boxShadow = "0 8px 20px rgba(59, 130, 246, 0.3)";
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = "scale(1)";
+                        e.currentTarget.style.boxShadow = "none";
+                      }}
+                    >
+                      {savingSettings ? "Saving..." : settingsChanged ? "Save Changes" : "No Changes"}
+                    </button>
                   </div>
                 )}
 
