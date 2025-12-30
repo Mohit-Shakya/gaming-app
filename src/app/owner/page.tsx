@@ -419,7 +419,6 @@ export default function OwnerDashboardPage() {
             vr_count,
             steering_wheel_count,
             created_at,
-            updated_at,
             user_id,
             is_active,
             peak_hours,
