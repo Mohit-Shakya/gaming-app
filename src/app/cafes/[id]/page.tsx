@@ -114,6 +114,7 @@ export default async function CafePage({ params }: CafePageProps) {
       address,
       description,
       hourly_price,
+      price_starts_from,
       google_maps_url,
       cover_url,
       ps5_count,
@@ -542,7 +543,7 @@ export default async function CafePage({ params }: CafePageProps) {
                     color: colors.textPrimary,
                   }}
                 >
-                  {cafe.hourly_price ?? 0}
+                  {cafe.price_starts_from ?? cafe.hourly_price ?? 0}
                 </span>
                 <span
                   style={{
