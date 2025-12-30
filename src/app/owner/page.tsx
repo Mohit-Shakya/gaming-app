@@ -426,7 +426,7 @@ export default function OwnerDashboardPage() {
             popular_games,
             offers
           `)
-          .eq("owner_id", ownerId)
+          .eq("user_id", ownerId)
           .order("created_at", { ascending: false});
 
         if (cafesError) throw cafesError;
