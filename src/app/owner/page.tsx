@@ -4891,22 +4891,355 @@ export default function OwnerDashboardPage() {
 
           {/* Settings Tab */}
           {activeTab === 'settings' && (
-            <div
-              style={{
-                background: theme.cardBackground,
-                borderRadius: 16,
-                border: `1px solid ${theme.border}`,
-                padding: "60px 20px",
-                textAlign: "center",
-              }}
-            >
-              <div style={{ fontSize: 64, marginBottom: 16, opacity: 0.3 }}>⚙️</div>
-              <p style={{ fontSize: 18, color: theme.textSecondary, marginBottom: 8, fontWeight: 500 }}>
-                Settings
-              </p>
-              <p style={{ fontSize: 14, color: theme.textMuted }}>
-                Configure your café settings and preferences here.
-              </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+              {/* Café Information Section */}
+              <div
+                style={{
+                  background: theme.cardBackground,
+                  borderRadius: 16,
+                  border: `1px solid ${theme.border}`,
+                  padding: "32px",
+                }}
+              >
+                <div style={{ marginBottom: 32 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
+                    <span style={{ fontSize: 28 }}>🏢</span>
+                    <h2 style={{
+                      fontFamily: fonts.heading,
+                      fontSize: 24,
+                      margin: 0,
+                      color: theme.textPrimary,
+                      fontWeight: 700,
+                    }}>
+                      Café Information
+                    </h2>
+                  </div>
+                  <p style={{ fontSize: 14, color: theme.textSecondary, margin: 0 }}>
+                    Manage your café's basic information and contact details
+                  </p>
+                </div>
+
+                {cafes.length > 0 && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+                    {/* Café Name */}
+                    <div>
+                      <label style={{
+                        display: "block",
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: theme.textSecondary,
+                        marginBottom: 8,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.5px",
+                      }}>
+                        Café Name
+                      </label>
+                      <input
+                        type="text"
+                        value={cafes[0].name || ''}
+                        readOnly
+                        style={{
+                          width: "100%",
+                          padding: "14px 16px",
+                          background: "rgba(15, 23, 42, 0.5)",
+                          border: `1px solid ${theme.border}`,
+                          borderRadius: 12,
+                          color: theme.textPrimary,
+                          fontSize: 15,
+                          outline: "none",
+                          cursor: "not-allowed",
+                          opacity: 0.7,
+                        }}
+                      />
+                      <p style={{ fontSize: 12, color: theme.textMuted, margin: "6px 0 0 0" }}>
+                        Contact support to change your café name
+                      </p>
+                    </div>
+
+                    {/* Address */}
+                    <div>
+                      <label style={{
+                        display: "block",
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: theme.textSecondary,
+                        marginBottom: 8,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.5px",
+                      }}>
+                        Address
+                      </label>
+                      <textarea
+                        value={cafes[0].address || ''}
+                        onChange={async (e) => {
+                          const newAddress = e.target.value;
+                          setCafes(prev => prev.map((c, i) => i === 0 ? { ...c, address: newAddress } : c));
+
+                          // Auto-save after 1 second of no typing
+                          const { error } = await supabase
+                            .from("cafes")
+                            .update({ address: newAddress })
+                            .eq("id", cafes[0].id);
+
+                          if (error) console.error("Error updating address:", error);
+                        }}
+                        rows={3}
+                        style={{
+                          width: "100%",
+                          padding: "14px 16px",
+                          background: "rgba(15, 23, 42, 0.8)",
+                          border: `1px solid ${theme.border}`,
+                          borderRadius: 12,
+                          color: theme.textPrimary,
+                          fontSize: 15,
+                          outline: "none",
+                          resize: "vertical",
+                          fontFamily: fonts.body,
+                          transition: "all 0.2s",
+                        }}
+                        onFocus={(e) => {
+                          e.currentTarget.style.borderColor = "#3b82f6";
+                          e.currentTarget.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)";
+                        }}
+                        onBlur={(e) => {
+                          e.currentTarget.style.borderColor = theme.border;
+                          e.currentTarget.style.boxShadow = "none";
+                        }}
+                      />
+                    </div>
+
+                    {/* Contact Information Grid */}
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+                      {/* Phone */}
+                      <div>
+                        <label style={{
+                          display: "block",
+                          fontSize: 13,
+                          fontWeight: 600,
+                          color: theme.textSecondary,
+                          marginBottom: 8,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.5px",
+                        }}>
+                          Phone Number
+                        </label>
+                        <input
+                          type="tel"
+                          value={cafes[0].phone || ''}
+                          onChange={async (e) => {
+                            const newPhone = e.target.value;
+                            setCafes(prev => prev.map((c, i) => i === 0 ? { ...c, phone: newPhone } : c));
+
+                            const { error } = await supabase
+                              .from("cafes")
+                              .update({ phone: newPhone })
+                              .eq("id", cafes[0].id);
+
+                            if (error) console.error("Error updating phone:", error);
+                          }}
+                          placeholder="Enter phone number"
+                          style={{
+                            width: "100%",
+                            padding: "14px 16px",
+                            background: "rgba(15, 23, 42, 0.8)",
+                            border: `1px solid ${theme.border}`,
+                            borderRadius: 12,
+                            color: theme.textPrimary,
+                            fontSize: 15,
+                            outline: "none",
+                            transition: "all 0.2s",
+                          }}
+                          onFocus={(e) => {
+                            e.currentTarget.style.borderColor = "#3b82f6";
+                            e.currentTarget.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)";
+                          }}
+                          onBlur={(e) => {
+                            e.currentTarget.style.borderColor = theme.border;
+                            e.currentTarget.style.boxShadow = "none";
+                          }}
+                        />
+                      </div>
+
+                      {/* Email */}
+                      <div>
+                        <label style={{
+                          display: "block",
+                          fontSize: 13,
+                          fontWeight: 600,
+                          color: theme.textSecondary,
+                          marginBottom: 8,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.5px",
+                        }}>
+                          Email Address
+                        </label>
+                        <input
+                          type="email"
+                          value={cafes[0].email || ''}
+                          onChange={async (e) => {
+                            const newEmail = e.target.value;
+                            setCafes(prev => prev.map((c, i) => i === 0 ? { ...c, email: newEmail } : c));
+
+                            const { error } = await supabase
+                              .from("cafes")
+                              .update({ email: newEmail })
+                              .eq("id", cafes[0].id);
+
+                            if (error) console.error("Error updating email:", error);
+                          }}
+                          placeholder="Enter email address"
+                          style={{
+                            width: "100%",
+                            padding: "14px 16px",
+                            background: "rgba(15, 23, 42, 0.8)",
+                            border: `1px solid ${theme.border}`,
+                            borderRadius: 12,
+                            color: theme.textPrimary,
+                            fontSize: 15,
+                            outline: "none",
+                            transition: "all 0.2s",
+                          }}
+                          onFocus={(e) => {
+                            e.currentTarget.style.borderColor = "#3b82f6";
+                            e.currentTarget.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)";
+                          }}
+                          onBlur={(e) => {
+                            e.currentTarget.style.borderColor = theme.border;
+                            e.currentTarget.style.boxShadow = "none";
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Description */}
+                    <div>
+                      <label style={{
+                        display: "block",
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: theme.textSecondary,
+                        marginBottom: 8,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.5px",
+                      }}>
+                        Description
+                      </label>
+                      <textarea
+                        value={cafes[0].description || ''}
+                        onChange={async (e) => {
+                          const newDescription = e.target.value;
+                          setCafes(prev => prev.map((c, i) => i === 0 ? { ...c, description: newDescription } : c));
+
+                          const { error } = await supabase
+                            .from("cafes")
+                            .update({ description: newDescription })
+                            .eq("id", cafes[0].id);
+
+                          if (error) console.error("Error updating description:", error);
+                        }}
+                        rows={4}
+                        placeholder="Describe your gaming café..."
+                        style={{
+                          width: "100%",
+                          padding: "14px 16px",
+                          background: "rgba(15, 23, 42, 0.8)",
+                          border: `1px solid ${theme.border}`,
+                          borderRadius: 12,
+                          color: theme.textPrimary,
+                          fontSize: 15,
+                          outline: "none",
+                          resize: "vertical",
+                          fontFamily: fonts.body,
+                          transition: "all 0.2s",
+                        }}
+                        onFocus={(e) => {
+                          e.currentTarget.style.borderColor = "#3b82f6";
+                          e.currentTarget.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)";
+                        }}
+                        onBlur={(e) => {
+                          e.currentTarget.style.borderColor = theme.border;
+                          e.currentTarget.style.boxShadow = "none";
+                        }}
+                      />
+                    </div>
+
+                    {/* Opening Hours */}
+                    <div>
+                      <label style={{
+                        display: "block",
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: theme.textSecondary,
+                        marginBottom: 8,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.5px",
+                      }}>
+                        Opening Hours
+                      </label>
+                      <input
+                        type="text"
+                        value={cafes[0].opening_hours || ''}
+                        onChange={async (e) => {
+                          const newHours = e.target.value;
+                          setCafes(prev => prev.map((c, i) => i === 0 ? { ...c, opening_hours: newHours } : c));
+
+                          const { error } = await supabase
+                            .from("cafes")
+                            .update({ opening_hours: newHours })
+                            .eq("id", cafes[0].id);
+
+                          if (error) console.error("Error updating hours:", error);
+                        }}
+                        placeholder="e.g., Mon-Sun: 10:00 AM - 11:00 PM"
+                        style={{
+                          width: "100%",
+                          padding: "14px 16px",
+                          background: "rgba(15, 23, 42, 0.8)",
+                          border: `1px solid ${theme.border}`,
+                          borderRadius: 12,
+                          color: theme.textPrimary,
+                          fontSize: 15,
+                          outline: "none",
+                          transition: "all 0.2s",
+                        }}
+                        onFocus={(e) => {
+                          e.currentTarget.style.borderColor = "#3b82f6";
+                          e.currentTarget.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)";
+                        }}
+                        onBlur={(e) => {
+                          e.currentTarget.style.borderColor = theme.border;
+                          e.currentTarget.style.boxShadow = "none";
+                        }}
+                      />
+                    </div>
+
+                    {/* Save Indicator */}
+                    <div style={{
+                      padding: "12px 16px",
+                      background: "rgba(34, 197, 94, 0.1)",
+                      border: "1px solid rgba(34, 197, 94, 0.3)",
+                      borderRadius: 12,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                    }}>
+                      <span style={{ fontSize: 16 }}>✓</span>
+                      <span style={{ fontSize: 13, color: "#22c55e", fontWeight: 600 }}>
+                        Changes are saved automatically
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {cafes.length === 0 && (
+                  <div style={{ textAlign: "center", padding: "40px 20px" }}>
+                    <div style={{ fontSize: 48, marginBottom: 16, opacity: 0.3 }}>🏢</div>
+                    <p style={{ fontSize: 16, color: theme.textSecondary }}>
+                      No café information available
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
