@@ -517,46 +517,78 @@ export default function AdminDashboardPage() {
     try {
       setLoadingData(true);
 
+      console.log("Starting deletion process for cafe:", cafeId);
+
       // Delete related records first (cascading delete)
       // 1. Delete booking items
-      const { data: bookings } = await supabase
+      const { data: bookings, error: bookingsError } = await supabase
         .from("bookings")
         .select("id")
         .eq("cafe_id", cafeId);
 
+      if (bookingsError) {
+        console.error("Error fetching bookings:", bookingsError);
+      }
+
       if (bookings && bookings.length > 0) {
+        console.log(`Deleting booking items for ${bookings.length} bookings`);
         const bookingIds = bookings.map(b => b.id);
-        await supabase
+        const { error: bookingItemsError } = await supabase
           .from("booking_items")
           .delete()
           .in("booking_id", bookingIds);
+
+        if (bookingItemsError) {
+          console.error("Error deleting booking items:", bookingItemsError);
+        }
       }
 
       // 2. Delete bookings
-      await supabase
+      console.log("Deleting bookings...");
+      const { error: deleteBookingsError } = await supabase
         .from("bookings")
         .delete()
         .eq("cafe_id", cafeId);
 
+      if (deleteBookingsError) {
+        console.error("Error deleting bookings:", deleteBookingsError);
+      }
+
       // 3. Delete console pricing
-      await supabase
+      console.log("Deleting console pricing...");
+      const { error: pricingError } = await supabase
         .from("console_pricing")
         .delete()
         .eq("cafe_id", cafeId);
 
+      if (pricingError) {
+        console.error("Error deleting console pricing:", pricingError);
+      }
+
       // 4. Delete gallery images
-      await supabase
+      console.log("Deleting gallery images...");
+      const { error: galleryError } = await supabase
         .from("gallery_images")
         .delete()
         .eq("cafe_id", cafeId);
 
+      if (galleryError) {
+        console.error("Error deleting gallery images:", galleryError);
+      }
+
       // 5. Finally, delete the café
+      console.log("Deleting café...");
       const { error } = await supabase
         .from("cafes")
         .delete()
         .eq("id", cafeId);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error deleting cafe:", error);
+        throw error;
+      }
+
+      console.log("Café deleted successfully");
 
       // Update local state
       setCafes(prev => prev.filter(c => c.id !== cafeId));
