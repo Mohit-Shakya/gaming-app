@@ -299,7 +299,7 @@ export default function AdminDashboardPage() {
           (data || []).map(async (cafe) => {
             const { data: owner } = await supabase
               .from("profiles")
-              .select("name, email")
+              .select("first_name, last_name, email")
               .eq("id", cafe.owner_id)
               .maybeSingle();
 
@@ -315,9 +315,14 @@ export default function AdminDashboardPage() {
 
             const totalRevenue = revenueData?.reduce((sum, b) => sum + (b.total_amount || 0), 0) || 0;
 
+            // Combine first_name and last_name for owner name
+            const ownerName = owner
+              ? [owner.first_name, owner.last_name].filter(Boolean).join(" ") || "Unknown Owner"
+              : "Unknown Owner";
+
             return {
               ...cafe,
-              owner_name: owner?.name || "Unknown",
+              owner_name: ownerName,
               owner_email: owner?.email || "N/A",
               total_bookings: bookingCount || 0,
               total_revenue: totalRevenue,
@@ -347,34 +352,44 @@ export default function AdminDashboardPage() {
 
         const { data, error } = await supabase
           .from("profiles")
-          .select("id, name, email, phone, role, created_at")
+          .select("id, first_name, last_name, email, phone, role, created_at")
           .order("created_at", { ascending: false });
 
         if (error) throw error;
 
         const enrichedUsers = await Promise.all(
-          (data || []).map(async (user) => {
+          (data || []).map(async (profile) => {
             const { count: bookingCount } = await supabase
               .from("bookings")
               .select("id", { count: "exact", head: true })
-              .eq("user_id", user.id);
+              .eq("user_id", profile.id);
 
             const { data: bookingData } = await supabase
               .from("bookings")
               .select("total_amount, created_at")
-              .eq("user_id", user.id)
+              .eq("user_id", profile.id)
               .order("created_at", { ascending: false })
               .limit(1);
 
             const { data: revenueData } = await supabase
               .from("bookings")
               .select("total_amount")
-              .eq("user_id", user.id);
+              .eq("user_id", profile.id);
 
             const totalSpent = revenueData?.reduce((sum, b) => sum + (b.total_amount || 0), 0) || 0;
 
+            // Combine first_name and last_name into name
+            const name = [profile.first_name, profile.last_name]
+              .filter(Boolean)
+              .join(" ") || "Unknown User";
+
             return {
-              ...user,
+              id: profile.id,
+              name,
+              email: profile.email,
+              phone: profile.phone,
+              role: profile.role,
+              created_at: profile.created_at,
               total_bookings: bookingCount || 0,
               total_spent: totalSpent,
               last_booking: bookingData?.[0]?.created_at || null,
@@ -435,10 +450,12 @@ export default function AdminDashboardPage() {
             if (booking.user_id) {
               const { data: user } = await supabase
                 .from("profiles")
-                .select("name")
+                .select("first_name, last_name")
                 .eq("id", booking.user_id)
                 .maybeSingle();
-              userName = user?.name || "Online User";
+              userName = user
+                ? [user.first_name, user.last_name].filter(Boolean).join(" ") || "Online User"
+                : "Online User";
             }
 
             return {
