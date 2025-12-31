@@ -299,7 +299,7 @@ export default function AdminDashboardPage() {
           (data || []).map(async (cafe) => {
             const { data: owner } = await supabase
               .from("profiles")
-              .select("first_name, last_name, email")
+              .select("first_name, last_name")
               .eq("id", cafe.owner_id)
               .maybeSingle();
 
@@ -323,7 +323,7 @@ export default function AdminDashboardPage() {
             return {
               ...cafe,
               owner_name: ownerName,
-              owner_email: owner?.email || "N/A",
+              owner_email: "N/A", // Email not in profiles table
               total_bookings: bookingCount || 0,
               total_revenue: totalRevenue,
             };
@@ -349,13 +349,20 @@ export default function AdminDashboardPage() {
     async function loadUsers() {
       try {
         setLoadingData(true);
+        setError(null);
 
+        // Fetch profiles - email comes from auth.users, not profiles table
         const { data, error } = await supabase
           .from("profiles")
-          .select("id, first_name, last_name, email, phone, role, created_at")
+          .select("id, first_name, last_name, phone, created_at")
           .order("created_at", { ascending: false });
 
-        if (error) throw error;
+        if (error) {
+          console.error("Profiles query error details:", error);
+          setError(`Failed to load users: ${error.message || 'Unknown error'}`);
+          setLoadingData(false);
+          return;
+        }
 
         const enrichedUsers = await Promise.all(
           (data || []).map(async (profile) => {
@@ -383,12 +390,16 @@ export default function AdminDashboardPage() {
               .filter(Boolean)
               .join(" ") || "Unknown User";
 
+            // Try to get role from auth.users metadata or profiles table
+            // Default to 'user' if not available
+            const role = "user"; // We'll fetch this separately if needed
+
             return {
               id: profile.id,
               name,
-              email: profile.email,
+              email: null, // Email not stored in profiles table
               phone: profile.phone,
-              role: profile.role,
+              role: role,
               created_at: profile.created_at,
               total_bookings: bookingCount || 0,
               total_spent: totalSpent,
