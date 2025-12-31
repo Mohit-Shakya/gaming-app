@@ -510,11 +510,47 @@ export default function AdminDashboardPage() {
 
   // Delete cafe
   async function deleteCafe(cafeId: string, cafeName: string) {
-    if (!confirm(`Are you sure you want to delete "${cafeName}"? This action cannot be undone.`)) {
+    if (!confirm(`Are you sure you want to delete "${cafeName}"? This will delete all related bookings, pricing, and images. This action cannot be undone.`)) {
       return;
     }
 
     try {
+      setLoadingData(true);
+
+      // Delete related records first (cascading delete)
+      // 1. Delete booking items
+      const { data: bookings } = await supabase
+        .from("bookings")
+        .select("id")
+        .eq("cafe_id", cafeId);
+
+      if (bookings && bookings.length > 0) {
+        const bookingIds = bookings.map(b => b.id);
+        await supabase
+          .from("booking_items")
+          .delete()
+          .in("booking_id", bookingIds);
+      }
+
+      // 2. Delete bookings
+      await supabase
+        .from("bookings")
+        .delete()
+        .eq("cafe_id", cafeId);
+
+      // 3. Delete console pricing
+      await supabase
+        .from("console_pricing")
+        .delete()
+        .eq("cafe_id", cafeId);
+
+      // 4. Delete gallery images
+      await supabase
+        .from("gallery_images")
+        .delete()
+        .eq("cafe_id", cafeId);
+
+      // 5. Finally, delete the café
       const { error } = await supabase
         .from("cafes")
         .delete()
@@ -522,11 +558,22 @@ export default function AdminDashboardPage() {
 
       if (error) throw error;
 
+      // Update local state
       setCafes(prev => prev.filter(c => c.id !== cafeId));
-      alert("Café deleted successfully");
+
+      // Reload stats to reflect changes
+      setStats(prev => prev ? {
+        ...prev,
+        totalCafes: prev.totalCafes - 1,
+        activeCafes: prev.activeCafes - 1,
+      } : null);
+
+      alert("Café and all related data deleted successfully");
     } catch (err) {
       console.error("Error deleting cafe:", err);
-      alert("Failed to delete café");
+      alert(`Failed to delete café: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setLoadingData(false);
     }
   }
 
