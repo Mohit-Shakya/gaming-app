@@ -4,7 +4,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import useUser from "@/hooks/useUser";
 import { colors, fonts } from "@/lib/constants";
 import { getEndTime } from "@/lib/timeUtils";
 import ConsoleStatusDashboard from "@/components/ConsoleStatusDashboard";
@@ -131,17 +130,37 @@ function convertTo12Hour(time24h?: string): string {
 
 export default function OwnerDashboardPage() {
   const router = useRouter();
-  const { user, loading: userLoading } = useUser();
+  const [ownerId, setOwnerId] = useState<string | null>(null);
+  const [ownerUsername, setOwnerUsername] = useState<string>("Owner");
 
   const [checkingRole, setCheckingRole] = useState(true);
   const [allowed, setAllowed] = useState(false);
   const [activeTab, setActiveTab] = useState<NavTab>('dashboard');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [showAddMembershipModal, setShowAddMembershipModal] = useState(false);
 
   const [stats, setStats] = useState<OwnerStats | null>(null);
   const [cafes, setCafes] = useState<CafeRow[]>([]);
   const [bookings, setBookings] = useState<BookingRow[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Membership plans state
+  const [membershipPlans, setMembershipPlans] = useState<any[]>([]);
+  const [editingPlan, setEditingPlan] = useState<any | null>(null);
+  const [newPlanType, setNewPlanType] = useState<'day_pass' | 'hourly_package'>('day_pass');
+  const [newPlanConsoleType, setNewPlanConsoleType] = useState<string>('PC');
+  const [newPlanPlayerCount, setNewPlanPlayerCount] = useState<'single' | 'double'>('single');
+  const [newPlanName, setNewPlanName] = useState('');
+  const [newPlanDescription, setNewPlanDescription] = useState('');
+  const [newPlanPrice, setNewPlanPrice] = useState('');
+  const [newPlanHours, setNewPlanHours] = useState('');
+  const [newPlanValidity, setNewPlanValidity] = useState('');
+
+  // Cafe consoles state
+  const [cafeConsoles, setCafeConsoles] = useState<any[]>([]);
+  const [availableConsoleTypes, setAvailableConsoleTypes] = useState<string[]>([]);
 
   // Booking filters
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -219,6 +238,9 @@ export default function OwnerDashboardPage() {
 
   const [editAmount, setEditAmount] = useState<string>("");
   const [editStatus, setEditStatus] = useState<string>("");
+  const [editPaymentMethod, setEditPaymentMethod] = useState<string>("");
+  const [editCustomerName, setEditCustomerName] = useState<string>("");
+  const [editCustomerPhone, setEditCustomerPhone] = useState<string>("");
   const [editDate, setEditDate] = useState<string>("");
   const [editStartTime, setEditStartTime] = useState<string>("");
   const [editDuration, setEditDuration] = useState<number>(60);
@@ -265,21 +287,57 @@ export default function OwnerDashboardPage() {
   // Controller enable/disable state
   const [enabledControllers, setEnabledControllers] = useState<number[]>([1]); // At least 1 controller enabled
 
+  // Handle window resize for mobile detection
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    // Set initial value
+    handleResize();
+
+    // Add event listener
+    window.addEventListener('resize', handleResize);
+
+    // Cleanup
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   // Check role
   useEffect(() => {
     async function checkRole() {
-      if (userLoading) return;
-
-      if (!user) {
-        router.push("/login");
+      // Check for owner session first
+      const ownerSession = localStorage.getItem("owner_session");
+      if (!ownerSession) {
+        router.push("/owner/login");
         return;
       }
 
+      // Verify session is not expired (24 hours)
+      let sessionUserId: string;
+      let sessionUsername: string;
+      try {
+        const session = JSON.parse(ownerSession);
+        if (Date.now() - session.timestamp > 24 * 60 * 60 * 1000) {
+          localStorage.removeItem("owner_session");
+          router.push("/owner/login");
+          return;
+        }
+        sessionUserId = session.userId;
+        sessionUsername = session.username || "Owner";
+        setOwnerUsername(sessionUsername);
+      } catch (err) {
+        localStorage.removeItem("owner_session");
+        router.push("/owner/login");
+        return;
+      }
+
+      // Verify the user from session is still an owner
       try {
         const { data: profile, error: profileError } = await supabase
           .from("profiles")
           .select("role")
-          .eq("id", user.id)
+          .eq("id", sessionUserId)
           .single();
 
         if (profileError) throw profileError;
@@ -287,19 +345,22 @@ export default function OwnerDashboardPage() {
         const role = profile?.role?.toLowerCase();
         if (role === "owner" || role === "admin" || role === "super_admin") {
           setAllowed(true);
+          setOwnerId(sessionUserId);
         } else {
-          router.push("/dashboard");
+          localStorage.removeItem("owner_session");
+          router.push("/owner/login");
         }
       } catch (err) {
         console.error("Error checking role:", err);
-        router.push("/dashboard");
+        localStorage.removeItem("owner_session");
+        router.push("/owner/login");
       } finally {
         setCheckingRole(false);
       }
     }
 
     checkRole();
-  }, [user, userLoading, router]);
+  }, [router]);
 
   // Initialize pricing form when station is selected
   useEffect(() => {
@@ -359,21 +420,21 @@ export default function OwnerDashboardPage() {
     return () => clearInterval(timer);
   }, [activeTab]);
 
-  // Auto-refresh bookings data every 30 seconds to detect ended sessions
+  // Auto-refresh bookings data every 10 seconds to detect ended sessions
   // Real-time subscription handles most updates, this is just a fallback
   useEffect(() => {
-    if (!allowed || !user) return;
+    if (!allowed || !ownerId) return;
 
     const refreshInterval = setInterval(() => {
       setRefreshTrigger(prev => prev + 1);
-    }, 30000); // Refresh every 30 seconds (reduced from 5)
+    }, 10000); // Refresh every 10 seconds for live updates
 
     return () => clearInterval(refreshInterval);
-  }, [allowed, user]);
+  }, [allowed, ownerId]);
 
   // Load data
   useEffect(() => {
-    if (!allowed || !user) return;
+    if (!allowed || !ownerId) return;
 
     async function loadData() {
       try {
@@ -383,8 +444,7 @@ export default function OwnerDashboardPage() {
         }
         setError(null);
 
-        if (!user) return;
-        const ownerId = user.id;
+        if (!ownerId) return;
         const todayStr = new Date().toISOString().slice(0, 10);
 
         // Fetch cafes with all console counts
@@ -649,10 +709,10 @@ export default function OwnerDashboardPage() {
           // Get user data from profiles map
           const userProfile = booking.user_id ? userProfiles.get(booking.user_id) : null;
 
-          // If no profile found, show user ID as fallback
-          const user_name = userProfile?.name || (booking.user_id ? `User ${booking.user_id.slice(0, 8)}` : null);
+          // If no profile found, check customer_name/customer_phone (for walk-ins), otherwise show user ID as fallback
+          const user_name = userProfile?.name || booking.customer_name || (booking.user_id ? `User ${booking.user_id.slice(0, 8)}` : null);
           const user_email = userProfile?.email || null;
-          const user_phone = userProfile?.phone || null;
+          const user_phone = userProfile?.phone || booking.customer_phone || null;
 
           return {
             ...booking,
@@ -726,6 +786,40 @@ export default function OwnerDashboardPage() {
           totalBookings: enrichedBookings.length,
           pendingBookings,
         });
+
+        // Fetch membership plans
+        const { data: plansData, error: plansError } = await supabase
+          .from("membership_plans")
+          .select("*")
+          .in("cafe_id", cafeIds)
+          .eq("is_active", true)
+          .order("created_at", { ascending: false });
+
+        if (!plansError && plansData) {
+          setMembershipPlans(plansData);
+        }
+
+        // Fetch available console types from station_pricing
+        if (cafeIds.length > 0) {
+          const { data: stationsData, error: stationsError } = await supabase
+            .from("station_pricing")
+            .select("station_type")
+            .in("cafe_id", cafeIds)
+            .eq("is_active", true);
+
+          if (!stationsError && stationsData) {
+            // Get unique console types from stations
+            const uniqueTypes = [...new Set(stationsData.map(s => s.station_type))];
+            console.log('[OwnerDashboard] Available console types:', uniqueTypes);
+            setAvailableConsoleTypes(uniqueTypes);
+            // Set default console type to first available
+            if (uniqueTypes.length > 0) {
+              setNewPlanConsoleType(uniqueTypes[0]);
+            }
+          } else if (stationsError) {
+            console.error('[OwnerDashboard] Error fetching stations:', stationsError);
+          }
+        }
       } catch (err) {
         console.error("[OwnerDashboard] loadData error:", err);
         setError((err instanceof Error ? err.message : String(err)) || "Could not load café owner dashboard.");
@@ -738,7 +832,7 @@ export default function OwnerDashboardPage() {
     }
 
     loadData();
-  }, [allowed, user, refreshTrigger]);
+  }, [allowed, ownerId, refreshTrigger]);
 
   // Populate editedCafe when cafes data loads
   useEffect(() => {
@@ -799,7 +893,7 @@ export default function OwnerDashboardPage() {
 
   // Real-time subscription for bookings
   useEffect(() => {
-    if (!allowed || !user || cafes.length === 0) return;
+    if (!allowed || !ownerId || cafes.length === 0) return;
 
     const cafeIds = cafes.map((c) => c.id);
 
@@ -982,7 +1076,7 @@ export default function OwnerDashboardPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [allowed, user, cafes]);
+  }, [allowed, ownerId, cafes]);
 
   // Handle confirm booking (pending -> confirmed)
   async function handleConfirmBooking(booking: BookingRow) {
@@ -1063,6 +1157,9 @@ export default function OwnerDashboardPage() {
     setEditingBooking(booking);
     setEditAmount(booking.total_amount?.toString() || "");
     setEditStatus(booking.status || "confirmed");
+    setEditPaymentMethod(booking.payment_mode || "cash");
+    setEditCustomerName(booking.user_name || booking.customer_name || "");
+    setEditCustomerPhone(booking.user_phone || booking.customer_phone || "");
     setEditDate(booking.booking_date || "");
     setEditDuration(booking.duration || 60);
     // Get console and controllers from booking_items
@@ -1088,6 +1185,9 @@ export default function OwnerDashboardPage() {
         .update({
           total_amount: parseFloat(editAmount),
           status: editStatus,
+          payment_mode: editPaymentMethod,
+          customer_name: editCustomerName,
+          customer_phone: editCustomerPhone,
           booking_date: editDate,
           start_time: startTime12h,
           duration: editDuration,
@@ -1118,6 +1218,11 @@ export default function OwnerDashboardPage() {
                 ...b,
                 total_amount: parseFloat(editAmount),
                 status: editStatus,
+                payment_mode: editPaymentMethod,
+                customer_name: editCustomerName,
+                customer_phone: editCustomerPhone,
+                user_name: editCustomerName,
+                user_phone: editCustomerPhone,
                 booking_date: editDate,
                 start_time: startTime12h,
                 duration: editDuration,
@@ -1557,7 +1662,7 @@ export default function OwnerDashboardPage() {
   });
 
   // Loading state
-  if (checkingRole || userLoading) {
+  if (checkingRole) {
     return (
       <div
         style={{
@@ -1619,6 +1724,20 @@ export default function OwnerDashboardPage() {
         color: theme.textPrimary,
       }}
     >
+      {/* Mobile Menu Overlay */}
+      {mobileMenuOpen && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0, 0, 0, 0.5)",
+            zIndex: 999,
+            display: isMobile ? "block" : "none",
+          }}
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
+
       {/* Sidebar Navigation */}
       <aside
         style={{
@@ -1627,67 +1746,73 @@ export default function OwnerDashboardPage() {
           borderRight: `1px solid ${theme.border}`,
           display: "flex",
           flexDirection: "column",
-          position: "sticky",
+          position: isMobile ? "fixed" : "sticky",
           top: 0,
+          left: isMobile ? (mobileMenuOpen ? 0 : -320) : 0,
           height: "100vh",
+          zIndex: 1000,
+          transition: "left 0.3s ease",
         }}
       >
         {/* Logo */}
         <div
           style={{
-            padding: "32px 28px",
+            padding: isMobile ? "16px 16px" : "32px 28px",
             borderBottom: `1px solid ${theme.border}`,
           }}
         >
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: isMobile ? 4 : 6 }}>
             <div
               style={{
-                fontSize: 24,
+                fontSize: isMobile ? 16 : 24,
                 fontWeight: 800,
                 color: theme.textPrimary,
                 letterSpacing: "-0.5px",
                 lineHeight: 1,
               }}
             >
-              <span style={{ color: "#ff073a" }}>BOOK</span>
-              <span style={{ color: theme.textPrimary }}>MYGAME</span>
+              {cafes.length > 0 ? cafes[0].name || "Your Café" : "Loading..."}
             </div>
             <div
               style={{
-                fontSize: 11,
+                fontSize: isMobile ? 9 : 11,
                 color: theme.textMuted,
                 fontWeight: 500,
-                letterSpacing: "1.5px",
+                letterSpacing: isMobile ? "1px" : "1.5px",
                 textTransform: "uppercase",
               }}
             >
-              Gaming Café Booking
+              <span style={{ color: "#ff073a" }}>BOOK</span>
+              <span style={{ color: theme.textMuted }}>MYGAME</span>
             </div>
           </div>
         </div>
 
         {/* Navigation */}
-        <nav style={{ flex: 1, padding: "24px 20px" }}>
+        <nav style={{ flex: 1, padding: isMobile ? "16px 12px" : "24px 20px" }}>
           {navItems.map((item) => (
             <button
               key={item.id}
-              onClick={() => setActiveTab(item.id)}
+              onClick={() => {
+                setActiveTab(item.id);
+                setMobileMenuOpen(false);
+              }}
               style={{
                 width: "100%",
-                padding: "16px 18px",
-                marginBottom: 6,
-                borderRadius: 12,
+                padding: isMobile ? "12px 14px" : "16px 18px",
+                marginBottom: isMobile ? 4 : 6,
+                borderRadius: isMobile ? 8 : 12,
                 border: "none",
                 background: activeTab === item.id
                   ? theme.activeNavBackground
                   : "transparent",
                 color: activeTab === item.id ? theme.activeNavText : theme.textSecondary,
-                fontSize: 16,
+                fontSize: isMobile ? 14 : 16,
                 fontWeight: activeTab === item.id ? 600 : 500,
                 cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
-                gap: 16,
+                gap: isMobile ? 12 : 16,
                 transition: "all 0.2s ease",
                 textAlign: "left",
               }}
@@ -1702,19 +1827,78 @@ export default function OwnerDashboardPage() {
                 }
               }}
             >
-              <span style={{ fontSize: 22, opacity: 0.8 }}>{item.icon}</span>
+              <span style={{ fontSize: isMobile ? 18 : 22, opacity: 0.8 }}>{item.icon}</span>
               {item.label}
             </button>
           ))}
         </nav>
+
+        {/* Bottom Buttons */}
+        <div style={{ padding: isMobile ? "12px" : "20px", display: "flex", flexDirection: "column", gap: isMobile ? 8 : 12 }}>
+          <button
+            onClick={() => {
+              window.location.href = "/";
+            }}
+            style={{
+              width: "100%",
+              padding: isMobile ? "10px 12px" : "12px 16px",
+              borderRadius: isMobile ? 8 : 10,
+              border: `1px solid ${theme.border}`,
+              background: "transparent",
+              color: theme.textSecondary,
+              fontSize: isMobile ? 12 : 14,
+              fontWeight: 500,
+              cursor: "pointer",
+              transition: "all 0.2s",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = theme.hoverBackground;
+              e.currentTarget.style.borderColor = theme.textSecondary;
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "transparent";
+              e.currentTarget.style.borderColor = theme.border;
+            }}
+          >
+            👤 User Dashboard
+          </button>
+          <button
+            onClick={() => {
+              localStorage.removeItem("owner_session");
+              window.location.href = "/owner/login";
+            }}
+            style={{
+              width: "100%",
+              padding: isMobile ? "10px 12px" : "12px 16px",
+              borderRadius: isMobile ? 8 : 10,
+              border: `1px solid rgba(248, 113, 113, 0.3)`,
+              background: "transparent",
+              color: "#f87171",
+              fontSize: isMobile ? 12 : 14,
+              fontWeight: 500,
+              cursor: "pointer",
+              transition: "all 0.2s",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "rgba(248, 113, 113, 0.1)";
+              e.currentTarget.style.borderColor = "#f87171";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "transparent";
+              e.currentTarget.style.borderColor = "rgba(248, 113, 113, 0.3)";
+            }}
+          >
+            🚪 Logout Admin
+          </button>
+        </div>
       </aside>
 
       {/* Main Content */}
-      <main style={{ flex: 1, overflow: "auto" }}>
+      <main style={{ flex: 1, overflow: "auto", width: "100%" }}>
         {/* Header */}
         <header
           style={{
-            padding: "24px 32px",
+            padding: isMobile ? "16px 20px" : "24px 32px",
             borderBottom: `1px solid ${theme.border}`,
             background: theme.headerBackground,
             backdropFilter: "blur(10px)",
@@ -1728,13 +1912,34 @@ export default function OwnerDashboardPage() {
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
+              gap: 16,
             }}
           >
-            <div>
+            {/* Mobile Menu Button */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              style={{
+                display: isMobile ? "flex" : "none",
+                alignItems: "center",
+                justifyContent: "center",
+                width: 40,
+                height: 40,
+                borderRadius: 8,
+                border: `1px solid ${theme.border}`,
+                background: "transparent",
+                color: theme.textPrimary,
+                fontSize: 20,
+                cursor: "pointer",
+              }}
+            >
+              ☰
+            </button>
+
+            <div style={{ flex: 1 }}>
               <h1
                 style={{
                   fontFamily: fonts.heading,
-                  fontSize: 28,
+                  fontSize: isMobile ? 20 : 28,
                   margin: 0,
                   marginBottom: 0,
                   fontWeight: 700,
@@ -1756,76 +1961,11 @@ export default function OwnerDashboardPage() {
                 {activeTab === 'analytics' && 'Analytics & Reports'}
               </h1>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{ textAlign: "right" }}>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: theme.textPrimary }}>
-                    {user?.user_metadata?.name || user?.email?.split('@')[0] || 'Owner'}
-                  </div>
-                  <div style={{ fontSize: 12, color: theme.textMuted }}>
-                    Owner
-                  </div>
-                </div>
-                <div
-                  style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: 10,
-                    background: "linear-gradient(135deg, #3b82f6, #2563eb)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: 16,
-                    fontWeight: 600,
-                    color: "#fff",
-                  }}
-                >
-                  {(user?.user_metadata?.name || user?.email?.split('@')[0] || 'Owner')
-                    .split(' ')
-                    .map((word: string) => word[0])
-                    .join('')
-                    .toUpperCase()
-                    .slice(0, 2)}
-                </div>
-                <button
-                  style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: 8,
-                    border: "none",
-                    background: "transparent",
-                    color: "#ef4444",
-                    fontSize: 18,
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                  title="Logout"
-                  onClick={async () => {
-                    try {
-                      const { error } = await supabase.auth.signOut();
-                      if (error) {
-                        console.error('Logout error:', error);
-                      }
-                      // Force a full page reload to clear all state
-                      window.location.href = '/login';
-                    } catch (err) {
-                      console.error('Logout failed:', err);
-                      // Still redirect even if logout fails
-                      window.location.href = '/login';
-                    }
-                  }}
-                >
-                  🚪
-                </button>
-              </div>
-            </div>
           </div>
         </header>
 
         {/* Content Area */}
-        <div style={{ padding: "32px" }}>
+        <div style={{ padding: isMobile ? "16px" : "32px" }}>
           {error && (
             <div
               style={{
@@ -1849,16 +1989,16 @@ export default function OwnerDashboardPage() {
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-                  gap: 20,
-                  marginBottom: 32,
+                  gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fit, minmax(300px, 1fr))",
+                  gap: isMobile ? 12 : 20,
+                  marginBottom: isMobile ? 16 : 32,
                 }}
               >
                 {/* Active Now Card */}
                 <div
                   style={{
-                    padding: "24px",
-                    borderRadius: 16,
+                    padding: isMobile ? "16px" : "24px",
+                    borderRadius: isMobile ? 12 : 16,
                     background: theme.cardBackground,
                     border: `1px solid ${theme.border}`,
                     position: "relative",
@@ -1868,16 +2008,16 @@ export default function OwnerDashboardPage() {
                   <div
                     style={{
                       position: "absolute",
-                      top: 16,
-                      right: 16,
-                      width: 48,
-                      height: 48,
-                      borderRadius: 12,
+                      top: isMobile ? 12 : 16,
+                      right: isMobile ? 12 : 16,
+                      width: isMobile ? 36 : 48,
+                      height: isMobile ? 36 : 48,
+                      borderRadius: isMobile ? 8 : 12,
                       background: "rgba(239, 68, 68, 0.15)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      fontSize: 24,
+                      fontSize: isMobile ? 18 : 24,
                     }}
                   >
                     ▶️
@@ -1885,7 +2025,7 @@ export default function OwnerDashboardPage() {
                   <div style={{ position: "relative", zIndex: 1 }}>
                     <p
                       style={{
-                        fontSize: 48,
+                        fontSize: isMobile ? 32 : 48,
                         fontWeight: 700,
                         color: theme.textPrimary,
                         margin: 0,
@@ -1896,9 +2036,9 @@ export default function OwnerDashboardPage() {
                     </p>
                     <p
                       style={{
-                        fontSize: 18,
+                        fontSize: isMobile ? 14 : 18,
                         color: theme.textSecondary,
-                        marginTop: 10,
+                        marginTop: isMobile ? 8 : 10,
                         marginBottom: 0,
                         fontWeight: 600,
                       }}
@@ -1911,8 +2051,8 @@ export default function OwnerDashboardPage() {
                 {/* Today's Revenue Card */}
                 <div
                   style={{
-                    padding: "24px",
-                    borderRadius: 16,
+                    padding: isMobile ? "16px" : "24px",
+                    borderRadius: isMobile ? 12 : 16,
                     background: theme.cardBackground,
                     border: `1px solid ${theme.border}`,
                     position: "relative",
@@ -1922,16 +2062,16 @@ export default function OwnerDashboardPage() {
                   <div
                     style={{
                       position: "absolute",
-                      top: 16,
-                      right: 16,
-                      width: 48,
-                      height: 48,
-                      borderRadius: 12,
+                      top: isMobile ? 12 : 16,
+                      right: isMobile ? 12 : 16,
+                      width: isMobile ? 36 : 48,
+                      height: isMobile ? 36 : 48,
+                      borderRadius: isMobile ? 8 : 12,
                       background: "rgba(34, 197, 94, 0.15)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      fontSize: 24,
+                      fontSize: isMobile ? 18 : 24,
                     }}
                   >
                     ₹
@@ -1939,7 +2079,7 @@ export default function OwnerDashboardPage() {
                   <div style={{ position: "relative", zIndex: 1 }}>
                     <p
                       style={{
-                        fontSize: 48,
+                        fontSize: isMobile ? 28 : 48,
                         fontWeight: 700,
                         color: theme.textPrimary,
                         margin: 0,
@@ -1950,25 +2090,25 @@ export default function OwnerDashboardPage() {
                     </p>
                     <p
                       style={{
-                        fontSize: 18,
+                        fontSize: isMobile ? 14 : 18,
                         color: theme.textSecondary,
-                        marginTop: 10,
+                        marginTop: isMobile ? 8 : 10,
                         marginBottom: 0,
                         fontWeight: 600,
                       }}
                     >
                       Today's Revenue
                     </p>
-                    <div style={{ marginTop: 18, display: "flex", flexDirection: "column", gap: 8 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 15 }}>
+                    <div style={{ marginTop: isMobile ? 12 : 18, display: "flex", flexDirection: "column", gap: isMobile ? 6 : 8 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: isMobile ? 12 : 15 }}>
                         <span style={{ color: theme.textSecondary, fontWeight: 500 }}>Sessions</span>
                         <span style={{ color: theme.textPrimary, fontWeight: 600 }}>₹{loadingData ? "0" : stats?.todayRevenue ?? 0}</span>
                       </div>
-                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 15 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: isMobile ? 12 : 15 }}>
                         <span style={{ color: theme.textSecondary, fontWeight: 500 }}>Tournament</span>
                         <span style={{ color: theme.textPrimary, fontWeight: 600 }}>₹0</span>
                       </div>
-                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 15 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: isMobile ? 12 : 15 }}>
                         <span style={{ color: theme.textSecondary, fontWeight: 500 }}>Memberships</span>
                         <span style={{ color: theme.textPrimary, fontWeight: 600 }}>₹0</span>
                       </div>
@@ -1979,8 +2119,8 @@ export default function OwnerDashboardPage() {
                 {/* Today's Sessions Card */}
                 <div
                   style={{
-                    padding: "24px",
-                    borderRadius: 16,
+                    padding: isMobile ? "16px" : "24px",
+                    borderRadius: isMobile ? 12 : 16,
                     background: theme.cardBackground,
                     border: `1px solid ${theme.border}`,
                     position: "relative",
@@ -1990,16 +2130,16 @@ export default function OwnerDashboardPage() {
                   <div
                     style={{
                       position: "absolute",
-                      top: 16,
-                      right: 16,
-                      width: 48,
-                      height: 48,
-                      borderRadius: 12,
+                      top: isMobile ? 12 : 16,
+                      right: isMobile ? 12 : 16,
+                      width: isMobile ? 36 : 48,
+                      height: isMobile ? 36 : 48,
+                      borderRadius: isMobile ? 8 : 12,
                       background: "rgba(249, 115, 22, 0.15)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      fontSize: 24,
+                      fontSize: isMobile ? 18 : 24,
                     }}
                   >
                     🕐
@@ -2007,7 +2147,7 @@ export default function OwnerDashboardPage() {
                   <div style={{ position: "relative", zIndex: 1 }}>
                     <p
                       style={{
-                        fontSize: 48,
+                        fontSize: isMobile ? 32 : 48,
                         fontWeight: 700,
                         color: theme.textPrimary,
                         margin: 0,
@@ -2018,9 +2158,9 @@ export default function OwnerDashboardPage() {
                     </p>
                     <p
                       style={{
-                        fontSize: 18,
+                        fontSize: isMobile ? 14 : 18,
                         color: theme.textSecondary,
-                        marginTop: 10,
+                        marginTop: isMobile ? 8 : 10,
                         marginBottom: 0,
                         fontWeight: 600,
                       }}
@@ -2052,22 +2192,52 @@ export default function OwnerDashboardPage() {
                     b => b.status === 'in-progress' && b.booking_date === new Date().toISOString().split('T')[0]
                   );
 
-                  if (activeBookings.length === 0) {
+                  // Sort active bookings by time remaining (urgent first)
+                  const sortedActiveBookings = [...activeBookings].sort((a, b) => {
+                    // Calculate time remaining for booking a
+                    const currentMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
+
+                    const getTimeRemaining = (booking: typeof a) => {
+                      if (!booking.start_time || !booking.duration) return 999;
+                      const timeParts = booking.start_time.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
+                      if (!timeParts) return 999;
+
+                      let hours = parseInt(timeParts[1]);
+                      const minutes = parseInt(timeParts[2]);
+                      const period = timeParts[3];
+
+                      if (period) {
+                        if (period.toLowerCase() === 'pm' && hours !== 12) hours += 12;
+                        else if (period.toLowerCase() === 'am' && hours === 12) hours = 0;
+                      }
+
+                      const startMinutes = hours * 60 + minutes;
+                      const endMinutes = startMinutes + booking.duration;
+                      return Math.max(0, endMinutes - currentMinutes);
+                    };
+
+                    const timeA = getTimeRemaining(a);
+                    const timeB = getTimeRemaining(b);
+
+                    return timeA - timeB; // Sort ascending (least time first)
+                  });
+
+                  if (sortedActiveBookings.length === 0) {
                     return (
                       <div
                         style={{
-                          padding: "60px 20px",
+                          padding: isMobile ? "40px 16px" : "60px 20px",
                           textAlign: "center",
                           background: theme.cardBackground,
-                          borderRadius: 16,
+                          borderRadius: isMobile ? 12 : 16,
                           border: `1px solid ${theme.border}`,
                         }}
                       >
-                        <div style={{ fontSize: 48, marginBottom: 12, opacity: 0.3 }}>🎮</div>
-                        <p style={{ fontSize: 16, color: theme.textSecondary, marginBottom: 6, fontWeight: 500 }}>
+                        <div style={{ fontSize: isMobile ? 32 : 48, marginBottom: isMobile ? 8 : 12, opacity: 0.3 }}>🎮</div>
+                        <p style={{ fontSize: isMobile ? 14 : 16, color: theme.textSecondary, marginBottom: isMobile ? 4 : 6, fontWeight: 500 }}>
                           No active sessions
                         </p>
-                        <p style={{ fontSize: 14, color: theme.textMuted }}>
+                        <p style={{ fontSize: isMobile ? 12 : 14, color: theme.textMuted }}>
                           Sessions in progress will appear here
                         </p>
                       </div>
@@ -2078,11 +2248,11 @@ export default function OwnerDashboardPage() {
                     <div
                       style={{
                         display: "grid",
-                        gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
-                        gap: 20,
+                        gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill, minmax(300px, 1fr))",
+                        gap: isMobile ? 12 : 20,
                       }}
                     >
-                      {activeBookings.map((booking, index) => {
+                      {sortedActiveBookings.map((booking, index) => {
                         const consoleInfo = booking.booking_items?.[0];
                         const isWalkIn = booking.source === 'walk-in';
                         const customerName = isWalkIn ? booking.customer_name : booking.user_name || booking.user_email;
@@ -2120,68 +2290,137 @@ export default function OwnerDashboardPage() {
                         // Generate station name based on console type and index
                         // Group bookings by console type to get proper numbering
                         const consoleType = consoleInfo?.console?.toUpperCase() || 'UNKNOWN';
-                        const sameTypeBookings = activeBookings.filter(
+                        const sameTypeBookings = sortedActiveBookings.filter(
                           (b, i) => i <= index && b.booking_items?.[0]?.console === consoleInfo?.console
                         );
                         const stationNumber = sameTypeBookings.length;
                         const stationName = `${consoleType}-${String(stationNumber).padStart(2, '0')}`;
 
+                        const isUrgent = timeRemaining < 15;
+                        const isWarning = timeRemaining >= 15 && timeRemaining <= 30;
+                        const isHealthy = timeRemaining > 30;
+
                         return (
                           <div
                             key={booking.id}
                             style={{
-                              padding: "24px",
-                              borderRadius: 16,
-                              background: "rgba(15,23,42,0.6)",
-                              border: "1px solid rgba(239, 68, 68, 0.3)",
+                              background: isHealthy
+                                ? "rgba(34, 197, 94, 0.08)"
+                                : isWarning
+                                ? "rgba(251, 191, 36, 0.08)"
+                                : "rgba(239, 68, 68, 0.08)",
+                              border: `${isMobile ? '1px' : '2px'} solid ${
+                                isHealthy
+                                  ? "rgba(34, 197, 94, 0.4)"
+                                  : isWarning
+                                  ? "rgba(251, 191, 36, 0.4)"
+                                  : "rgba(239, 68, 68, 0.4)"
+                              }`,
+                              borderRadius: isMobile ? "10px" : "16px",
+                              padding: isMobile ? "12px" : "20px",
+                              minHeight: isMobile ? "auto" : "160px",
+                              display: "flex",
+                              flexDirection: "column",
                               position: "relative",
                               overflow: "hidden",
+                              transition: "all 0.3s ease",
+                              cursor: "default",
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.transform = "translateY(-4px)";
+                              e.currentTarget.style.boxShadow = `0 8px 24px ${
+                                isHealthy
+                                  ? "rgba(34, 197, 94, 0.2)"
+                                  : isWarning
+                                  ? "rgba(251, 191, 36, 0.2)"
+                                  : "rgba(239, 68, 68, 0.2)"
+                              }`;
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.transform = "translateY(0)";
+                              e.currentTarget.style.boxShadow = "none";
                             }}
                           >
-                            {/* Header with Console Icon and Number */}
-                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                                <div style={{ fontSize: 32 }}>🎮</div>
-                                <div>
-                                  <div style={{ fontSize: 20, fontWeight: 700, color: theme.textPrimary }}>
-                                    {stationName}
-                                  </div>
-                                  <div style={{ fontSize: 13, color: theme.textMuted, marginTop: 2 }}>
-                                    {consoleType}
-                                  </div>
+                            {/* Status Badge */}
+                            <div style={{
+                              position: "absolute",
+                              top: isMobile ? "8px" : "12px",
+                              right: isMobile ? "8px" : "12px",
+                              background: isHealthy
+                                ? "rgba(34, 197, 94, 0.2)"
+                                : isWarning
+                                ? "rgba(251, 191, 36, 0.2)"
+                                : "rgba(239, 68, 68, 0.2)",
+                              border: `1.5px solid ${
+                                isHealthy ? "#22c55e" : isWarning ? "#f59e0b" : "#ef4444"
+                              }`,
+                              borderRadius: isMobile ? "12px" : "20px",
+                              padding: isMobile ? "3px 8px" : "4px 12px",
+                              fontSize: isMobile ? "9px" : "11px",
+                              fontWeight: 700,
+                              color: isHealthy ? "#22c55e" : isWarning ? "#f59e0b" : "#ef4444",
+                              textTransform: "uppercase",
+                              letterSpacing: "0.5px",
+                            }}>
+                              {isHealthy ? "ACTIVE" : isWarning ? "ENDING SOON" : "URGENT"}
+                            </div>
+
+                            {/* Console Number */}
+                            <div style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: isMobile ? "8px" : "10px",
+                              marginBottom: isMobile ? "10px" : "16px",
+                            }}>
+                              <div style={{ fontSize: isMobile ? "24px" : "32px" }}>
+                                {consoleInfo?.icon || '🎮'}
+                              </div>
+                              <div>
+                                <div style={{
+                                  fontSize: isMobile ? "14px" : "18px",
+                                  fontWeight: 700,
+                                  color: theme.textPrimary,
+                                }}>
+                                  {stationName}
+                                </div>
+                                <div style={{ fontSize: isMobile ? "10px" : "12px", color: theme.textSecondary, marginTop: "2px" }}>
+                                  {consoleType}
                                 </div>
                               </div>
                             </div>
 
-                            {/* Customer Name */}
-                            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-                              <span style={{ fontSize: 18 }}>👤</span>
-                              <span style={{ fontSize: 16, color: theme.textPrimary, fontWeight: 500 }}>
-                                {customerName || 'Unknown Customer'}
-                              </span>
-                            </div>
+                            {/* Booking Info */}
+                            <div style={{
+                              flex: 1,
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: isMobile ? "6px" : "10px",
+                              background: "rgba(0, 0, 0, 0.2)",
+                              padding: isMobile ? "8px" : "12px",
+                              borderRadius: isMobile ? "6px" : "8px",
+                            }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: isMobile ? "6px" : "8px" }}>
+                                <span style={{ fontSize: isMobile ? "14px" : "16px" }}>👤</span>
+                                <span style={{ fontSize: isMobile ? "12px" : "15px", color: theme.textPrimary, fontWeight: 600 }}>
+                                  {customerName || 'Unknown Customer'}
+                                </span>
+                              </div>
 
-                            {/* Ends At */}
-                            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
-                              <span style={{ fontSize: 18 }}>🕐</span>
-                              <span style={{ fontSize: 14, color: theme.textMuted }}>
-                                Ends at {endTime}
-                              </span>
-                            </div>
+                              <div style={{ display: "flex", alignItems: "center", gap: isMobile ? "6px" : "8px" }}>
+                                <span style={{ fontSize: isMobile ? "12px" : "14px" }}>🕒</span>
+                                <span style={{ fontSize: isMobile ? "11px" : "13px", color: theme.textSecondary }}>
+                                  Ends at {endTime}
+                                </span>
+                              </div>
 
-                            {/* Time Remaining Badge */}
-                            <div
-                              style={{
-                                padding: "16px",
-                                borderRadius: 12,
-                                background: "rgba(120, 40, 40, 0.4)",
-                                border: "1px solid rgba(239, 68, 68, 0.2)",
-                              }}
-                            >
-                              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                                <span style={{ fontSize: 24 }}>⏱️</span>
-                                <span style={{ fontSize: 20, fontWeight: 700, color: "#ef4444" }}>
-                                  {timeRemaining} min left
+                              <div style={{ display: "flex", alignItems: "center", gap: isMobile ? "6px" : "8px" }}>
+                                <span style={{ fontSize: isMobile ? "12px" : "14px" }}>⏱️</span>
+                                <span style={{
+                                  fontSize: isMobile ? "11px" : "13px",
+                                  color: isHealthy ? "#22c55e" : isWarning ? "#fbbf24" : "#ef4444",
+                                  fontWeight: 600
+                                }}>
+                                  {timeRemaining} min remaining
                                 </span>
                               </div>
                             </div>
@@ -2194,15 +2433,15 @@ export default function OwnerDashboardPage() {
               </div>
 
               {/* Today's Bookings Section */}
-              <div style={{ marginTop: 40 }}>
+              <div style={{ marginTop: isMobile ? 24 : 40 }}>
                 <div
                   style={{
-                    marginBottom: 20,
+                    marginBottom: isMobile ? 12 : 20,
                   }}
                 >
                   <h2
                     style={{
-                      fontSize: 20,
+                      fontSize: isMobile ? 16 : 20,
                       fontWeight: 600,
                       color: theme.textPrimary,
                       margin: 0,
@@ -2221,18 +2460,18 @@ export default function OwnerDashboardPage() {
                     return (
                       <div
                         style={{
-                          padding: "60px 20px",
+                          padding: isMobile ? "40px 16px" : "60px 20px",
                           textAlign: "center",
                           background: theme.cardBackground,
-                          borderRadius: 16,
+                          borderRadius: isMobile ? 12 : 16,
                           border: `1px solid ${theme.border}`,
                         }}
                       >
-                        <div style={{ fontSize: 48, marginBottom: 12, opacity: 0.3 }}>📅</div>
-                        <p style={{ fontSize: 16, color: theme.textSecondary, marginBottom: 6, fontWeight: 500 }}>
+                        <div style={{ fontSize: isMobile ? 32 : 48, marginBottom: isMobile ? 8 : 12, opacity: 0.3 }}>📅</div>
+                        <p style={{ fontSize: isMobile ? 14 : 16, color: theme.textSecondary, marginBottom: isMobile ? 4 : 6, fontWeight: 500 }}>
                           No bookings today
                         </p>
-                        <p style={{ fontSize: 14, color: theme.textMuted }}>
+                        <p style={{ fontSize: isMobile ? 12 : 14, color: theme.textMuted }}>
                           Today's bookings will appear here
                         </p>
                       </div>
@@ -2243,12 +2482,13 @@ export default function OwnerDashboardPage() {
                     <div
                       style={{
                         background: theme.cardBackground,
-                        borderRadius: 16,
+                        borderRadius: isMobile ? 12 : 16,
                         border: `1px solid ${theme.border}`,
                         overflow: 'hidden',
                       }}
                     >
-                      {/* Table Header */}
+                      {/* Table Header - Hide on mobile */}
+                      {!isMobile && (
                       <div
                         style={{
                           display: 'grid',
@@ -2293,6 +2533,7 @@ export default function OwnerDashboardPage() {
                           Amount
                         </div>
                       </div>
+                      )}
 
                       {/* Table Body */}
                       {todaysBookings.map((booking, index) => {
@@ -2333,7 +2574,58 @@ export default function OwnerDashboardPage() {
 
                         const endTime = calculateEndTime(booking.start_time, booking.duration ?? null);
 
-                        return (
+                        return isMobile ? (
+                          // Mobile Card Layout
+                          <div
+                            key={booking.id}
+                            style={{
+                              padding: '12px 16px',
+                              borderBottom: index < todaysBookings.length - 1 ? `1px solid ${theme.border}` : 'none',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: 8,
+                            }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                              <div>
+                                <div style={{ fontSize: 13, fontWeight: 600, color: theme.textPrimary }}>{customerName}</div>
+                                <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 2 }}>{customerPhone}</div>
+                              </div>
+                              <div style={{ fontSize: 14, fontWeight: 600, color: '#22c55e' }}>₹{booking.total_amount || 0}</div>
+                            </div>
+                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', fontSize: 11 }}>
+                              <span style={{ padding: '3px 8px', borderRadius: 4, background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', fontWeight: 600 }}>
+                                {consoleName}
+                              </span>
+                              <span style={{ padding: '3px 8px', borderRadius: 4, background: 'rgba(168, 85, 247, 0.1)', color: '#a855f7', fontWeight: 600 }}>
+                                {booking.start_time} - {endTime}
+                              </span>
+                              <span style={{
+                                padding: '3px 8px',
+                                borderRadius: 4,
+                                fontSize: 10,
+                                fontWeight: 600,
+                                textTransform: 'capitalize',
+                                background:
+                                  booking.status === 'confirmed' ? 'rgba(34, 197, 94, 0.1)' :
+                                  booking.status === 'in-progress' ? 'rgba(59, 130, 246, 0.1)' :
+                                  booking.status === 'completed' ? 'rgba(107, 114, 128, 0.1)' :
+                                  'rgba(239, 68, 68, 0.1)',
+                                color:
+                                  booking.status === 'confirmed' ? '#22c55e' :
+                                  booking.status === 'in-progress' ? '#3b82f6' :
+                                  booking.status === 'completed' ? '#6b7280' :
+                                  '#ef4444',
+                              }}>
+                                {booking.status || 'Unknown'}
+                              </span>
+                              <span style={{ padding: '3px 8px', borderRadius: 4, background: 'rgba(168, 85, 247, 0.1)', color: '#a855f7', fontWeight: 600 }}>
+                                {getPaymentIcon(paymentMode)} {paymentMode}
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          // Desktop Table Layout
                           <div
                             key={booking.id}
                             style={{
@@ -2450,27 +2742,32 @@ export default function OwnerDashboardPage() {
                       {/* Total Row */}
                       <div
                         style={{
-                          display: 'grid',
-                          gridTemplateColumns: '150px 120px 110px 100px 100px 100px 100px 110px 110px 110px 90px',
-                          gap: 12,
-                          padding: '18px 24px',
+                          display: isMobile ? 'flex' : 'grid',
+                          gridTemplateColumns: isMobile ? 'auto' : '150px 120px 110px 100px 100px 100px 100px 110px 110px 110px 90px',
+                          justifyContent: isMobile ? 'space-between' : 'initial',
+                          gap: isMobile ? 0 : 12,
+                          padding: isMobile ? '12px 16px' : '18px 24px',
                           background: theme.hoverBackground,
                           borderTop: `2px solid ${theme.border}`,
                         }}
                       >
-                        <div></div>
-                        <div></div>
-                        <div></div>
-                        <div></div>
-                        <div></div>
-                        <div></div>
-                        <div></div>
-                        <div></div>
-                        <div></div>
-                        <div style={{ display: 'flex', alignItems: 'center', fontSize: 14, fontWeight: 700, color: theme.textPrimary }}>
+                        {!isMobile && (
+                          <>
+                            <div></div>
+                            <div></div>
+                            <div></div>
+                            <div></div>
+                            <div></div>
+                            <div></div>
+                            <div></div>
+                            <div></div>
+                            <div></div>
+                          </>
+                        )}
+                        <div style={{ display: 'flex', alignItems: 'center', fontSize: isMobile ? 12 : 14, fontWeight: 700, color: theme.textPrimary }}>
                           Total ({todaysBookings.length})
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', fontSize: 18, fontWeight: 700, color: '#22c55e' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', fontSize: isMobile ? 16 : 18, fontWeight: 700, color: '#22c55e' }}>
                           ₹{totalAmount}
                         </div>
                       </div>
@@ -2488,16 +2785,16 @@ export default function OwnerDashboardPage() {
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-                  gap: 20,
-                  marginBottom: 32,
+                  gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fit, minmax(240px, 1fr))",
+                  gap: isMobile ? 12 : 20,
+                  marginBottom: isMobile ? 20 : 32,
                 }}
               >
                 <div
                   onClick={() => cafes.length > 0 && setActiveTab('cafe-details')}
                   style={{
-                    padding: "24px",
-                    borderRadius: 16,
+                    padding: isMobile ? "16px" : "24px",
+                    borderRadius: isMobile ? 12 : 16,
                     background: "linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(79, 70, 229, 0.1))",
                     border: "1px solid #818cf840",
                     position: "relative",
@@ -2516,17 +2813,17 @@ export default function OwnerDashboardPage() {
                     e.currentTarget.style.boxShadow = "none";
                   }}
                 >
-                  <div style={{ position: "absolute", top: -20, right: -20, fontSize: 80, opacity: 0.1 }}>
+                  <div style={{ position: "absolute", top: -20, right: -20, fontSize: isMobile ? 60 : 80, opacity: 0.1 }}>
                     🏪
                   </div>
                   <div style={{ position: "relative", zIndex: 1 }}>
                     <p
                       style={{
-                        fontSize: 11,
+                        fontSize: isMobile ? 9 : 11,
                         color: "#818cf8E6",
-                        marginBottom: 8,
+                        marginBottom: isMobile ? 6 : 8,
                         textTransform: "uppercase",
-                        letterSpacing: 1.5,
+                        letterSpacing: isMobile ? 1 : 1.5,
                         fontWeight: 600,
                       }}
                     >
@@ -2535,15 +2832,15 @@ export default function OwnerDashboardPage() {
                     <p
                       style={{
                         fontFamily: fonts.heading,
-                        fontSize: cafes.length > 0 ? 20 : 36,
-                        margin: "8px 0",
+                        fontSize: cafes.length > 0 ? (isMobile ? 16 : 20) : (isMobile ? 24 : 36),
+                        margin: isMobile ? "6px 0" : "8px 0",
                         color: "#818cf8",
                         lineHeight: 1.2,
                       }}
                     >
                       {loadingData ? "..." : cafes.length > 0 ? cafes[0].name || "Your Café" : "0"}
                     </p>
-                    <p style={{ fontSize: 13, color: "#818cf8B3", marginTop: 8 }}>
+                    <p style={{ fontSize: isMobile ? 11 : 13, color: "#818cf8B3", marginTop: isMobile ? 6 : 8 }}>
                       {cafes.length > 0 ? "Click to manage" : "No café assigned"}
                     </p>
                   </div>
@@ -2578,32 +2875,32 @@ export default function OwnerDashboardPage() {
               <div
                 style={{
                   background: theme.cardBackground,
-                  borderRadius: 16,
+                  borderRadius: isMobile ? 12 : 16,
                   border: `1px solid ${theme.border}`,
-                  padding: "24px",
-                  marginBottom: 24,
+                  padding: isMobile ? "16px" : "24px",
+                  marginBottom: isMobile ? 16 : 24,
                 }}
               >
                 <div style={{
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",
-                  marginBottom: 20,
+                  marginBottom: isMobile ? 12 : 20,
                   flexWrap: "wrap",
-                  gap: 12,
+                  gap: isMobile ? 8 : 12,
                 }}>
                   <h2
                     style={{
-                      fontSize: 18,
+                      fontSize: isMobile ? 14 : 18,
                       fontWeight: 600,
                       display: "flex",
                       alignItems: "center",
-                      gap: 8,
+                      gap: isMobile ? 6 : 8,
                     }}
                   >
-                    <span>💰</span> Revenue Overview
+                    <span style={{ fontSize: isMobile ? 16 : 20 }}>💰</span> Revenue Overview
                   </h2>
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <div style={{ display: "flex", gap: isMobile ? 4 : 8, flexWrap: "wrap" }}>
                     {[
                       { value: "today", label: "Today" },
                       { value: "week", label: "This Week" },
@@ -2615,8 +2912,8 @@ export default function OwnerDashboardPage() {
                         key={filter.value}
                         onClick={() => setRevenueFilter(filter.value)}
                         style={{
-                          padding: "8px 16px",
-                          borderRadius: 8,
+                          padding: isMobile ? "6px 10px" : "8px 16px",
+                          borderRadius: isMobile ? 6 : 8,
                           border: `1px solid ${
                             revenueFilter === filter.value ? "#10b981" : theme.border
                           }`,
@@ -2625,7 +2922,7 @@ export default function OwnerDashboardPage() {
                               ? "rgba(16, 185, 129, 0.15)"
                               : "rgba(15,23,42,0.4)",
                           color: revenueFilter === filter.value ? "#10b981" : "#94a3b8",
-                          fontSize: 13,
+                          fontSize: isMobile ? 11 : 13,
                           fontWeight: 500,
                           cursor: "pointer",
                           transition: "all 0.2s ease",
@@ -2652,22 +2949,22 @@ export default function OwnerDashboardPage() {
                 <div
                   style={{
                     display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-                    gap: 16,
+                    gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fit, minmax(200px, 1fr))",
+                    gap: isMobile ? 10 : 16,
                   }}
                 >
                   <div
                     style={{
-                      padding: "20px",
-                      borderRadius: 12,
+                      padding: isMobile ? "14px" : "20px",
+                      borderRadius: isMobile ? 10 : 12,
                       background: "linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(5, 150, 105, 0.1))",
                       border: "1px solid rgba(16, 185, 129, 0.3)",
                     }}
                   >
-                    <p style={{ fontSize: 12, color: "#10b981", marginBottom: 8, textTransform: "uppercase", letterSpacing: 1 }}>
+                    <p style={{ fontSize: isMobile ? 10 : 12, color: "#10b981", marginBottom: isMobile ? 6 : 8, textTransform: "uppercase", letterSpacing: isMobile ? 0.5 : 1 }}>
                       Total Revenue
                     </p>
-                    <p style={{ fontSize: 32, fontWeight: 700, color: "#10b981", fontFamily: fonts.heading }}>
+                    <p style={{ fontSize: isMobile ? 22 : 32, fontWeight: 700, color: "#10b981", fontFamily: fonts.heading }}>
                       ₹{loadingData ? "..." : (() => {
                         const todayStr = new Date().toISOString().split('T')[0];
 
@@ -2700,7 +2997,7 @@ export default function OwnerDashboardPage() {
                         }
                       })()}
                     </p>
-                    <p style={{ fontSize: 12, color: "#10b98180", marginTop: 8 }}>
+                    <p style={{ fontSize: isMobile ? 10 : 12, color: "#10b98180", marginTop: isMobile ? 6 : 8 }}>
                       {revenueFilter === "today" ? "Today's earnings" :
                        revenueFilter === "week" ? "This week's earnings" :
                        revenueFilter === "month" ? "This month's earnings" :
@@ -2711,16 +3008,16 @@ export default function OwnerDashboardPage() {
 
                   <div
                     style={{
-                      padding: "20px",
-                      borderRadius: 12,
+                      padding: isMobile ? "14px" : "20px",
+                      borderRadius: isMobile ? 10 : 12,
                       background: "linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(37, 99, 235, 0.1))",
                       border: "1px solid rgba(59, 130, 246, 0.3)",
                     }}
                   >
-                    <p style={{ fontSize: 12, color: "#3b82f6", marginBottom: 8, textTransform: "uppercase", letterSpacing: 1 }}>
+                    <p style={{ fontSize: isMobile ? 10 : 12, color: "#3b82f6", marginBottom: isMobile ? 6 : 8, textTransform: "uppercase", letterSpacing: isMobile ? 0.5 : 1 }}>
                       Bookings
                     </p>
-                    <p style={{ fontSize: 32, fontWeight: 700, color: "#3b82f6", fontFamily: fonts.heading }}>
+                    <p style={{ fontSize: isMobile ? 22 : 32, fontWeight: 700, color: "#3b82f6", fontFamily: fonts.heading }}>
                       {loadingData ? "..." : (() => {
                         const todayStr = new Date().toISOString().split('T')[0];
 
@@ -2745,7 +3042,7 @@ export default function OwnerDashboardPage() {
                         }
                       })()}
                     </p>
-                    <p style={{ fontSize: 12, color: "#3b82f680", marginTop: 8 }}>
+                    <p style={{ fontSize: isMobile ? 10 : 12, color: "#3b82f680", marginTop: isMobile ? 6 : 8 }}>
                       {revenueFilter === "today" ? "Today's bookings" :
                        revenueFilter === "week" ? "This week's bookings" :
                        revenueFilter === "month" ? "This month's bookings" :
@@ -2756,16 +3053,16 @@ export default function OwnerDashboardPage() {
 
                   <div
                     style={{
-                      padding: "20px",
-                      borderRadius: 12,
+                      padding: isMobile ? "14px" : "20px",
+                      borderRadius: isMobile ? 10 : 12,
                       background: "linear-gradient(135deg, rgba(249, 115, 22, 0.15), rgba(234, 88, 12, 0.1))",
                       border: "1px solid rgba(249, 115, 22, 0.3)",
                     }}
                   >
-                    <p style={{ fontSize: 12, color: "#f97316", marginBottom: 8, textTransform: "uppercase", letterSpacing: 1 }}>
+                    <p style={{ fontSize: isMobile ? 10 : 12, color: "#f97316", marginBottom: isMobile ? 6 : 8, textTransform: "uppercase", letterSpacing: isMobile ? 0.5 : 1 }}>
                       Avg per Booking
                     </p>
-                    <p style={{ fontSize: 32, fontWeight: 700, color: "#f97316", fontFamily: fonts.heading }}>
+                    <p style={{ fontSize: isMobile ? 22 : 32, fontWeight: 700, color: "#f97316", fontFamily: fonts.heading }}>
                       ₹{loadingData ? "..." : (() => {
                         const todayStr = new Date().toISOString().split('T')[0];
                         let revenue = 0;
@@ -2803,7 +3100,7 @@ export default function OwnerDashboardPage() {
                         return count > 0 ? Math.round(revenue / count) : 0;
                       })()}
                     </p>
-                    <p style={{ fontSize: 12, color: "#f9731680", marginTop: 8 }}>
+                    <p style={{ fontSize: isMobile ? 10 : 12, color: "#f9731680", marginTop: isMobile ? 6 : 8 }}>
                       Average revenue per booking
                     </p>
                   </div>
@@ -2814,24 +3111,24 @@ export default function OwnerDashboardPage() {
               <div
                 style={{
                   background: theme.cardBackground,
-                  borderRadius: 16,
+                  borderRadius: isMobile ? 12 : 16,
                   border: `1px solid ${theme.border}`,
-                  padding: "24px",
-                  marginBottom: 24,
+                  padding: isMobile ? "16px" : "24px",
+                  marginBottom: isMobile ? 16 : 24,
                 }}
               >
                 <h2
                   style={{
-                    fontSize: 18,
+                    fontSize: isMobile ? 14 : 18,
                     fontWeight: 600,
-                    marginBottom: 16,
+                    marginBottom: isMobile ? 12 : 16,
                     display: "flex",
                     alignItems: "center",
-                    gap: 10,
+                    gap: isMobile ? 6 : 10,
                   }}
                 >
-                  <span>📊</span>
-                  Daily Earnings - Last 30 Days
+                  <span style={{ fontSize: isMobile ? 16 : 20 }}>📊</span>
+                  {isMobile ? "Daily Earnings" : "Daily Earnings - Last 30 Days"}
                 </h2>
 
                 <div
@@ -4074,67 +4371,68 @@ export default function OwnerDashboardPage() {
           {activeTab === 'sessions' && (
             <div>
               {/* Header with search and filters */}
-              <div style={{ marginBottom: 24 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-                  <div>
-                    <h2 style={{ fontSize: 24, fontWeight: 700, color: theme.textPrimary, margin: 0, marginBottom: 4 }}>Bookings</h2>
-                    <p style={{ fontSize: 14, color: theme.textMuted, margin: 0 }}>Manage gaming bookings</p>
+              <div style={{ marginBottom: isMobile ? 16 : 24 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: isMobile ? 12 : 20, flexWrap: isMobile ? 'wrap' : 'nowrap', gap: isMobile ? 12 : 0 }}>
+                  <div style={{ flex: isMobile ? '1 1 100%' : 'auto' }}>
+                    <h2 style={{ fontSize: isMobile ? 18 : 24, fontWeight: 700, color: theme.textPrimary, margin: 0, marginBottom: isMobile ? 2 : 4 }}>Bookings</h2>
+                    <p style={{ fontSize: isMobile ? 12 : 14, color: theme.textMuted, margin: 0 }}>Manage gaming bookings</p>
                   </div>
                   <button
                     onClick={() => router.push('/owner/walk-in')}
                     style={{
-                      padding: '12px 24px',
+                      padding: isMobile ? '10px 16px' : '12px 24px',
                       background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
                       color: 'white',
                       border: 'none',
-                      borderRadius: 10,
-                      fontSize: 15,
+                      borderRadius: isMobile ? 8 : 10,
+                      fontSize: isMobile ? 13 : 15,
                       fontWeight: 600,
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: 8,
+                      gap: isMobile ? 6 : 8,
                     }}
                   >
-                    <span style={{ fontSize: 18 }}>+</span>
+                    <span style={{ fontSize: isMobile ? 16 : 18 }}>+</span>
                     New Booking
                   </button>
                 </div>
 
                 {/* Search and filters row */}
-                <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                  <div style={{ flex: 1, position: 'relative' }}>
+                <div style={{ display: 'flex', gap: isMobile ? 8 : 12, alignItems: 'center', flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
+                  <div style={{ flex: isMobile ? '1 1 100%' : 1, position: 'relative' }}>
                     <input
                       type="text"
-                      placeholder="Search customer name or phone..."
+                      placeholder={isMobile ? "Search..." : "Search customer name or phone..."}
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       style={{
                         width: '100%',
-                        padding: '12px 16px 12px 44px',
+                        padding: isMobile ? '10px 12px 10px 36px' : '12px 16px 12px 44px',
                         background: theme.cardBackground,
                         border: `1px solid ${theme.border}`,
-                        borderRadius: 10,
+                        borderRadius: isMobile ? 8 : 10,
                         color: theme.textPrimary,
-                        fontSize: 14,
+                        fontSize: isMobile ? 13 : 14,
                         outline: 'none',
                       }}
                     />
-                    <span style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', fontSize: 18, opacity: 0.5 }}>🔍</span>
+                    <span style={{ position: 'absolute', left: isMobile ? 12 : 16, top: '50%', transform: 'translateY(-50%)', fontSize: isMobile ? 16 : 18, opacity: 0.5 }}>🔍</span>
                   </div>
 
                   <select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
                     style={{
-                      padding: '12px 16px',
+                      padding: isMobile ? '10px 12px' : '12px 16px',
                       background: theme.cardBackground,
                       border: `1px solid ${theme.border}`,
-                      borderRadius: 10,
+                      borderRadius: isMobile ? 8 : 10,
                       color: theme.textPrimary,
-                      fontSize: 14,
+                      fontSize: isMobile ? 12 : 14,
                       cursor: 'pointer',
-                      minWidth: 140,
+                      minWidth: isMobile ? 'auto' : 140,
+                      flex: isMobile ? '1' : 'auto',
                     }}
                   >
                     <option value="all">All Status</option>
@@ -4149,14 +4447,15 @@ export default function OwnerDashboardPage() {
                     value={sourceFilter}
                     onChange={(e) => setSourceFilter(e.target.value)}
                     style={{
-                      padding: '12px 16px',
+                      padding: isMobile ? '10px 12px' : '12px 16px',
                       background: theme.cardBackground,
                       border: `1px solid ${theme.border}`,
-                      borderRadius: 10,
+                      borderRadius: isMobile ? 8 : 10,
                       color: theme.textPrimary,
-                      fontSize: 14,
+                      fontSize: isMobile ? 12 : 14,
                       cursor: 'pointer',
-                      minWidth: 140,
+                      minWidth: isMobile ? 'auto' : 140,
+                      flex: isMobile ? '1' : 'auto',
                     }}
                   >
                     <option value="all">All Sources</option>
@@ -4169,14 +4468,15 @@ export default function OwnerDashboardPage() {
                     value={dateFilter}
                     onChange={(e) => setDateFilter(e.target.value)}
                     style={{
-                      padding: '12px 16px',
+                      padding: isMobile ? '10px 12px' : '12px 16px',
                       background: theme.cardBackground,
                       border: `1px solid ${theme.border}`,
-                      borderRadius: 10,
+                      borderRadius: isMobile ? 8 : 10,
                       color: theme.textPrimary,
-                      fontSize: 14,
+                      fontSize: isMobile ? 12 : 14,
                       cursor: 'pointer',
-                      minWidth: 160,
+                      minWidth: isMobile ? 'auto' : 160,
+                      flex: isMobile ? '1 1 100%' : 'auto',
                     }}
                   />
                 </div>
@@ -4186,21 +4486,21 @@ export default function OwnerDashboardPage() {
               <div
                 style={{
                   background: theme.cardBackground,
-                  borderRadius: 16,
+                  borderRadius: isMobile ? 12 : 16,
                   border: `1px solid ${theme.border}`,
                   overflow: 'hidden',
                 }}
               >
                 {loadingData ? (
-                  <div style={{ padding: 60, textAlign: 'center' }}>
-                    <div style={{ fontSize: 48, marginBottom: 12, opacity: 0.3 }}>⏳</div>
-                    <p style={{ color: theme.textMuted, fontSize: 14 }}>Loading bookings...</p>
+                  <div style={{ padding: isMobile ? 40 : 60, textAlign: 'center' }}>
+                    <div style={{ fontSize: isMobile ? 32 : 48, marginBottom: isMobile ? 8 : 12, opacity: 0.3 }}>⏳</div>
+                    <p style={{ color: theme.textMuted, fontSize: isMobile ? 12 : 14 }}>Loading bookings...</p>
                   </div>
                 ) : filteredBookings.length === 0 ? (
-                  <div style={{ padding: 60, textAlign: 'center' }}>
-                    <div style={{ fontSize: 48, marginBottom: 12, opacity: 0.3 }}>📅</div>
-                    <p style={{ fontSize: 16, color: theme.textSecondary, marginBottom: 6, fontWeight: 500 }}>No bookings yet</p>
-                    <p style={{ color: theme.textMuted, fontSize: 14 }}>Start a gaming session to see it here</p>
+                  <div style={{ padding: isMobile ? 40 : 60, textAlign: 'center' }}>
+                    <div style={{ fontSize: isMobile ? 32 : 48, marginBottom: isMobile ? 8 : 12, opacity: 0.3 }}>📅</div>
+                    <p style={{ fontSize: isMobile ? 14 : 16, color: theme.textSecondary, marginBottom: isMobile ? 4 : 6, fontWeight: 500 }}>No bookings yet</p>
+                    <p style={{ color: theme.textMuted, fontSize: isMobile ? 12 : 14 }}>Start a gaming session to see it here</p>
                     <button
                       onClick={() => router.push('/owner/walk-in')}
                       style={{
@@ -4222,25 +4522,10 @@ export default function OwnerDashboardPage() {
                       New Booking
                     </button>
                   </div>
-                ) : (
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead>
-                      <tr style={{ background: 'rgba(15,23,42,0.8)', borderBottom: `1px solid ${theme.border}` }}>
-                        <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Customer</th>
-                        <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Phone</th>
-                        <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Station</th>
-                        <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Controllers</th>
-                        <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Duration</th>
-                        <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Started</th>
-                        <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>End Time</th>
-                        <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Payment</th>
-                        <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Amount</th>
-                        <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Status</th>
-                        <th style={{ padding: '16px 20px', textAlign: 'center', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredBookings.map((booking, index) => {
+                ) : isMobile ? (
+                  // Mobile Card Layout
+                  <div>
+                    {filteredBookings.map((booking, index) => {
                         const isWalkIn = booking.source === 'walk-in';
                         const customerName = isWalkIn ? booking.customer_name : booking.user_name || booking.user_email;
                         const customerPhone = isWalkIn ? booking.customer_phone : booking.user_phone;
@@ -4282,6 +4567,164 @@ export default function OwnerDashboardPage() {
                         const endTime = calculateEndTime(booking.start_time, booking.duration ?? null);
 
                         return (
+                          <div
+                            key={booking.id}
+                            style={{
+                              padding: '12px 16px',
+                              borderBottom: index < filteredBookings.length - 1 ? `1px solid ${theme.border}` : 'none',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: 10,
+                            }}
+                          >
+                            {/* Header row: Customer name and amount */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                              <div>
+                                <div style={{ fontSize: 14, fontWeight: 600, color: theme.textPrimary }}>
+                                  {customerName || 'Unknown'}
+                                </div>
+                                <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 2 }}>
+                                  {customerPhone || 'No phone'}
+                                </div>
+                              </div>
+                              <div style={{ fontSize: 15, fontWeight: 700, color: '#22c55e' }}>
+                                ₹{booking.total_amount || 0}
+                              </div>
+                            </div>
+
+                            {/* Details badges */}
+                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', fontSize: 11 }}>
+                              <span style={{ padding: '4px 8px', borderRadius: 5, background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', fontWeight: 600 }}>
+                                {consoleInfo?.console?.toUpperCase() || 'N/A'}
+                              </span>
+                              <span style={{ padding: '4px 8px', borderRadius: 5, background: 'rgba(168, 85, 247, 0.1)', color: '#a855f7', fontWeight: 600 }}>
+                                {formattedStarted}
+                              </span>
+                              <span style={{ padding: '4px 8px', borderRadius: 5, background: 'rgba(249, 115, 22, 0.1)', color: '#f97316', fontWeight: 600 }}>
+                                {booking.duration}m
+                              </span>
+                              <span style={{ padding: '4px 8px', borderRadius: 5, background: statusColor.bg, color: statusColor.text, fontWeight: 600, textTransform: 'capitalize' }}>
+                                {booking.status?.replace('-', ' ') || 'pending'}
+                              </span>
+                              <span style={{ padding: '4px 8px', borderRadius: 5, background: 'rgba(168, 85, 247, 0.1)', color: '#a855f7', fontWeight: 600 }}>
+                                {(() => {
+                                  const paymentMode = booking.payment_mode || 'cash';
+                                  const getPaymentIcon = (mode: string) => {
+                                    switch(mode) {
+                                      case 'cash': return '💵';
+                                      case 'upi': return '📱';
+                                      default: return '💵';
+                                    }
+                                  };
+                                  return `${getPaymentIcon(paymentMode)} ${paymentMode}`;
+                                })()}
+                              </span>
+                            </div>
+
+                            {/* Action buttons */}
+                            <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+                              {booking.status === 'pending' && booking.source === 'online' && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleConfirmBooking(booking);
+                                  }}
+                                  style={{
+                                    flex: 1,
+                                    padding: '8px 12px',
+                                    background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: 6,
+                                    fontSize: 12,
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                  }}
+                                >
+                                  Confirm
+                                </button>
+                              )}
+                              {booking.status === 'confirmed' && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleStartBooking(booking);
+                                  }}
+                                  style={{
+                                    flex: 1,
+                                    padding: '8px 12px',
+                                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: 6,
+                                    fontSize: 12,
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                  }}
+                                >
+                                  Start
+                                </button>
+                              )}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEditBooking(booking);
+                                }}
+                                style={{
+                                  padding: '8px 12px',
+                                  background: 'transparent',
+                                  color: theme.textSecondary,
+                                  border: `1px solid ${theme.border}`,
+                                  borderRadius: 6,
+                                  fontSize: 16,
+                                  cursor: 'pointer',
+                                }}
+                                title="View details"
+                              >
+                                👁️
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                ) : (
+                  // Desktop Table Layout
+                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ background: 'rgba(15,23,42,0.8)', borderBottom: `1px solid ${theme.border}` }}>
+                        <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Customer</th>
+                        <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Phone</th>
+                        <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Station</th>
+                        <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Duration</th>
+                        <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Started</th>
+                        <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Payment</th>
+                        <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Amount</th>
+                        <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Status</th>
+                        <th style={{ padding: '16px 20px', textAlign: 'center', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredBookings.map((booking, index) => {
+                        const isWalkIn = booking.source === 'walk-in';
+                        const customerName = isWalkIn ? booking.customer_name : booking.user_name || booking.user_email;
+                        const customerPhone = isWalkIn ? booking.customer_phone : booking.user_phone;
+                        const consoleInfo = booking.booking_items?.[0];
+
+                        const statusColors: Record<string, { bg: string; text: string }> = {
+                          'pending': { bg: 'rgba(234, 179, 8, 0.15)', text: '#eab308' },
+                          'confirmed': { bg: 'rgba(59, 130, 246, 0.15)', text: '#3b82f6' },
+                          'in-progress': { bg: 'rgba(16, 185, 129, 0.15)', text: '#10b981' },
+                          'completed': { bg: 'rgba(100, 116, 139, 0.15)', text: '#64748b' },
+                          'cancelled': { bg: 'rgba(239, 68, 68, 0.15)', text: '#ef4444' },
+                        };
+
+                        const statusColor = statusColors[booking.status || 'pending'] || statusColors.pending;
+                        const formattedStarted = booking.booking_date && booking.start_time
+                          ? `${new Date(booking.booking_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} at ${booking.start_time}`
+                          : '-';
+
+                        return (
                           <tr
                             key={booking.id}
                             style={{
@@ -4303,24 +4746,11 @@ export default function OwnerDashboardPage() {
                               {consoleInfo?.console || '-'}
                             </td>
                             <td style={{ padding: '16px 20px', fontSize: 14, color: theme.textSecondary }}>
-                              {(() => {
-                                const items = booking.booking_items || [];
-                                if (items.length === 0) return '-';
-                                const totalControllers = items.reduce((sum, item) => sum + (item.quantity || 1), 0);
-                                return totalControllers;
-                              })()}
-                            </td>
-                            <td style={{ padding: '16px 20px', fontSize: 14, color: theme.textSecondary }}>
                               {booking.duration ? `${booking.duration}m` : '-'}
                             </td>
                             <td style={{ padding: '16px 20px', fontSize: 14, color: theme.textSecondary }}>
                               {formattedStarted}
                             </td>
-                            <td style={{ padding: '16px 20px', fontSize: 14, color: theme.textSecondary }}>
-                              {endTime}
-                            </td>
-
-                            {/* Payment Mode */}
                             <td style={{ padding: '16px 20px' }}>
                               {(() => {
                                 const paymentMode = booking.payment_mode || 'cash';
@@ -4347,7 +4777,6 @@ export default function OwnerDashboardPage() {
                                 );
                               })()}
                             </td>
-
                             <td style={{ padding: '16px 20px', fontSize: 15, fontWeight: 600, color: theme.textPrimary }}>
                               ₹{booking.total_amount || 0}
                             </td>
@@ -4367,7 +4796,6 @@ export default function OwnerDashboardPage() {
                             </td>
                             <td style={{ padding: '16px 20px' }}>
                               <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'center' }}>
-                                {/* Show Confirm button for pending online bookings */}
                                 {booking.status === 'pending' && booking.source === 'online' && (
                                   <button
                                     onClick={(e) => {
@@ -4389,8 +4817,6 @@ export default function OwnerDashboardPage() {
                                     Confirm
                                   </button>
                                 )}
-
-                                {/* Show Start button for confirmed bookings */}
                                 {booking.status === 'confirmed' && (
                                   <button
                                     onClick={(e) => {
@@ -4412,8 +4838,6 @@ export default function OwnerDashboardPage() {
                                     Start
                                   </button>
                                 )}
-
-                                {/* Edit/View button */}
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -5322,22 +5746,212 @@ export default function OwnerDashboardPage() {
 
           {/* Memberships Tab */}
           {activeTab === 'memberships' && (
-            <div
-              style={{
-                background: theme.cardBackground,
-                borderRadius: 16,
-                border: `1px solid ${theme.border}`,
-                padding: "60px 20px",
-                textAlign: "center",
-              }}
-            >
-              <div style={{ fontSize: 64, marginBottom: 16, opacity: 0.3 }}>🎫</div>
-              <p style={{ fontSize: 18, color: theme.textSecondary, marginBottom: 8, fontWeight: 500 }}>
-                Memberships
-              </p>
-              <p style={{ fontSize: 14, color: theme.textMuted }}>
-                Manage membership tiers and benefits here.
-              </p>
+            <div>
+              {/* Header */}
+              <div style={{ marginBottom: isMobile ? 16 : 24 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: isMobile ? 12 : 20, flexWrap: isMobile ? 'wrap' : 'nowrap', gap: isMobile ? 12 : 0 }}>
+                  <div style={{ flex: isMobile ? '1 1 100%' : 'auto' }}>
+                    <h2 style={{ fontSize: isMobile ? 18 : 24, fontWeight: 700, color: theme.textPrimary, margin: 0, marginBottom: isMobile ? 2 : 4 }}>Membership Plans</h2>
+                    <p style={{ fontSize: isMobile ? 12 : 14, color: theme.textMuted, margin: 0 }}>Create and manage day passes & hourly packages</p>
+                  </div>
+                  <button
+                    onClick={() => setShowAddMembershipModal(true)}
+                    style={{
+                      padding: isMobile ? '10px 16px' : '12px 24px',
+                      background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: isMobile ? 8 : 10,
+                      fontSize: isMobile ? 13 : 15,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: isMobile ? 6 : 8,
+                    }}
+                  >
+                    <span style={{ fontSize: isMobile ? 16 : 18 }}>+</span>
+                    Add Plan
+                  </button>
+                </div>
+              </div>
+
+              {/* Membership Plans Grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(320px, 1fr))', gap: isMobile ? 16 : 20 }}>
+                {/* Dynamic Plans */}
+                {membershipPlans.map((plan, index) => {
+                  // Determine color scheme based on plan type
+                  const colors = plan.plan_type === 'day_pass'
+                    ? { bg: 'rgba(59, 130, 246, 0.1)', border: 'rgba(59, 130, 246, 0.3)', text: '#3b82f6', icon: '☀️' }
+                    : index % 3 === 0
+                    ? { bg: 'rgba(168, 85, 247, 0.1)', border: 'rgba(168, 85, 247, 0.3)', text: '#a855f7', icon: '⏱️' }
+                    : index % 3 === 1
+                    ? { bg: 'rgba(16, 185, 129, 0.1)', border: 'rgba(16, 185, 129, 0.3)', text: '#10b981', icon: '⏳' }
+                    : { bg: 'rgba(251, 146, 60, 0.1)', border: 'rgba(251, 146, 60, 0.3)', text: '#fb923c', icon: '🎯' };
+
+                  return (
+                    <div
+                      key={plan.id}
+                      style={{
+                        background: `linear-gradient(135deg, ${colors.bg}, ${colors.bg.replace('0.1', '0.05')})`,
+                        border: `2px solid ${colors.border}`,
+                        borderRadius: isMobile ? 12 : 16,
+                        padding: isMobile ? 20 : 24,
+                        position: 'relative',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      <div style={{ position: 'absolute', top: -20, right: -20, fontSize: isMobile ? 60 : 80, opacity: 0.1 }}>{colors.icon}</div>
+                      <div style={{ position: 'relative', zIndex: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                          <span style={{ fontSize: isMobile ? 24 : 28 }}>{colors.icon}</span>
+                          <h3 style={{ fontSize: isMobile ? 16 : 18, fontWeight: 700, color: colors.text, margin: 0 }}>{plan.name}</h3>
+                        </div>
+                        <div style={{ marginBottom: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                          <span style={{
+                            display: 'inline-block',
+                            padding: '4px 10px',
+                            background: `${colors.text}20`,
+                            border: `1px solid ${colors.text}40`,
+                            borderRadius: 6,
+                            fontSize: isMobile ? 11 : 12,
+                            fontWeight: 600,
+                            color: colors.text,
+                          }}>
+                            {plan.console_type === 'PC' && '🖥️'}
+                            {plan.console_type === 'PS4' && '🎮'}
+                            {plan.console_type === 'PS5' && '🎮'}
+                            {plan.console_type === 'Xbox' && '🎮'}
+                            {plan.console_type === 'Xbox One' && '🎮'}
+                            {plan.console_type === 'Xbox Series X' && '🎮'}
+                            {plan.console_type === 'Nintendo Switch' && '🎮'}
+                            {plan.console_type === 'VR' && '🥽'}
+                            {plan.console_type === 'Steering' && '🏎️'}
+                            {plan.console_type === 'Pool' && '🎱'}
+                            {plan.console_type === 'Snooker' && '🎱'}
+                            {plan.console_type === 'Arcade' && '🕹️'}
+                            {' '}{plan.console_type || 'PC'}
+                          </span>
+                          <span style={{
+                            display: 'inline-block',
+                            padding: '4px 10px',
+                            background: plan.player_count === 'single' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(249, 115, 22, 0.15)',
+                            border: `1px solid ${plan.player_count === 'single' ? 'rgba(34, 197, 94, 0.4)' : 'rgba(249, 115, 22, 0.4)'}`,
+                            borderRadius: 6,
+                            fontSize: isMobile ? 11 : 12,
+                            fontWeight: 600,
+                            color: plan.player_count === 'single' ? '#22c55e' : '#f97316',
+                          }}>
+                            {plan.player_count === 'single' ? '👤 Single' : '👥 Double'}
+                          </span>
+                        </div>
+                        <p style={{ fontSize: isMobile ? 12 : 13, color: theme.textSecondary, marginBottom: 16 }}>
+                          {plan.description || (plan.plan_type === 'day_pass' ? 'Unlimited gaming for the entire day' : `${plan.hours} gaming hours to use within validity`)}
+                        </p>
+                        <div style={{ marginBottom: 16 }}>
+                          <div style={{ fontSize: isMobile ? 28 : 36, fontWeight: 800, color: colors.text, fontFamily: fonts.heading }}>
+                            ₹{plan.price}
+                          </div>
+                          <div style={{ fontSize: isMobile ? 11 : 12, color: theme.textMuted, marginTop: 4 }}>
+                            Valid for {plan.validity_days} {plan.validity_days === 1 ? 'day' : 'days'}
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button
+                            onClick={() => {
+                              setEditingPlan(plan);
+                              setNewPlanType(plan.plan_type);
+                              setNewPlanConsoleType(plan.console_type || 'PC');
+                              setNewPlanPlayerCount(plan.player_count || 'single');
+                              setNewPlanName(plan.name);
+                              setNewPlanDescription(plan.description || '');
+                              setNewPlanPrice(plan.price.toString());
+                              setNewPlanHours(plan.hours?.toString() || '');
+                              setNewPlanValidity(plan.validity_days.toString());
+                              setShowAddMembershipModal(true);
+                            }}
+                            style={{
+                              flex: 1,
+                              padding: isMobile ? '8px 12px' : '10px 16px',
+                              background: 'transparent',
+                              border: `1px solid ${theme.border}`,
+                              borderRadius: 8,
+                              color: theme.textPrimary,
+                              fontSize: isMobile ? 12 : 13,
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            ✏️ Edit
+                          </button>
+                          <button
+                            onClick={async () => {
+                              if (confirm('Are you sure you want to delete this plan?')) {
+                                const { error } = await supabase
+                                  .from('membership_plans')
+                                  .delete()
+                                  .eq('id', plan.id);
+
+                                if (!error) {
+                                  setMembershipPlans(membershipPlans.filter(p => p.id !== plan.id));
+                                } else {
+                                  alert('Failed to delete plan: ' + error.message);
+                                }
+                              }
+                            }}
+                            style={{
+                              flex: 1,
+                              padding: isMobile ? '8px 12px' : '10px 16px',
+                              background: 'rgba(239, 68, 68, 0.1)',
+                              border: '1px solid rgba(239, 68, 68, 0.3)',
+                              borderRadius: 8,
+                              color: '#ef4444',
+                              fontSize: isMobile ? 12 : 13,
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            🗑️ Delete
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* Add New Plan Card */}
+                <div
+                  onClick={() => setShowAddMembershipModal(true)}
+                  style={{
+                    background: 'rgba(100, 116, 139, 0.05)',
+                    border: `2px dashed ${theme.border}`,
+                    borderRadius: isMobile ? 12 : 16,
+                    padding: isMobile ? 40 : 60,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(100, 116, 139, 0.1)';
+                    e.currentTarget.style.borderColor = theme.textMuted;
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'rgba(100, 116, 139, 0.05)';
+                    e.currentTarget.style.borderColor = theme.border;
+                  }}
+                >
+                  <div style={{ fontSize: isMobile ? 40 : 48, marginBottom: 12, opacity: 0.4 }}>➕</div>
+                  <p style={{ fontSize: isMobile ? 14 : 16, color: theme.textSecondary, fontWeight: 600 }}>
+                    Add New Plan
+                  </p>
+                  <p style={{ fontSize: isMobile ? 11 : 12, color: theme.textMuted, marginTop: 4 }}>
+                    Create day pass or hourly package
+                  </p>
+                </div>
+              </div>
             </div>
           )}
 
@@ -6562,6 +7176,510 @@ export default function OwnerDashboardPage() {
         </div>
       </main>
 
+      {/* Add/Edit Membership Plan Modal */}
+      {showAddMembershipModal && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(0, 0, 0, 0.7)",
+            backdropFilter: "blur(4px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+            padding: isMobile ? "16px" : "20px",
+          }}
+          onClick={() => {
+            setShowAddMembershipModal(false);
+            setEditingPlan(null);
+            setNewPlanType('day_pass');
+            setNewPlanConsoleType('PC');
+            setNewPlanPlayerCount('single');
+            setNewPlanName('');
+            setNewPlanDescription('');
+            setNewPlanPrice('');
+            setNewPlanHours('');
+            setNewPlanValidity('');
+          }}
+        >
+          <div
+            style={{
+              background: theme.cardBackground,
+              borderRadius: isMobile ? 16 : 24,
+              border: `1px solid ${theme.border}`,
+              maxWidth: 500,
+              width: "100%",
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div style={{
+              padding: isMobile ? "20px 24px" : "28px 32px",
+              borderBottom: `1px solid ${theme.border}`,
+              background: "linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(124, 58, 237, 0.05))",
+            }}>
+              <h2 style={{
+                fontFamily: fonts.heading,
+                fontSize: isMobile ? 20 : 26,
+                margin: "0 0 8px 0",
+                color: theme.textPrimary,
+                fontWeight: 700,
+              }}>
+                {editingPlan ? '✏️ Edit Plan' : '➕ Add New Plan'}
+              </h2>
+              <p style={{
+                fontSize: isMobile ? 12 : 14,
+                color: theme.textSecondary,
+                margin: 0,
+                fontWeight: 500,
+              }}>
+                {editingPlan ? 'Update membership plan details' : 'Create a new day pass or hourly package'}
+              </p>
+            </div>
+
+            {/* Form */}
+            <div style={{ padding: isMobile ? "20px 24px" : "28px 32px" }}>
+              {/* Plan Type */}
+              <div style={{ marginBottom: 24 }}>
+                <label style={{ fontSize: isMobile ? 13 : 14, fontWeight: 600, color: theme.textPrimary, display: 'block', marginBottom: 12 }}>
+                  Plan Type *
+                </label>
+                <div style={{ display: 'flex', gap: 12 }}>
+                  <button
+                    type="button"
+                    onClick={() => setNewPlanType('day_pass')}
+                    style={{
+                      flex: 1,
+                      padding: isMobile ? "12px" : "14px",
+                      background: newPlanType === 'day_pass' ? 'rgba(59, 130, 246, 0.1)' : theme.background,
+                      border: `2px solid ${newPlanType === 'day_pass' ? '#3b82f6' : theme.border}`,
+                      borderRadius: 10,
+                      color: newPlanType === 'day_pass' ? '#3b82f6' : theme.textPrimary,
+                      fontSize: isMobile ? 13 : 14,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 8,
+                    }}
+                  >
+                    <span>☀️</span> Day Pass
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewPlanType('hourly_package')}
+                    style={{
+                      flex: 1,
+                      padding: isMobile ? "12px" : "14px",
+                      background: newPlanType === 'hourly_package' ? 'rgba(168, 85, 247, 0.1)' : theme.background,
+                      border: `2px solid ${newPlanType === 'hourly_package' ? '#a855f7' : theme.border}`,
+                      borderRadius: 10,
+                      color: newPlanType === 'hourly_package' ? '#a855f7' : theme.textPrimary,
+                      fontSize: isMobile ? 13 : 14,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 8,
+                    }}
+                  >
+                    <span>⏱️</span> Hourly Package
+                  </button>
+                </div>
+              </div>
+
+              {/* Console Type */}
+              <div style={{ marginBottom: 24 }}>
+                <label style={{ fontSize: isMobile ? 13 : 14, fontWeight: 600, color: theme.textPrimary, display: 'block', marginBottom: 12 }}>
+                  Console Type *
+                </label>
+                {availableConsoleTypes.length === 0 ? (
+                  <div style={{
+                    padding: isMobile ? "16px" : "20px",
+                    background: 'rgba(251, 146, 60, 0.1)',
+                    border: '1px solid rgba(251, 146, 60, 0.3)',
+                    borderRadius: 8,
+                    textAlign: 'center',
+                  }}>
+                    <p style={{ color: '#fb923c', margin: 0, fontSize: isMobile ? 13 : 14 }}>
+                      ⚠️ No consoles added yet. Please add consoles to your cafe first in the Settings tab.
+                    </p>
+                  </div>
+                ) : (
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
+                    gap: 10
+                  }}>
+                    {availableConsoleTypes.map((console) => (
+                      <button
+                        key={console}
+                        type="button"
+                        onClick={() => setNewPlanConsoleType(console)}
+                        style={{
+                          padding: isMobile ? "10px 8px" : "12px 10px",
+                          background: newPlanConsoleType === console ? 'rgba(139, 92, 246, 0.15)' : theme.background,
+                          border: `2px solid ${newPlanConsoleType === console ? '#8b5cf6' : theme.border}`,
+                          borderRadius: 8,
+                          color: newPlanConsoleType === console ? '#8b5cf6' : theme.textPrimary,
+                          fontSize: isMobile ? 11 : 13,
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {console === 'PC' && '🖥️'}
+                        {console === 'PS4' && '🎮'}
+                        {console === 'PS5' && '🎮'}
+                        {console === 'Xbox' && '🎮'}
+                        {console === 'Xbox One' && '🎮'}
+                        {console === 'Xbox Series X' && '🎮'}
+                        {console === 'Nintendo Switch' && '🎮'}
+                        {console === 'VR' && '🥽'}
+                        {console === 'Steering' && '🏎️'}
+                        {console === 'Pool' && '🎱'}
+                        {console === 'Snooker' && '🎱'}
+                        {console === 'Arcade' && '🕹️'}
+                        {' '}{console}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Player Count */}
+              <div style={{ marginBottom: 24 }}>
+                <label style={{ fontSize: isMobile ? 13 : 14, fontWeight: 600, color: theme.textPrimary, display: 'block', marginBottom: 12 }}>
+                  Player Count *
+                </label>
+                <div style={{ display: 'flex', gap: 12 }}>
+                  <button
+                    type="button"
+                    onClick={() => setNewPlanPlayerCount('single')}
+                    style={{
+                      flex: 1,
+                      padding: isMobile ? "12px" : "14px",
+                      background: newPlanPlayerCount === 'single' ? 'rgba(34, 197, 94, 0.15)' : theme.background,
+                      border: `2px solid ${newPlanPlayerCount === 'single' ? '#22c55e' : theme.border}`,
+                      borderRadius: 10,
+                      color: newPlanPlayerCount === 'single' ? '#22c55e' : theme.textPrimary,
+                      fontSize: isMobile ? 13 : 14,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 8,
+                    }}
+                  >
+                    <span>👤</span> Single Player
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewPlanPlayerCount('double')}
+                    style={{
+                      flex: 1,
+                      padding: isMobile ? "12px" : "14px",
+                      background: newPlanPlayerCount === 'double' ? 'rgba(249, 115, 22, 0.15)' : theme.background,
+                      border: `2px solid ${newPlanPlayerCount === 'double' ? '#f97316' : theme.border}`,
+                      borderRadius: 10,
+                      color: newPlanPlayerCount === 'double' ? '#f97316' : theme.textPrimary,
+                      fontSize: isMobile ? 13 : 14,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 8,
+                    }}
+                  >
+                    <span>👥</span> Double Player
+                  </button>
+                </div>
+              </div>
+
+              {/* Plan Name */}
+              <div style={{ marginBottom: 20 }}>
+                <label style={{ fontSize: isMobile ? 13 : 14, fontWeight: 600, color: theme.textPrimary, display: 'block', marginBottom: 8 }}>
+                  Plan Name *
+                </label>
+                <input
+                  type="text"
+                  value={newPlanName}
+                  onChange={(e) => setNewPlanName(e.target.value)}
+                  placeholder={newPlanType === 'day_pass' ? 'e.g., Day Pass' : 'e.g., 5 Hour Package'}
+                  style={{
+                    width: '100%',
+                    padding: isMobile ? "10px 14px" : "12px 16px",
+                    background: theme.background,
+                    border: `1px solid ${theme.border}`,
+                    borderRadius: 8,
+                    color: theme.textPrimary,
+                    fontSize: isMobile ? 13 : 14,
+                    outline: 'none',
+                    fontFamily: fonts.body,
+                  }}
+                />
+              </div>
+
+              {/* Description */}
+              <div style={{ marginBottom: 20 }}>
+                <label style={{ fontSize: isMobile ? 13 : 14, fontWeight: 600, color: theme.textPrimary, display: 'block', marginBottom: 8 }}>
+                  Description
+                </label>
+                <textarea
+                  value={newPlanDescription}
+                  onChange={(e) => setNewPlanDescription(e.target.value)}
+                  placeholder={newPlanType === 'day_pass' ? 'Unlimited gaming for the entire day' : 'Gaming hours to use within validity period'}
+                  rows={3}
+                  style={{
+                    width: '100%',
+                    padding: isMobile ? "10px 14px" : "12px 16px",
+                    background: theme.background,
+                    border: `1px solid ${theme.border}`,
+                    borderRadius: 8,
+                    color: theme.textPrimary,
+                    fontSize: isMobile ? 13 : 14,
+                    outline: 'none',
+                    fontFamily: fonts.body,
+                    resize: 'vertical',
+                  }}
+                />
+              </div>
+
+              {/* Hours (only for hourly packages) */}
+              {newPlanType === 'hourly_package' && (
+                <div style={{ marginBottom: 20 }}>
+                  <label style={{ fontSize: isMobile ? 13 : 14, fontWeight: 600, color: theme.textPrimary, display: 'block', marginBottom: 8 }}>
+                    Number of Hours *
+                  </label>
+                  <input
+                    type="number"
+                    value={newPlanHours}
+                    onChange={(e) => setNewPlanHours(e.target.value)}
+                    placeholder="e.g., 5"
+                    min="1"
+                    style={{
+                      width: '100%',
+                      padding: isMobile ? "10px 14px" : "12px 16px",
+                      background: theme.background,
+                      border: `1px solid ${theme.border}`,
+                      borderRadius: 8,
+                      color: theme.textPrimary,
+                      fontSize: isMobile ? 13 : 14,
+                      outline: 'none',
+                      fontFamily: fonts.body,
+                    }}
+                  />
+                </div>
+              )}
+
+              {/* Price */}
+              <div style={{ marginBottom: 20 }}>
+                <label style={{ fontSize: isMobile ? 13 : 14, fontWeight: 600, color: theme.textPrimary, display: 'block', marginBottom: 8 }}>
+                  Price (₹) *
+                </label>
+                <input
+                  type="number"
+                  value={newPlanPrice}
+                  onChange={(e) => setNewPlanPrice(e.target.value)}
+                  placeholder="e.g., 499"
+                  min="0"
+                  step="0.01"
+                  style={{
+                    width: '100%',
+                    padding: isMobile ? "10px 14px" : "12px 16px",
+                    background: theme.background,
+                    border: `1px solid ${theme.border}`,
+                    borderRadius: 8,
+                    color: theme.textPrimary,
+                    fontSize: isMobile ? 13 : 14,
+                    outline: 'none',
+                    fontFamily: fonts.body,
+                  }}
+                />
+              </div>
+
+              {/* Validity Days */}
+              <div style={{ marginBottom: 28 }}>
+                <label style={{ fontSize: isMobile ? 13 : 14, fontWeight: 600, color: theme.textPrimary, display: 'block', marginBottom: 8 }}>
+                  Validity (Days) *
+                </label>
+                <input
+                  type="number"
+                  value={newPlanValidity}
+                  onChange={(e) => setNewPlanValidity(e.target.value)}
+                  placeholder={newPlanType === 'day_pass' ? '1' : 'e.g., 7'}
+                  min="1"
+                  style={{
+                    width: '100%',
+                    padding: isMobile ? "10px 14px" : "12px 16px",
+                    background: theme.background,
+                    border: `1px solid ${theme.border}`,
+                    borderRadius: 8,
+                    color: theme.textPrimary,
+                    fontSize: isMobile ? 13 : 14,
+                    outline: 'none',
+                    fontFamily: fonts.body,
+                  }}
+                />
+                <p style={{ fontSize: isMobile ? 11 : 12, color: theme.textMuted, marginTop: 6, marginBottom: 0 }}>
+                  {newPlanType === 'day_pass' ? 'Usually 1 day for day passes' : 'Number of days the hours can be used within'}
+                </p>
+              </div>
+
+              {/* Buttons */}
+              <div style={{ display: 'flex', gap: 12 }}>
+                <button
+                  onClick={() => {
+                    setShowAddMembershipModal(false);
+                    setEditingPlan(null);
+                    setNewPlanType('day_pass');
+                    setNewPlanName('');
+                    setNewPlanDescription('');
+                    setNewPlanPrice('');
+                    setNewPlanHours('');
+                    setNewPlanValidity('');
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: isMobile ? "12px 16px" : "14px 20px",
+                    background: 'transparent',
+                    border: `2px solid ${theme.border}`,
+                    borderRadius: 10,
+                    color: theme.textPrimary,
+                    fontSize: isMobile ? 14 : 15,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    // Validation
+                    if (!newPlanName.trim()) {
+                      alert('Please enter a plan name');
+                      return;
+                    }
+                    if (!newPlanPrice || parseFloat(newPlanPrice) <= 0) {
+                      alert('Please enter a valid price');
+                      return;
+                    }
+                    if (!newPlanValidity || parseInt(newPlanValidity) <= 0) {
+                      alert('Please enter valid validity days');
+                      return;
+                    }
+                    if (newPlanType === 'hourly_package' && (!newPlanHours || parseInt(newPlanHours) <= 0)) {
+                      alert('Please enter valid number of hours');
+                      return;
+                    }
+
+                    if (!cafes.length) {
+                      alert('No cafe found');
+                      return;
+                    }
+
+                    const planData = {
+                      cafe_id: cafes[0].id,
+                      plan_type: newPlanType,
+                      console_type: newPlanConsoleType,
+                      player_count: newPlanPlayerCount,
+                      name: newPlanName.trim(),
+                      description: newPlanDescription.trim() || null,
+                      price: parseFloat(newPlanPrice),
+                      hours: newPlanType === 'hourly_package' ? parseInt(newPlanHours) : null,
+                      validity_days: parseInt(newPlanValidity),
+                      is_active: true,
+                    };
+
+                    if (editingPlan) {
+                      // Update existing plan
+                      const { data, error } = await supabase
+                        .from('membership_plans')
+                        .update(planData)
+                        .eq('id', editingPlan.id)
+                        .select()
+                        .single();
+
+                      if (error) {
+                        alert('Failed to update plan: ' + error.message);
+                      } else {
+                        // Update in state
+                        setMembershipPlans(membershipPlans.map(p => p.id === editingPlan.id ? data : p));
+                        setShowAddMembershipModal(false);
+                        setEditingPlan(null);
+                        setNewPlanType('day_pass');
+                        setNewPlanConsoleType('PC');
+                        setNewPlanPlayerCount('single');
+                        setNewPlanName('');
+                        setNewPlanDescription('');
+                        setNewPlanPrice('');
+                        setNewPlanHours('');
+                        setNewPlanValidity('');
+                      }
+                    } else {
+                      // Create new plan
+                      const { data, error } = await supabase
+                        .from('membership_plans')
+                        .insert(planData)
+                        .select()
+                        .single();
+
+                      if (error) {
+                        alert('Failed to create plan: ' + error.message);
+                      } else {
+                        // Add to state
+                        setMembershipPlans([data, ...membershipPlans]);
+                        setShowAddMembershipModal(false);
+                        setNewPlanType('day_pass');
+                        setNewPlanConsoleType('PC');
+                        setNewPlanPlayerCount('single');
+                        setNewPlanName('');
+                        setNewPlanDescription('');
+                        setNewPlanPrice('');
+                        setNewPlanHours('');
+                        setNewPlanValidity('');
+                      }
+                    }
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: isMobile ? "12px 16px" : "14px 20px",
+                    background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
+                    border: 'none',
+                    borderRadius: 10,
+                    color: 'white',
+                    fontSize: isMobile ? 14 : 15,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    boxShadow: '0 4px 12px rgba(139, 92, 246, 0.3)',
+                  }}
+                >
+                  {editingPlan ? 'Update Plan' : 'Create Plan'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Edit Booking Modal */}
       {editingBooking && (
         <div
@@ -6627,29 +7745,73 @@ export default function OwnerDashboardPage() {
               gap: 28,
             }}>
               {/* Customer Info Section */}
-              <div style={{
-                padding: "20px",
-                background: "rgba(99, 102, 241, 0.05)",
-                borderRadius: 12,
-                border: "1px solid rgba(99, 102, 241, 0.2)",
-              }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
                   <span style={{ fontSize: 18 }}>👤</span>
-                  <label style={{ fontSize: 13, color: theme.textSecondary, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                  <h3 style={{ fontSize: 14, color: theme.textSecondary, fontWeight: 600, margin: 0, textTransform: "uppercase", letterSpacing: "0.5px" }}>
                     Customer Information
-                  </label>
+                  </h3>
                 </div>
-                <div style={{ fontSize: 16, color: theme.textPrimary, fontWeight: 600, marginBottom: 4 }}>
-                  {editingBooking.user_name || "Guest"}
-                </div>
-                {editingBooking.user_email && (
-                  <div style={{ fontSize: 13, color: theme.textSecondary, display: "flex", alignItems: "center", gap: 6 }}>
-                    <span>✉️</span> {editingBooking.user_email}
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                  {/* Customer Name */}
+                  <div>
+                    <label style={{ fontSize: 12, color: theme.textMuted, display: "block", marginBottom: 8, fontWeight: 600 }}>
+                      Customer Name
+                    </label>
+                    <input
+                      type="text"
+                      value={editCustomerName}
+                      onChange={(e) => setEditCustomerName(e.target.value)}
+                      placeholder="Enter customer name"
+                      style={{
+                        width: "100%",
+                        padding: "14px",
+                        background: theme.background,
+                        border: `2px solid ${theme.border}`,
+                        borderRadius: 10,
+                        color: theme.textPrimary,
+                        fontSize: 14,
+                        fontFamily: fonts.body,
+                        fontWeight: 500,
+                        transition: "all 0.2s",
+                      }}
+                      onFocus={(e) => e.target.style.borderColor = "#6366f1"}
+                      onBlur={(e) => e.target.style.borderColor = theme.border}
+                    />
                   </div>
-                )}
-                {editingBooking.user_phone && (
-                  <div style={{ fontSize: 13, color: theme.textSecondary, display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
-                    <span>📞</span> {editingBooking.user_phone}
+
+                  {/* Customer Phone */}
+                  <div>
+                    <label style={{ fontSize: 12, color: theme.textMuted, display: "block", marginBottom: 8, fontWeight: 600 }}>
+                      Customer Phone
+                    </label>
+                    <input
+                      type="tel"
+                      value={editCustomerPhone}
+                      onChange={(e) => setEditCustomerPhone(e.target.value)}
+                      placeholder="Enter phone number"
+                      style={{
+                        width: "100%",
+                        padding: "14px",
+                        background: theme.background,
+                        border: `2px solid ${theme.border}`,
+                        borderRadius: 10,
+                        color: theme.textPrimary,
+                        fontSize: 14,
+                        fontFamily: fonts.body,
+                        fontWeight: 500,
+                        transition: "all 0.2s",
+                      }}
+                      onFocus={(e) => e.target.style.borderColor = "#6366f1"}
+                      onBlur={(e) => e.target.style.borderColor = theme.border}
+                    />
+                  </div>
+                </div>
+
+                {editingBooking.user_email && (
+                  <div style={{ fontSize: 13, color: theme.textSecondary, display: "flex", alignItems: "center", gap: 6, marginTop: 12 }}>
+                    <span>✉️</span> {editingBooking.user_email}
                   </div>
                 )}
               </div>
@@ -6809,15 +7971,33 @@ export default function OwnerDashboardPage() {
                       onBlur={(e) => e.target.style.borderColor = theme.border}
                     >
                       <option value="">Select Console</option>
-                      <option value="ps5">🎮 PS5</option>
-                      <option value="ps4">🎮 PS4</option>
-                      <option value="xbox">🎮 Xbox</option>
-                      <option value="pc">💻 PC</option>
-                      <option value="pool">🎱 Pool</option>
-                      <option value="snooker">🎱 Snooker</option>
-                      <option value="arcade">🕹️ Arcade</option>
-                      <option value="vr">🥽 VR</option>
-                      <option value="steering_wheel">🏎️ Racing</option>
+                      {cafes.length > 0 && cafes[0].ps5_count && cafes[0].ps5_count > 0 && (
+                        <option value="ps5">🎮 PS5</option>
+                      )}
+                      {cafes.length > 0 && cafes[0].ps4_count && cafes[0].ps4_count > 0 && (
+                        <option value="ps4">🎮 PS4</option>
+                      )}
+                      {cafes.length > 0 && cafes[0].xbox_count && cafes[0].xbox_count > 0 && (
+                        <option value="xbox">🎮 Xbox</option>
+                      )}
+                      {cafes.length > 0 && cafes[0].pc_count && cafes[0].pc_count > 0 && (
+                        <option value="pc">💻 PC</option>
+                      )}
+                      {cafes.length > 0 && cafes[0].pool_count && cafes[0].pool_count > 0 && (
+                        <option value="pool">🎱 Pool</option>
+                      )}
+                      {cafes.length > 0 && cafes[0].snooker_count && cafes[0].snooker_count > 0 && (
+                        <option value="snooker">🎱 Snooker</option>
+                      )}
+                      {cafes.length > 0 && cafes[0].arcade_count && cafes[0].arcade_count > 0 && (
+                        <option value="arcade">🕹️ Arcade</option>
+                      )}
+                      {cafes.length > 0 && cafes[0].vr_count && cafes[0].vr_count > 0 && (
+                        <option value="vr">🥽 VR</option>
+                      )}
+                      {cafes.length > 0 && cafes[0].steering_wheel_count && cafes[0].steering_wheel_count > 0 && (
+                        <option value="steering_wheel">🏎️ Racing</option>
+                      )}
                     </select>
                   </div>
 
@@ -6932,6 +8112,73 @@ export default function OwnerDashboardPage() {
                       <option value="cancelled">❌ Cancelled</option>
                       <option value="completed">✔️ Completed</option>
                     </select>
+                  </div>
+                </div>
+
+                {/* Payment Method */}
+                <div style={{ marginTop: 16 }}>
+                  <label style={{ fontSize: 12, color: theme.textMuted, display: "block", marginBottom: 8, fontWeight: 600 }}>
+                    Payment Method *
+                  </label>
+                  <div style={{ display: "flex", gap: 12 }}>
+                    <button
+                      type="button"
+                      onClick={() => setEditPaymentMethod("cash")}
+                      style={{
+                        flex: 1,
+                        padding: "14px",
+                        background: editPaymentMethod === "cash" ? "rgba(34, 197, 94, 0.1)" : theme.background,
+                        border: `2px solid ${editPaymentMethod === "cash" ? "#22c55e" : theme.border}`,
+                        borderRadius: 10,
+                        color: editPaymentMethod === "cash" ? "#22c55e" : theme.textPrimary,
+                        fontSize: 14,
+                        fontFamily: fonts.body,
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        transition: "all 0.2s",
+                      }}
+                      onMouseEnter={(e) => {
+                        if (editPaymentMethod !== "cash") {
+                          e.currentTarget.style.borderColor = "#6366f1";
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (editPaymentMethod !== "cash") {
+                          e.currentTarget.style.borderColor = theme.border;
+                        }
+                      }}
+                    >
+                      💵 Cash
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditPaymentMethod("upi")}
+                      style={{
+                        flex: 1,
+                        padding: "14px",
+                        background: editPaymentMethod === "upi" ? "rgba(99, 102, 241, 0.1)" : theme.background,
+                        border: `2px solid ${editPaymentMethod === "upi" ? "#6366f1" : theme.border}`,
+                        borderRadius: 10,
+                        color: editPaymentMethod === "upi" ? "#6366f1" : theme.textPrimary,
+                        fontSize: 14,
+                        fontFamily: fonts.body,
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        transition: "all 0.2s",
+                      }}
+                      onMouseEnter={(e) => {
+                        if (editPaymentMethod !== "upi") {
+                          e.currentTarget.style.borderColor = "#6366f1";
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (editPaymentMethod !== "upi") {
+                          e.currentTarget.style.borderColor = theme.border;
+                        }
+                      }}
+                    >
+                      📱 UPI
+                    </button>
                   </div>
                 </div>
               </div>
@@ -8080,28 +9327,30 @@ function StatCard({
   gradient: string;
   color: string;
 }) {
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+
   return (
     <div
       style={{
-        padding: "24px",
-        borderRadius: 16,
+        padding: isMobile ? "16px" : "24px",
+        borderRadius: isMobile ? 12 : 16,
         background: gradient,
         border: `1px solid ${color}40`,
         position: "relative",
         overflow: "hidden",
       }}
     >
-      <div style={{ position: "absolute", top: -20, right: -20, fontSize: 80, opacity: 0.1 }}>
+      <div style={{ position: "absolute", top: -20, right: -20, fontSize: isMobile ? 60 : 80, opacity: 0.1 }}>
         {icon}
       </div>
       <div style={{ position: "relative", zIndex: 1 }}>
         <p
           style={{
-            fontSize: 11,
+            fontSize: isMobile ? 9 : 11,
             color: `${color}E6`,
-            marginBottom: 8,
+            marginBottom: isMobile ? 6 : 8,
             textTransform: "uppercase",
-            letterSpacing: 1.5,
+            letterSpacing: isMobile ? 1 : 1.5,
             fontWeight: 600,
           }}
         >
@@ -8110,15 +9359,15 @@ function StatCard({
         <p
           style={{
             fontFamily: fonts.heading,
-            fontSize: 36,
-            margin: "8px 0",
+            fontSize: isMobile ? 24 : 36,
+            margin: isMobile ? "6px 0" : "8px 0",
             color: color,
             lineHeight: 1,
           }}
         >
           {value}
         </p>
-        <p style={{ fontSize: 13, color: `${color}B3`, marginTop: 8 }}>{subtitle}</p>
+        <p style={{ fontSize: isMobile ? 11 : 13, color: `${color}B3`, marginTop: isMobile ? 6 : 8 }}>{subtitle}</p>
       </div>
     </div>
   );
