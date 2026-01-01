@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
-import Footer from "@/components/Footer";
-import Navbar from "@/components/Navbar";
-import LoadingBar from "@/components/LoadingBar";
+import LayoutContent from "./LayoutContent";
 import { Inter, Roboto_Mono, Orbitron, Rajdhani } from "next/font/google";
 import "./globals.css";
 
@@ -82,10 +80,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} ${orbitron.variable} ${rajdhani.variable} bg-black text-white`}
         suppressHydrationWarning
       >
-        <LoadingBar />
-        <Navbar />
-        {children}
-        <Footer />
+        <LayoutContent>{children}</LayoutContent>
       </body>
     </html>
   );

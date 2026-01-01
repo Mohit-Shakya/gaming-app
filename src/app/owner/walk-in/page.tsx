@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import useUser from "@/hooks/useUser";
 import { CONSOLE_LABELS, CONSOLE_ICONS, CONSOLE_COLORS, type ConsoleId } from "@/lib/constants";
 
 type BookingItem = {
@@ -15,7 +14,7 @@ type BookingItem = {
 
 export default function OwnerWalkInBooking() {
   const router = useRouter();
-  const { user, loading: userLoading } = useUser();
+  const [ownerId, setOwnerId] = useState<string | null>(null);
   const [cafes, setCafes] = useState<any[]>([]);
   const [selectedCafe, setSelectedCafe] = useState("");
   const [customerName, setCustomerName] = useState("");
@@ -50,19 +49,41 @@ export default function OwnerWalkInBooking() {
     { id: "steering", label: CONSOLE_LABELS.steering, icon: CONSOLE_ICONS.steering },
   ];
 
+  // Check localStorage session
   useEffect(() => {
-    if (!user) return;
-
-    async function loadCafes() {
-      if (!user?.id) {
-        setLoading(false);
+    async function checkAuth() {
+      const ownerSession = localStorage.getItem("owner_session");
+      if (!ownerSession) {
+        router.push("/owner/login");
         return;
       }
 
+      try {
+        const session = JSON.parse(ownerSession);
+        if (Date.now() - session.timestamp > 24 * 60 * 60 * 1000) {
+          localStorage.removeItem("owner_session");
+          router.push("/owner/login");
+          return;
+        }
+        setOwnerId(session.userId);
+      } catch (err) {
+        localStorage.removeItem("owner_session");
+        router.push("/owner/login");
+      }
+    }
+
+    checkAuth();
+  }, [router]);
+
+  // Load cafes when ownerId is set
+  useEffect(() => {
+    if (!ownerId) return;
+
+    async function loadCafes() {
       const { data, error } = await supabase
         .from("cafes")
         .select("id, name")
-        .eq("owner_id", user.id);
+        .eq("owner_id", ownerId);
 
       if (!error && data) {
         setCafes(data);
@@ -74,7 +95,7 @@ export default function OwnerWalkInBooking() {
     }
 
     loadCafes();
-  }, [user]);
+  }, [ownerId]);
 
   // Fetch available consoles for selected cafe
   useEffect(() => {

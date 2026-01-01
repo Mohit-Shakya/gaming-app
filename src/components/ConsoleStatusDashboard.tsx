@@ -381,14 +381,16 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
   const totalConsoles = totalFree + totalBusy;
   const occupancyRate = totalConsoles > 0 ? Math.round((totalBusy / totalConsoles) * 100) : 0;
 
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+
   return (
-    <div style={{ padding: "20px", maxWidth: "1400px", margin: "0 auto" }}>
+    <div style={{ padding: isMobile ? "12px" : "20px", maxWidth: "1400px", margin: "0 auto" }}>
       {/* Header */}
       <div style={{
         background: `linear-gradient(135deg, ${colors.darkCard} 0%, ${colors.darkerCard} 100%)`,
-        borderRadius: "16px",
-        padding: "24px",
-        marginBottom: "32px",
+        borderRadius: isMobile ? "12px" : "16px",
+        padding: isMobile ? "16px" : "24px",
+        marginBottom: isMobile ? "16px" : "32px",
         border: `1px solid ${colors.border}`,
       }}>
         <div style={{
@@ -396,29 +398,29 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
           justifyContent: "space-between",
           alignItems: "center",
           flexWrap: "wrap",
-          gap: "20px",
+          gap: isMobile ? "12px" : "20px",
         }}>
           <div>
             <h2 style={{
               fontFamily: fonts.heading,
-              fontSize: "28px",
+              fontSize: isMobile ? "18px" : "28px",
               color: colors.textPrimary,
-              marginBottom: "12px",
+              marginBottom: isMobile ? "8px" : "12px",
               display: "flex",
               alignItems: "center",
-              gap: "12px",
+              gap: isMobile ? "8px" : "12px",
             }}>
-              <span style={{ animation: "pulse 2s ease-in-out infinite" }}>🔴</span>
+              <span style={{ animation: "pulse 2s ease-in-out infinite", fontSize: isMobile ? "16px" : "inherit" }}>🔴</span>
               Live Console Status
             </h2>
-            <div style={{ display: "flex", gap: "20px", flexWrap: "wrap", alignItems: "center" }}>
-              <p style={{ fontSize: "14px", color: colors.textSecondary, margin: 0 }}>
+            <div style={{ display: "flex", gap: isMobile ? "12px" : "20px", flexWrap: "wrap", alignItems: "center" }}>
+              <p style={{ fontSize: isMobile ? "12px" : "14px", color: colors.textSecondary, margin: 0 }}>
                 Total: {totalFree} / {totalConsoles} Available
               </p>
-              <div style={{ height: "16px", width: "1px", background: colors.border }} />
-              <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
+              <div style={{ height: isMobile ? "12px" : "16px", width: "1px", background: colors.border }} />
+              <div style={{ display: "flex", gap: isMobile ? "10px" : "16px", flexWrap: "wrap" }}>
                 {consoleData.map((console) => (
-                  <span key={console.type} style={{ fontSize: "13px", color: colors.textSecondary }}>
+                  <span key={console.type} style={{ fontSize: isMobile ? "11px" : "13px", color: colors.textSecondary }}>
                     {console.icon} {console.label}: <span style={{ color: console.free > 0 ? "#22c55e" : "#ef4444", fontWeight: 600 }}>{console.free}</span>
                   </span>
                 ))}
@@ -428,11 +430,11 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
 
           {/* Legend */}
           <div style={{
-            fontSize: "12px",
+            fontSize: isMobile ? "10px" : "12px",
             color: colors.textSecondary,
             display: "flex",
             alignItems: "center",
-            gap: "12px",
+            gap: isMobile ? "8px" : "12px",
           }}>
             <span>🟢 Free</span>
             <span>🟡 Ending Soon</span>
@@ -442,7 +444,7 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
       </div>
 
       {/* Console Groups */}
-      <div style={{ display: "flex", flexDirection: "column", gap: "32px" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: isMobile ? "16px" : "32px" }}>
         {consoleData.map((console) => (
           <div key={console.type}>
             {/* Console Type Header */}
@@ -450,24 +452,24 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
-              marginBottom: "16px",
+              marginBottom: isMobile ? "8px" : "16px",
             }}>
               <h3 style={{
                 fontFamily: fonts.heading,
-                fontSize: "18px",
+                fontSize: isMobile ? "14px" : "18px",
                 color: colors.textPrimary,
                 display: "flex",
                 alignItems: "center",
                 gap: "8px",
               }}>
-                <span>{console.icon}</span>
+                <span style={{ fontSize: isMobile ? "16px" : "inherit" }}>{console.icon}</span>
                 <span>{console.label}</span>
-                <span style={{ fontSize: "14px", color: colors.textSecondary }}>
+                <span style={{ fontSize: isMobile ? "11px" : "14px", color: colors.textSecondary }}>
                   ({console.total} total)
                 </span>
               </h3>
 
-              <div style={{ display: "flex", gap: "16px", fontSize: "13px" }}>
+              <div style={{ display: "flex", gap: isMobile ? "10px" : "16px", fontSize: isMobile ? "11px" : "13px" }}>
                 <span style={{ color: "#22c55e" }}>🟢 {console.free} Free</span>
                 <span style={{ color: "#ef4444" }}>🔴 {console.busy} Busy</span>
               </div>
@@ -476,8 +478,8 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
             {/* Console Cards Grid */}
             <div style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
-              gap: "16px",
+              gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill, minmax(300px, 1fr))",
+              gap: isMobile ? "10px" : "16px",
             }}>
               {console.statuses.map((status) => {
                 const isFree = status.status === "free";
@@ -492,16 +494,16 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
                         : isEndingSoon
                         ? "rgba(251, 191, 36, 0.08)"
                         : "rgba(239, 68, 68, 0.08)",
-                      border: `2px solid ${
+                      border: `${isMobile ? '1px' : '2px'} solid ${
                         isFree
                           ? "rgba(34, 197, 94, 0.4)"
                           : isEndingSoon
                           ? "rgba(251, 191, 36, 0.4)"
                           : "rgba(239, 68, 68, 0.4)"
                       }`,
-                      borderRadius: "16px",
-                      padding: "20px",
-                      minHeight: "160px",
+                      borderRadius: isMobile ? "10px" : "16px",
+                      padding: isMobile ? "12px" : "20px",
+                      minHeight: isMobile ? "auto" : "160px",
                       display: "flex",
                       flexDirection: "column",
                       position: "relative",
@@ -527,8 +529,8 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
                     {/* Status Badge */}
                     <div style={{
                       position: "absolute",
-                      top: "12px",
-                      right: "12px",
+                      top: isMobile ? "8px" : "12px",
+                      right: isMobile ? "8px" : "12px",
                       background: isFree
                         ? "rgba(34, 197, 94, 0.2)"
                         : isEndingSoon
@@ -537,9 +539,9 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
                       border: `1.5px solid ${
                         isFree ? "#22c55e" : isEndingSoon ? "#f59e0b" : "#ef4444"
                       }`,
-                      borderRadius: "20px",
-                      padding: "4px 12px",
-                      fontSize: "11px",
+                      borderRadius: isMobile ? "12px" : "20px",
+                      padding: isMobile ? "3px 8px" : "4px 12px",
+                      fontSize: isMobile ? "9px" : "11px",
                       fontWeight: 700,
                       color: isFree ? "#22c55e" : isEndingSoon ? "#f59e0b" : "#ef4444",
                       textTransform: "uppercase",
@@ -552,22 +554,22 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
                     <div style={{
                       display: "flex",
                       alignItems: "center",
-                      gap: "10px",
-                      marginBottom: "16px",
+                      gap: isMobile ? "8px" : "10px",
+                      marginBottom: isMobile ? "10px" : "16px",
                     }}>
-                      <div style={{ fontSize: "32px", filter: isFree ? "grayscale(0)" : "grayscale(0.3)" }}>
+                      <div style={{ fontSize: isMobile ? "24px" : "32px", filter: isFree ? "grayscale(0)" : "grayscale(0.3)" }}>
                         {console.icon}
                       </div>
                       <div>
                         <div style={{
                           fontFamily: fonts.heading,
-                          fontSize: "18px",
+                          fontSize: isMobile ? "14px" : "18px",
                           fontWeight: 700,
                           color: colors.textPrimary,
                         }}>
                           {console.label}-{String(status.consoleNumber).padStart(2, '0')}
                         </div>
-                        <div style={{ fontSize: "12px", color: colors.textSecondary, marginTop: "2px" }}>
+                        <div style={{ fontSize: isMobile ? "10px" : "12px", color: colors.textSecondary, marginTop: "2px" }}>
                           {console.type.toUpperCase()}
                         </div>
                       </div>
@@ -579,23 +581,23 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
                         flex: 1,
                         display: "flex",
                         flexDirection: "column",
-                        gap: "10px",
+                        gap: isMobile ? "6px" : "10px",
                         background: "rgba(0, 0, 0, 0.2)",
-                        padding: "12px",
-                        borderRadius: "8px",
+                        padding: isMobile ? "8px" : "12px",
+                        borderRadius: isMobile ? "6px" : "8px",
                       }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                          <span style={{ fontSize: "16px" }}>👤</span>
-                          <span style={{ fontSize: "15px", color: colors.textPrimary, fontWeight: 600 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: isMobile ? "6px" : "8px" }}>
+                          <span style={{ fontSize: isMobile ? "14px" : "16px" }}>👤</span>
+                          <span style={{ fontSize: isMobile ? "12px" : "15px", color: colors.textPrimary, fontWeight: 600 }}>
                             {status.booking.customerName}
                           </span>
                           {status.booking.controllerCount && status.booking.controllerCount > 1 && (
                             <span style={{
-                              fontSize: "11px",
+                              fontSize: isMobile ? "9px" : "11px",
                               color: colors.cyan,
                               background: "rgba(0, 188, 212, 0.15)",
-                              padding: "2px 8px",
-                              borderRadius: "10px",
+                              padding: isMobile ? "2px 6px" : "2px 8px",
+                              borderRadius: isMobile ? "8px" : "10px",
                               fontWeight: 600,
                               border: "1px solid rgba(0, 188, 212, 0.3)"
                             }}>
@@ -605,19 +607,19 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
                         </div>
                         {/* Category Label for Future Bookings */}
                         {status.booking.timeRemaining > 120 && (
-                          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
-                            <span style={{ fontSize: "14px" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: isMobile ? "6px" : "8px", marginBottom: isMobile ? "3px" : "4px" }}>
+                            <span style={{ fontSize: isMobile ? "12px" : "14px" }}>
                               {getBookingCategory(status.booking.timeRemaining, false).emoji}
                             </span>
-                            <span style={{ fontSize: "12px", color: "#a78bfa", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                            <span style={{ fontSize: isMobile ? "10px" : "12px", color: "#a78bfa", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px" }}>
                               {getBookingCategory(status.booking.timeRemaining, false).label}
                             </span>
                           </div>
                         )}
 
-                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                          <span style={{ fontSize: "14px" }}>🕒</span>
-                          <span style={{ fontSize: "13px", color: colors.textSecondary }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: isMobile ? "6px" : "8px" }}>
+                          <span style={{ fontSize: isMobile ? "12px" : "14px" }}>🕒</span>
+                          <span style={{ fontSize: isMobile ? "11px" : "13px", color: colors.textSecondary }}>
                             {status.booking.timeRemaining > 120
                               ? `Starts at ${status.booking.startTime}`
                               : `Ends at ${status.booking.endTime}`
@@ -627,9 +629,9 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
                         <div style={{
                           display: "flex",
                           alignItems: "center",
-                          gap: "8px",
-                          marginTop: "4px",
-                          padding: "8px",
+                          gap: isMobile ? "6px" : "8px",
+                          marginTop: isMobile ? "3px" : "4px",
+                          padding: isMobile ? "6px" : "8px",
                           background: status.booking.timeRemaining > 120
                             ? (status.booking.timeRemaining >= 180
                                 ? "rgba(59, 130, 246, 0.1)"  // Blue for far future
@@ -652,14 +654,14 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
                                 : "rgba(239, 68, 68, 0.3)"
                           }`,
                         }}>
-                          <span style={{ fontSize: "16px" }}>
+                          <span style={{ fontSize: isMobile ? "14px" : "16px" }}>
                             {status.booking.timeRemaining > 120
                               ? getBookingCategory(status.booking.timeRemaining, false).emoji
                               : "⏱️"
                             }
                           </span>
                           <span style={{
-                            fontSize: "14px",
+                            fontSize: isMobile ? "11px" : "14px",
                             color: status.booking.timeRemaining > 120
                               ? (status.booking.timeRemaining >= 180
                                   ? "#3b82f6"  // Blue
@@ -682,17 +684,17 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
                         flexDirection: "column",
                         alignItems: "center",
                         justifyContent: "center",
-                        gap: "8px",
-                        padding: "20px",
+                        gap: isMobile ? "6px" : "8px",
+                        padding: isMobile ? "12px" : "20px",
                         background: "rgba(34, 197, 94, 0.05)",
-                        borderRadius: "8px",
+                        borderRadius: isMobile ? "6px" : "8px",
                         border: "1px dashed rgba(34, 197, 94, 0.3)",
                       }}>
-                        <span style={{ fontSize: "24px" }}>✓</span>
-                        <span style={{ fontSize: "13px", color: "#22c55e", fontWeight: 600, textAlign: "center" }}>
+                        <span style={{ fontSize: isMobile ? "18px" : "24px" }}>✓</span>
+                        <span style={{ fontSize: isMobile ? "11px" : "13px", color: "#22c55e", fontWeight: 600, textAlign: "center" }}>
                           Available Now
                         </span>
-                        <span style={{ fontSize: "11px", color: colors.textSecondary }}>
+                        <span style={{ fontSize: isMobile ? "9px" : "11px", color: colors.textSecondary }}>
                           Ready for booking
                         </span>
                       </div>
