@@ -128,6 +128,22 @@ function convertTo12Hour(time24h?: string): string {
   return `${hours}:${minutes} ${period}`;
 }
 
+// Helper function to get console icon
+function getConsoleIcon(consoleType: string): string {
+  const type = consoleType?.toUpperCase() || '';
+  if (type.includes('PC')) return '🖥️';
+  if (type.includes('PS5')) return '🎮';
+  if (type.includes('PS4')) return '🎮';
+  if (type.includes('XBOX')) return '🎮';
+  if (type.includes('VR')) return '🥽';
+  if (type.includes('STEERING')) return '🏎️';
+  if (type.includes('POOL')) return '🎱';
+  if (type.includes('SNOOKER')) return '🎱';
+  if (type.includes('ARCADE')) return '🕹️';
+  if (type.includes('NINTENDO') || type.includes('SWITCH')) return '🎮';
+  return '🎮'; // Default
+}
+
 export default function OwnerDashboardPage() {
   const router = useRouter();
   const [ownerId, setOwnerId] = useState<string | null>(null);
@@ -2373,7 +2389,7 @@ export default function OwnerDashboardPage() {
                               marginBottom: isMobile ? "10px" : "16px",
                             }}>
                               <div style={{ fontSize: isMobile ? "24px" : "32px" }}>
-                                {consoleInfo?.icon || '🎮'}
+                                {getConsoleIcon(consoleInfo?.console || '')}
                               </div>
                               <div>
                                 <div style={{
