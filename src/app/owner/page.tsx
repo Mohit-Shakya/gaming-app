@@ -7393,8 +7393,8 @@ export default function OwnerDashboardPage() {
                                 .from('bookings')
                                 .insert({
                                   cafe_id: cafes[0]?.id,
-                                  user_name: billingCustomerName,
-                                  user_phone: billingCustomerPhone,
+                                  customer_name: billingCustomerName,
+                                  customer_phone: billingCustomerPhone,
                                   booking_date: new Date().toISOString().slice(0, 10),
                                   start_time: startTime.toTimeString().slice(0, 5),
                                   duration: item.duration,
@@ -7413,9 +7413,9 @@ export default function OwnerDashboardPage() {
                                 .from('booking_items')
                                 .insert({
                                   booking_id: booking.id,
-                                  console_id: item.console_id,
+                                  console: item.station_name,
                                   quantity: item.controllers,
-                                  price_per_unit: Math.round(item.price / item.controllers),
+                                  price: item.price,
                                 });
 
                               // Update console status
