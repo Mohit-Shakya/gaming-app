@@ -81,6 +81,7 @@ type BookingRow = {
     id: string;
     console: string | null;
     quantity: number | null;
+    price: number | null;
   }>;
   user_name?: string | null;
   user_email?: string | null;
@@ -88,7 +89,7 @@ type BookingRow = {
   cafe_name?: string | null;
 };
 
-type NavTab = 'dashboard' | 'sessions' | 'customers' | 'stations' | 'subscriptions' | 'memberships' | 'coupons' | 'reports' | 'settings' | 'overview' | 'live-status' | 'bookings' | 'cafe-details' | 'analytics';
+type NavTab = 'dashboard' | 'sessions' | 'customers' | 'stations' | 'subscriptions' | 'memberships' | 'coupons' | 'reports' | 'settings' | 'overview' | 'live-status' | 'bookings' | 'cafe-details' | 'analytics' | 'billing';
 
 // Helper functions for time conversion
 function convertTo24Hour(time12h: string): string {
@@ -174,9 +175,35 @@ export default function OwnerDashboardPage() {
   const [newPlanHours, setNewPlanHours] = useState('');
   const [newPlanValidity, setNewPlanValidity] = useState('');
 
+  // Subscriptions state
+  const [membershipSubTab, setMembershipSubTab] = useState<'subscriptions' | 'plans'>('subscriptions');
+  const [subscriptions, setSubscriptions] = useState<any[]>([]);
+  const [subscriptionSearch, setSubscriptionSearch] = useState('');
+  const [subscriptionStatusFilter, setSubscriptionStatusFilter] = useState('all');
+  const [subscriptionPlanFilter, setSubscriptionPlanFilter] = useState('all');
+  const [showAddSubscriptionModal, setShowAddSubscriptionModal] = useState(false);
+  const [viewingSubscription, setViewingSubscription] = useState<any>(null);
+  const [newSubCustomerName, setNewSubCustomerName] = useState('');
+  const [newSubCustomerPhone, setNewSubCustomerPhone] = useState('');
+  const [newSubCustomerEmail, setNewSubCustomerEmail] = useState('');
+  const [newSubPlanId, setNewSubPlanId] = useState('');
+  const [newSubAmountPaid, setNewSubAmountPaid] = useState('');
+
   // Cafe consoles state
   const [cafeConsoles, setCafeConsoles] = useState<any[]>([]);
   const [availableConsoleTypes, setAvailableConsoleTypes] = useState<string[]>([]);
+
+  // Billing state
+  const [billingCustomerName, setBillingCustomerName] = useState('');
+  const [billingCustomerPhone, setBillingCustomerPhone] = useState('');
+  const [billingSelectedConsole, setBillingSelectedConsole] = useState('');
+  const [billingDuration, setBillingDuration] = useState('60');
+  const [billingControllers, setBillingControllers] = useState('1');
+  const [billingPaymentMode, setBillingPaymentMode] = useState<'cash' | 'upi' | 'online'>('cash');
+  const [billingDiscount, setBillingDiscount] = useState('0');
+  const [billingUseMembership, setBillingUseMembership] = useState(false);
+  const [billingSelectedMembership, setBillingSelectedMembership] = useState<any>(null);
+  const [billingCart, setBillingCart] = useState<any[]>([]);
 
   // Booking filters
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -253,6 +280,7 @@ export default function OwnerDashboardPage() {
   const [galleryImages, setGalleryImages] = useState<Array<{id: string, image_url: string}>>([]);
 
   const [editAmount, setEditAmount] = useState<string>("");
+  const [editAmountManuallyEdited, setEditAmountManuallyEdited] = useState(false);
   const [editStatus, setEditStatus] = useState<string>("");
   const [editPaymentMethod, setEditPaymentMethod] = useState<string>("");
   const [editCustomerName, setEditCustomerName] = useState<string>("");
@@ -426,8 +454,8 @@ export default function OwnerDashboardPage() {
 
   // Auto-refresh time every second for active sessions (only when sessions tab is active)
   useEffect(() => {
-    // Only run timer when viewing sessions or live-status tabs
-    if (activeTab !== 'sessions' && activeTab !== 'live-status') return;
+    // Only run timer when viewing sessions, live-status, or dashboard tabs
+    if (activeTab !== 'sessions' && activeTab !== 'live-status' && activeTab !== 'dashboard') return;
 
     const timer = setInterval(() => {
       setCurrentTime(new Date());
@@ -676,7 +704,8 @@ export default function OwnerDashboardPage() {
             booking_items (
               id,
               console,
-              quantity
+              quantity,
+              price
             )
           `)
           .in("cafe_id", cafeIds)
@@ -739,6 +768,15 @@ export default function OwnerDashboardPage() {
           };
         });
 
+        console.log('[Data Refresh] Loading', enrichedBookings.length, 'bookings from database');
+        if (enrichedBookings.length > 0) {
+          console.log('[Data Refresh] Sample booking:', {
+            id: enrichedBookings[0].id.slice(0, 8),
+            total_amount: enrichedBookings[0].total_amount,
+            duration: enrichedBookings[0].duration,
+            booking_items_price: enrichedBookings[0].booking_items?.[0]?.price
+          });
+        }
         setBookings(enrichedBookings);
 
         // Calculate stats
@@ -815,6 +853,24 @@ export default function OwnerDashboardPage() {
           setMembershipPlans(plansData);
         }
 
+        // Fetch subscriptions with membership plan details
+        const { data: subsData, error: subsError } = await supabase
+          .from("subscriptions")
+          .select(`
+            *,
+            membership_plans (
+              name,
+              plan_type,
+              console_type
+            )
+          `)
+          .in("cafe_id", cafeIds)
+          .order("created_at", { ascending: false });
+
+        if (!subsError && subsData) {
+          setSubscriptions(subsData);
+        }
+
         // Fetch available console types from station_pricing
         if (cafeIds.length > 0) {
           const { data: stationsData, error: stationsError } = await supabase
@@ -834,6 +890,21 @@ export default function OwnerDashboardPage() {
             }
           } else if (stationsError) {
             console.error('[OwnerDashboard] Error fetching stations:', stationsError);
+          }
+
+          // Fetch station pricing for billing (available stations)
+          const { data: stationsForBilling, error: stationsForBillingError } = await supabase
+            .from("station_pricing")
+            .select("*")
+            .in("cafe_id", cafeIds)
+            .eq("is_active", true)
+            .order("station_number", { ascending: true });
+
+          if (!stationsForBillingError && stationsForBilling) {
+            console.log('[OwnerDashboard] Stations for billing:', stationsForBilling);
+            setCafeConsoles(stationsForBilling);
+          } else if (stationsForBillingError) {
+            console.error('[OwnerDashboard] Error fetching stations:', stationsForBillingError);
           }
         }
       } catch (err) {
@@ -953,7 +1024,8 @@ export default function OwnerDashboardPage() {
                   booking_items (
                     id,
                     console,
-                    quantity
+                    quantity,
+                    price
                   )
                 `)
                 .eq("id", payload.new.id)
@@ -1002,10 +1074,17 @@ export default function OwnerDashboardPage() {
                 if (index >= 0) {
                   // Update existing
                   const updated = [...prev];
+                  console.log('[Real-time] Updating booking in state:', {
+                    id: enrichedBooking.id.slice(0, 8),
+                    total_amount: enrichedBooking.total_amount,
+                    duration: enrichedBooking.duration,
+                    booking_items_price: enrichedBooking.booking_items?.[0]?.price
+                  });
                   updated[index] = enrichedBooking;
                   return updated;
                 } else {
                   // Insert new at beginning
+                  console.log('[Real-time] Inserting new booking in state:', enrichedBooking.id.slice(0, 8));
                   return [enrichedBooking, ...prev];
                 }
               });
@@ -1172,6 +1251,7 @@ export default function OwnerDashboardPage() {
     // Allow editing all bookings, not just walk-ins
     setEditingBooking(booking);
     setEditAmount(booking.total_amount?.toString() || "");
+    setEditAmountManuallyEdited(false); // Reset manual edit flag
     setEditStatus(booking.status || "confirmed");
     setEditPaymentMethod(booking.payment_mode || "cash");
     setEditCustomerName(booking.user_name || booking.customer_name || "");
@@ -1193,13 +1273,131 @@ export default function OwnerDashboardPage() {
 
     try {
       setSaving(true);
+
+      console.log('[handleSaveBooking] ===== SAVE BOOKING START =====');
+      console.log('[handleSaveBooking] Raw editAmount value:', editAmount, 'Type:', typeof editAmount);
+      console.log('[handleSaveBooking] editDuration:', editDuration);
+      console.log('[handleSaveBooking] editConsole:', editConsole);
+      console.log('[handleSaveBooking] editControllers:', editControllers);
+
       // Convert 24-hour format (from input) back to 12-hour format (for DB)
       const startTime12h = editStartTime ? convertTo12Hour(editStartTime) : editingBooking.start_time;
 
-      const { error } = await supabase
+      const updatedAmount = parseFloat(editAmount);
+
+      // Validate the amount
+      if (isNaN(updatedAmount)) {
+        console.error('[handleSaveBooking] ERROR: Invalid amount - parseFloat returned NaN from:', editAmount);
+        alert('Invalid amount entered. Please enter a valid number.');
+        return;
+      }
+
+      console.log('[handleSaveBooking] Parsed amount:', updatedAmount);
+      console.log('[handleSaveBooking] Booking ID:', editingBooking.id);
+
+      // CRITICAL: Update booking_items FIRST, then bookings table
+      // This ensures when real-time subscription fires on bookings update,
+      // the booking_items price is already updated
+      if (editingBooking.booking_items && editingBooking.booking_items.length > 0) {
+        const bookingItemId = editingBooking.booking_items[0].id;
+        console.log('[handleSaveBooking] Step 1: Updating booking_items');
+        console.log('[handleSaveBooking] - Item ID:', bookingItemId);
+        console.log('[handleSaveBooking] - Item ID type:', typeof bookingItemId);
+        console.log('[handleSaveBooking] - New console:', editConsole);
+        console.log('[handleSaveBooking] - New quantity:', editControllers);
+        console.log('[handleSaveBooking] - New price:', updatedAmount);
+
+        // First check if the record exists
+        const { data: existingItem, error: checkError } = await supabase
+          .from("booking_items")
+          .select("*")
+          .eq("id", bookingItemId)
+          .maybeSingle();
+
+        if (checkError) {
+          console.error('[handleSaveBooking] ❌ Error checking booking_item exists:', checkError);
+        } else if (!existingItem) {
+          console.error('[handleSaveBooking] ❌ ERROR: booking_item not found with ID:', bookingItemId);
+          alert(`Error: Booking item not found. The booking may have been deleted.`);
+          return;
+        } else {
+          console.log('[handleSaveBooking] ✓ Found existing booking_item - Current price:', existingItem.price);
+        }
+
+        // Try update WITHOUT .select() first
+        const { error: itemError, count } = await supabase
+          .from("booking_items")
+          .update({
+            console: editConsole,
+            quantity: editControllers,
+            price: updatedAmount,
+          })
+          .eq("id", bookingItemId);
+
+        if (itemError) {
+          console.error('[handleSaveBooking] ❌ Error updating booking_items table:', itemError);
+          throw itemError;
+        }
+
+        console.log('[handleSaveBooking] ✓ Step 1: Update command executed, count:', count);
+
+        // Wait for database to fully commit the transaction
+        console.log('[handleSaveBooking] Waiting 500ms for database commit...');
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        // Now verify the update worked by reading it back
+        const { data: verifyItem, error: verifyItemError } = await supabase
+          .from("booking_items")
+          .select("*")
+          .eq("id", bookingItemId)
+          .single();
+
+        if (verifyItemError) {
+          console.error('[handleSaveBooking] ❌ Error verifying booking_items update:', verifyItemError);
+        } else {
+          console.log('[handleSaveBooking] ✓ Step 1 complete: Verified booking_items:', {
+            id: verifyItem.id,
+            price: verifyItem.price,
+            console: verifyItem.console,
+            quantity: verifyItem.quantity
+          });
+
+          if (verifyItem.price !== updatedAmount) {
+            console.error('[handleSaveBooking] ❌ CRITICAL ERROR: booking_items price was NOT updated!');
+            console.error('[handleSaveBooking] Expected:', updatedAmount, 'Got:', verifyItem.price);
+          }
+        }
+      }
+
+      // Update bookings table SECOND (this triggers real-time subscription)
+      console.log('[handleSaveBooking] Step 2: Updating bookings table');
+      console.log('[handleSaveBooking] - Booking ID:', editingBooking.id);
+      console.log('[handleSaveBooking] - Booking ID type:', typeof editingBooking.id);
+      console.log('[handleSaveBooking] - New total_amount:', updatedAmount);
+      console.log('[handleSaveBooking] - New duration:', editDuration);
+
+      // Check if booking exists first
+      const { data: existingBooking, error: bookingCheckError } = await supabase
+        .from("bookings")
+        .select("*")
+        .eq("id", editingBooking.id)
+        .maybeSingle();
+
+      if (bookingCheckError) {
+        console.error('[handleSaveBooking] ❌ Error checking booking exists:', bookingCheckError);
+      } else if (!existingBooking) {
+        console.error('[handleSaveBooking] ❌ ERROR: booking not found with ID:', editingBooking.id);
+        alert(`Error: Booking not found. It may have been deleted.`);
+        return;
+      } else {
+        console.log('[handleSaveBooking] ✓ Found existing booking - Current total_amount:', existingBooking.total_amount, 'duration:', existingBooking.duration);
+      }
+
+      // Try update WITHOUT .select() first
+      const { error, count: bookingCount } = await supabase
         .from("bookings")
         .update({
-          total_amount: parseFloat(editAmount),
+          total_amount: updatedAmount,
           status: editStatus,
           payment_mode: editPaymentMethod,
           customer_name: editCustomerName,
@@ -1210,23 +1408,88 @@ export default function OwnerDashboardPage() {
         })
         .eq("id", editingBooking.id);
 
-      if (error) throw error;
-
-      // Update booking_items with new console, controllers, and price
-      if (editingBooking.booking_items && editingBooking.booking_items.length > 0) {
-        const bookingItemId = editingBooking.booking_items[0].id;
-        const { error: itemError } = await supabase
-          .from("booking_items")
-          .update({
-            console: editConsole,
-            quantity: editControllers,
-            price: parseFloat(editAmount),
-          })
-          .eq("id", bookingItemId);
-
-        if (itemError) throw itemError;
+      if (error) {
+        console.error('[handleSaveBooking] ❌ Error updating bookings table:', error);
+        throw error;
       }
 
+      console.log('[handleSaveBooking] ✓ Step 2: Update command executed, count:', bookingCount);
+
+      // Wait for database to fully commit the transaction
+      console.log('[handleSaveBooking] Waiting 500ms for database commit...');
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Now verify the update worked by reading it back
+      const { data: verifyBooking, error: verifyBookingError } = await supabase
+        .from("bookings")
+        .select("*")
+        .eq("id", editingBooking.id)
+        .single();
+
+      if (verifyBookingError) {
+        console.error('[handleSaveBooking] ❌ Error verifying bookings update:', verifyBookingError);
+      } else {
+        console.log('[handleSaveBooking] ✓ Step 2 complete: Verified bookings:', {
+          id: verifyBooking.id.slice(0, 8),
+          total_amount: verifyBooking.total_amount,
+          duration: verifyBooking.duration,
+          status: verifyBooking.status
+        });
+
+        if (verifyBooking.total_amount !== updatedAmount) {
+          console.error('[handleSaveBooking] ❌ CRITICAL ERROR: bookings total_amount was NOT updated!');
+          console.error('[handleSaveBooking] Expected:', updatedAmount, 'Got:', verifyBooking.total_amount);
+        }
+
+        if (verifyBooking.duration !== editDuration) {
+          console.error('[handleSaveBooking] ❌ CRITICAL ERROR: bookings duration was NOT updated!');
+          console.error('[handleSaveBooking] Expected:', editDuration, 'Got:', verifyBooking.duration);
+        }
+      }
+
+      // CRITICAL: Verify the data was written by reading it back
+      console.log('[handleSaveBooking] Step 3: Verifying database state...');
+      const { data: verifyData, error: verifyError } = await supabase
+        .from("bookings")
+        .select(`
+          id,
+          total_amount,
+          duration,
+          booking_items (
+            id,
+            price
+          )
+        `)
+        .eq("id", editingBooking.id)
+        .single();
+
+      if (verifyError) {
+        console.error('[handleSaveBooking] ❌ Error verifying update:', verifyError);
+      } else {
+        console.log('[handleSaveBooking] ✓ Step 3 complete: Database verification:', {
+          booking_id: verifyData.id.slice(0, 8),
+          total_amount: verifyData.total_amount,
+          duration: verifyData.duration,
+          booking_items_price: verifyData.booking_items?.[0]?.price,
+          expected_amount: updatedAmount
+        });
+
+        if (verifyData.total_amount !== updatedAmount) {
+          console.error('[handleSaveBooking] ⚠️ WARNING: Database total_amount mismatch!', {
+            expected: updatedAmount,
+            actual: verifyData.total_amount
+          });
+        }
+
+        if (verifyData.booking_items?.[0]?.price !== updatedAmount) {
+          console.error('[handleSaveBooking] ⚠️ WARNING: Database booking_items price mismatch!', {
+            expected: updatedAmount,
+            actual: verifyData.booking_items?.[0]?.price
+          });
+        }
+      }
+
+      // Update local state immediately for instant UI feedback
       setBookings((prev) =>
         prev.map((b) =>
           b.id === editingBooking.id
@@ -1245,15 +1508,24 @@ export default function OwnerDashboardPage() {
                 booking_items: b.booking_items?.map(item => ({
                   ...item,
                   console: editConsole,
-                  quantity: editControllers
+                  quantity: editControllers,
+                  price: parseFloat(editAmount)
                 }))
               }
             : b
         )
       );
 
+      console.log('[handleSaveBooking] ✓ Update complete - Local state updated');
+
       setEditingBooking(null);
       alert("Booking updated successfully!");
+
+      // Force a refresh after 1 second to ensure UI shows updated data from database
+      setTimeout(() => {
+        console.log('[handleSaveBooking] Triggering delayed refresh to sync with database');
+        setRefreshTrigger(prev => prev + 1);
+      }, 1000);
     } catch (err) {
       console.error("Error updating booking:", err);
       alert("Failed to update booking: " + (err instanceof Error ? err.message : String(err)));
@@ -1263,8 +1535,10 @@ export default function OwnerDashboardPage() {
   }
 
   // Auto-calculate amount when duration, console, or controllers change in edit modal
+  // Only auto-calculate if user hasn't manually edited the amount
   useEffect(() => {
     if (!editingBooking || !editDuration || !editConsole) return;
+    if (editAmountManuallyEdited) return; // Don't auto-calculate if manually edited
 
     const cafeId = editingBooking.cafe_id;
     if (!cafeId) return;
@@ -1302,7 +1576,7 @@ export default function OwnerDashboardPage() {
 
     const newAmount = calculatePrice();
     setEditAmount(newAmount.toString());
-  }, [editDuration, editConsole, editControllers, editingBooking, cafes, consolePricing]);
+  }, [editDuration, editConsole, editControllers, editingBooking, cafes, consolePricing, editAmountManuallyEdited]);
 
   // Handle settings save
   const handleSaveSettings = async () => {
@@ -1714,12 +1988,14 @@ export default function OwnerDashboardPage() {
     hoverBackground: "rgba(51,65,85,0.3)",
     activeNavBackground: "linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(37, 99, 235, 0.15))",
     activeNavText: "#3b82f6",
+    inputBackground: "rgba(15, 23, 42, 0.5)",
   };
 
   // Navigation items
   const navItems: { id: NavTab; label: string; icon: string }[] = [
     { id: 'dashboard', label: 'Dashboard', icon: '🏠' },
     { id: 'live-status', label: 'Live Status', icon: '📡' },
+    { id: 'billing', label: 'Billing', icon: '💳' },
     { id: 'sessions', label: 'Bookings', icon: '📅' },
     { id: 'customers', label: 'Customers', icon: '👥' },
     { id: 'stations', label: 'Stations', icon: '🖥️' },
@@ -2091,42 +2367,75 @@ export default function OwnerDashboardPage() {
                     ₹
                   </div>
                   <div style={{ position: "relative", zIndex: 1 }}>
-                    <p
-                      style={{
-                        fontSize: isMobile ? 28 : 48,
-                        fontWeight: 700,
-                        color: theme.textPrimary,
-                        margin: 0,
-                        lineHeight: 1,
-                      }}
-                    >
-                      ₹{loadingData ? "..." : stats?.todayRevenue ?? 0}
-                    </p>
-                    <p
-                      style={{
-                        fontSize: isMobile ? 14 : 18,
-                        color: theme.textSecondary,
-                        marginTop: isMobile ? 8 : 10,
-                        marginBottom: 0,
-                        fontWeight: 600,
-                      }}
-                    >
-                      Today's Revenue
-                    </p>
-                    <div style={{ marginTop: isMobile ? 12 : 18, display: "flex", flexDirection: "column", gap: isMobile ? 6 : 8 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: isMobile ? 12 : 15 }}>
-                        <span style={{ color: theme.textSecondary, fontWeight: 500 }}>Sessions</span>
-                        <span style={{ color: theme.textPrimary, fontWeight: 600 }}>₹{loadingData ? "0" : stats?.todayRevenue ?? 0}</span>
-                      </div>
-                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: isMobile ? 12 : 15 }}>
-                        <span style={{ color: theme.textSecondary, fontWeight: 500 }}>Tournament</span>
-                        <span style={{ color: theme.textPrimary, fontWeight: 600 }}>₹0</span>
-                      </div>
-                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: isMobile ? 12 : 15 }}>
-                        <span style={{ color: theme.textSecondary, fontWeight: 500 }}>Memberships</span>
-                        <span style={{ color: theme.textPrimary, fontWeight: 600 }}>₹0</span>
-                      </div>
-                    </div>
+                    {(() => {
+                      const todayStr = new Date().toISOString().slice(0, 10);
+                      const todayBookings = bookings.filter(b => b.booking_date === todayStr);
+                      const todaySubscriptions = subscriptions.filter(sub => {
+                        const purchaseDate = sub.purchase_date ? new Date(sub.purchase_date).toISOString().slice(0, 10) : null;
+                        return purchaseDate === todayStr;
+                      });
+
+                      // Calculate cash revenue from bookings
+                      const cashRevenue = todayBookings
+                        .filter(b => b.payment_mode?.toLowerCase() === 'cash')
+                        .reduce((sum, b) => sum + (b.total_amount || 0), 0);
+
+                      // Calculate online revenue from bookings (includes UPI and online)
+                      const onlineRevenue = todayBookings
+                        .filter(b => {
+                          const mode = b.payment_mode?.toLowerCase();
+                          return mode === 'online' || mode === 'upi';
+                        })
+                        .reduce((sum, b) => sum + (b.total_amount || 0), 0);
+
+                      // Calculate membership revenue
+                      const membershipRevenue = todaySubscriptions
+                        .reduce((sum, sub) => sum + (parseFloat(sub.amount_paid) || 0), 0);
+
+                      // Calculate total revenue
+                      const totalRevenue = cashRevenue + onlineRevenue + membershipRevenue;
+
+                      return (
+                        <>
+                          <p
+                            style={{
+                              fontSize: isMobile ? 28 : 48,
+                              fontWeight: 700,
+                              color: theme.textPrimary,
+                              margin: 0,
+                              lineHeight: 1,
+                            }}
+                          >
+                            ₹{loadingData ? "..." : totalRevenue}
+                          </p>
+                          <p
+                            style={{
+                              fontSize: isMobile ? 14 : 18,
+                              color: theme.textSecondary,
+                              marginTop: isMobile ? 8 : 10,
+                              marginBottom: 0,
+                              fontWeight: 600,
+                            }}
+                          >
+                            Today's Revenue
+                          </p>
+                          <div style={{ marginTop: isMobile ? 12 : 18, display: "flex", flexDirection: "column", gap: isMobile ? 6 : 8 }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: isMobile ? 12 : 15 }}>
+                              <span style={{ color: theme.textSecondary, fontWeight: 500 }}>Cash Payments</span>
+                              <span style={{ color: theme.textPrimary, fontWeight: 600 }}>₹{cashRevenue}</span>
+                            </div>
+                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: isMobile ? 12 : 15 }}>
+                              <span style={{ color: theme.textSecondary, fontWeight: 500 }}>Online Payments</span>
+                              <span style={{ color: theme.textPrimary, fontWeight: 600 }}>₹{onlineRevenue}</span>
+                            </div>
+                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: isMobile ? 12 : 15 }}>
+                              <span style={{ color: theme.textSecondary, fontWeight: 500 }}>Memberships</span>
+                              <span style={{ color: theme.textPrimary, fontWeight: 600 }}>₹{membershipRevenue}</span>
+                            </div>
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
 
@@ -5762,36 +6071,444 @@ export default function OwnerDashboardPage() {
           {activeTab === 'memberships' && (
             <div>
               {/* Header */}
-              <div style={{ marginBottom: isMobile ? 16 : 24 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: isMobile ? 12 : 20, flexWrap: isMobile ? 'wrap' : 'nowrap', gap: isMobile ? 12 : 0 }}>
-                  <div style={{ flex: isMobile ? '1 1 100%' : 'auto' }}>
-                    <h2 style={{ fontSize: isMobile ? 18 : 24, fontWeight: 700, color: theme.textPrimary, margin: 0, marginBottom: isMobile ? 2 : 4 }}>Membership Plans</h2>
-                    <p style={{ fontSize: isMobile ? 12 : 14, color: theme.textMuted, margin: 0 }}>Create and manage day passes & hourly packages</p>
-                  </div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: isMobile ? 16 : 24, flexWrap: isMobile ? 'wrap' : 'nowrap', gap: isMobile ? 12 : 0 }}>
+                <div style={{ flex: isMobile ? '1 1 100%' : 'auto' }}>
+                  <h2 style={{ fontSize: isMobile ? 20 : 28, fontWeight: 700, color: theme.textPrimary, margin: 0, marginBottom: isMobile ? 4 : 8 }}>
+                    {membershipSubTab === 'subscriptions' ? 'Subscriptions' : 'Membership Plans'}
+                  </h2>
+                  <p style={{ fontSize: isMobile ? 12 : 14, color: theme.textMuted, margin: 0 }}>
+                    {membershipSubTab === 'subscriptions' ? 'Manage customer subscriptions and plans' : 'Create and manage day passes & hourly packages'}
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    if (membershipSubTab === 'subscriptions') {
+                      setShowAddSubscriptionModal(true);
+                    } else {
+                      setShowAddMembershipModal(true);
+                    }
+                  }}
+                  style={{
+                    padding: isMobile ? '10px 18px' : '12px 24px',
+                    background: '#10b981',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: isMobile ? 8 : 10,
+                    fontSize: isMobile ? 13 : 15,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: isMobile ? 6 : 8,
+                  }}
+                >
+                  <span style={{ fontSize: isMobile ? 16 : 18 }}>+</span>
+                  {membershipSubTab === 'subscriptions' ? 'New Subscription' : 'Add Plan'}
+                </button>
+              </div>
+
+              {/* Two-Tab Navigation */}
+              <div style={{ marginBottom: isMobile ? 20 : 24, borderBottom: `1px solid ${theme.border}` }}>
+                <div style={{ display: 'flex', gap: isMobile ? 16 : 32 }}>
                   <button
-                    onClick={() => setShowAddMembershipModal(true)}
+                    onClick={() => setMembershipSubTab('subscriptions')}
                     style={{
-                      padding: isMobile ? '10px 16px' : '12px 24px',
-                      background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)',
-                      color: 'white',
+                      background: 'transparent',
                       border: 'none',
-                      borderRadius: isMobile ? 8 : 10,
-                      fontSize: isMobile ? 13 : 15,
+                      color: membershipSubTab === 'subscriptions' ? theme.textPrimary : theme.textMuted,
+                      fontSize: isMobile ? 14 : 16,
                       fontWeight: 600,
+                      padding: isMobile ? '8px 0' : '12px 0',
                       cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: isMobile ? 6 : 8,
+                      borderBottom: membershipSubTab === 'subscriptions' ? `2px solid #10b981` : '2px solid transparent',
+                      marginBottom: '-1px',
                     }}
                   >
-                    <span style={{ fontSize: isMobile ? 16 : 18 }}>+</span>
-                    Add Plan
+                    Subscriptions
+                  </button>
+                  <button
+                    onClick={() => setMembershipSubTab('plans')}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: membershipSubTab === 'plans' ? theme.textPrimary : theme.textMuted,
+                      fontSize: isMobile ? 14 : 16,
+                      fontWeight: 600,
+                      padding: isMobile ? '8px 0' : '12px 0',
+                      cursor: 'pointer',
+                      borderBottom: membershipSubTab === 'plans' ? `2px solid #10b981` : '2px solid transparent',
+                      marginBottom: '-1px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                    }}
+                  >
+                    Plans
+                    {membershipPlans.length > 0 && (
+                      <span style={{
+                        background: 'rgba(16, 185, 129, 0.2)',
+                        color: '#10b981',
+                        padding: '2px 8px',
+                        borderRadius: 12,
+                        fontSize: isMobile ? 11 : 12,
+                        fontWeight: 600,
+                      }}>
+                        {membershipPlans.length}
+                      </span>
+                    )}
                   </button>
                 </div>
               </div>
 
-              {/* Membership Plans Grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(320px, 1fr))', gap: isMobile ? 16 : 20 }}>
+              {/* Subscriptions View */}
+              {membershipSubTab === 'subscriptions' && (
+                <div>
+                  {/* Search and Filters */}
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr 1fr',
+                    gap: isMobile ? 12 : 16,
+                    marginBottom: isMobile ? 20 : 24
+                  }}>
+                    {/* Search */}
+                    <input
+                      type="text"
+                      placeholder="Search customer name or phone..."
+                      value={subscriptionSearch}
+                      onChange={(e) => setSubscriptionSearch(e.target.value)}
+                      style={{
+                        padding: isMobile ? '10px 14px' : '12px 16px',
+                        background: theme.inputBackground,
+                        border: `1px solid ${theme.border}`,
+                        borderRadius: 8,
+                        color: theme.textPrimary,
+                        fontSize: isMobile ? 13 : 14,
+                        outline: 'none',
+                      }}
+                    />
+
+                    {/* Status Filter */}
+                    <select
+                      value={subscriptionStatusFilter}
+                      onChange={(e) => setSubscriptionStatusFilter(e.target.value)}
+                      style={{
+                        padding: isMobile ? '10px 14px' : '12px 16px',
+                        background: theme.inputBackground,
+                        border: `1px solid ${theme.border}`,
+                        borderRadius: 8,
+                        color: theme.textPrimary,
+                        fontSize: isMobile ? 13 : 14,
+                        outline: 'none',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <option value="all">All Status</option>
+                      <option value="active">Active</option>
+                      <option value="expired">Expired</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+
+                    {/* Plan Filter */}
+                    <select
+                      value={subscriptionPlanFilter}
+                      onChange={(e) => setSubscriptionPlanFilter(e.target.value)}
+                      style={{
+                        padding: isMobile ? '10px 14px' : '12px 16px',
+                        background: theme.inputBackground,
+                        border: `1px solid ${theme.border}`,
+                        borderRadius: 8,
+                        color: theme.textPrimary,
+                        fontSize: isMobile ? 13 : 14,
+                        outline: 'none',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <option value="all">All Plans</option>
+                      {membershipPlans.map(plan => (
+                        <option key={plan.id} value={plan.id}>{plan.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Subscriptions Table */}
+                  <div style={{
+                    background: theme.cardBackground,
+                    border: `1px solid ${theme.border}`,
+                    borderRadius: isMobile ? 12 : 16,
+                    overflow: 'hidden'
+                  }}>
+                    {(() => {
+                      // Filter subscriptions
+                      const filteredSubs = subscriptions.filter(sub => {
+                        const matchesSearch = subscriptionSearch === '' ||
+                          sub.customer_name?.toLowerCase().includes(subscriptionSearch.toLowerCase()) ||
+                          sub.customer_phone?.includes(subscriptionSearch);
+                        const matchesStatus = subscriptionStatusFilter === 'all' || sub.status === subscriptionStatusFilter;
+                        const matchesPlan = subscriptionPlanFilter === 'all' || sub.membership_plan_id === subscriptionPlanFilter;
+                        return matchesSearch && matchesStatus && matchesPlan;
+                      });
+
+                      if (filteredSubs.length === 0) {
+                        return (
+                          <div style={{
+                            padding: isMobile ? '40px 20px' : '60px 20px',
+                            textAlign: 'center'
+                          }}>
+                            <div style={{ fontSize: isMobile ? 48 : 64, marginBottom: isMobile ? 12 : 16, opacity: 0.3 }}>🎫</div>
+                            <p style={{ fontSize: isMobile ? 16 : 18, color: theme.textSecondary, marginBottom: 8, fontWeight: 500 }}>
+                              No subscriptions found
+                            </p>
+                            <p style={{ fontSize: isMobile ? 13 : 14, color: theme.textMuted }}>
+                              {subscriptionSearch || subscriptionStatusFilter !== 'all' || subscriptionPlanFilter !== 'all'
+                                ? 'Try adjusting your filters'
+                                : 'Start by adding your first customer subscription'}
+                            </p>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <>
+                          {isMobile ? (
+                            // Mobile Card View
+                            <div style={{ padding: 16 }}>
+                              {filteredSubs.map((sub: any) => {
+                                const planDetails = sub.membership_plans || {};
+                                const hoursRemaining = sub.hours_remaining || 0;
+                                const hoursPurchased = sub.hours_purchased || 1;
+                                const progressPercent = (hoursRemaining / hoursPurchased) * 100;
+                                const expiryDate = sub.expiry_date ? new Date(sub.expiry_date) : null;
+                                const isExpired = expiryDate && expiryDate < new Date();
+                                const statusColor = sub.status === 'active' ? '#10b981' : sub.status === 'expired' ? '#ef4444' : '#6b7280';
+
+                                // Get initials for avatar
+                                const nameParts = sub.customer_name?.split(' ') || [];
+                                const initials = nameParts.length >= 2
+                                  ? `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]}`.toUpperCase()
+                                  : (sub.customer_name?.[0] || 'U').toUpperCase();
+
+                                return (
+                                  <div
+                                    key={sub.id}
+                                    style={{
+                                      background: 'rgba(255, 255, 255, 0.03)',
+                                      border: `1px solid ${theme.border}`,
+                                      borderRadius: 12,
+                                      padding: 16,
+                                      marginBottom: 12,
+                                    }}
+                                  >
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+                                      <div style={{
+                                        width: 40,
+                                        height: 40,
+                                        borderRadius: '50%',
+                                        background: 'linear-gradient(135deg, #8b5cf6, #ec4899)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        fontSize: 14,
+                                        fontWeight: 700,
+                                        color: '#fff',
+                                      }}>
+                                        {initials}
+                                      </div>
+                                      <div style={{ flex: 1 }}>
+                                        <div style={{ fontSize: 14, fontWeight: 600, color: theme.textPrimary }}>{sub.customer_name}</div>
+                                        <div style={{ fontSize: 12, color: theme.textMuted }}>{sub.customer_phone}</div>
+                                      </div>
+                                      <span style={{
+                                        padding: '4px 10px',
+                                        background: `${statusColor}20`,
+                                        color: statusColor,
+                                        borderRadius: 12,
+                                        fontSize: 11,
+                                        fontWeight: 600,
+                                        textTransform: 'capitalize',
+                                      }}>
+                                        {sub.status}
+                                      </span>
+                                    </div>
+                                    <div style={{ marginBottom: 8 }}>
+                                      <div style={{ fontSize: 12, color: theme.textMuted, marginBottom: 4 }}>Plan</div>
+                                      <div style={{ fontSize: 13, fontWeight: 500, color: theme.textSecondary }}>{planDetails.name || 'N/A'}</div>
+                                    </div>
+                                    <div style={{ marginBottom: 8 }}>
+                                      <div style={{ fontSize: 12, color: theme.textMuted, marginBottom: 4 }}>Time Remaining</div>
+                                      <div style={{ fontSize: 13, fontWeight: 600, color: theme.textPrimary, marginBottom: 6 }}>
+                                        {hoursRemaining}h / {hoursPurchased}h
+                                      </div>
+                                      <div style={{
+                                        width: '100%',
+                                        height: 6,
+                                        background: 'rgba(255, 255, 255, 0.1)',
+                                        borderRadius: 3,
+                                        overflow: 'hidden',
+                                      }}>
+                                        <div style={{
+                                          width: `${progressPercent}%`,
+                                          height: '100%',
+                                          background: progressPercent > 50 ? '#10b981' : progressPercent > 20 ? '#f59e0b' : '#ef4444',
+                                          transition: 'width 0.3s',
+                                        }} />
+                                      </div>
+                                    </div>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                      <div>
+                                        <div style={{ fontSize: 12, color: theme.textMuted, marginBottom: 4 }}>Expires</div>
+                                        <div style={{ fontSize: 13, fontWeight: 500, color: theme.textSecondary }}>
+                                          {expiryDate ? expiryDate.toLocaleDateString() : 'N/A'}
+                                        </div>
+                                      </div>
+                                      <div>
+                                        <div style={{ fontSize: 12, color: theme.textMuted, marginBottom: 4 }}>Paid</div>
+                                        <div style={{ fontSize: 13, fontWeight: 600, color: theme.textPrimary }}>₹{sub.amount_paid}</div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            // Desktop Table View
+                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                              <thead>
+                                <tr style={{ background: 'rgba(255, 255, 255, 0.02)', borderBottom: `1px solid ${theme.border}` }}>
+                                  <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>CUSTOMER</th>
+                                  <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>PLAN</th>
+                                  <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>TIME REMAINING</th>
+                                  <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>EXPIRES</th>
+                                  <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>PAID</th>
+                                  <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>STATUS</th>
+                                  <th style={{ padding: '16px 20px', textAlign: 'center', fontSize: 11, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.5px' }}>ACTIONS</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {filteredSubs.map((sub: any) => {
+                                  const planDetails = sub.membership_plans || {};
+                                  const hoursRemaining = sub.hours_remaining || 0;
+                                  const hoursPurchased = sub.hours_purchased || 1;
+                                  const progressPercent = (hoursRemaining / hoursPurchased) * 100;
+                                  const expiryDate = sub.expiry_date ? new Date(sub.expiry_date) : null;
+                                  const isExpired = expiryDate && expiryDate < new Date();
+                                  const statusColor = sub.status === 'active' ? '#10b981' : sub.status === 'expired' ? '#ef4444' : '#6b7280';
+
+                                  // Get initials for avatar
+                                  const nameParts = sub.customer_name?.split(' ') || [];
+                                  const initials = nameParts.length >= 2
+                                    ? `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]}`.toUpperCase()
+                                    : (sub.customer_name?.[0] || 'U').toUpperCase();
+
+                                  return (
+                                    <tr key={sub.id} style={{ borderBottom: `1px solid ${theme.border}` }}>
+                                      <td style={{ padding: '16px 20px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                          <div style={{
+                                            width: 36,
+                                            height: 36,
+                                            borderRadius: '50%',
+                                            background: 'linear-gradient(135deg, #8b5cf6, #ec4899)',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            fontSize: 13,
+                                            fontWeight: 700,
+                                            color: '#fff',
+                                          }}>
+                                            {initials}
+                                          </div>
+                                          <div>
+                                            <div style={{ fontSize: 14, fontWeight: 600, color: theme.textPrimary }}>{sub.customer_name}</div>
+                                            <div style={{ fontSize: 12, color: theme.textMuted }}>{sub.customer_phone}</div>
+                                          </div>
+                                        </div>
+                                      </td>
+                                      <td style={{ padding: '16px 20px', fontSize: 14, fontWeight: 500, color: theme.textSecondary }}>
+                                        {planDetails.name || 'N/A'}
+                                      </td>
+                                      <td style={{ padding: '16px 20px' }}>
+                                        <div style={{ minWidth: 180 }}>
+                                          <div style={{ fontSize: 13, fontWeight: 600, color: theme.textPrimary, marginBottom: 6 }}>
+                                            {hoursRemaining}h / {hoursPurchased}h
+                                          </div>
+                                          <div style={{
+                                            width: '100%',
+                                            height: 6,
+                                            background: 'rgba(255, 255, 255, 0.1)',
+                                            borderRadius: 3,
+                                            overflow: 'hidden',
+                                          }}>
+                                            <div style={{
+                                              width: `${progressPercent}%`,
+                                              height: '100%',
+                                              background: progressPercent > 50 ? '#10b981' : progressPercent > 20 ? '#f59e0b' : '#ef4444',
+                                              transition: 'width 0.3s',
+                                            }} />
+                                          </div>
+                                        </div>
+                                      </td>
+                                      <td style={{ padding: '16px 20px', fontSize: 14, fontWeight: 500, color: theme.textSecondary }}>
+                                        {expiryDate ? expiryDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A'}
+                                      </td>
+                                      <td style={{ padding: '16px 20px', fontSize: 14, fontWeight: 600, color: theme.textPrimary }}>
+                                        ₹{sub.amount_paid}
+                                      </td>
+                                      <td style={{ padding: '16px 20px' }}>
+                                        <span style={{
+                                          padding: '6px 12px',
+                                          background: `${statusColor}20`,
+                                          color: statusColor,
+                                          borderRadius: 16,
+                                          fontSize: 12,
+                                          fontWeight: 600,
+                                          textTransform: 'capitalize',
+                                        }}>
+                                          {sub.status}
+                                        </span>
+                                      </td>
+                                      <td style={{ padding: '16px 20px', textAlign: 'center' }}>
+                                        <button
+                                          onClick={() => setViewingSubscription(sub)}
+                                          style={{
+                                            background: 'transparent',
+                                            border: `1px solid ${theme.border}`,
+                                            borderRadius: 8,
+                                            padding: '8px 12px',
+                                            color: theme.textPrimary,
+                                            cursor: 'pointer',
+                                            fontSize: 16,
+                                          }}
+                                          title="View details"
+                                        >
+                                          👁️
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          )}
+
+                          {/* Footer */}
+                          <div style={{
+                            padding: isMobile ? '12px 16px' : '16px 20px',
+                            borderTop: `1px solid ${theme.border}`,
+                            fontSize: 13,
+                            color: theme.textMuted,
+                          }}>
+                            Showing 1 to {filteredSubs.length} of {filteredSubs.length} subscriptions
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </div>
+                </div>
+              )}
+
+              {/* Plans View */}
+              {membershipSubTab === 'plans' && (
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(320px, 1fr))', gap: isMobile ? 16 : 20 }}>
                 {/* Dynamic Plans */}
                 {membershipPlans.map((plan, index) => {
                   // Determine color scheme based on plan type
@@ -5964,6 +6681,799 @@ export default function OwnerDashboardPage() {
                   <p style={{ fontSize: isMobile ? 11 : 12, color: theme.textMuted, marginTop: 4 }}>
                     Create day pass or hourly package
                   </p>
+                </div>
+              </div>
+              )}
+            </div>
+          )}
+
+          {/* Billing Tab */}
+          {activeTab === 'billing' && (
+            <div style={{ maxWidth: 1600, margin: '0 auto' }}>
+              {/* Streamlined Header */}
+              <div style={{
+                marginBottom: 24,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: 16,
+              }}>
+                <div>
+                  <h1 style={{
+                    fontSize: isMobile ? 24 : 32,
+                    fontWeight: 800,
+                    background: 'linear-gradient(135deg, #8b5cf6, #6366f1)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    backgroundClip: 'text',
+                    margin: 0,
+                    marginBottom: 4,
+                  }}>
+                    ⚡ Quick Billing
+                  </h1>
+                  <p style={{ fontSize: 14, color: '#94a3b8', margin: 0 }}>
+                    Fast checkout for walk-in customers
+                  </p>
+                </div>
+                <div style={{
+                  padding: '10px 18px',
+                  background: 'rgba(34, 197, 94, 0.1)',
+                  border: '1px solid rgba(34, 197, 94, 0.3)',
+                  borderRadius: 10,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                }}>
+                  <div style={{
+                    width: 8,
+                    height: 8,
+                    background: '#22c55e',
+                    borderRadius: '50%',
+                  }}></div>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: '#22c55e' }}>
+                    System Online
+                  </span>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 420px', gap: 20 }}>
+                {/* Main Billing Panel */}
+                <div>
+                  {/* Step 1: Customer */}
+                  <div style={{
+                    background: "linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.05))",
+                    border: "1px solid rgba(99, 102, 241, 0.2)",
+                    borderRadius: 16,
+                    padding: 20,
+                    marginBottom: 16,
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+                      <div style={{
+                        width: 36,
+                        height: 36,
+                        background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                        borderRadius: 10,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: 18,
+                        fontWeight: 700,
+                        color: 'white',
+                        boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)',
+                      }}>
+                        1
+                      </div>
+                      <div>
+                        <h3 style={{ fontSize: 16, fontWeight: 700, color: '#e2e8f0', margin: 0 }}>
+                          Customer Information
+                        </h3>
+                        <p style={{ fontSize: 12, color: '#94a3b8', margin: 0 }}>
+                          Enter customer details
+                        </p>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12 }}>
+                      <input
+                        type="text"
+                        value={billingCustomerName}
+                        onChange={(e) => setBillingCustomerName(e.target.value)}
+                        placeholder="Customer Name *"
+                        style={{
+                          padding: "14px 16px",
+                          background: "rgba(15, 23, 42, 0.5)",
+                          border: "2px solid rgba(148, 163, 184, 0.2)",
+                          borderRadius: 12,
+                          color: "#f1f5f9",
+                          fontSize: 15,
+                          fontWeight: 500,
+                          outline: 'none',
+                          transition: "all 0.2s",
+                        }}
+                        onFocus={(e) => {
+                          e.target.style.borderColor = "#6366f1";
+                          e.target.style.background = "rgba(15, 23, 42, 0.8)";
+                          e.target.style.boxShadow = "0 0 0 3px rgba(99, 102, 241, 0.1)";
+                        }}
+                        onBlur={(e) => {
+                          e.target.style.borderColor = "rgba(148, 163, 184, 0.2)";
+                          e.target.style.background = "rgba(15, 23, 42, 0.5)";
+                          e.target.style.boxShadow = "none";
+                        }}
+                      />
+                      <input
+                        type="tel"
+                        value={billingCustomerPhone}
+                        onChange={(e) => setBillingCustomerPhone(e.target.value)}
+                        placeholder="Phone Number *"
+                        style={{
+                          padding: "14px 16px",
+                          background: "rgba(15, 23, 42, 0.5)",
+                          border: "2px solid rgba(148, 163, 184, 0.2)",
+                          borderRadius: 12,
+                          color: "#f1f5f9",
+                          fontSize: 15,
+                          fontWeight: 500,
+                          outline: 'none',
+                          transition: "all 0.2s",
+                        }}
+                        onFocus={(e) => {
+                          e.target.style.borderColor = "#6366f1";
+                          e.target.style.background = "rgba(15, 23, 42, 0.8)";
+                          e.target.style.boxShadow = "0 0 0 3px rgba(99, 102, 241, 0.1)";
+                        }}
+                        onBlur={(e) => {
+                          e.target.style.borderColor = "rgba(148, 163, 184, 0.2)";
+                          e.target.style.background = "rgba(15, 23, 42, 0.5)";
+                          e.target.style.boxShadow = "none";
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Membership Check */}
+                  {billingCustomerPhone.length >= 10 && (() => {
+                    const customerSub = subscriptions.find(sub =>
+                      sub.customer_phone === billingCustomerPhone &&
+                      sub.status === 'active' &&
+                      sub.hours_remaining > 0
+                    );
+
+                    if (customerSub) {
+                      return (
+                        <div style={{
+                          padding: isMobile ? 12 : 16,
+                          background: 'rgba(16, 185, 129, 0.1)',
+                          border: '1px solid rgba(16, 185, 129, 0.3)',
+                          borderRadius: 10,
+                          marginBottom: 20,
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                            <div>
+                              <p style={{ fontSize: isMobile ? 13 : 14, fontWeight: 600, color: '#10b981', margin: 0 }}>
+                                ✓ Active Membership Found
+                              </p>
+                              <p style={{ fontSize: isMobile ? 12 : 13, color: theme.textSecondary, margin: '4px 0 0 0' }}>
+                                {customerSub.membership_plans?.name} - {customerSub.hours_remaining}h remaining
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => {
+                                setBillingUseMembership(!billingUseMembership);
+                                setBillingSelectedMembership(customerSub);
+                              }}
+                              style={{
+                                padding: isMobile ? '6px 12px' : '8px 16px',
+                                background: billingUseMembership ? '#10b981' : 'transparent',
+                                border: `2px solid #10b981`,
+                                borderRadius: 8,
+                                color: billingUseMembership ? 'white' : '#10b981',
+                                fontSize: isMobile ? 12 : 13,
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                              }}
+                            >
+                              {billingUseMembership ? 'Using' : 'Use'}
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+
+                  {/* Step 2: Station Selection */}
+                  <div style={{
+                    background: "linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(168, 85, 247, 0.05))",
+                    border: "1px solid rgba(139, 92, 246, 0.2)",
+                    borderRadius: 16,
+                    padding: 20,
+                    marginBottom: 16,
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+                      <div style={{
+                        width: 36,
+                        height: 36,
+                        background: 'linear-gradient(135deg, #8b5cf6, #a855f7)',
+                        borderRadius: 10,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: 18,
+                        fontWeight: 700,
+                        color: 'white',
+                        boxShadow: '0 4px 12px rgba(139, 92, 246, 0.3)',
+                      }}>
+                        2
+                      </div>
+                      <div>
+                        <h3 style={{ fontSize: 16, fontWeight: 700, color: '#e2e8f0', margin: 0 }}>
+                          Choose Gaming Station
+                        </h3>
+                        <p style={{ fontSize: 12, color: '#94a3b8', margin: 0 }}>
+                          Select an available console
+                        </p>
+                      </div>
+                    </div>
+
+                    {cafeConsoles.filter(c => c.is_active).length > 0 ? (
+                      <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
+                        gap: 10
+                      }}>
+                        {cafeConsoles.filter(c => c.is_active).map((station) => (
+                          <button
+                            key={station.id}
+                            onClick={() => setBillingSelectedConsole(station.id)}
+                            style={{
+                              padding: '16px 12px',
+                              background: billingSelectedConsole === station.id
+                                ? 'linear-gradient(135deg, #8b5cf6, #7c3aed)'
+                                : 'rgba(15, 23, 42, 0.5)',
+                              border: `2px solid ${billingSelectedConsole === station.id ? '#a78bfa' : 'rgba(148, 163, 184, 0.2)'}`,
+                              borderRadius: 14,
+                              color: billingSelectedConsole === station.id ? 'white' : '#cbd5e1',
+                              fontSize: 13,
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              gap: 8,
+                              transition: 'all 0.2s',
+                              boxShadow: billingSelectedConsole === station.id ? '0 8px 20px rgba(139, 92, 246, 0.4), inset 0 1px 0 rgba(255,255,255,0.1)' : 'none',
+                            }}
+                            onMouseEnter={(e) => {
+                              if (billingSelectedConsole !== station.id) {
+                                e.currentTarget.style.transform = 'translateY(-4px)';
+                                e.currentTarget.style.borderColor = 'rgba(139, 92, 246, 0.5)';
+                                e.currentTarget.style.boxShadow = '0 4px 12px rgba(139, 92, 246, 0.2)';
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              if (billingSelectedConsole !== station.id) {
+                                e.currentTarget.style.transform = 'translateY(0)';
+                                e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.2)';
+                                e.currentTarget.style.boxShadow = 'none';
+                              }
+                            }}
+                          >
+                            <span style={{ fontSize: 32 }}>{getConsoleIcon(station.station_type)}</span>
+                            <div style={{ textAlign: 'center' }}>
+                              <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 2 }}>{station.station_name}</div>
+                              <div style={{ fontSize: 11, opacity: 0.7 }}>#{station.station_number}</div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <div style={{
+                        padding: 30,
+                        textAlign: 'center',
+                        background: 'rgba(239, 68, 68, 0.1)',
+                        border: '2px dashed rgba(239, 68, 68, 0.3)',
+                        borderRadius: 14,
+                      }}>
+                        <div style={{ fontSize: 40, marginBottom: 8 }}>🚫</div>
+                        <p style={{ fontSize: 14, fontWeight: 600, color: '#fca5a5', margin: 0 }}>No Available Stations</p>
+                        <p style={{ fontSize: 12, color: '#94a3b8', margin: '4px 0 0 0' }}>All stations are occupied</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Step 3: Session Setup */}
+                  <div style={{
+                    background: "linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(37, 99, 235, 0.05))",
+                    border: "1px solid rgba(59, 130, 246, 0.2)",
+                    borderRadius: 16,
+                    padding: 20,
+                    marginBottom: 16,
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+                      <div style={{
+                        width: 36,
+                        height: 36,
+                        background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
+                        borderRadius: 10,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: 18,
+                        fontWeight: 700,
+                        color: 'white',
+                        boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)',
+                      }}>
+                        3
+                      </div>
+                      <div>
+                        <h3 style={{ fontSize: 16, fontWeight: 700, color: '#e2e8f0', margin: 0 }}>
+                          Session Duration & Players
+                        </h3>
+                        <p style={{ fontSize: 12, color: '#94a3b8', margin: 0 }}>
+                          Set time and number of controllers
+                        </p>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr', gap: 12 }}>
+                      {/* Duration Pills */}
+                      <div>
+                        <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
+                          {['30', '60', '90', '120'].map(duration => (
+                            <button
+                              key={duration}
+                              onClick={() => setBillingDuration(duration)}
+                              style={{
+                                flex: 1,
+                                minWidth: 70,
+                                padding: '12px',
+                                background: billingDuration === duration
+                                  ? 'linear-gradient(135deg, #3b82f6, #2563eb)'
+                                  : 'rgba(15, 23, 42, 0.5)',
+                                border: `2px solid ${billingDuration === duration ? '#60a5fa' : 'rgba(148, 163, 184, 0.2)'}`,
+                                borderRadius: 12,
+                                color: billingDuration === duration ? 'white' : '#94a3b8',
+                                fontSize: 14,
+                                fontWeight: 700,
+                                cursor: 'pointer',
+                                transition: 'all 0.2s',
+                                boxShadow: billingDuration === duration ? '0 4px 12px rgba(59, 130, 246, 0.3)' : 'none',
+                              }}
+                              onMouseEnter={(e) => {
+                                if (billingDuration !== duration) {
+                                  e.currentTarget.style.transform = 'scale(1.05)';
+                                  e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.5)';
+                                }
+                              }}
+                              onMouseLeave={(e) => {
+                                if (billingDuration !== duration) {
+                                  e.currentTarget.style.transform = 'scale(1)';
+                                  e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.2)';
+                                }
+                              }}
+                            >
+                              {duration}min
+                            </button>
+                          ))}
+                        </div>
+                        <input
+                          type="number"
+                          value={billingDuration}
+                          onChange={(e) => setBillingDuration(e.target.value)}
+                          placeholder="Custom duration (min)"
+                          min="1"
+                          style={{
+                            width: '100%',
+                            padding: "12px 14px",
+                            background: "rgba(15, 23, 42, 0.5)",
+                            border: "2px solid rgba(148, 163, 184, 0.2)",
+                            borderRadius: 12,
+                            color: "#f1f5f9",
+                            fontSize: 14,
+                            fontWeight: 500,
+                            outline: 'none',
+                            MozAppearance: "textfield",
+                          } as React.CSSProperties & { MozAppearance?: string }}
+                          onFocus={(e) => {
+                            e.target.style.borderColor = "#3b82f6";
+                            e.target.style.background = "rgba(15, 23, 42, 0.8)";
+                            e.target.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)";
+                          }}
+                          onBlur={(e) => {
+                            e.target.style.borderColor = "rgba(148, 163, 184, 0.2)";
+                            e.target.style.background = "rgba(15, 23, 42, 0.5)";
+                            e.target.style.boxShadow = "none";
+                          }}
+                        />
+                      </div>
+
+                      {/* Controllers */}
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
+                        {['1', '2', '3', '4'].map(count => (
+                          <button
+                            key={count}
+                            onClick={() => setBillingControllers(count)}
+                            style={{
+                              padding: '14px',
+                              background: billingControllers === count
+                                ? 'linear-gradient(135deg, #10b981, #059669)'
+                                : 'rgba(15, 23, 42, 0.5)',
+                              border: `2px solid ${billingControllers === count ? '#34d399' : 'rgba(148, 163, 184, 0.2)'}`,
+                              borderRadius: 12,
+                              color: billingControllers === count ? 'white' : '#94a3b8',
+                              fontSize: 14,
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              transition: 'all 0.2s',
+                              boxShadow: billingControllers === count ? '0 4px 12px rgba(16, 185, 129, 0.3)' : 'none',
+                            }}
+                            onMouseEnter={(e) => {
+                              if (billingControllers !== count) {
+                                e.currentTarget.style.transform = 'scale(1.05)';
+                                e.currentTarget.style.borderColor = 'rgba(16, 185, 129, 0.5)';
+                              }
+                            }}
+                            onMouseLeave={(e) => {
+                              if (billingControllers !== count) {
+                                e.currentTarget.style.transform = 'scale(1)';
+                                e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.2)';
+                              }
+                            }}
+                          >
+                            {count}🎮
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Add to Cart Button */}
+                  <button
+                    onClick={() => {
+                      if (!billingCustomerName || !billingCustomerPhone || !billingSelectedConsole || !billingDuration) {
+                        alert('Please fill all required fields');
+                        return;
+                      }
+
+                      const selectedConsole = cafeConsoles.find(c => c.id === billingSelectedConsole);
+                      if (!selectedConsole) return;
+
+                      // Calculate price
+                      const durationMinutes = parseInt(billingDuration);
+                      const durationHours = durationMinutes / 60;
+                      const controllers = parseInt(billingControllers);
+
+                      // Find pricing from station_pricing
+                      // Use hourly_rate for PC/VR/etc, or single_player_rate for consoles
+                      const basePrice = selectedConsole.hourly_rate || selectedConsole.single_player_rate || 100;
+                      const totalPrice = Math.round(basePrice * durationHours * controllers);
+
+                      const cartItem = {
+                        id: Date.now(),
+                        console_id: selectedConsole.id,
+                        console_type: selectedConsole.station_type,
+                        station_number: selectedConsole.station_number,
+                        station_name: selectedConsole.station_name,
+                        duration: durationMinutes,
+                        controllers,
+                        price: totalPrice,
+                      };
+
+                      setBillingCart([...billingCart, cartItem]);
+
+                      // Reset form
+                      setBillingSelectedConsole('');
+                      setBillingDuration('60');
+                      setBillingControllers('1');
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '16px 28px',
+                      background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                      border: 'none',
+                      borderRadius: 14,
+                      color: 'white',
+                      fontSize: 16,
+                      fontWeight: 800,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 12,
+                      boxShadow: '0 6px 24px rgba(245, 158, 11, 0.4), inset 0 1px 0 rgba(255,255,255,0.2)',
+                      transition: 'all 0.2s',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.5px',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'translateY(-3px) scale(1.02)';
+                      e.currentTarget.style.boxShadow = '0 12px 36px rgba(245, 158, 11, 0.5), inset 0 1px 0 rgba(255,255,255,0.2)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0) scale(1)';
+                      e.currentTarget.style.boxShadow = '0 6px 24px rgba(245, 158, 11, 0.4), inset 0 1px 0 rgba(255,255,255,0.2)';
+                    }}
+                  >
+                    <span style={{ fontSize: 22 }}>🛒</span>
+                    <span>Add to Cart</span>
+                  </button>
+                </div>
+
+                {/* Right Panel - Cart & Checkout */}
+                <div>
+                  {/* Cart */}
+                  <div style={{
+                    background: theme.cardBackground,
+                    border: `1px solid ${theme.border}`,
+                    borderRadius: isMobile ? 12 : 16,
+                    padding: isMobile ? 20 : 24,
+                    marginBottom: 20,
+                  }}>
+                    <h3 style={{ fontSize: isMobile ? 16 : 18, fontWeight: 700, color: theme.textPrimary, margin: '0 0 16px 0' }}>
+                      Cart ({billingCart.length})
+                    </h3>
+
+                    {billingCart.length === 0 ? (
+                      <div style={{ padding: 40, textAlign: 'center', color: theme.textMuted }}>
+                        <div style={{ fontSize: 48, marginBottom: 12, opacity: 0.3 }}>🛒</div>
+                        <p style={{ fontSize: isMobile ? 13 : 14 }}>No items in cart</p>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        {billingCart.map((item, index) => (
+                          <div
+                            key={item.id}
+                            style={{
+                              padding: 12,
+                              background: 'rgba(255, 255, 255, 0.02)',
+                              border: `1px solid ${theme.border}`,
+                              borderRadius: 10,
+                            }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: 8 }}>
+                              <div>
+                                <p style={{ fontSize: isMobile ? 13 : 14, fontWeight: 600, color: theme.textPrimary, margin: 0 }}>
+                                  {getConsoleIcon(item.console_type)} {item.console_type} #{item.station_number}
+                                </p>
+                                <p style={{ fontSize: isMobile ? 11 : 12, color: theme.textMuted, margin: '4px 0 0 0' }}>
+                                  {item.duration}min • {item.controllers} controller{item.controllers > 1 ? 's' : ''}
+                                </p>
+                              </div>
+                              <button
+                                onClick={() => setBillingCart(billingCart.filter((_, i) => i !== index))}
+                                style={{
+                                  background: 'transparent',
+                                  border: 'none',
+                                  color: '#ef4444',
+                                  fontSize: 18,
+                                  cursor: 'pointer',
+                                  padding: 4,
+                                }}
+                              >
+                                🗑️
+                              </button>
+                            </div>
+                            <div style={{ fontSize: isMobile ? 14 : 15, fontWeight: 700, color: theme.textPrimary }}>
+                              ₹{item.price}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Checkout */}
+                  {billingCart.length > 0 && (
+                    <div style={{
+                      background: theme.cardBackground,
+                      border: `1px solid ${theme.border}`,
+                      borderRadius: isMobile ? 12 : 16,
+                      padding: isMobile ? 20 : 24,
+                    }}>
+                      <h3 style={{ fontSize: isMobile ? 16 : 18, fontWeight: 700, color: theme.textPrimary, margin: '0 0 16px 0' }}>
+                        Payment
+                      </h3>
+
+                      {/* Payment Mode */}
+                      <div style={{ marginBottom: 16 }}>
+                        <label style={{ fontSize: isMobile ? 12 : 13, fontWeight: 600, color: theme.textMuted, display: 'block', marginBottom: 8 }}>
+                          Payment Method
+                        </label>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                          {[
+                            { value: 'cash', label: 'Cash', icon: '💵' },
+                            { value: 'upi', label: 'UPI', icon: '📱' },
+                            { value: 'online', label: 'Online', icon: '💳' },
+                          ].map(mode => (
+                            <button
+                              key={mode.value}
+                              onClick={() => setBillingPaymentMode(mode.value as any)}
+                              style={{
+                                padding: isMobile ? '8px' : '10px',
+                                background: billingPaymentMode === mode.value ? 'rgba(139, 92, 246, 0.15)' : theme.background,
+                                border: `2px solid ${billingPaymentMode === mode.value ? '#8b5cf6' : theme.border}`,
+                                borderRadius: 8,
+                                color: billingPaymentMode === mode.value ? '#8b5cf6' : theme.textPrimary,
+                                fontSize: isMobile ? 11 : 12,
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                gap: 4,
+                              }}
+                            >
+                              <span style={{ fontSize: 16 }}>{mode.icon}</span>
+                              {mode.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Discount */}
+                      <div style={{ marginBottom: 16 }}>
+                        <label style={{ fontSize: isMobile ? 12 : 13, fontWeight: 600, color: theme.textMuted, display: 'block', marginBottom: 8 }}>
+                          Discount (₹)
+                        </label>
+                        <input
+                          type="number"
+                          value={billingDiscount}
+                          onChange={(e) => setBillingDiscount(e.target.value)}
+                          placeholder="0"
+                          min="0"
+                          style={{
+                            width: '100%',
+                            padding: isMobile ? "8px 12px" : "10px 14px",
+                            background: theme.background,
+                            border: `1px solid ${theme.border}`,
+                            borderRadius: 8,
+                            color: theme.textPrimary,
+                            fontSize: isMobile ? 13 : 14,
+                            outline: 'none',
+                          }}
+                        />
+                      </div>
+
+                      {/* Summary */}
+                      <div style={{
+                        padding: 16,
+                        background: 'rgba(255, 255, 255, 0.02)',
+                        borderRadius: 10,
+                        marginBottom: 16,
+                      }}>
+                        {(() => {
+                          const subtotal = billingCart.reduce((sum, item) => sum + item.price, 0);
+                          const discount = parseInt(billingDiscount) || 0;
+                          const total = Math.max(0, subtotal - discount);
+
+                          return (
+                            <>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                                <span style={{ fontSize: isMobile ? 12 : 13, color: theme.textMuted }}>Subtotal</span>
+                                <span style={{ fontSize: isMobile ? 13 : 14, fontWeight: 600, color: theme.textPrimary }}>₹{subtotal}</span>
+                              </div>
+                              {discount > 0 && (
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                                  <span style={{ fontSize: isMobile ? 12 : 13, color: '#10b981' }}>Discount</span>
+                                  <span style={{ fontSize: isMobile ? 13 : 14, fontWeight: 600, color: '#10b981' }}>-₹{discount}</span>
+                                </div>
+                              )}
+                              <div style={{ borderTop: `1px solid ${theme.border}`, paddingTop: 8, marginTop: 8 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                  <span style={{ fontSize: isMobile ? 14 : 16, fontWeight: 700, color: theme.textPrimary }}>Total</span>
+                                  <span style={{ fontSize: isMobile ? 16 : 18, fontWeight: 700, color: '#10b981' }}>₹{total}</span>
+                                </div>
+                              </div>
+                            </>
+                          );
+                        })()}
+                      </div>
+
+                      {/* Complete Payment Button */}
+                      <button
+                        onClick={async () => {
+                          if (!billingCustomerName || !billingCustomerPhone || billingCart.length === 0) {
+                            alert('Please fill all required fields and add items to cart');
+                            return;
+                          }
+
+                          try {
+                            const subtotal = billingCart.reduce((sum, item) => sum + item.price, 0);
+                            const discount = parseInt(billingDiscount) || 0;
+                            const total = Math.max(0, subtotal - discount);
+
+                            // Create booking for each cart item
+                            for (const item of billingCart) {
+                              const startTime = new Date();
+                              const endTime = new Date(startTime.getTime() + item.duration * 60000);
+
+                              const { data: booking, error: bookingError } = await supabase
+                                .from('bookings')
+                                .insert({
+                                  cafe_id: cafes[0]?.id,
+                                  user_name: billingCustomerName,
+                                  user_phone: billingCustomerPhone,
+                                  booking_date: new Date().toISOString().slice(0, 10),
+                                  start_time: startTime.toTimeString().slice(0, 5),
+                                  duration: item.duration,
+                                  total_amount: item.price,
+                                  payment_mode: billingPaymentMode,
+                                  status: 'in-progress',
+                                  source: 'walk-in',
+                                })
+                                .select()
+                                .single();
+
+                              if (bookingError) throw bookingError;
+
+                              // Create booking item
+                              await supabase
+                                .from('booking_items')
+                                .insert({
+                                  booking_id: booking.id,
+                                  console_id: item.console_id,
+                                  quantity: item.controllers,
+                                  price_per_unit: Math.round(item.price / item.controllers),
+                                });
+
+                              // Update console status
+                              await supabase
+                                .from('cafe_consoles')
+                                .update({ status: 'occupied' })
+                                .eq('id', item.console_id);
+                            }
+
+                            // If using membership, deduct hours
+                            if (billingUseMembership && billingSelectedMembership) {
+                              const totalDuration = billingCart.reduce((sum, item) => sum + item.duration, 0);
+                              const hoursUsed = totalDuration / 60;
+                              const newHoursRemaining = Math.max(0, billingSelectedMembership.hours_remaining - hoursUsed);
+
+                              await supabase
+                                .from('subscriptions')
+                                .update({ hours_remaining: newHoursRemaining })
+                                .eq('id', billingSelectedMembership.id);
+                            }
+
+                            // Reset form
+                            setBillingCustomerName('');
+                            setBillingCustomerPhone('');
+                            setBillingCart([]);
+                            setBillingDiscount('0');
+                            setBillingUseMembership(false);
+                            setBillingSelectedMembership(null);
+
+                            alert('Payment completed successfully! ✓');
+
+                            // Reload data
+                            setRefreshTrigger(prev => prev + 1);
+                          } catch (error: any) {
+                            console.error('Error creating booking:', error);
+                            alert('Failed to create booking: ' + error.message);
+                          }
+                        }}
+                        style={{
+                          width: '100%',
+                          padding: isMobile ? '14px 20px' : '16px 24px',
+                          background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                          border: 'none',
+                          borderRadius: 10,
+                          color: 'white',
+                          fontSize: isMobile ? 15 : 17,
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 8,
+                        }}
+                      >
+                        <span>💳</span> Complete Payment
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -7477,28 +8987,68 @@ export default function OwnerDashboardPage() {
 
               {/* Hours (only for hourly packages) */}
               {newPlanType === 'hourly_package' && (
-                <div style={{ marginBottom: 20 }}>
+                <div style={{
+                  marginBottom: 20,
+                  padding: isMobile ? '16px' : '20px',
+                  background: 'rgba(168, 85, 247, 0.05)',
+                  border: '2px solid rgba(168, 85, 247, 0.2)',
+                  borderRadius: 12,
+                }}>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    marginBottom: 12
+                  }}>
+                    <span style={{ fontSize: 20 }}>⏱️</span>
+                    <label style={{
+                      fontSize: isMobile ? 14 : 15,
+                      fontWeight: 700,
+                      color: '#a855f7',
+                      margin: 0
+                    }}>
+                      Gaming Hours Package Details
+                    </label>
+                  </div>
+                  <p style={{
+                    fontSize: isMobile ? 12 : 13,
+                    color: theme.textMuted,
+                    marginBottom: 16,
+                    lineHeight: 1.5
+                  }}>
+                    Specify how many gaming hours are included in this package
+                  </p>
                   <label style={{ fontSize: isMobile ? 13 : 14, fontWeight: 600, color: theme.textPrimary, display: 'block', marginBottom: 8 }}>
-                    Number of Hours *
+                    Number of Gaming Hours *
                   </label>
                   <input
                     type="number"
                     value={newPlanHours}
                     onChange={(e) => setNewPlanHours(e.target.value)}
-                    placeholder="e.g., 5"
+                    placeholder="e.g., 5, 10, 20"
                     min="1"
                     style={{
                       width: '100%',
-                      padding: isMobile ? "10px 14px" : "12px 16px",
+                      padding: isMobile ? "12px 14px" : "14px 16px",
                       background: theme.background,
-                      border: `1px solid ${theme.border}`,
+                      border: `2px solid ${theme.border}`,
                       borderRadius: 8,
                       color: theme.textPrimary,
-                      fontSize: isMobile ? 13 : 14,
+                      fontSize: isMobile ? 15 : 16,
                       outline: 'none',
                       fontFamily: fonts.body,
+                      fontWeight: 600,
                     }}
                   />
+                  <p style={{
+                    fontSize: isMobile ? 11 : 12,
+                    color: '#a855f7',
+                    marginTop: 8,
+                    marginBottom: 0,
+                    fontWeight: 500
+                  }}>
+                    💡 Example: Enter "5" for a 5-hour gaming package
+                  </p>
                 </div>
               )}
 
@@ -7696,81 +9246,149 @@ export default function OwnerDashboardPage() {
 
       {/* Edit Booking Modal */}
       {editingBooking && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: "rgba(0, 0, 0, 0.7)",
-            backdropFilter: "blur(4px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 1000,
-            padding: "20px",
-          }}
-          onClick={() => setEditingBooking(null)}
-        >
+        <>
+          <style>{`
+            input[type="number"]::-webkit-outer-spin-button,
+            input[type="number"]::-webkit-inner-spin-button {
+              -webkit-appearance: none;
+              margin: 0;
+            }
+          `}</style>
           <div
             style={{
-              background: theme.cardBackground,
-              borderRadius: 24,
-              border: `1px solid ${theme.border}`,
-              maxWidth: 650,
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: "rgba(0, 0, 0, 0.7)",
+              backdropFilter: "blur(4px)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 1000,
+              padding: "20px",
+            }}
+            onClick={() => setEditingBooking(null)}
+          >
+          <div
+            style={{
+              background: "linear-gradient(180deg, #0f172a 0%, #1e293b 100%)",
+              borderRadius: 20,
+              border: `1px solid rgba(99, 102, 241, 0.2)`,
+              maxWidth: 700,
               width: "100%",
-              maxHeight: "90vh",
+              maxHeight: "92vh",
               overflowY: "auto",
-              boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
+              boxShadow: "0 25px 70px rgba(0,0,0,0.6), 0 0 0 1px rgba(99, 102, 241, 0.1)",
             }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
             <div style={{
-              padding: "28px 32px",
-              borderBottom: `1px solid ${theme.border}`,
-              background: "linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(79, 70, 229, 0.05))",
+              padding: "24px 28px",
+              borderBottom: `1px solid rgba(99, 102, 241, 0.15)`,
+              background: "linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(139, 92, 246, 0.1))",
+              position: "relative",
+              overflow: "hidden",
             }}>
+              <div style={{
+                position: "absolute",
+                top: -50,
+                right: -50,
+                width: 150,
+                height: 150,
+                background: "radial-gradient(circle, rgba(99, 102, 241, 0.15), transparent)",
+                borderRadius: "50%",
+                pointerEvents: "none",
+              }}></div>
               <h2 style={{
                 fontFamily: fonts.heading,
-                fontSize: 26,
-                margin: "0 0 8px 0",
-                color: theme.textPrimary,
+                fontSize: 24,
+                margin: "0 0 6px 0",
+                color: "#f8fafc",
                 fontWeight: 700,
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
               }}>
-                📝 Edit Walk-In Booking
+                <span style={{
+                  fontSize: 28,
+                  filter: "drop-shadow(0 2px 8px rgba(99, 102, 241, 0.3))",
+                }}>📝</span>
+                Edit Walk-In Booking
               </h2>
               <p style={{
-                fontSize: 14,
-                color: theme.textSecondary,
+                fontSize: 13,
+                color: "#94a3b8",
                 margin: 0,
                 fontWeight: 500,
               }}>
-                Booking ID: <span style={{ color: theme.textPrimary, fontWeight: 600 }}>#{editingBooking.id.slice(0, 8).toUpperCase()}</span>
+                Booking ID: <span style={{
+                  color: "#c7d2fe",
+                  fontWeight: 600,
+                  background: "rgba(99, 102, 241, 0.15)",
+                  padding: "2px 8px",
+                  borderRadius: 6,
+                  fontSize: 12,
+                }}>#{editingBooking.id.slice(0, 8).toUpperCase()}</span>
               </p>
             </div>
 
             {/* Content */}
             <div style={{
-              padding: "32px",
+              padding: "28px",
               display: "flex",
               flexDirection: "column",
-              gap: 28,
+              gap: 24,
             }}>
               {/* Customer Info Section */}
-              <div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-                  <span style={{ fontSize: 18 }}>👤</span>
-                  <h3 style={{ fontSize: 14, color: theme.textSecondary, fontWeight: 600, margin: 0, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+              <div style={{
+                background: "rgba(99, 102, 241, 0.05)",
+                border: "1px solid rgba(99, 102, 241, 0.1)",
+                borderRadius: 14,
+                padding: 20,
+              }}>
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  marginBottom: 18,
+                  paddingBottom: 12,
+                  borderBottom: "1px solid rgba(99, 102, 241, 0.1)",
+                }}>
+                  <span style={{
+                    fontSize: 20,
+                    background: "rgba(99, 102, 241, 0.15)",
+                    width: 36,
+                    height: 36,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    borderRadius: 10,
+                  }}>👤</span>
+                  <h3 style={{
+                    fontSize: 13,
+                    color: "#94a3b8",
+                    fontWeight: 700,
+                    margin: 0,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.8px",
+                  }}>
                     Customer Information
                   </h3>
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
                   {/* Customer Name */}
                   <div>
-                    <label style={{ fontSize: 12, color: theme.textMuted, display: "block", marginBottom: 8, fontWeight: 600 }}>
+                    <label style={{
+                      fontSize: 12,
+                      color: "#64748b",
+                      display: "block",
+                      marginBottom: 8,
+                      fontWeight: 600,
+                    }}>
                       Customer Name
                     </label>
                     <input
@@ -7780,24 +9398,36 @@ export default function OwnerDashboardPage() {
                       placeholder="Enter customer name"
                       style={{
                         width: "100%",
-                        padding: "14px",
-                        background: theme.background,
-                        border: `2px solid ${theme.border}`,
+                        padding: "12px 14px",
+                        background: "rgba(15, 23, 42, 0.6)",
+                        border: `2px solid rgba(148, 163, 184, 0.15)`,
                         borderRadius: 10,
-                        color: theme.textPrimary,
+                        color: "#f1f5f9",
                         fontSize: 14,
                         fontFamily: fonts.body,
                         fontWeight: 500,
                         transition: "all 0.2s",
                       }}
-                      onFocus={(e) => e.target.style.borderColor = "#6366f1"}
-                      onBlur={(e) => e.target.style.borderColor = theme.border}
+                      onFocus={(e) => {
+                        e.target.style.borderColor = "#6366f1";
+                        e.target.style.background = "rgba(15, 23, 42, 0.8)";
+                      }}
+                      onBlur={(e) => {
+                        e.target.style.borderColor = "rgba(148, 163, 184, 0.15)";
+                        e.target.style.background = "rgba(15, 23, 42, 0.6)";
+                      }}
                     />
                   </div>
 
                   {/* Customer Phone */}
                   <div>
-                    <label style={{ fontSize: 12, color: theme.textMuted, display: "block", marginBottom: 8, fontWeight: 600 }}>
+                    <label style={{
+                      fontSize: 12,
+                      color: "#64748b",
+                      display: "block",
+                      marginBottom: 8,
+                      fontWeight: 600,
+                    }}>
                       Customer Phone
                     </label>
                     <input
@@ -7807,18 +9437,24 @@ export default function OwnerDashboardPage() {
                       placeholder="Enter phone number"
                       style={{
                         width: "100%",
-                        padding: "14px",
-                        background: theme.background,
-                        border: `2px solid ${theme.border}`,
+                        padding: "12px 14px",
+                        background: "rgba(15, 23, 42, 0.6)",
+                        border: `2px solid rgba(148, 163, 184, 0.15)`,
                         borderRadius: 10,
-                        color: theme.textPrimary,
+                        color: "#f1f5f9",
                         fontSize: 14,
                         fontFamily: fonts.body,
                         fontWeight: 500,
                         transition: "all 0.2s",
                       }}
-                      onFocus={(e) => e.target.style.borderColor = "#6366f1"}
-                      onBlur={(e) => e.target.style.borderColor = theme.border}
+                      onFocus={(e) => {
+                        e.target.style.borderColor = "#6366f1";
+                        e.target.style.background = "rgba(15, 23, 42, 0.8)";
+                      }}
+                      onBlur={(e) => {
+                        e.target.style.borderColor = "rgba(148, 163, 184, 0.15)";
+                        e.target.style.background = "rgba(15, 23, 42, 0.6)";
+                      }}
                     />
                   </div>
                 </div>
@@ -7831,10 +9467,38 @@ export default function OwnerDashboardPage() {
               </div>
 
               {/* Booking Details Section */}
-              <div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-                  <span style={{ fontSize: 18 }}>📅</span>
-                  <h3 style={{ fontSize: 14, color: theme.textSecondary, fontWeight: 600, margin: 0, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+              <div style={{
+                background: "rgba(59, 130, 246, 0.05)",
+                border: "1px solid rgba(59, 130, 246, 0.1)",
+                borderRadius: 14,
+                padding: 20,
+              }}>
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  marginBottom: 18,
+                  paddingBottom: 12,
+                  borderBottom: "1px solid rgba(59, 130, 246, 0.1)",
+                }}>
+                  <span style={{
+                    fontSize: 20,
+                    background: "rgba(59, 130, 246, 0.15)",
+                    width: 36,
+                    height: 36,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    borderRadius: 10,
+                  }}>📅</span>
+                  <h3 style={{
+                    fontSize: 13,
+                    color: "#94a3b8",
+                    fontWeight: 700,
+                    margin: 0,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.8px",
+                  }}>
                     Booking Details
                   </h3>
                 </div>
@@ -7951,10 +9615,38 @@ export default function OwnerDashboardPage() {
               </div>
 
               {/* Console & Controllers Section */}
-              <div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-                  <span style={{ fontSize: 18 }}>🎮</span>
-                  <h3 style={{ fontSize: 14, color: theme.textSecondary, fontWeight: 600, margin: 0, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+              <div style={{
+                background: "rgba(139, 92, 246, 0.05)",
+                border: "1px solid rgba(139, 92, 246, 0.1)",
+                borderRadius: 14,
+                padding: 20,
+              }}>
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  marginBottom: 18,
+                  paddingBottom: 12,
+                  borderBottom: "1px solid rgba(139, 92, 246, 0.1)",
+                }}>
+                  <span style={{
+                    fontSize: 20,
+                    background: "rgba(139, 92, 246, 0.15)",
+                    width: 36,
+                    height: 36,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    borderRadius: 10,
+                  }}>🎮</span>
+                  <h3 style={{
+                    fontSize: 13,
+                    color: "#94a3b8",
+                    fontWeight: 700,
+                    margin: 0,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.8px",
+                  }}>
                     Console & Controllers
                   </h3>
                 </div>
@@ -8049,10 +9741,38 @@ export default function OwnerDashboardPage() {
               </div>
 
               {/* Payment & Status Section */}
-              <div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-                  <span style={{ fontSize: 18 }}>💰</span>
-                  <h3 style={{ fontSize: 14, color: theme.textSecondary, fontWeight: 600, margin: 0, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+              <div style={{
+                background: "rgba(34, 197, 94, 0.05)",
+                border: "1px solid rgba(34, 197, 94, 0.1)",
+                borderRadius: 14,
+                padding: 20,
+              }}>
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  marginBottom: 18,
+                  paddingBottom: 12,
+                  borderBottom: "1px solid rgba(34, 197, 94, 0.1)",
+                }}>
+                  <span style={{
+                    fontSize: 20,
+                    background: "rgba(34, 197, 94, 0.15)",
+                    width: 36,
+                    height: 36,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    borderRadius: 10,
+                  }}>💰</span>
+                  <h3 style={{
+                    fontSize: 13,
+                    color: "#94a3b8",
+                    fontWeight: 700,
+                    margin: 0,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.8px",
+                  }}>
                     Payment & Status
                   </h3>
                 </div>
@@ -8076,7 +9796,10 @@ export default function OwnerDashboardPage() {
                       <input
                         type="number"
                         value={editAmount}
-                        onChange={(e) => setEditAmount(e.target.value)}
+                        onChange={(e) => {
+                          setEditAmount(e.target.value);
+                          setEditAmountManuallyEdited(true);
+                        }}
                         min="0"
                         step="1"
                         style={{
@@ -8090,7 +9813,8 @@ export default function OwnerDashboardPage() {
                           fontFamily: fonts.body,
                           fontWeight: 700,
                           transition: "all 0.2s",
-                        }}
+                          MozAppearance: "textfield",
+                        } as React.CSSProperties & { MozAppearance?: string }}
                         onFocus={(e) => e.target.style.borderColor = "#22c55e"}
                         onBlur={(e) => e.target.style.borderColor = "rgba(34, 197, 94, 0.3)"}
                       />
@@ -8200,59 +9924,71 @@ export default function OwnerDashboardPage() {
 
             {/* Footer with Action Buttons */}
             <div style={{
-              padding: "24px 32px",
-              borderTop: `1px solid ${theme.border}`,
-              background: "rgba(15, 23, 42, 0.3)",
+              padding: "20px 28px",
+              borderTop: `1px solid rgba(99, 102, 241, 0.15)`,
+              background: "rgba(15, 23, 42, 0.5)",
               display: "flex",
               gap: 12,
+              borderBottomLeftRadius: 20,
+              borderBottomRightRadius: 20,
             }}>
               <button
                 onClick={() => setEditingBooking(null)}
                 disabled={saving}
                 style={{
                   flex: 1,
-                  padding: "14px 24px",
+                  padding: "13px 24px",
                   borderRadius: 12,
-                  border: `2px solid ${theme.border}`,
-                  background: theme.background,
-                  color: theme.textPrimary,
-                  fontSize: 15,
+                  border: `2px solid rgba(148, 163, 184, 0.2)`,
+                  background: "rgba(15, 23, 42, 0.6)",
+                  color: "#cbd5e1",
+                  fontSize: 14,
                   fontWeight: 600,
                   cursor: saving ? "not-allowed" : "pointer",
                   opacity: saving ? 0.5 : 1,
                   transition: "all 0.2s",
                 }}
-                onMouseEnter={(e) => !saving && (e.currentTarget.style.background = theme.cardBackground)}
-                onMouseLeave={(e) => !saving && (e.currentTarget.style.background = theme.background)}
+                onMouseEnter={(e) => {
+                  if (!saving) {
+                    e.currentTarget.style.background = "rgba(15, 23, 42, 0.9)";
+                    e.currentTarget.style.borderColor = "rgba(148, 163, 184, 0.4)";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!saving) {
+                    e.currentTarget.style.background = "rgba(15, 23, 42, 0.6)";
+                    e.currentTarget.style.borderColor = "rgba(148, 163, 184, 0.2)";
+                  }
+                }}
               >
-                Cancel
+                ✕ Cancel
               </button>
               <button
                 onClick={handleSaveBooking}
                 disabled={saving || !editAmount || !editDate || !editStartTime}
                 style={{
-                  flex: 1,
-                  padding: "14px 24px",
+                  flex: 1.5,
+                  padding: "13px 24px",
                   borderRadius: 12,
                   border: "none",
                   background:
                     saving || !editAmount || !editDate || !editStartTime
-                      ? "rgba(99, 102, 241, 0.3)"
-                      : "linear-gradient(135deg, #6366f1, #4f46e5)",
+                      ? "rgba(99, 102, 241, 0.25)"
+                      : "linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)",
                   color: "#fff",
-                  fontSize: 15,
+                  fontSize: 14,
                   fontWeight: 700,
                   cursor: saving || !editAmount || !editDate || !editStartTime ? "not-allowed" : "pointer",
                   boxShadow:
                     saving || !editAmount || !editDate || !editStartTime
                       ? "none"
-                      : "0 8px 24px rgba(99, 102, 241, 0.4)",
+                      : "0 8px 24px rgba(99, 102, 241, 0.35), inset 0 1px 0 rgba(255,255,255,0.1)",
                   transition: "all 0.2s",
                 }}
                 onMouseEnter={(e) => {
                   if (!saving && editAmount && editDate && editStartTime) {
                     e.currentTarget.style.transform = "translateY(-2px)";
-                    e.currentTarget.style.boxShadow = "0 12px 32px rgba(99, 102, 241, 0.5)";
+                    e.currentTarget.style.boxShadow = "0 12px 32px rgba(99, 102, 241, 0.5), inset 0 1px 0 rgba(255,255,255,0.1)";
                   }
                 }}
                 onMouseLeave={(e) => {
@@ -8267,6 +10003,7 @@ export default function OwnerDashboardPage() {
             </div>
           </div>
         </div>
+        </>
       )}
 
       {/* Edit Station Pricing Modal */}
@@ -9316,6 +11053,749 @@ export default function OwnerDashboardPage() {
                 {deletingStation ? "Deleting..." : "Delete Station"}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Subscription Modal */}
+      {showAddSubscriptionModal && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(0, 0, 0, 0.7)",
+            backdropFilter: "blur(4px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+            padding: isMobile ? "16px" : "20px",
+          }}
+          onClick={() => {
+            setShowAddSubscriptionModal(false);
+            setNewSubCustomerName('');
+            setNewSubCustomerPhone('');
+            setNewSubCustomerEmail('');
+            setNewSubPlanId('');
+            setNewSubAmountPaid('');
+          }}
+        >
+          <div
+            style={{
+              background: theme.cardBackground,
+              borderRadius: isMobile ? 16 : 24,
+              border: `1px solid ${theme.border}`,
+              maxWidth: 500,
+              width: "100%",
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div style={{
+              padding: isMobile ? "20px 24px" : "28px 32px",
+              borderBottom: `1px solid ${theme.border}`,
+              background: "linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(5, 150, 105, 0.05))",
+            }}>
+              <h2 style={{
+                fontFamily: fonts.heading,
+                fontSize: isMobile ? 20 : 26,
+                margin: "0 0 8px 0",
+                color: theme.textPrimary,
+                fontWeight: 700,
+              }}>
+                ➕ New Subscription
+              </h2>
+              <p style={{
+                fontSize: isMobile ? 12 : 14,
+                color: theme.textSecondary,
+                margin: 0,
+                fontWeight: 500,
+              }}>
+                Add a customer subscription to a membership plan
+              </p>
+            </div>
+
+            {/* Form */}
+            <div style={{ padding: isMobile ? "20px 24px" : "28px 32px" }}>
+              {/* Customer Name */}
+              <div style={{ marginBottom: 20 }}>
+                <label style={{ fontSize: isMobile ? 13 : 14, fontWeight: 600, color: theme.textPrimary, display: 'block', marginBottom: 8 }}>
+                  Customer Name *
+                </label>
+                <input
+                  type="text"
+                  value={newSubCustomerName}
+                  onChange={(e) => setNewSubCustomerName(e.target.value)}
+                  placeholder="e.g., Raj Kumar"
+                  style={{
+                    width: '100%',
+                    padding: isMobile ? "10px 14px" : "12px 16px",
+                    background: theme.background,
+                    border: `1px solid ${theme.border}`,
+                    borderRadius: 8,
+                    color: theme.textPrimary,
+                    fontSize: isMobile ? 13 : 14,
+                    outline: 'none',
+                    fontFamily: fonts.body,
+                  }}
+                />
+              </div>
+
+              {/* Customer Phone */}
+              <div style={{ marginBottom: 20 }}>
+                <label style={{ fontSize: isMobile ? 13 : 14, fontWeight: 600, color: theme.textPrimary, display: 'block', marginBottom: 8 }}>
+                  Customer Phone *
+                </label>
+                <input
+                  type="tel"
+                  value={newSubCustomerPhone}
+                  onChange={(e) => setNewSubCustomerPhone(e.target.value)}
+                  placeholder="e.g., +91 98765 43210"
+                  style={{
+                    width: '100%',
+                    padding: isMobile ? "10px 14px" : "12px 16px",
+                    background: theme.background,
+                    border: `1px solid ${theme.border}`,
+                    borderRadius: 8,
+                    color: theme.textPrimary,
+                    fontSize: isMobile ? 13 : 14,
+                    outline: 'none',
+                    fontFamily: fonts.body,
+                  }}
+                />
+              </div>
+
+              {/* Customer Email (Optional) */}
+              <div style={{ marginBottom: 20 }}>
+                <label style={{ fontSize: isMobile ? 13 : 14, fontWeight: 600, color: theme.textPrimary, display: 'block', marginBottom: 8 }}>
+                  Customer Email (Optional)
+                </label>
+                <input
+                  type="email"
+                  value={newSubCustomerEmail}
+                  onChange={(e) => setNewSubCustomerEmail(e.target.value)}
+                  placeholder="e.g., raj@example.com"
+                  style={{
+                    width: '100%',
+                    padding: isMobile ? "10px 14px" : "12px 16px",
+                    background: theme.background,
+                    border: `1px solid ${theme.border}`,
+                    borderRadius: 8,
+                    color: theme.textPrimary,
+                    fontSize: isMobile ? 13 : 14,
+                    outline: 'none',
+                    fontFamily: fonts.body,
+                  }}
+                />
+              </div>
+
+              {/* Membership Plan */}
+              <div style={{ marginBottom: 20 }}>
+                <label style={{ fontSize: isMobile ? 13 : 14, fontWeight: 600, color: theme.textPrimary, display: 'block', marginBottom: 8 }}>
+                  Membership Plan *
+                </label>
+                {membershipPlans.length === 0 ? (
+                  <div style={{
+                    padding: isMobile ? "16px" : "20px",
+                    background: 'rgba(251, 146, 60, 0.1)',
+                    border: '1px solid rgba(251, 146, 60, 0.3)',
+                    borderRadius: 8,
+                    textAlign: 'center',
+                  }}>
+                    <p style={{ color: '#fb923c', margin: 0, fontSize: isMobile ? 13 : 14 }}>
+                      ⚠️ No plans available. Please create a membership plan first in the Plans tab.
+                    </p>
+                  </div>
+                ) : (
+                  <select
+                    value={newSubPlanId}
+                    onChange={(e) => {
+                      const planId = e.target.value;
+                      setNewSubPlanId(planId);
+
+                      // Auto-fill the amount based on selected plan
+                      if (planId) {
+                        const selectedPlan = membershipPlans.find(p => p.id === planId);
+                        if (selectedPlan) {
+                          setNewSubAmountPaid(selectedPlan.price.toString());
+                        }
+                      } else {
+                        setNewSubAmountPaid('');
+                      }
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: isMobile ? "10px 14px" : "12px 16px",
+                      background: theme.background,
+                      border: `1px solid ${theme.border}`,
+                      borderRadius: 8,
+                      color: theme.textPrimary,
+                      fontSize: isMobile ? 13 : 14,
+                      outline: 'none',
+                      fontFamily: fonts.body,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <option value="">Select a plan</option>
+                    {membershipPlans.map(plan => (
+                      <option key={plan.id} value={plan.id}>
+                        {plan.name} - ₹{plan.price} ({plan.plan_type === 'day_pass' ? 'Day Pass' : `${plan.hours}h`})
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              {/* Amount Paid */}
+              <div style={{ marginBottom: 28 }}>
+                <label style={{ fontSize: isMobile ? 13 : 14, fontWeight: 600, color: theme.textPrimary, display: 'block', marginBottom: 8 }}>
+                  Amount Paid (₹) *
+                </label>
+                <input
+                  type="number"
+                  value={newSubAmountPaid}
+                  onChange={(e) => setNewSubAmountPaid(e.target.value)}
+                  placeholder="e.g., 450"
+                  min="0"
+                  step="0.01"
+                  style={{
+                    width: '100%',
+                    padding: isMobile ? "10px 14px" : "12px 16px",
+                    background: theme.background,
+                    border: `1px solid ${theme.border}`,
+                    borderRadius: 8,
+                    color: theme.textPrimary,
+                    fontSize: isMobile ? 13 : 14,
+                    outline: 'none',
+                    fontFamily: fonts.body,
+                  }}
+                />
+                <p style={{ fontSize: isMobile ? 11 : 12, color: theme.textMuted, marginTop: 6, marginBottom: 0 }}>
+                  This can be different from the plan price (e.g., if discount was applied)
+                </p>
+              </div>
+
+              {/* Buttons */}
+              <div style={{ display: 'flex', gap: 12 }}>
+                <button
+                  onClick={() => {
+                    setShowAddSubscriptionModal(false);
+                    setNewSubCustomerName('');
+                    setNewSubCustomerPhone('');
+                    setNewSubCustomerEmail('');
+                    setNewSubPlanId('');
+                    setNewSubAmountPaid('');
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: isMobile ? "12px 16px" : "14px 20px",
+                    background: 'transparent',
+                    border: `2px solid ${theme.border}`,
+                    borderRadius: 10,
+                    color: theme.textPrimary,
+                    fontSize: isMobile ? 14 : 15,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    // Validation
+                    if (!newSubCustomerName.trim()) {
+                      alert('Please enter customer name');
+                      return;
+                    }
+                    if (!newSubCustomerPhone.trim()) {
+                      alert('Please enter customer phone');
+                      return;
+                    }
+                    if (!newSubPlanId) {
+                      alert('Please select a membership plan');
+                      return;
+                    }
+                    if (!newSubAmountPaid || parseFloat(newSubAmountPaid) <= 0) {
+                      alert('Please enter a valid amount paid');
+                      return;
+                    }
+
+                    // Get the selected plan details
+                    const selectedPlan = membershipPlans.find(p => p.id === newSubPlanId);
+                    if (!selectedPlan) {
+                      alert('Selected plan not found');
+                      return;
+                    }
+
+                    // Calculate expiry date based on plan validity
+                    const purchaseDate = new Date();
+                    const expiryDate = new Date(purchaseDate);
+                    expiryDate.setDate(expiryDate.getDate() + (selectedPlan.validity_days || 1));
+
+                    // Determine hours for subscription
+                    const hoursPurchased = selectedPlan.plan_type === 'day_pass'
+                      ? 24 // Day pass gets 24 hours
+                      : (parseInt(selectedPlan.hours) || 0);
+
+                    // Validate hours
+                    if (hoursPurchased <= 0) {
+                      alert('Invalid plan: Hours must be greater than 0');
+                      console.error('Plan details:', selectedPlan);
+                      return;
+                    }
+
+                    try {
+                      // Insert subscription
+                      const { data, error } = await supabase
+                        .from('subscriptions')
+                        .insert({
+                          cafe_id: cafes[0]?.id,
+                          customer_name: newSubCustomerName.trim(),
+                          customer_phone: newSubCustomerPhone.trim(),
+                          customer_email: newSubCustomerEmail.trim() || null,
+                          membership_plan_id: newSubPlanId,
+                          hours_purchased: hoursPurchased,
+                          hours_remaining: hoursPurchased,
+                          amount_paid: parseFloat(newSubAmountPaid),
+                          expiry_date: expiryDate.toISOString(),
+                          status: 'active',
+                        })
+                        .select(`
+                          *,
+                          membership_plans (
+                            name,
+                            plan_type,
+                            console_type
+                          )
+                        `)
+                        .single();
+
+                      if (error) {
+                        console.error('Error creating subscription:', error);
+                        alert('Failed to create subscription: ' + error.message);
+                        return;
+                      }
+
+                      // Add to subscriptions list
+                      setSubscriptions([data, ...subscriptions]);
+
+                      // Reset form and close modal
+                      setShowAddSubscriptionModal(false);
+                      setNewSubCustomerName('');
+                      setNewSubCustomerPhone('');
+                      setNewSubCustomerEmail('');
+                      setNewSubPlanId('');
+                      setNewSubAmountPaid('');
+
+                      alert('Subscription created successfully!');
+                    } catch (err) {
+                      console.error('Error:', err);
+                      alert('An error occurred while creating the subscription');
+                    }
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: isMobile ? "12px 16px" : "14px 20px",
+                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                    border: 'none',
+                    borderRadius: 10,
+                    color: 'white',
+                    fontSize: isMobile ? 14 : 15,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  Create Subscription
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View Subscription Detail Modal */}
+      {viewingSubscription && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(0, 0, 0, 0.7)",
+            backdropFilter: "blur(4px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+            padding: isMobile ? "16px" : "20px",
+            overflowY: 'auto',
+          }}
+          onClick={() => setViewingSubscription(null)}
+        >
+          <div
+            style={{
+              background: theme.cardBackground,
+              borderRadius: isMobile ? 16 : 24,
+              border: `1px solid ${theme.border}`,
+              maxWidth: 900,
+              width: "100%",
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {(() => {
+              const sub = viewingSubscription;
+              const planDetails = sub.membership_plans || {};
+              const hoursRemaining = sub.hours_remaining || 0;
+              const hoursPurchased = sub.hours_purchased || 1;
+              const hoursUsed = hoursPurchased - hoursRemaining;
+              const progressPercent = (hoursRemaining / hoursPurchased) * 100;
+              const expiryDate = sub.expiry_date ? new Date(sub.expiry_date) : null;
+              const purchaseDate = sub.purchase_date ? new Date(sub.purchase_date) : null;
+              const daysRemaining = expiryDate ? Math.max(0, Math.ceil((expiryDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))) : 0;
+              const statusColor = sub.status === 'active' ? '#10b981' : sub.status === 'expired' ? '#ef4444' : '#6b7280';
+
+              // Get initials for avatar
+              const nameParts = sub.customer_name?.split(' ') || [];
+              const initials = nameParts.length >= 2
+                ? `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]}`.toUpperCase()
+                : (sub.customer_name?.[0] || 'U').toUpperCase();
+
+              return (
+                <>
+                  {/* Header with Back Button */}
+                  <div style={{
+                    padding: isMobile ? "20px 24px" : "28px 32px",
+                    borderBottom: `1px solid ${theme.border}`,
+                    background: "rgba(16, 185, 129, 0.05)",
+                  }}>
+                    <button
+                      onClick={() => setViewingSubscription(null)}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: theme.textMuted,
+                        fontSize: isMobile ? 14 : 15,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        marginBottom: 16,
+                        padding: 0,
+                      }}
+                    >
+                      ← Back to Subscriptions
+                    </button>
+                  </div>
+
+                  {/* Customer Info Card */}
+                  <div style={{ padding: isMobile ? "24px" : "32px" }}>
+                    <div style={{
+                      background: 'rgba(255, 255, 255, 0.02)',
+                      border: `1px solid ${theme.border}`,
+                      borderRadius: 16,
+                      padding: isMobile ? "20px" : "24px",
+                      marginBottom: 24,
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                          <div style={{
+                            width: isMobile ? 60 : 72,
+                            height: isMobile ? 60 : 72,
+                            borderRadius: '50%',
+                            background: 'linear-gradient(135deg, #8b5cf6, #ec4899)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: isMobile ? 24 : 32,
+                            fontWeight: 700,
+                            color: '#fff',
+                          }}>
+                            {initials}
+                          </div>
+                          <div>
+                            <h2 style={{ fontSize: isMobile ? 20 : 28, fontWeight: 700, color: theme.textPrimary, margin: 0, marginBottom: 4 }}>
+                              {sub.customer_name}
+                            </h2>
+                            <p style={{ fontSize: isMobile ? 14 : 16, color: theme.textSecondary, margin: 0 }}>
+                              {sub.customer_phone}
+                            </p>
+                          </div>
+                        </div>
+                        <span style={{
+                          padding: isMobile ? '8px 16px' : '10px 20px',
+                          background: `${statusColor}20`,
+                          color: statusColor,
+                          borderRadius: 20,
+                          fontSize: isMobile ? 13 : 15,
+                          fontWeight: 600,
+                          textTransform: 'capitalize',
+                        }}>
+                          {sub.status}
+                        </span>
+                      </div>
+
+                      {/* Plan Details Grid */}
+                      <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)',
+                        gap: isMobile ? 16 : 20,
+                        padding: isMobile ? '16px 0' : '20px 0',
+                        borderTop: `1px solid ${theme.border}`,
+                      }}>
+                        <div>
+                          <p style={{ fontSize: isMobile ? 11 : 12, color: theme.textMuted, margin: '0 0 6px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                            Plan
+                          </p>
+                          <p style={{ fontSize: isMobile ? 14 : 16, fontWeight: 600, color: theme.textPrimary, margin: 0 }}>
+                            {planDetails.name || 'N/A'}
+                          </p>
+                        </div>
+                        <div>
+                          <p style={{ fontSize: isMobile ? 11 : 12, color: theme.textMuted, margin: '0 0 6px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                            Purchased
+                          </p>
+                          <p style={{ fontSize: isMobile ? 14 : 16, fontWeight: 600, color: theme.textPrimary, margin: 0 }}>
+                            {purchaseDate ? purchaseDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}
+                          </p>
+                        </div>
+                        <div>
+                          <p style={{ fontSize: isMobile ? 11 : 12, color: theme.textMuted, margin: '0 0 6px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                            Expires
+                          </p>
+                          <p style={{ fontSize: isMobile ? 14 : 16, fontWeight: 600, color: theme.textPrimary, margin: 0 }}>
+                            {expiryDate ? expiryDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}
+                            {daysRemaining > 0 && (
+                              <span style={{ fontSize: isMobile ? 11 : 12, color: theme.textMuted, marginLeft: 4 }}>
+                                ({daysRemaining} days)
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                        <div>
+                          <p style={{ fontSize: isMobile ? 11 : 12, color: theme.textMuted, margin: '0 0 6px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                            Amount Paid
+                          </p>
+                          <p style={{ fontSize: isMobile ? 16 : 18, fontWeight: 700, color: '#10b981', margin: 0 }}>
+                            ₹{sub.amount_paid}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Time Balance Card */}
+                    <div style={{
+                      background: 'rgba(255, 255, 255, 0.02)',
+                      border: `1px solid ${theme.border}`,
+                      borderRadius: 16,
+                      padding: isMobile ? "20px" : "24px",
+                      marginBottom: 24,
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+                        <h3 style={{ fontSize: isMobile ? 18 : 22, fontWeight: 700, color: theme.textPrimary, margin: 0 }}>
+                          Time Balance
+                        </h3>
+                        <button
+                          style={{
+                            padding: isMobile ? '8px 16px' : '10px 20px',
+                            background: '#10b981',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: 10,
+                            fontSize: isMobile ? 13 : 14,
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 6,
+                          }}
+                        >
+                          + Add Time
+                        </button>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 16 }}>
+                        <div>
+                          <p style={{ fontSize: isMobile ? 36 : 48, fontWeight: 700, color: theme.textPrimary, margin: 0, lineHeight: 1 }}>
+                            {Math.floor(hoursRemaining)}h {Math.round((hoursRemaining % 1) * 60)}m
+                          </p>
+                          <p style={{ fontSize: isMobile ? 13 : 14, color: theme.textMuted, margin: '8px 0 0 0' }}>
+                            remaining
+                          </p>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <p style={{ fontSize: isMobile ? 20 : 24, fontWeight: 600, color: theme.textSecondary, margin: 0, lineHeight: 1 }}>
+                            {hoursPurchased} Hours
+                          </p>
+                          <p style={{ fontSize: isMobile ? 13 : 14, color: theme.textMuted, margin: '8px 0 0 0' }}>
+                            total
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Progress Bar */}
+                      <div style={{
+                        width: '100%',
+                        height: 12,
+                        background: 'rgba(255, 255, 255, 0.05)',
+                        borderRadius: 6,
+                        overflow: 'hidden',
+                        marginBottom: 12,
+                      }}>
+                        <div style={{
+                          width: `${progressPercent}%`,
+                          height: '100%',
+                          background: progressPercent > 50 ? '#10b981' : progressPercent > 20 ? '#f59e0b' : '#ef4444',
+                          transition: 'width 0.3s',
+                        }} />
+                      </div>
+
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: isMobile ? 12 : 13, color: theme.textMuted }}>
+                        <span>Used: {Math.floor(hoursUsed)}h {Math.round((hoursUsed % 1) * 60)}m ({Math.round((hoursUsed / hoursPurchased) * 100)}%)</span>
+                        <span style={{ color: progressPercent > 50 ? '#10b981' : progressPercent > 20 ? '#f59e0b' : '#ef4444', fontWeight: 600 }}>
+                          {Math.round(progressPercent)}% remaining
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Usage History */}
+                    <div style={{
+                      background: 'rgba(255, 255, 255, 0.02)',
+                      border: `1px solid ${theme.border}`,
+                      borderRadius: 16,
+                      padding: isMobile ? "20px" : "24px",
+                      marginBottom: 24,
+                    }}>
+                      <h3 style={{ fontSize: isMobile ? 18 : 22, fontWeight: 700, color: theme.textPrimary, margin: '0 0 20px 0' }}>
+                        Usage History
+                      </h3>
+
+                      <div style={{ overflowX: 'auto' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                          <thead>
+                            <tr style={{ borderBottom: `1px solid ${theme.border}` }}>
+                              <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: isMobile ? 11 : 12, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase' }}>DATE</th>
+                              <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: isMobile ? 11 : 12, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase' }}>SESSION</th>
+                              <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: isMobile ? 11 : 12, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase' }}>TIME USED</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {/* Mock data - replace with actual usage history from database */}
+                            {hoursUsed > 0 ? (
+                              <tr style={{ borderBottom: `1px solid ${theme.border}` }}>
+                                <td style={{ padding: '16px', fontSize: isMobile ? 13 : 14, color: theme.textPrimary }}>
+                                  {purchaseDate ? purchaseDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}
+                                </td>
+                                <td style={{ padding: '16px', fontSize: isMobile ? 13 : 14, color: '#3b82f6', fontWeight: 600 }}>
+                                  #22
+                                </td>
+                                <td style={{ padding: '16px', fontSize: isMobile ? 13 : 14, color: '#3b82f6', fontWeight: 600 }}>
+                                  {Math.floor(hoursUsed)}h {Math.round((hoursUsed % 1) * 60)}m
+                                </td>
+                              </tr>
+                            ) : (
+                              <tr>
+                                <td colSpan={3} style={{ padding: '40px 16px', textAlign: 'center', color: theme.textMuted, fontSize: isMobile ? 13 : 14 }}>
+                                  No usage history yet
+                                </td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                      <button
+                        style={{
+                          flex: isMobile ? '1 1 100%' : '1',
+                          padding: isMobile ? "12px 20px" : "14px 24px",
+                          background: 'transparent',
+                          border: `2px solid ${theme.border}`,
+                          borderRadius: 10,
+                          color: theme.textPrimary,
+                          fontSize: isMobile ? 14 : 15,
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 8,
+                        }}
+                      >
+                        <span>👤</span> View Customer
+                      </button>
+                      <button
+                        style={{
+                          flex: isMobile ? '1 1 100%' : '1',
+                          padding: isMobile ? "12px 20px" : "14px 24px",
+                          background: 'transparent',
+                          border: `2px solid rgba(251, 191, 36, 0.4)`,
+                          borderRadius: 10,
+                          color: '#fbbf24',
+                          fontSize: isMobile ? 14 : 15,
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 8,
+                        }}
+                      >
+                        <span>⛔</span> Suspend
+                      </button>
+                      <button
+                        onClick={async () => {
+                          if (confirm('Are you sure you want to delete this subscription?')) {
+                            const { error } = await supabase
+                              .from('subscriptions')
+                              .delete()
+                              .eq('id', sub.id);
+
+                            if (!error) {
+                              setSubscriptions(subscriptions.filter(s => s.id !== sub.id));
+                              setViewingSubscription(null);
+                              alert('Subscription deleted successfully!');
+                            } else {
+                              alert('Failed to delete subscription: ' + error.message);
+                            }
+                          }
+                        }}
+                        style={{
+                          flex: isMobile ? '1 1 100%' : '1',
+                          padding: isMobile ? "12px 20px" : "14px 24px",
+                          background: 'rgba(239, 68, 68, 0.1)',
+                          border: `2px solid rgba(239, 68, 68, 0.4)`,
+                          borderRadius: 10,
+                          color: '#ef4444',
+                          fontSize: isMobile ? 14 : 15,
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 8,
+                        }}
+                      >
+                        <span>🗑️</span> Delete
+                      </button>
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </div>
       )}
