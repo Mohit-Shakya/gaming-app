@@ -193,6 +193,13 @@ export default function OwnerDashboardPage() {
   const [cafeConsoles, setCafeConsoles] = useState<any[]>([]);
   const [availableConsoleTypes, setAvailableConsoleTypes] = useState<string[]>([]);
 
+  // Multi-café support
+  const [selectedCafeId, setSelectedCafeId] = useState<string>('');
+
+  // Subscription timer state
+  const [activeTimers, setActiveTimers] = useState<Map<string, { startTime: number; intervalId: NodeJS.Timeout }>>(new Map());
+  const [timerElapsed, setTimerElapsed] = useState<Map<string, number>>(new Map());
+
   // Billing state
   const [billingCustomerName, setBillingCustomerName] = useState('');
   const [billingCustomerPhone, setBillingCustomerPhone] = useState('');
@@ -205,6 +212,18 @@ export default function OwnerDashboardPage() {
   const [billingSelectedMembership, setBillingSelectedMembership] = useState<any>(null);
   const [billingCart, setBillingCart] = useState<any[]>([]);
 
+  // Bulk billing state
+  const [isBulkMode, setIsBulkMode] = useState(false);
+  const [bulkCustomers, setBulkCustomers] = useState<Array<{
+    id: string;
+    name: string;
+    phone: string;
+    console: string;
+    duration: number;
+    controllers: number;
+    price: number;
+  }>>([]);
+
   // Booking filters
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sourceFilter, setSourceFilter] = useState<string>("all");
@@ -213,6 +232,11 @@ export default function OwnerDashboardPage() {
   const [customStartDate, setCustomStartDate] = useState<string>("");
   const [customEndDate, setCustomEndDate] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState<string>("");
+
+  // Booking pagination
+  const [bookingPage, setBookingPage] = useState(1);
+  const [bookingsPerPage] = useState(50);
+  const [totalBookingsCount, setTotalBookingsCount] = useState(0);
 
   // Revenue filter for overview
   const [revenueFilter, setRevenueFilter] = useState<string>("today"); // today, week, month, quarter, all
@@ -684,7 +708,18 @@ export default function OwnerDashboardPage() {
           }
         }
 
-        // Fetch bookings with booking items
+        // Fetch total bookings count for pagination
+        const { count: totalCount, error: countError } = await supabase
+          .from("bookings")
+          .select("*", { count: 'exact', head: true })
+          .in("cafe_id", cafeIds);
+
+        if (!countError && totalCount !== null) {
+          setTotalBookingsCount(totalCount);
+        }
+
+        // Fetch bookings with booking items (with pagination)
+        const offset = (bookingPage - 1) * bookingsPerPage;
         const { data: bookingRows, error: bookingsError } = await supabase
           .from("bookings")
           .select(`
@@ -710,7 +745,7 @@ export default function OwnerDashboardPage() {
           `)
           .in("cafe_id", cafeIds)
           .order("created_at", { ascending: false })
-          .limit(100);
+          .range(offset, offset + bookingsPerPage - 1);
 
         if (bookingsError) throw bookingsError;
 
@@ -919,7 +954,7 @@ export default function OwnerDashboardPage() {
     }
 
     loadData();
-  }, [allowed, ownerId, refreshTrigger]);
+  }, [allowed, ownerId, refreshTrigger, bookingPage, bookingsPerPage]);
 
   // Populate editedCafe when cafes data loads
   useEffect(() => {
@@ -955,6 +990,13 @@ export default function OwnerDashboardPage() {
       });
     }
   }, [cafes]);
+
+  // Initialize selected café when cafes load
+  useEffect(() => {
+    if (cafes.length > 0 && !selectedCafeId) {
+      setSelectedCafeId(cafes[0].id);
+    }
+  }, [cafes, selectedCafeId]);
 
   // Fetch gallery images when cafes data loads
   useEffect(() => {
@@ -1533,6 +1575,114 @@ export default function OwnerDashboardPage() {
       setSaving(false);
     }
   }
+
+  // Subscription timer handlers
+  function handleStartTimer(subscriptionId: string) {
+    console.log('[Timer] Starting timer for subscription:', subscriptionId);
+    // Don't start if already running
+    if (activeTimers.has(subscriptionId)) {
+      console.log('[Timer] Timer already running for:', subscriptionId);
+      return;
+    }
+
+    const startTime = Date.now();
+    const intervalId = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - startTime) / 1000); // seconds
+      setTimerElapsed(prev => {
+        const newMap = new Map(prev);
+        newMap.set(subscriptionId, elapsed);
+        return newMap;
+      });
+    }, 1000);
+
+    setActiveTimers(prev => {
+      const newMap = new Map(prev);
+      newMap.set(subscriptionId, { startTime, intervalId });
+      return newMap;
+    });
+    console.log('[Timer] Timer started successfully');
+  }
+
+  async function handleStopTimer(subscriptionId: string) {
+    console.log('[Timer] Stopping timer for subscription:', subscriptionId);
+    const timerInfo = activeTimers.get(subscriptionId);
+    if (!timerInfo) {
+      console.log('[Timer] No timer found for:', subscriptionId);
+      return;
+    }
+
+    // Clear the interval
+    clearInterval(timerInfo.intervalId);
+    console.log('[Timer] Interval cleared');
+
+    // Calculate total elapsed time in hours
+    const elapsedSeconds = timerElapsed.get(subscriptionId) || 0;
+    const elapsedHours = elapsedSeconds / 3600; // convert seconds to hours
+    console.log('[Timer] Elapsed:', elapsedSeconds, 'seconds =', elapsedHours.toFixed(4), 'hours');
+
+    // Update subscription hours in database
+    const subscription = subscriptions.find(s => s.id === subscriptionId);
+    if (subscription) {
+      const newHoursRemaining = Math.max(0, (subscription.hours_remaining || 0) - elapsedHours);
+      console.log('[Timer] Updating hours:', subscription.hours_remaining, '->', newHoursRemaining);
+
+      try {
+        const { error } = await supabase
+          .from('subscriptions')
+          .update({
+            hours_remaining: newHoursRemaining,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', subscriptionId);
+
+        if (error) {
+          console.error('[Timer] Database error:', error);
+          alert('Failed to update subscription hours');
+          return;
+        }
+
+        console.log('[Timer] Database updated successfully');
+
+        // Update local state
+        setSubscriptions(prev => prev.map(s =>
+          s.id === subscriptionId
+            ? { ...s, hours_remaining: newHoursRemaining }
+            : s
+        ));
+
+        // Clear timer state
+        setActiveTimers(prev => {
+          const newMap = new Map(prev);
+          newMap.delete(subscriptionId);
+          return newMap;
+        });
+
+        setTimerElapsed(prev => {
+          const newMap = new Map(prev);
+          newMap.delete(subscriptionId);
+          return newMap;
+        });
+
+        console.log('[Timer] Timer stopped successfully');
+        const hours = Math.floor(elapsedHours);
+        const minutes = Math.floor((elapsedHours - hours) * 60);
+        const timeStr = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+        alert(`Session ended. ${timeStr} deducted from subscription.`);
+      } catch (err) {
+        console.error('[Timer] Exception:', err);
+        alert('Failed to stop timer');
+      }
+    } else {
+      console.error('[Timer] Subscription not found:', subscriptionId);
+    }
+  }
+
+  // Cleanup timers on unmount
+  useEffect(() => {
+    return () => {
+      activeTimers.forEach(({ intervalId }) => clearInterval(intervalId));
+    };
+  }, [activeTimers]);
 
   // Auto-calculate amount when duration, console, or controllers change in edit modal
   // Only auto-calculate if user hasn't manually edited the amount
@@ -3829,7 +3979,54 @@ export default function OwnerDashboardPage() {
 
           {/* Live Status Tab */}
           {activeTab === 'live-status' && cafes.length > 0 && (
-            <ConsoleStatusDashboard cafeId={cafes[0].id} />
+            <div>
+              {/* Café Selector (only show if multiple cafés) */}
+              {cafes.length > 1 && (
+                <div style={{
+                  marginBottom: 24,
+                  background: theme.cardBackground,
+                  border: `1px solid ${theme.border}`,
+                  borderRadius: 12,
+                  padding: 16,
+                }}>
+                  <label style={{
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: theme.textMuted,
+                    display: 'block',
+                    marginBottom: 8,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                  }}>
+                    Select Café
+                  </label>
+                  <select
+                    value={selectedCafeId}
+                    onChange={(e) => setSelectedCafeId(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '12px 16px',
+                      background: theme.background,
+                      border: `1px solid ${theme.border}`,
+                      borderRadius: 10,
+                      color: theme.textPrimary,
+                      fontSize: 15,
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      outline: 'none',
+                    }}
+                  >
+                    {cafes.map(cafe => (
+                      <option key={cafe.id} value={cafe.id}>
+                        {cafe.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <ConsoleStatusDashboard cafeId={selectedCafeId || cafes[0].id} />
+            </div>
           )}
 
           {activeTab === 'live-status' && cafes.length === 0 && (
@@ -5191,6 +5388,91 @@ export default function OwnerDashboardPage() {
                   </table>
                 )}
               </div>
+
+              {/* Pagination Controls */}
+              {filteredBookings.length > 0 && (
+                <div style={{
+                  marginTop: 24,
+                  padding: '16px 20px',
+                  background: theme.cardBackground,
+                  border: `1px solid ${theme.border}`,
+                  borderRadius: 12,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: 16,
+                }}>
+                  {/* Info Text */}
+                  <div style={{
+                    fontSize: 13,
+                    color: theme.textSecondary,
+                    fontWeight: 500,
+                  }}>
+                    Showing {((bookingPage - 1) * bookingsPerPage) + 1}-{Math.min(bookingPage * bookingsPerPage, totalBookingsCount)} of {totalBookingsCount} bookings
+                  </div>
+
+                  {/* Navigation Controls */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                  }}>
+                    {/* Previous Button */}
+                    <button
+                      onClick={() => setBookingPage(prev => Math.max(1, prev - 1))}
+                      disabled={bookingPage === 1}
+                      style={{
+                        padding: '8px 16px',
+                        background: bookingPage === 1 ? 'rgba(100,116,139,0.1)' : 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                        color: bookingPage === 1 ? theme.textMuted : 'white',
+                        border: 'none',
+                        borderRadius: 8,
+                        fontSize: 13,
+                        fontWeight: 600,
+                        cursor: bookingPage === 1 ? 'not-allowed' : 'pointer',
+                        opacity: bookingPage === 1 ? 0.5 : 1,
+                        transition: 'all 0.2s ease',
+                      }}
+                    >
+                      ← Previous
+                    </button>
+
+                    {/* Page Indicator */}
+                    <div style={{
+                      padding: '8px 16px',
+                      background: 'rgba(59,130,246,0.1)',
+                      border: `1px solid rgba(59,130,246,0.3)`,
+                      borderRadius: 8,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: '#3b82f6',
+                    }}>
+                      Page {bookingPage} of {Math.ceil(totalBookingsCount / bookingsPerPage)}
+                    </div>
+
+                    {/* Next Button */}
+                    <button
+                      onClick={() => setBookingPage(prev => Math.min(Math.ceil(totalBookingsCount / bookingsPerPage), prev + 1))}
+                      disabled={bookingPage >= Math.ceil(totalBookingsCount / bookingsPerPage)}
+                      style={{
+                        padding: '8px 16px',
+                        background: bookingPage >= Math.ceil(totalBookingsCount / bookingsPerPage) ? 'rgba(100,116,139,0.1)' : 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                        color: bookingPage >= Math.ceil(totalBookingsCount / bookingsPerPage) ? theme.textMuted : 'white',
+                        border: 'none',
+                        borderRadius: 8,
+                        fontSize: 13,
+                        fontWeight: 600,
+                        cursor: bookingPage >= Math.ceil(totalBookingsCount / bookingsPerPage) ? 'not-allowed' : 'pointer',
+                        opacity: bookingPage >= Math.ceil(totalBookingsCount / bookingsPerPage) ? 0.5 : 1,
+                        transition: 'all 0.2s ease',
+                      }}
+                    >
+                      Next →
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -5833,19 +6115,29 @@ export default function OwnerDashboardPage() {
                         { key: 'arcade_count', name: 'Arcade', icon: '🕹️', bgColor: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', rate: '₹50/hr' },
                       ];
 
+                      // Calculate session count per station from bookings
+                      const stationSessionCounts = new Map<string, number>();
+                      bookings.forEach(booking => {
+                        const console = booking.booking_items?.[0]?.console;
+                        if (console) {
+                          stationSessionCounts.set(console, (stationSessionCounts.get(console) || 0) + 1);
+                        }
+                      });
+
                       // Generate stations for each console type
                       consoleTypes.forEach((consoleType) => {
                         const count = cafe[consoleType.key as keyof CafeRow] as number || 0;
                         for (let i = 1; i <= count; i++) {
+                          const stationName = `${consoleType.name}-${String(i).padStart(2, '0')}`;
                           allStations.push({
-                            id: `${consoleType.name}-${String(i).padStart(2, '0')}`,
-                            name: `${consoleType.name}-${String(i).padStart(2, '0')}`,
+                            id: stationName,
+                            name: stationName,
                             type: consoleType.name,
                             icon: consoleType.icon,
                             bgColor: consoleType.bgColor,
                             color: consoleType.color,
                             rate: consoleType.rate,
-                            sessions: 0, // TODO: Calculate from bookings
+                            sessions: stationSessionCounts.get(stationName) || 0,
                             status: 'Active',
                           });
                         }
@@ -6274,9 +6566,13 @@ export default function OwnerDashboardPage() {
                             <div style={{ padding: 16 }}>
                               {filteredSubs.map((sub: any) => {
                                 const planDetails = sub.membership_plans || {};
-                                const hoursRemaining = sub.hours_remaining || 0;
+                                // Calculate real-time hours remaining based on active timer
+                                const baseHoursRemaining = sub.hours_remaining || 0;
+                                const elapsedSeconds = timerElapsed.get(sub.id) || 0;
+                                const elapsedHours = elapsedSeconds / 3600;
+                                const currentHoursRemaining = Math.max(0, baseHoursRemaining - elapsedHours);
                                 const hoursPurchased = sub.hours_purchased || 1;
-                                const progressPercent = (hoursRemaining / hoursPurchased) * 100;
+                                const progressPercent = (currentHoursRemaining / hoursPurchased) * 100;
                                 const expiryDate = sub.expiry_date ? new Date(sub.expiry_date) : null;
                                 const isExpired = expiryDate && expiryDate < new Date();
                                 const statusColor = sub.status === 'active' ? '#10b981' : sub.status === 'expired' ? '#ef4444' : '#6b7280';
@@ -6336,7 +6632,13 @@ export default function OwnerDashboardPage() {
                                     <div style={{ marginBottom: 8 }}>
                                       <div style={{ fontSize: 12, color: theme.textMuted, marginBottom: 4 }}>Time Remaining</div>
                                       <div style={{ fontSize: 13, fontWeight: 600, color: theme.textPrimary, marginBottom: 6 }}>
-                                        {hoursRemaining}h / {hoursPurchased}h
+                                        {(() => {
+                                          const totalHours = Math.floor(currentHoursRemaining);
+                                          const totalMinutes = Math.floor((currentHoursRemaining - totalHours) * 60);
+                                          const purchasedHours = Math.floor(hoursPurchased);
+                                          const purchasedMinutes = Math.floor((hoursPurchased - purchasedHours) * 60);
+                                          return `${totalHours}h ${totalMinutes}m / ${purchasedHours}h${purchasedMinutes > 0 ? ` ${purchasedMinutes}m` : ''}`;
+                                        })()}
                                       </div>
                                       <div style={{
                                         width: '100%',
@@ -6353,7 +6655,7 @@ export default function OwnerDashboardPage() {
                                         }} />
                                       </div>
                                     </div>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
                                       <div>
                                         <div style={{ fontSize: 12, color: theme.textMuted, marginBottom: 4 }}>Expires</div>
                                         <div style={{ fontSize: 13, fontWeight: 500, color: theme.textSecondary }}>
@@ -6364,6 +6666,84 @@ export default function OwnerDashboardPage() {
                                         <div style={{ fontSize: 12, color: theme.textMuted, marginBottom: 4 }}>Paid</div>
                                         <div style={{ fontSize: 13, fontWeight: 600, color: theme.textPrimary }}>₹{sub.amount_paid}</div>
                                       </div>
+                                    </div>
+                                    {/* Timer Controls for Mobile */}
+                                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                      {activeTimers.has(sub.id) ? (
+                                        <>
+                                          {/* Timer Display */}
+                                          <div style={{
+                                            flex: 1,
+                                            padding: '10px',
+                                            background: 'rgba(16, 185, 129, 0.15)',
+                                            border: '1px solid rgba(16, 185, 129, 0.3)',
+                                            borderRadius: 8,
+                                            fontSize: 14,
+                                            fontWeight: 600,
+                                            color: '#10b981',
+                                            fontFamily: 'monospace',
+                                            textAlign: 'center',
+                                          }}>
+                                            {(() => {
+                                              const elapsed = timerElapsed.get(sub.id) || 0;
+                                              const hours = Math.floor(elapsed / 3600);
+                                              const minutes = Math.floor((elapsed % 3600) / 60);
+                                              const seconds = elapsed % 60;
+                                              return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+                                            })()}
+                                          </div>
+                                          {/* Stop Button */}
+                                          <button
+                                            onClick={() => handleStopTimer(sub.id)}
+                                            style={{
+                                              background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                                              border: 'none',
+                                              borderRadius: 8,
+                                              padding: '10px 16px',
+                                              color: 'white',
+                                              cursor: 'pointer',
+                                              fontSize: 13,
+                                              fontWeight: 600,
+                                            }}
+                                          >
+                                            ⏹️ Stop
+                                          </button>
+                                        </>
+                                      ) : (
+                                        sub.status === 'active' && (
+                                          <button
+                                            onClick={() => handleStartTimer(sub.id)}
+                                            style={{
+                                              flex: 1,
+                                              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                                              border: 'none',
+                                              borderRadius: 8,
+                                              padding: '10px',
+                                              color: 'white',
+                                              cursor: 'pointer',
+                                              fontSize: 13,
+                                              fontWeight: 600,
+                                            }}
+                                          >
+                                            ▶️ Start Timer
+                                          </button>
+                                        )
+                                      )}
+                                      {/* View Details Button */}
+                                      <button
+                                        onClick={() => setViewingSubscription(sub)}
+                                        style={{
+                                          background: 'transparent',
+                                          border: `1px solid ${theme.border}`,
+                                          borderRadius: 8,
+                                          padding: '10px 14px',
+                                          color: theme.textPrimary,
+                                          cursor: 'pointer',
+                                          fontSize: 16,
+                                        }}
+                                      >
+                                        👁️
+                                      </button>
                                     </div>
                                   </div>
                                 );
@@ -6386,9 +6766,13 @@ export default function OwnerDashboardPage() {
                               <tbody>
                                 {filteredSubs.map((sub: any) => {
                                   const planDetails = sub.membership_plans || {};
-                                  const hoursRemaining = sub.hours_remaining || 0;
+                                  // Calculate real-time hours remaining based on active timer
+                                  const baseHoursRemaining = sub.hours_remaining || 0;
+                                  const elapsedSeconds = timerElapsed.get(sub.id) || 0;
+                                  const elapsedHours = elapsedSeconds / 3600;
+                                  const currentHoursRemaining = Math.max(0, baseHoursRemaining - elapsedHours);
                                   const hoursPurchased = sub.hours_purchased || 1;
-                                  const progressPercent = (hoursRemaining / hoursPurchased) * 100;
+                                  const progressPercent = (currentHoursRemaining / hoursPurchased) * 100;
                                   const expiryDate = sub.expiry_date ? new Date(sub.expiry_date) : null;
                                   const isExpired = expiryDate && expiryDate < new Date();
                                   const statusColor = sub.status === 'active' ? '#10b981' : sub.status === 'expired' ? '#ef4444' : '#6b7280';
@@ -6429,7 +6813,13 @@ export default function OwnerDashboardPage() {
                                       <td style={{ padding: '16px 20px' }}>
                                         <div style={{ minWidth: 180 }}>
                                           <div style={{ fontSize: 13, fontWeight: 600, color: theme.textPrimary, marginBottom: 6 }}>
-                                            {hoursRemaining}h / {hoursPurchased}h
+                                            {(() => {
+                                              const totalHours = Math.floor(currentHoursRemaining);
+                                              const totalMinutes = Math.floor((currentHoursRemaining - totalHours) * 60);
+                                              const purchasedHours = Math.floor(hoursPurchased);
+                                              const purchasedMinutes = Math.floor((hoursPurchased - purchasedHours) * 60);
+                                              return `${totalHours}h ${totalMinutes}m / ${purchasedHours}h${purchasedMinutes > 0 ? ` ${purchasedMinutes}m` : ''}`;
+                                            })()}
                                           </div>
                                           <div style={{
                                             width: '100%',
@@ -6467,21 +6857,91 @@ export default function OwnerDashboardPage() {
                                         </span>
                                       </td>
                                       <td style={{ padding: '16px 20px', textAlign: 'center' }}>
-                                        <button
-                                          onClick={() => setViewingSubscription(sub)}
-                                          style={{
-                                            background: 'transparent',
-                                            border: `1px solid ${theme.border}`,
-                                            borderRadius: 8,
-                                            padding: '8px 12px',
-                                            color: theme.textPrimary,
-                                            cursor: 'pointer',
-                                            fontSize: 16,
-                                          }}
-                                          title="View details"
-                                        >
-                                          👁️
-                                        </button>
+                                        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'center' }}>
+                                          {/* Timer Display and Controls */}
+                                          {activeTimers.has(sub.id) ? (
+                                            <>
+                                              {/* Timer Display */}
+                                              <div style={{
+                                                padding: '8px 12px',
+                                                background: 'rgba(16, 185, 129, 0.15)',
+                                                border: '1px solid rgba(16, 185, 129, 0.3)',
+                                                borderRadius: 8,
+                                                fontSize: 13,
+                                                fontWeight: 600,
+                                                color: '#10b981',
+                                                fontFamily: 'monospace',
+                                              }}>
+                                                {(() => {
+                                                  const elapsed = timerElapsed.get(sub.id) || 0;
+                                                  const hours = Math.floor(elapsed / 3600);
+                                                  const minutes = Math.floor((elapsed % 3600) / 60);
+                                                  const seconds = elapsed % 60;
+                                                  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+                                                })()}
+                                              </div>
+                                              {/* Stop Button */}
+                                              <button
+                                                onClick={() => handleStopTimer(sub.id)}
+                                                style={{
+                                                  background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                                                  border: 'none',
+                                                  borderRadius: 8,
+                                                  padding: '8px 14px',
+                                                  color: 'white',
+                                                  cursor: 'pointer',
+                                                  fontSize: 12,
+                                                  fontWeight: 600,
+                                                  display: 'flex',
+                                                  alignItems: 'center',
+                                                  gap: 4,
+                                                }}
+                                                title="Stop timer"
+                                              >
+                                                ⏹️ Stop
+                                              </button>
+                                            </>
+                                          ) : (
+                                            /* Start Button */
+                                            sub.status === 'active' && (
+                                              <button
+                                                onClick={() => handleStartTimer(sub.id)}
+                                                style={{
+                                                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                                                  border: 'none',
+                                                  borderRadius: 8,
+                                                  padding: '8px 14px',
+                                                  color: 'white',
+                                                  cursor: 'pointer',
+                                                  fontSize: 12,
+                                                  fontWeight: 600,
+                                                  display: 'flex',
+                                                  alignItems: 'center',
+                                                  gap: 4,
+                                                }}
+                                                title="Start timer"
+                                              >
+                                                ▶️ Start
+                                              </button>
+                                            )
+                                          )}
+                                          {/* View Details Button */}
+                                          <button
+                                            onClick={() => setViewingSubscription(sub)}
+                                            style={{
+                                              background: 'transparent',
+                                              border: `1px solid ${theme.border}`,
+                                              borderRadius: 8,
+                                              padding: '8px 12px',
+                                              color: theme.textPrimary,
+                                              cursor: 'pointer',
+                                              fontSize: 16,
+                                            }}
+                                            title="View details"
+                                          >
+                                            👁️
+                                          </button>
+                                        </div>
                                       </td>
                                     </tr>
                                   );
@@ -6710,30 +7170,59 @@ export default function OwnerDashboardPage() {
                     margin: 0,
                     marginBottom: 4,
                   }}>
-                    ⚡ Quick Billing
+                    ⚡ {isBulkMode ? 'Bulk Billing' : 'Quick Billing'}
                   </h1>
                   <p style={{ fontSize: 14, color: '#94a3b8', margin: 0 }}>
-                    Fast checkout for walk-in customers
+                    {isBulkMode ? 'Add multiple customers in one session' : 'Fast checkout for walk-in customers'}
                   </p>
                 </div>
-                <div style={{
-                  padding: '10px 18px',
-                  background: 'rgba(34, 197, 94, 0.1)',
-                  border: '1px solid rgba(34, 197, 94, 0.3)',
-                  borderRadius: 10,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                }}>
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                  {/* Bulk Mode Toggle */}
+                  <button
+                    onClick={() => {
+                      setIsBulkMode(!isBulkMode);
+                      // Clear bulk customers when toggling off
+                      if (isBulkMode) {
+                        setBulkCustomers([]);
+                      }
+                    }}
+                    style={{
+                      padding: '10px 18px',
+                      background: isBulkMode ? 'linear-gradient(135deg, #8b5cf6, #7c3aed)' : 'rgba(139, 92, 246, 0.1)',
+                      border: `1px solid ${isBulkMode ? '#8b5cf6' : 'rgba(139, 92, 246, 0.3)'}`,
+                      borderRadius: 10,
+                      color: isBulkMode ? 'white' : '#a78bfa',
+                      fontSize: 13,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                    }}
+                  >
+                    <span>{isBulkMode ? '👥' : '👤'}</span>
+                    {isBulkMode ? 'Bulk Mode' : 'Single Mode'}
+                  </button>
+
                   <div style={{
-                    width: 8,
-                    height: 8,
-                    background: '#22c55e',
-                    borderRadius: '50%',
-                  }}></div>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: '#22c55e' }}>
-                    System Online
-                  </span>
+                    padding: '10px 18px',
+                    background: 'rgba(34, 197, 94, 0.1)',
+                    border: '1px solid rgba(34, 197, 94, 0.3)',
+                    borderRadius: 10,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                  }}>
+                    <div style={{
+                      width: 8,
+                      height: 8,
+                      background: '#22c55e',
+                      borderRadius: '50%',
+                    }}></div>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: '#22c55e' }}>
+                      System Online
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -7392,7 +7881,7 @@ export default function OwnerDashboardPage() {
                               const { data: booking, error: bookingError } = await supabase
                                 .from('bookings')
                                 .insert({
-                                  cafe_id: cafes[0]?.id,
+                                  cafe_id: selectedCafeId || cafes[0]?.id,
                                   customer_name: billingCustomerName,
                                   customer_phone: billingCustomerPhone,
                                   booking_date: new Date().toISOString().slice(0, 10),
