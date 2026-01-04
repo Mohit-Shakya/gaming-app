@@ -4,7 +4,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import { colors, fonts } from "@/lib/constants";
+import { colors, fonts, CONSOLE_LABELS, CONSOLE_ICONS, type ConsoleId } from "@/lib/constants";
 import { getEndTime } from "@/lib/timeUtils";
 import ConsoleStatusDashboard from "@/components/ConsoleStatusDashboard";
 import { ConsolePricingRow, BookingItemRow } from "@/types/database";
@@ -152,7 +152,16 @@ export default function OwnerDashboardPage() {
 
   const [checkingRole, setCheckingRole] = useState(true);
   const [allowed, setAllowed] = useState(false);
-  const [activeTab, setActiveTab] = useState<NavTab>('dashboard');
+  const [activeTab, setActiveTab] = useState<NavTab>(() => {
+    // Restore active tab from localStorage
+    if (typeof window !== 'undefined') {
+      const savedTab = localStorage.getItem('ownerActiveTab');
+      if (savedTab) {
+        return savedTab as NavTab;
+      }
+    }
+    return 'dashboard';
+  });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [showAddMembershipModal, setShowAddMembershipModal] = useState(false);
@@ -176,13 +185,27 @@ export default function OwnerDashboardPage() {
   const [newPlanValidity, setNewPlanValidity] = useState('');
 
   // Subscriptions state
-  const [membershipSubTab, setMembershipSubTab] = useState<'subscriptions' | 'plans'>('subscriptions');
+  const [membershipSubTab, setMembershipSubTab] = useState<'subscriptions' | 'plans'>(() => {
+    // Restore membership sub-tab from localStorage
+    if (typeof window !== 'undefined') {
+      const savedSubTab = localStorage.getItem('ownerMembershipSubTab');
+      if (savedSubTab === 'subscriptions' || savedSubTab === 'plans') {
+        return savedSubTab;
+      }
+    }
+    return 'subscriptions';
+  });
   const [subscriptions, setSubscriptions] = useState<any[]>([]);
   const [subscriptionSearch, setSubscriptionSearch] = useState('');
   const [subscriptionStatusFilter, setSubscriptionStatusFilter] = useState('all');
   const [subscriptionPlanFilter, setSubscriptionPlanFilter] = useState('all');
   const [showAddSubscriptionModal, setShowAddSubscriptionModal] = useState(false);
   const [viewingSubscription, setViewingSubscription] = useState<any>(null);
+  const [subscriptionUsageHistory, setSubscriptionUsageHistory] = useState<any[]>([]);
+  const [loadingUsageHistory, setLoadingUsageHistory] = useState(false);
+  const [viewingCustomer, setViewingCustomer] = useState<any>(null);
+  const [customerBookings, setCustomerBookings] = useState<any[]>([]);
+  const [loadingCustomerData, setLoadingCustomerData] = useState(false);
   const [newSubCustomerName, setNewSubCustomerName] = useState('');
   const [newSubCustomerPhone, setNewSubCustomerPhone] = useState('');
   const [newSubCustomerEmail, setNewSubCustomerEmail] = useState('');
@@ -200,29 +223,31 @@ export default function OwnerDashboardPage() {
   const [activeTimers, setActiveTimers] = useState<Map<string, { startTime: number; intervalId: NodeJS.Timeout }>>(new Map());
   const [timerElapsed, setTimerElapsed] = useState<Map<string, number>>(new Map());
 
-  // Billing state
-  const [billingCustomerName, setBillingCustomerName] = useState('');
-  const [billingCustomerPhone, setBillingCustomerPhone] = useState('');
-  const [billingSelectedConsole, setBillingSelectedConsole] = useState('');
-  const [billingDuration, setBillingDuration] = useState('60');
-  const [billingControllers, setBillingControllers] = useState('1');
-  const [billingPaymentMode, setBillingPaymentMode] = useState<'cash' | 'upi' | 'online'>('cash');
-  const [billingDiscount, setBillingDiscount] = useState('0');
-  const [billingUseMembership, setBillingUseMembership] = useState(false);
-  const [billingSelectedMembership, setBillingSelectedMembership] = useState<any>(null);
-  const [billingCart, setBillingCart] = useState<any[]>([]);
-
-  // Bulk billing state
-  const [isBulkMode, setIsBulkMode] = useState(false);
-  const [bulkCustomers, setBulkCustomers] = useState<Array<{
+  // Walk-in booking state (for billing tab)
+  const [billingCustomerName, setBillingCustomerName] = useState("");
+  const [billingCustomerPhone, setBillingCustomerPhone] = useState("");
+  const [billingBookingDate, setBillingBookingDate] = useState(new Date().toISOString().split("T")[0]);
+  const [billingStartTime, setBillingStartTime] = useState(() => {
+    const now = new Date();
+    const hours = now.getHours().toString().padStart(2, '0');
+    const minutes = now.getMinutes().toString().padStart(2, '0');
+    return `${hours}:${minutes}`;
+  });
+  const [billingItems, setBillingItems] = useState<Array<{
     id: string;
-    name: string;
-    phone: string;
-    console: string;
+    console: ConsoleId;
+    quantity: number;
     duration: number;
-    controllers: number;
     price: number;
   }>>([]);
+  const [billingPaymentMode, setBillingPaymentMode] = useState<string>("cash");
+  const [billingTotalAmount, setBillingTotalAmount] = useState<number>(0);
+  const [billingSubmitting, setBillingSubmitting] = useState(false);
+  const [billingAvailableConsoles, setBillingAvailableConsoles] = useState<ConsoleId[]>([]);
+  const [billingPreviousCustomers, setBillingPreviousCustomers] = useState<Array<{ name: string; phone: string }>>([]);
+  const [billingShowSuggestions, setBillingShowSuggestions] = useState(false);
+  const [billingFilteredSuggestions, setBillingFilteredSuggestions] = useState<Array<{ name: string; phone: string }>>([]);
+  const [billingActiveSuggestionField, setBillingActiveSuggestionField] = useState<'name' | 'phone' | null>(null);
 
   // Booking filters
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -315,6 +340,8 @@ export default function OwnerDashboardPage() {
   const [editConsole, setEditConsole] = useState<string>("");
   const [editControllers, setEditControllers] = useState<number>(1);
   const [saving, setSaving] = useState(false);
+  const [deletingBooking, setDeletingBooking] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Console pricing data
   const [consolePricing, setConsolePricing] = useState<Record<string, any>>({});
@@ -475,6 +502,20 @@ export default function OwnerDashboardPage() {
       }
     }
   }, [editingStation, stationPricing]);
+
+  // Save active tab to localStorage when it changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('ownerActiveTab', activeTab);
+    }
+  }, [activeTab]);
+
+  // Save membership sub-tab to localStorage when it changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('ownerMembershipSubTab', membershipSubTab);
+    }
+  }, [membershipSubTab]);
 
   // Auto-refresh time every second for active sessions (only when sessions tab is active)
   useEffect(() => {
@@ -1576,8 +1617,88 @@ export default function OwnerDashboardPage() {
     }
   }
 
+  async function handleDeleteBooking() {
+    if (!editingBooking) return;
+
+    try {
+      setDeletingBooking(true);
+
+      console.log('[handleDeleteBooking] ===== DELETE BOOKING START =====');
+      console.log('[handleDeleteBooking] Booking ID:', editingBooking.id);
+      console.log('[handleDeleteBooking] Booking details:', {
+        customer: editingBooking.customer_name,
+        amount: editingBooking.total_amount,
+        date: editingBooking.booking_date,
+        source: editingBooking.source,
+        user_id: editingBooking.user_id,
+        cafe_id: editingBooking.cafe_id
+      });
+      console.log('[handleDeleteBooking] CRITICAL - Source field:', editingBooking.source, '(Type:', typeof editingBooking.source, ')');
+
+      // First, delete booking_items manually to avoid RLS issues
+      if (editingBooking.booking_items && editingBooking.booking_items.length > 0) {
+        const bookingItemIds = editingBooking.booking_items.map(item => item.id);
+        console.log('[handleDeleteBooking] Deleting booking_items:', bookingItemIds);
+
+        const { error: itemsError } = await supabase
+          .from("booking_items")
+          .delete()
+          .in("id", bookingItemIds);
+
+        if (itemsError) {
+          console.error('[handleDeleteBooking] Error deleting booking_items:', itemsError);
+          throw new Error(`Failed to delete booking items: ${itemsError.message}`);
+        }
+        console.log('[handleDeleteBooking] ✓ Booking items deleted');
+      }
+
+      // Then delete the booking
+      const { error, count } = await supabase
+        .from("bookings")
+        .delete()
+        .eq("id", editingBooking.id);
+
+      if (error) {
+        console.error('[handleDeleteBooking] ❌ Error deleting booking:', error);
+        throw new Error(`Failed to delete booking: ${error.message}`);
+      }
+
+      console.log('[handleDeleteBooking] ✓ Delete command executed, rows affected:', count);
+
+      // Verify deletion
+      const { data: checkBooking } = await supabase
+        .from("bookings")
+        .select("id")
+        .eq("id", editingBooking.id)
+        .maybeSingle();
+
+      if (checkBooking) {
+        console.error('[handleDeleteBooking] ❌ ERROR: Booking still exists in database!');
+        throw new Error('Booking was not deleted from database');
+      }
+
+      console.log('[handleDeleteBooking] ✓ Verified: Booking deleted from database');
+
+      // Update local state immediately for instant UI feedback
+      setBookings((prev) => prev.filter((b) => b.id !== editingBooking.id));
+
+      console.log('[handleDeleteBooking] ✓ Local state updated');
+      console.log('[handleDeleteBooking] ===== DELETE BOOKING COMPLETE =====');
+
+      setEditingBooking(null);
+      setShowDeleteConfirm(false);
+      alert("Booking deleted successfully!");
+    } catch (err) {
+      console.error("[handleDeleteBooking] ===== DELETE BOOKING FAILED =====");
+      console.error("Error deleting booking:", err);
+      alert("Failed to delete booking: " + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setDeletingBooking(false);
+    }
+  }
+
   // Subscription timer handlers
-  function handleStartTimer(subscriptionId: string) {
+  async function handleStartTimer(subscriptionId: string) {
     console.log('[Timer] Starting timer for subscription:', subscriptionId);
     // Don't start if already running
     if (activeTimers.has(subscriptionId)) {
@@ -1586,6 +1707,106 @@ export default function OwnerDashboardPage() {
     }
 
     const startTime = Date.now();
+    const startTimeISO = new Date(startTime).toISOString();
+
+    // Get subscription details to find console type
+    const subscription = subscriptions.find(s => s.id === subscriptionId);
+    if (!subscription) {
+      alert('Subscription not found');
+      return;
+    }
+
+    const consoleType = subscription.membership_plans?.console_type;
+    if (!consoleType) {
+      alert('Console type not found for this membership');
+      return;
+    }
+
+    // Find an available console station
+    // Get all active subscriptions for this console type
+    const activeConsolesForType = subscriptions.filter(s =>
+      s.timer_active &&
+      s.assigned_console_station &&
+      s.membership_plans?.console_type === consoleType
+    ).map(s => s.assigned_console_station);
+
+    // Get total console count from cafe
+    const cafe = cafes.find(c => c.id === subscription.cafe_id);
+    if (!cafe) {
+      alert('Cafe not found');
+      return;
+    }
+
+    // Map console types to cafe count fields
+    const consoleCountMap: Record<string, keyof typeof cafe> = {
+      'PC': 'pc_count',
+      'PS5': 'ps5_count',
+      'PS4': 'ps4_count',
+      'Xbox': 'xbox_count',
+      'Pool': 'pool_count',
+      'Snooker': 'snooker_count',
+      'Arcade': 'arcade_count',
+      'VR': 'vr_count',
+      'Steering': 'steering_wheel_count'
+    };
+
+    const countField = consoleCountMap[consoleType];
+    const totalConsoles = countField ? (cafe[countField] as number) || 0 : 0;
+
+    if (totalConsoles === 0) {
+      alert(`No ${consoleType} consoles available at this cafe`);
+      return;
+    }
+
+    // Find first available console station
+    let assignedStation: string | null = null;
+    const consolePrefix = consoleType.toLowerCase();
+
+    for (let i = 1; i <= totalConsoles; i++) {
+      const stationId = `${consolePrefix}-${i.toString().padStart(2, '0')}`;
+      if (!activeConsolesForType.includes(stationId)) {
+        assignedStation = stationId;
+        break;
+      }
+    }
+
+    if (!assignedStation) {
+      alert(`All ${consoleType} consoles are currently occupied`);
+      return;
+    }
+
+    console.log('[Timer] Assigning console station:', assignedStation);
+
+    // Save timer state and assigned console to database
+    try {
+      const { error } = await supabase
+        .from('subscriptions')
+        .update({
+          timer_active: true,
+          timer_start_time: startTimeISO,
+          assigned_console_station: assignedStation,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', subscriptionId);
+
+      if (error) {
+        console.error('[Timer] Failed to save timer state:', error);
+        alert('Failed to start timer');
+        return;
+      }
+
+      // Update local state to reflect timer is active
+      setSubscriptions(prev => prev.map(s =>
+        s.id === subscriptionId
+          ? { ...s, timer_active: true, timer_start_time: startTimeISO, assigned_console_station: assignedStation }
+          : s
+      ));
+    } catch (err) {
+      console.error('[Timer] Exception saving timer state:', err);
+      alert('Failed to start timer');
+      return;
+    }
+
     const intervalId = setInterval(() => {
       const elapsed = Math.floor((Date.now() - startTime) / 1000); // seconds
       setTimerElapsed(prev => {
@@ -1631,6 +1852,9 @@ export default function OwnerDashboardPage() {
           .from('subscriptions')
           .update({
             hours_remaining: newHoursRemaining,
+            timer_active: false,
+            timer_start_time: null,
+            assigned_console_station: null,
             updated_at: new Date().toISOString()
           })
           .eq('id', subscriptionId);
@@ -1643,10 +1867,30 @@ export default function OwnerDashboardPage() {
 
         console.log('[Timer] Database updated successfully');
 
+        // Save usage history
+        const endTime = new Date();
+        const startTime = subscription.timer_start_time ? new Date(subscription.timer_start_time) : new Date(endTime.getTime() - (elapsedSeconds * 1000));
+
+        const { error: historyError } = await supabase
+          .from('subscription_usage_history')
+          .insert({
+            subscription_id: subscriptionId,
+            session_date: new Date().toISOString().split('T')[0],
+            start_time: startTime.toISOString(),
+            end_time: endTime.toISOString(),
+            duration_hours: elapsedHours,
+            assigned_console_station: subscription.assigned_console_station
+          });
+
+        if (historyError) {
+          console.error('[Timer] Failed to save usage history:', historyError);
+          // Don't fail the entire operation if history save fails
+        }
+
         // Update local state
         setSubscriptions(prev => prev.map(s =>
           s.id === subscriptionId
-            ? { ...s, hours_remaining: newHoursRemaining }
+            ? { ...s, hours_remaining: newHoursRemaining, timer_active: false, timer_start_time: null, assigned_console_station: null }
             : s
         ));
 
@@ -1683,6 +1927,403 @@ export default function OwnerDashboardPage() {
       activeTimers.forEach(({ intervalId }) => clearInterval(intervalId));
     };
   }, [activeTimers]);
+
+  // Restore active timers from database on mount or when subscriptions change
+  useEffect(() => {
+    console.log('[Timer] Checking for active timers to restore...');
+    subscriptions.forEach(subscription => {
+      // Check if this subscription has an active timer in the database
+      if (subscription.timer_active && subscription.timer_start_time && !activeTimers.has(subscription.id)) {
+        console.log('[Timer] Restoring timer for subscription:', subscription.id);
+
+        // Calculate how much time has already elapsed
+        const dbStartTime = new Date(subscription.timer_start_time).getTime();
+        const now = Date.now();
+        const alreadyElapsed = Math.floor((now - dbStartTime) / 1000); // seconds
+
+        // Start new interval from current point
+        const startTime = now - (alreadyElapsed * 1000); // Adjust startTime to account for elapsed time
+        const intervalId = setInterval(() => {
+          const elapsed = Math.floor((Date.now() - startTime) / 1000);
+          setTimerElapsed(prev => {
+            const newMap = new Map(prev);
+            newMap.set(subscription.id, elapsed);
+            return newMap;
+          });
+        }, 1000);
+
+        // Set initial elapsed time
+        setTimerElapsed(prev => {
+          const newMap = new Map(prev);
+          newMap.set(subscription.id, alreadyElapsed);
+          return newMap;
+        });
+
+        // Add to active timers
+        setActiveTimers(prev => {
+          const newMap = new Map(prev);
+          newMap.set(subscription.id, { startTime, intervalId });
+          return newMap;
+        });
+
+        console.log('[Timer] Timer restored. Already elapsed:', alreadyElapsed, 'seconds');
+      }
+    });
+  }, [subscriptions]); // Run when subscriptions are loaded/updated
+
+  // Fetch usage history when viewing a subscription
+  useEffect(() => {
+    async function fetchUsageHistory() {
+      if (!viewingSubscription) {
+        setSubscriptionUsageHistory([]);
+        return;
+      }
+
+      console.log('[UsageHistory] Fetching usage history for subscription:', viewingSubscription.id);
+      setLoadingUsageHistory(true);
+      const { data, error } = await supabase
+        .from('subscription_usage_history')
+        .select('*')
+        .eq('subscription_id', viewingSubscription.id)
+        .order('session_date', { ascending: false });
+
+      if (error) {
+        console.error('[UsageHistory] Error fetching usage history:', error);
+        setSubscriptionUsageHistory([]);
+      } else {
+        console.log('[UsageHistory] Fetched usage history:', data);
+        setSubscriptionUsageHistory(data || []);
+      }
+      setLoadingUsageHistory(false);
+    }
+    fetchUsageHistory();
+  }, [viewingSubscription]);
+
+  // Fetch customer data when viewing a customer
+  useEffect(() => {
+    async function fetchCustomerData() {
+      if (!viewingCustomer || !selectedCafeId) {
+        setCustomerBookings([]);
+        return;
+      }
+
+      if (!viewingCustomer.phone) {
+        console.log('No phone number for customer:', viewingCustomer);
+        setCustomerBookings([]);
+        setLoadingCustomerData(false);
+        return;
+      }
+
+      setLoadingCustomerData(true);
+
+      console.log('Fetching bookings for phone:', viewingCustomer.phone, 'cafe:', selectedCafeId);
+
+      // Fetch all bookings for this customer (by phone number)
+      // Walk-in bookings have customer_phone filled
+      // For now, just get walk-in bookings - online bookings need user_id lookup
+      const { data, error } = await supabase
+        .from('bookings')
+        .select('id, booking_date, start_time, duration, total_amount, status, source, created_at, customer_name')
+        .eq('cafe_id', selectedCafeId)
+        .eq('customer_phone', viewingCustomer.phone)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (error) {
+        console.error('Error fetching bookings:', error.message, error);
+        setCustomerBookings([]);
+      } else {
+        console.log('Successfully fetched bookings:', data?.length || 0, 'bookings');
+        setCustomerBookings(data || []);
+      }
+      setLoadingCustomerData(false);
+    }
+    fetchCustomerData();
+  }, [viewingCustomer, selectedCafeId]);
+
+  // Walk-in booking handlers (for billing tab)
+  const consoleOptions: { id: ConsoleId; label: string; icon: string }[] = [
+    { id: "ps5", label: CONSOLE_LABELS.ps5, icon: CONSOLE_ICONS.ps5 },
+    { id: "ps4", label: CONSOLE_LABELS.ps4, icon: CONSOLE_ICONS.ps4 },
+    { id: "xbox", label: CONSOLE_LABELS.xbox, icon: CONSOLE_ICONS.xbox },
+    { id: "pc", label: CONSOLE_LABELS.pc, icon: CONSOLE_ICONS.pc },
+    { id: "pool", label: CONSOLE_LABELS.pool, icon: CONSOLE_ICONS.pool },
+    { id: "snooker", label: CONSOLE_LABELS.snooker, icon: CONSOLE_ICONS.snooker },
+    { id: "arcade", label: CONSOLE_LABELS.arcade, icon: CONSOLE_ICONS.arcade },
+    { id: "vr", label: CONSOLE_LABELS.vr, icon: CONSOLE_ICONS.vr },
+    { id: "steering", label: CONSOLE_LABELS.steering, icon: CONSOLE_ICONS.steering },
+  ];
+
+  const handleBillingNameChange = (value: string) => {
+    setBillingCustomerName(value);
+    console.log('[Autocomplete] Name changed:', value);
+    console.log('[Autocomplete] Available customers:', billingPreviousCustomers);
+    if (value.length > 0) {
+      const filtered = billingPreviousCustomers.filter(c =>
+        c.name.toLowerCase().includes(value.toLowerCase())
+      );
+      console.log('[Autocomplete] Filtered suggestions:', filtered);
+      setBillingFilteredSuggestions(filtered);
+      setBillingShowSuggestions(filtered.length > 0);
+      setBillingActiveSuggestionField('name');
+      console.log('[Autocomplete] Show suggestions:', filtered.length > 0);
+    } else {
+      setBillingShowSuggestions(false);
+      setBillingActiveSuggestionField(null);
+    }
+  };
+
+  const handleBillingPhoneChange = (value: string) => {
+    setBillingCustomerPhone(value);
+    if (value.length > 0) {
+      const filtered = billingPreviousCustomers.filter(c =>
+        c.phone.includes(value)
+      );
+      setBillingFilteredSuggestions(filtered);
+      setBillingShowSuggestions(filtered.length > 0);
+      setBillingActiveSuggestionField('phone');
+    } else {
+      setBillingShowSuggestions(false);
+      setBillingActiveSuggestionField(null);
+    }
+  };
+
+  const handleBillingSuggestionClick = (customer: { name: string; phone: string }) => {
+    setBillingCustomerName(customer.name);
+    setBillingCustomerPhone(customer.phone);
+    setBillingShowSuggestions(false);
+    setBillingActiveSuggestionField(null);
+  };
+
+  // Helper function to get price using console_pricing (same as walk-in page)
+  const getBillingPrice = (consoleType: string, quantity: number, duration: number): number => {
+    if (!selectedCafeId) return 100;
+
+    // Get pricing tier for this cafe and console type
+    const pricingTier = consolePricing[selectedCafeId]?.[consoleType] || null;
+
+    console.log('getBillingPrice:', { consoleType, quantity, duration, pricingTier, selectedCafeId });
+
+    // Use same logic as walk-in page (determinePriceForTier)
+    if (pricingTier) {
+      if (duration === 90) {
+        // 90min = 60min + 30min pricing
+        const price60 = pricingTier[`qty${quantity}_60min`] ?? 100;
+        const price30 = pricingTier[`qty${quantity}_30min`] ?? 50;
+        console.log('90min price:', { price60, price30, total: price60 + price30 });
+        return price60 + price30;
+      } else if (duration === 120) {
+        // 2 hours = 60min × 2
+        const price60 = pricingTier[`qty${quantity}_60min`] ?? 100;
+        return price60 * 2;
+      } else if (duration === 180) {
+        // 3 hours = 60min × 3
+        const price60 = pricingTier[`qty${quantity}_60min`] ?? 100;
+        return price60 * 3;
+      } else {
+        // 30min or 60min - direct lookup
+        const qtyKey = `qty${quantity}_${duration}min`;
+        const tierPrice = pricingTier[qtyKey];
+
+        console.log('Direct lookup:', { qtyKey, tierPrice });
+
+        if (tierPrice !== null && tierPrice !== undefined) {
+          return tierPrice;
+        }
+      }
+    } else {
+      console.log('No pricing tier found for:', consoleType, 'at cafe:', selectedCafeId);
+      console.log('Available console types:', consolePricing[selectedCafeId] ? Object.keys(consolePricing[selectedCafeId]) : 'none');
+    }
+
+    // Fallback to default pricing
+    return 100;
+  };
+
+  const addBillingItem = () => {
+    const consoleType = billingAvailableConsoles[0] || "ps5";
+    const quantity = 1;
+    const duration = 60;
+    const price = getBillingPrice(consoleType, quantity, duration);
+
+    setBillingItems([
+      ...billingItems,
+      {
+        id: Math.random().toString(36).substr(2, 9),
+        console: consoleType,
+        quantity: quantity,
+        duration: duration,
+        price: price,
+      },
+    ]);
+  };
+
+  const removeBillingItem = (id: string) => {
+    setBillingItems(billingItems.filter((item) => item.id !== id));
+  };
+
+  const updateBillingItem = (id: string, field: string, value: any) => {
+    setBillingItems(
+      billingItems.map((item) => {
+        if (item.id === id) {
+          const updatedItem = { ...item, [field]: value };
+
+          // Recalculate price if console, quantity, or duration changed
+          if (field === 'console' || field === 'quantity' || field === 'duration') {
+            updatedItem.price = getBillingPrice(
+              updatedItem.console,
+              updatedItem.quantity,
+              updatedItem.duration
+            );
+          }
+
+          return updatedItem;
+        }
+        return item;
+      })
+    );
+  };
+
+  const handleBillingSubmit = async () => {
+    if (!selectedCafeId || !billingCustomerName || !billingStartTime || billingItems.length === 0) {
+      alert("Please fill in all required fields and add at least one console");
+      return;
+    }
+
+    setBillingSubmitting(true);
+
+    try {
+      // Use the manually editable total amount
+      const { data: booking, error: bookingError } = await supabase
+        .from("bookings")
+        .insert({
+          cafe_id: selectedCafeId,
+          customer_name: billingCustomerName,
+          user_phone: billingCustomerPhone || null,
+          booking_date: billingBookingDate,
+          start_time: billingStartTime,
+          duration: billingItems[0].duration,
+          total_amount: billingTotalAmount,
+          status: "confirmed",
+          source: "walk-in",
+          payment_mode: billingPaymentMode,
+        })
+        .select()
+        .single();
+
+      if (bookingError) throw bookingError;
+
+      const itemsToInsert = billingItems.map((item) => ({
+        booking_id: booking.id,
+        console: item.console,
+        quantity: item.quantity,
+      }));
+
+      const { error: itemsError } = await supabase
+        .from("booking_items")
+        .insert(itemsToInsert);
+
+      if (itemsError) throw itemsError;
+
+      alert("Bulk booking created successfully!");
+
+      // Reset form
+      setBillingCustomerName("");
+      setBillingCustomerPhone("");
+      setBillingBookingDate(new Date().toISOString().split("T")[0]);
+      const now = new Date();
+      setBillingStartTime(`${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`);
+      setBillingItems([]);
+      setBillingPaymentMode("cash");
+    } catch (error) {
+      console.error("Error creating booking:", error);
+      alert("Failed to create booking. Please try again.");
+    } finally {
+      setBillingSubmitting(false);
+    }
+  };
+
+  // Update total amount when billing items change
+  useEffect(() => {
+    const calculatedTotal = billingItems.reduce((sum, item) => sum + item.price, 0);
+    setBillingTotalAmount(calculatedTotal);
+  }, [billingItems]);
+
+  // Load available consoles for billing tab
+  useEffect(() => {
+    if (!selectedCafeId) return;
+
+    async function loadBillingConsoles() {
+      const { data, error } = await supabase
+        .from("cafes")
+        .select(`
+          ps5_count,
+          ps4_count,
+          xbox_count,
+          pc_count,
+          pool_count,
+          snooker_count,
+          arcade_count,
+          vr_count,
+          steering_wheel_count
+        `)
+        .eq("id", selectedCafeId)
+        .single();
+
+      if (!error && data) {
+        const available: ConsoleId[] = [];
+        if (data.ps5_count > 0) available.push("ps5");
+        if (data.ps4_count > 0) available.push("ps4");
+        if (data.xbox_count > 0) available.push("xbox");
+        if (data.pc_count > 0) available.push("pc");
+        if (data.pool_count > 0) available.push("pool");
+        if (data.snooker_count > 0) available.push("snooker");
+        if (data.arcade_count > 0) available.push("arcade");
+        if (data.vr_count > 0) available.push("vr");
+        if (data.steering_wheel_count > 0) available.push("steering");
+        setBillingAvailableConsoles(available);
+      }
+    }
+
+    loadBillingConsoles();
+  }, [selectedCafeId]);
+
+  // Load previous customers for billing tab
+  useEffect(() => {
+    console.log('[Billing] useEffect triggered, selectedCafeId:', selectedCafeId);
+    if (!selectedCafeId) {
+      console.log('[Billing] No cafe selected, skipping customer load');
+      return;
+    }
+
+    async function loadBillingCustomers() {
+      console.log('[Billing] Loading customers for cafe:', selectedCafeId);
+      const { data, error } = await supabase
+        .from("bookings")
+        .select("customer_name, customer_phone")
+        .eq("cafe_id", selectedCafeId)
+        .eq("source", "walk-in")
+        .not("customer_name", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(100);
+
+      console.log('[Billing] Query result - data:', data, 'error:', error);
+
+      if (!error && data) {
+        const unique = data.reduce((acc: Array<{ name: string; phone: string }>, curr) => {
+          const phone = curr.customer_phone;
+          if (phone && !acc.find(c => c.phone === phone)) {
+            acc.push({ name: curr.customer_name!, phone: phone });
+          }
+          return acc;
+        }, []);
+        setBillingPreviousCustomers(unique);
+        console.log('[Billing] Loaded previous customers:', unique);
+      }
+    }
+
+    loadBillingCustomers();
+  }, [selectedCafeId]);
 
   // Auto-calculate amount when duration, console, or controllers change in edit modal
   // Only auto-calculate if user hasn't manually edited the amount
@@ -2472,7 +3113,7 @@ export default function OwnerDashboardPage() {
                         lineHeight: 1,
                       }}
                     >
-                      {loadingData ? "..." : bookings.filter(b => b.status === 'in-progress' && b.booking_date === new Date().toISOString().split('T')[0]).length}
+                      {loadingData ? "..." : bookings.filter(b => b.status === 'in-progress' && b.booking_date === new Date().toISOString().split('T')[0]).length + subscriptions.filter(sub => activeTimers.has(sub.id)).length}
                     </p>
                     <p
                       style={{
@@ -2659,11 +3300,13 @@ export default function OwnerDashboardPage() {
                   </h2>
                 </div>
 
-                {/* Show only in-progress bookings */}
+                {/* Show only in-progress bookings and active memberships */}
                 {(() => {
                   const activeBookings = bookings.filter(
                     b => b.status === 'in-progress' && b.booking_date === new Date().toISOString().split('T')[0]
                   );
+
+                  const activeMemberships = subscriptions.filter(sub => activeTimers.has(sub.id));
 
                   // Sort active bookings by time remaining (urgent first)
                   const sortedActiveBookings = [...activeBookings].sort((a, b) => {
@@ -2695,7 +3338,7 @@ export default function OwnerDashboardPage() {
                     return timeA - timeB; // Sort ascending (least time first)
                   });
 
-                  if (sortedActiveBookings.length === 0) {
+                  if (sortedActiveBookings.length === 0 && activeMemberships.length === 0) {
                     return (
                       <div
                         style={{
@@ -2725,6 +3368,74 @@ export default function OwnerDashboardPage() {
                         gap: isMobile ? 12 : 20,
                       }}
                     >
+                      {/* Active Membership Sessions */}
+                      {activeMemberships.map((sub: any) => {
+                        const planDetails = sub.membership_plans || {};
+                        const elapsedSeconds = timerElapsed.get(sub.id) || 0;
+                        const consoleType = planDetails.console_type?.toUpperCase() || 'UNKNOWN';
+                        const stationName = sub.assigned_console_station?.toUpperCase() || `${consoleType}-??`;
+
+                        return (
+                          <div
+                            key={sub.id}
+                            style={{
+                              background: "rgba(16, 185, 129, 0.08)",
+                              border: `${isMobile ? '1px' : '2px'} solid rgba(16, 185, 129, 0.4)`,
+                              borderRadius: isMobile ? "10px" : "16px",
+                              padding: isMobile ? "12px" : "20px",
+                              minHeight: isMobile ? "auto" : "160px",
+                              display: "flex",
+                              flexDirection: "column",
+                              justifyContent: "space-between",
+                            }}
+                          >
+                            <div>
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start", marginBottom: isMobile ? 8 : 12 }}>
+                                <div>
+                                  <p style={{ fontSize: isMobile ? 11 : 13, color: theme.textMuted, marginBottom: 4, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                                    {stationName}
+                                  </p>
+                                  <p style={{ fontSize: isMobile ? 14 : 16, fontWeight: 700, color: theme.textPrimary, margin: 0 }}>
+                                    {sub.customer_name}
+                                  </p>
+                                  <p style={{ fontSize: isMobile ? 11 : 12, color: theme.textMuted, margin: "2px 0 0 0" }}>
+                                    {planDetails.name || 'Membership'}
+                                  </p>
+                                </div>
+                                <span style={{
+                                  padding: "4px 10px",
+                                  background: "rgba(16, 185, 129, 0.2)",
+                                  color: "#10b981",
+                                  borderRadius: 12,
+                                  fontSize: isMobile ? 10 : 11,
+                                  fontWeight: 600,
+                                  whiteSpace: "nowrap"
+                                }}>
+                                  MEMBERSHIP
+                                </span>
+                              </div>
+                            </div>
+
+                            <div>
+                              <div style={{ marginBottom: isMobile ? 8 : 12 }}>
+                                <p style={{ fontSize: isMobile ? 11 : 12, color: theme.textMuted, marginBottom: 4 }}>
+                                  Session Time
+                                </p>
+                                <p style={{ fontSize: isMobile ? 18 : 24, fontWeight: 700, color: "#10b981", margin: 0, fontFamily: 'monospace' }}>
+                                  {(() => {
+                                    const hours = Math.floor(elapsedSeconds / 3600);
+                                    const minutes = Math.floor((elapsedSeconds % 3600) / 60);
+                                    const seconds = elapsedSeconds % 60;
+                                    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                                  })()}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {/* Regular Booking Sessions */}
                       {sortedActiveBookings.map((booking, index) => {
                         const consoleInfo = booking.booking_items?.[0];
                         const isWalkIn = booking.source === 'walk-in';
@@ -4892,30 +5603,9 @@ export default function OwnerDashboardPage() {
             <div>
               {/* Header with search and filters */}
               <div style={{ marginBottom: isMobile ? 16 : 24 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: isMobile ? 12 : 20, flexWrap: isMobile ? 'wrap' : 'nowrap', gap: isMobile ? 12 : 0 }}>
-                  <div style={{ flex: isMobile ? '1 1 100%' : 'auto' }}>
-                    <h2 style={{ fontSize: isMobile ? 18 : 24, fontWeight: 700, color: theme.textPrimary, margin: 0, marginBottom: isMobile ? 2 : 4 }}>Bookings</h2>
-                    <p style={{ fontSize: isMobile ? 12 : 14, color: theme.textMuted, margin: 0 }}>Manage gaming bookings</p>
-                  </div>
-                  <button
-                    onClick={() => router.push('/owner/walk-in')}
-                    style={{
-                      padding: isMobile ? '10px 16px' : '12px 24px',
-                      background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: isMobile ? 8 : 10,
-                      fontSize: isMobile ? 13 : 15,
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: isMobile ? 6 : 8,
-                    }}
-                  >
-                    <span style={{ fontSize: isMobile ? 16 : 18 }}>+</span>
-                    New Booking
-                  </button>
+                <div style={{ marginBottom: isMobile ? 12 : 20 }}>
+                  <h2 style={{ fontSize: isMobile ? 18 : 24, fontWeight: 700, color: theme.textPrimary, margin: 0, marginBottom: isMobile ? 2 : 4 }}>Bookings</h2>
+                  <p style={{ fontSize: isMobile ? 12 : 14, color: theme.textMuted, margin: 0 }}>Manage gaming bookings</p>
                 </div>
 
                 {/* Search and filters row */}
@@ -5219,6 +5909,7 @@ export default function OwnerDashboardPage() {
                         <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Duration</th>
                         <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Started</th>
                         <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Payment</th>
+                        <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Source</th>
                         <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Amount</th>
                         <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Status</th>
                         <th style={{ padding: '16px 20px', textAlign: 'center', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Actions</th>
@@ -5293,6 +5984,24 @@ export default function OwnerDashboardPage() {
                                     color: '#a855f7',
                                   }}>
                                     {getPaymentIcon(paymentMode)} {paymentMode}
+                                  </span>
+                                );
+                              })()}
+                            </td>
+                            <td style={{ padding: '16px 20px' }}>
+                              {(() => {
+                                const source = booking.source?.toLowerCase() === 'walk-in' ? 'Walk-in' : 'Online';
+                                return (
+                                  <span style={{
+                                    display: 'inline-block',
+                                    padding: '6px 12px',
+                                    borderRadius: 6,
+                                    fontSize: 12,
+                                    fontWeight: 600,
+                                    background: source === 'Walk-in' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(59, 130, 246, 0.1)',
+                                    color: source === 'Walk-in' ? '#ef4444' : '#3b82f6',
+                                  }}>
+                                    {source === 'Walk-in' ? '🚶 Walk-in' : '💻 Online'}
                                   </span>
                                 );
                               })()}
@@ -5585,28 +6294,49 @@ export default function OwnerDashboardPage() {
               <div>
                 {/* Header */}
                 <div style={{ marginBottom: 32 }}>
-                  <div style={{ marginBottom: 20 }}>
-                    <div>
-                      <h2 style={{ fontSize: 28, fontWeight: 700, color: theme.textPrimary, margin: 0, marginBottom: 6 }}>
-                        Customers
-                      </h2>
-                      <p style={{ fontSize: 15, color: theme.textMuted, margin: 0 }}>
-                        Manage your customer database
-                      </p>
+                  <div style={{ marginBottom: 24 }}>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 16,
+                      marginBottom: 8
+                    }}>
+                      <div style={{
+                        width: 48,
+                        height: 48,
+                        borderRadius: 14,
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: 24,
+                        boxShadow: '0 4px 16px rgba(102, 126, 234, 0.3)',
+                      }}>
+                        👥
+                      </div>
+                      <div>
+                        <h2 style={{ fontSize: 32, fontWeight: 800, color: theme.textPrimary, margin: 0, marginBottom: 4, letterSpacing: '-0.5px' }}>
+                          Customers
+                        </h2>
+                        <p style={{ fontSize: 15, color: theme.textMuted, margin: 0 }}>
+                          Manage your customer database • {customers.length} total customers
+                        </p>
+                      </div>
                     </div>
                   </div>
 
                   {/* Search and Filters */}
                   <div style={{
-                    background: theme.cardBackground,
-                    borderRadius: 16,
-                    border: `1px solid ${theme.border}`,
-                    padding: 20,
+                    background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(168, 85, 247, 0.05) 100%)',
+                    borderRadius: 18,
+                    border: `1px solid rgba(99, 102, 241, 0.1)`,
+                    padding: 24,
+                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
                   }}>
                     <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
                       {/* Search */}
                       <div style={{ flex: 1, minWidth: 300, position: 'relative' }}>
-                        <span style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', fontSize: 18 }}>
+                        <span style={{ position: 'absolute', left: 18, top: '50%', transform: 'translateY(-50%)', fontSize: 20 }}>
                           🔍
                         </span>
                         <input
@@ -5616,38 +6346,71 @@ export default function OwnerDashboardPage() {
                           onChange={(e) => setCustomerSearch(e.target.value)}
                           style={{
                             width: '100%',
-                            padding: '12px 16px 12px 48px',
-                            background: theme.background,
-                            border: `1px solid ${theme.border}`,
-                            borderRadius: 10,
+                            padding: '14px 18px 14px 52px',
+                            background: theme.cardBackground,
+                            border: `2px solid ${theme.border}`,
+                            borderRadius: 12,
                             color: theme.textPrimary,
-                            fontSize: 14,
+                            fontSize: 15,
                             outline: 'none',
+                            transition: 'all 0.2s',
                           }}
-                          onFocus={(e) => e.currentTarget.style.borderColor = '#10b981'}
-                          onBlur={(e) => e.currentTarget.style.borderColor = theme.border}
+                          onFocus={(e) => {
+                            e.currentTarget.style.borderColor = '#6366f1';
+                            e.currentTarget.style.boxShadow = '0 0 0 3px rgba(99, 102, 241, 0.1)';
+                          }}
+                          onBlur={(e) => {
+                            e.currentTarget.style.borderColor = theme.border;
+                            e.currentTarget.style.boxShadow = 'none';
+                          }}
                         />
                       </div>
 
                       {/* Filter Checkboxes */}
-                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none' }}>
+                      <label style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 10,
+                        cursor: 'pointer',
+                        userSelect: 'none',
+                        padding: '10px 16px',
+                        borderRadius: 10,
+                        background: hasSubscription ? 'rgba(99, 102, 241, 0.15)' : theme.cardBackground,
+                        border: `2px solid ${hasSubscription ? '#6366f1' : theme.border}`,
+                        transition: 'all 0.2s',
+                      }}>
                         <input
                           type="checkbox"
                           checked={hasSubscription}
                           onChange={(e) => setHasSubscription(e.target.checked)}
-                          style={{ width: 18, height: 18, cursor: 'pointer' }}
+                          style={{ width: 18, height: 18, cursor: 'pointer', accentColor: '#6366f1' }}
                         />
-                        <span style={{ fontSize: 14, color: theme.textSecondary }}>Has Subscription</span>
+                        <span style={{ fontSize: 14, fontWeight: 600, color: hasSubscription ? '#6366f1' : theme.textSecondary }}>
+                          Has Subscription
+                        </span>
                       </label>
 
-                      <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', userSelect: 'none' }}>
+                      <label style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 10,
+                        cursor: 'pointer',
+                        userSelect: 'none',
+                        padding: '10px 16px',
+                        borderRadius: 10,
+                        background: hasMembership ? 'rgba(168, 85, 247, 0.15)' : theme.cardBackground,
+                        border: `2px solid ${hasMembership ? '#a855f7' : theme.border}`,
+                        transition: 'all 0.2s',
+                      }}>
                         <input
                           type="checkbox"
                           checked={hasMembership}
                           onChange={(e) => setHasMembership(e.target.checked)}
-                          style={{ width: 18, height: 18, cursor: 'pointer' }}
+                          style={{ width: 18, height: 18, cursor: 'pointer', accentColor: '#a855f7' }}
                         />
-                        <span style={{ fontSize: 14, color: theme.textSecondary }}>Has Membership</span>
+                        <span style={{ fontSize: 14, fontWeight: 600, color: hasMembership ? '#a855f7' : theme.textSecondary }}>
+                          Has Membership
+                        </span>
                       </label>
                     </div>
                   </div>
@@ -5656,18 +6419,19 @@ export default function OwnerDashboardPage() {
                 {/* Customer Table */}
                 <div style={{
                   background: theme.cardBackground,
-                  borderRadius: 16,
+                  borderRadius: 18,
                   border: `1px solid ${theme.border}`,
                   overflow: 'hidden',
+                  boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
                 }}>
                   {/* Table Header */}
                   <div style={{
                     display: 'grid',
                     gridTemplateColumns: '200px 120px 180px 120px 100px 130px 150px 60px',
                     gap: 16,
-                    padding: '16px 24px',
-                    background: theme.hoverBackground,
-                    borderBottom: `1px solid ${theme.border}`,
+                    padding: '18px 28px',
+                    background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(168, 85, 247, 0.08) 100%)',
+                    borderBottom: `2px solid rgba(99, 102, 241, 0.15)`,
                   }}>
                     <button
                       onClick={() => handleSort('name')}
@@ -5780,32 +6544,40 @@ export default function OwnerDashboardPage() {
                           display: 'grid',
                           gridTemplateColumns: '200px 120px 180px 120px 100px 130px 150px 60px',
                           gap: 16,
-                          padding: '18px 24px',
-                          borderBottom: index < customers.length - 1 ? `1px solid ${theme.border}` : 'none',
-                          transition: 'background 0.2s',
+                          padding: '20px 28px',
+                          borderBottom: index < customers.length - 1 ? `1px solid rgba(71, 85, 105, 0.15)` : 'none',
+                          transition: 'all 0.2s ease',
+                          cursor: 'pointer',
                         }}
-                        onMouseOver={(e) => e.currentTarget.style.background = theme.hoverBackground}
-                        onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+                        onMouseOver={(e) => {
+                          e.currentTarget.style.background = 'rgba(99, 102, 241, 0.04)';
+                          e.currentTarget.style.transform = 'translateX(4px)';
+                        }}
+                        onMouseOut={(e) => {
+                          e.currentTarget.style.background = 'transparent';
+                          e.currentTarget.style.transform = 'translateX(0)';
+                        }}
                       >
                         {/* Customer Name */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                           <div style={{
-                            width: 40,
-                            height: 40,
-                            borderRadius: '50%',
+                            width: 44,
+                            height: 44,
+                            borderRadius: 12,
                             background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            fontSize: 16,
+                            fontSize: 17,
                             fontWeight: 700,
                             color: 'white',
                             flexShrink: 0,
+                            boxShadow: '0 2px 8px rgba(102, 126, 234, 0.25)',
                           }}>
                             {customer.name.charAt(0).toUpperCase()}
                           </div>
                           <div style={{ minWidth: 0 }}>
-                            <div style={{ fontSize: 15, fontWeight: 600, color: theme.textPrimary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            <div style={{ fontSize: 15, fontWeight: 700, color: theme.textPrimary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                               {customer.name}
                             </div>
                           </div>
@@ -5858,28 +6630,53 @@ export default function OwnerDashboardPage() {
                         {/* View Button */}
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           <button
+                            onClick={async () => {
+                              // Find subscription for this customer
+                              const customerSub = subscriptions.find(
+                                s => s.customer_phone === customer.phone || s.customer_name === customer.name
+                              );
+
+                              setViewingCustomer({
+                                name: customer.name,
+                                phone: customer.phone,
+                                email: customer.email,
+                                subscription: customerSub || null,
+                                // Pass the aggregated stats from customers tab
+                                totalVisits: customer.sessions,
+                                totalSpent: customer.totalSpent,
+                                lastVisit: customer.lastVisit
+                              });
+                            }}
                             style={{
-                              padding: '8px 12px',
-                              background: 'transparent',
-                              border: `1px solid ${theme.border}`,
-                              borderRadius: 8,
-                              color: theme.textSecondary,
-                              fontSize: 18,
+                              width: 40,
+                              height: 40,
+                              background: 'rgba(99, 102, 241, 0.1)',
+                              border: `2px solid rgba(99, 102, 241, 0.2)`,
+                              borderRadius: 10,
+                              color: '#6366f1',
+                              fontSize: 20,
                               cursor: 'pointer',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
+                              transition: 'all 0.2s ease',
+                              boxShadow: '0 2px 6px rgba(99, 102, 241, 0.15)',
                             }}
                             onMouseOver={(e) => {
-                              e.currentTarget.style.background = theme.hoverBackground;
-                              e.currentTarget.style.borderColor = theme.textMuted;
+                              e.currentTarget.style.background = 'rgba(99, 102, 241, 0.2)';
+                              e.currentTarget.style.borderColor = '#6366f1';
+                              e.currentTarget.style.transform = 'scale(1.1)';
+                              e.currentTarget.style.boxShadow = '0 4px 12px rgba(99, 102, 241, 0.3)';
                             }}
                             onMouseOut={(e) => {
-                              e.currentTarget.style.background = 'transparent';
-                              e.currentTarget.style.borderColor = theme.border;
+                              e.currentTarget.style.background = 'rgba(99, 102, 241, 0.1)';
+                              e.currentTarget.style.borderColor = 'rgba(99, 102, 241, 0.2)';
+                              e.currentTarget.style.transform = 'scale(1)';
+                              e.currentTarget.style.boxShadow = '0 2px 6px rgba(99, 102, 241, 0.15)';
                             }}
+                            title="View customer details"
                           >
-                            👁
+                            👁️
                           </button>
                         </div>
                       </div>
@@ -7147,868 +7944,704 @@ export default function OwnerDashboardPage() {
             </div>
           )}
 
-          {/* Billing Tab */}
+          {/* Billing Tab - Quick Booking Interface */}
           {activeTab === 'billing' && (
-            <div style={{ maxWidth: 1600, margin: '0 auto' }}>
-              {/* Streamlined Header */}
-              <div style={{
-                marginBottom: 24,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                flexWrap: 'wrap',
-                gap: 16,
-              }}>
-                <div>
-                  <h1 style={{
-                    fontSize: isMobile ? 24 : 32,
-                    fontWeight: 800,
-                    background: 'linear-gradient(135deg, #8b5cf6, #6366f1)',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    backgroundClip: 'text',
-                    margin: 0,
-                    marginBottom: 4,
-                  }}>
-                    ⚡ {isBulkMode ? 'Bulk Billing' : 'Quick Billing'}
-                  </h1>
-                  <p style={{ fontSize: 14, color: '#94a3b8', margin: 0 }}>
-                    {isBulkMode ? 'Add multiple customers in one session' : 'Fast checkout for walk-in customers'}
-                  </p>
-                </div>
-                <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                  {/* Bulk Mode Toggle */}
-                  <button
-                    onClick={() => {
-                      setIsBulkMode(!isBulkMode);
-                      // Clear bulk customers when toggling off
-                      if (isBulkMode) {
-                        setBulkCustomers([]);
-                      }
-                    }}
-                    style={{
-                      padding: '10px 18px',
-                      background: isBulkMode ? 'linear-gradient(135deg, #8b5cf6, #7c3aed)' : 'rgba(139, 92, 246, 0.1)',
-                      border: `1px solid ${isBulkMode ? '#8b5cf6' : 'rgba(139, 92, 246, 0.3)'}`,
-                      borderRadius: 10,
-                      color: isBulkMode ? 'white' : '#a78bfa',
-                      fontSize: 13,
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 8,
-                    }}
-                  >
-                    <span>{isBulkMode ? '👥' : '👤'}</span>
-                    {isBulkMode ? 'Bulk Mode' : 'Single Mode'}
-                  </button>
-
+            <div style={{ padding: isMobile ? 16 : 0 }}>
+              {/* Header */}
+              <div style={{ marginBottom: 32 }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 16,
+                  marginBottom: 8
+                }}>
                   <div style={{
-                    padding: '10px 18px',
-                    background: 'rgba(34, 197, 94, 0.1)',
-                    border: '1px solid rgba(34, 197, 94, 0.3)',
-                    borderRadius: 10,
+                    width: 48,
+                    height: 48,
+                    borderRadius: 14,
+                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 8,
+                    justifyContent: 'center',
+                    fontSize: 24,
+                    boxShadow: '0 4px 16px rgba(16, 185, 129, 0.3)',
                   }}>
-                    <div style={{
-                      width: 8,
-                      height: 8,
-                      background: '#22c55e',
-                      borderRadius: '50%',
-                    }}></div>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: '#22c55e' }}>
-                      System Online
-                    </span>
+                    🎮
+                  </div>
+                  <div>
+                    <h2 style={{ fontSize: isMobile ? 24 : 32, fontWeight: 800, color: theme.textPrimary, margin: 0 }}>
+                      Quick Booking
+                    </h2>
+                    <p style={{ fontSize: isMobile ? 14 : 15, color: theme.textMuted, margin: '4px 0 0 0' }}>
+                      Create instant bookings for walk-in customers with multiple gaming stations
+                    </p>
                   </div>
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 420px', gap: 20 }}>
-                {/* Main Billing Panel */}
-                <div>
-                  {/* Step 1: Customer */}
+              {/* Form Card */}
+              <div style={{
+                background: theme.cardBackground,
+                borderRadius: 20,
+                padding: isMobile ? 20 : 32,
+                border: `1px solid ${theme.border}`,
+              }}>
+                {/* Customer Info */}
+                <div style={{ marginBottom: 28 }}>
                   <div style={{
-                    background: "linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.05))",
-                    border: "1px solid rgba(99, 102, 241, 0.2)",
-                    borderRadius: 16,
-                    padding: 20,
-                    marginBottom: 16,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    marginBottom: 20,
+                    paddingBottom: 14,
+                    borderBottom: `1px solid ${theme.border}`
                   }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-                      <div style={{
-                        width: 36,
-                        height: 36,
-                        background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-                        borderRadius: 10,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: 18,
-                        fontWeight: 700,
-                        color: 'white',
-                        boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)',
-                      }}>
-                        1
-                      </div>
-                      <div>
-                        <h3 style={{ fontSize: 16, fontWeight: 700, color: '#e2e8f0', margin: 0 }}>
-                          Customer Information
-                        </h3>
-                        <p style={{ fontSize: 12, color: '#94a3b8', margin: 0 }}>
-                          Enter customer details
-                        </p>
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12 }}>
-                      <input
-                        type="text"
-                        value={billingCustomerName}
-                        onChange={(e) => setBillingCustomerName(e.target.value)}
-                        placeholder="Customer Name *"
-                        style={{
-                          padding: "14px 16px",
-                          background: "rgba(15, 23, 42, 0.5)",
-                          border: "2px solid rgba(148, 163, 184, 0.2)",
-                          borderRadius: 12,
-                          color: "#f1f5f9",
-                          fontSize: 15,
-                          fontWeight: 500,
-                          outline: 'none',
-                          transition: "all 0.2s",
-                        }}
-                        onFocus={(e) => {
-                          e.target.style.borderColor = "#6366f1";
-                          e.target.style.background = "rgba(15, 23, 42, 0.8)";
-                          e.target.style.boxShadow = "0 0 0 3px rgba(99, 102, 241, 0.1)";
-                        }}
-                        onBlur={(e) => {
-                          e.target.style.borderColor = "rgba(148, 163, 184, 0.2)";
-                          e.target.style.background = "rgba(15, 23, 42, 0.5)";
-                          e.target.style.boxShadow = "none";
-                        }}
-                      />
-                      <input
-                        type="tel"
-                        value={billingCustomerPhone}
-                        onChange={(e) => setBillingCustomerPhone(e.target.value)}
-                        placeholder="Phone Number *"
-                        style={{
-                          padding: "14px 16px",
-                          background: "rgba(15, 23, 42, 0.5)",
-                          border: "2px solid rgba(148, 163, 184, 0.2)",
-                          borderRadius: 12,
-                          color: "#f1f5f9",
-                          fontSize: 15,
-                          fontWeight: 500,
-                          outline: 'none',
-                          transition: "all 0.2s",
-                        }}
-                        onFocus={(e) => {
-                          e.target.style.borderColor = "#6366f1";
-                          e.target.style.background = "rgba(15, 23, 42, 0.8)";
-                          e.target.style.boxShadow = "0 0 0 3px rgba(99, 102, 241, 0.1)";
-                        }}
-                        onBlur={(e) => {
-                          e.target.style.borderColor = "rgba(148, 163, 184, 0.2)";
-                          e.target.style.background = "rgba(15, 23, 42, 0.5)";
-                          e.target.style.boxShadow = "none";
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Membership Check */}
-                  {billingCustomerPhone.length >= 10 && (() => {
-                    const customerSub = subscriptions.find(sub =>
-                      sub.customer_phone === billingCustomerPhone &&
-                      sub.status === 'active' &&
-                      sub.hours_remaining > 0
-                    );
-
-                    if (customerSub) {
-                      return (
-                        <div style={{
-                          padding: isMobile ? 12 : 16,
-                          background: 'rgba(16, 185, 129, 0.1)',
-                          border: '1px solid rgba(16, 185, 129, 0.3)',
-                          borderRadius: 10,
-                          marginBottom: 20,
-                        }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                            <div>
-                              <p style={{ fontSize: isMobile ? 13 : 14, fontWeight: 600, color: '#10b981', margin: 0 }}>
-                                ✓ Active Membership Found
-                              </p>
-                              <p style={{ fontSize: isMobile ? 12 : 13, color: theme.textSecondary, margin: '4px 0 0 0' }}>
-                                {customerSub.membership_plans?.name} - {customerSub.hours_remaining}h remaining
-                              </p>
-                            </div>
-                            <button
-                              onClick={() => {
-                                setBillingUseMembership(!billingUseMembership);
-                                setBillingSelectedMembership(customerSub);
-                              }}
-                              style={{
-                                padding: isMobile ? '6px 12px' : '8px 16px',
-                                background: billingUseMembership ? '#10b981' : 'transparent',
-                                border: `2px solid #10b981`,
-                                borderRadius: 8,
-                                color: billingUseMembership ? 'white' : '#10b981',
-                                fontSize: isMobile ? 12 : 13,
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                              }}
-                            >
-                              {billingUseMembership ? 'Using' : 'Use'}
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    }
-                    return null;
-                  })()}
-
-                  {/* Step 2: Station Selection */}
-                  <div style={{
-                    background: "linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(168, 85, 247, 0.05))",
-                    border: "1px solid rgba(139, 92, 246, 0.2)",
-                    borderRadius: 16,
-                    padding: 20,
-                    marginBottom: 16,
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-                      <div style={{
-                        width: 36,
-                        height: 36,
-                        background: 'linear-gradient(135deg, #8b5cf6, #a855f7)',
-                        borderRadius: 10,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: 18,
-                        fontWeight: 700,
-                        color: 'white',
-                        boxShadow: '0 4px 12px rgba(139, 92, 246, 0.3)',
-                      }}>
-                        2
-                      </div>
-                      <div>
-                        <h3 style={{ fontSize: 16, fontWeight: 700, color: '#e2e8f0', margin: 0 }}>
-                          Choose Gaming Station
-                        </h3>
-                        <p style={{ fontSize: 12, color: '#94a3b8', margin: 0 }}>
-                          Select an available console
-                        </p>
-                      </div>
-                    </div>
-
-                    {cafeConsoles.filter(c => c.is_active).length > 0 ? (
-                      <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)',
-                        gap: 10
-                      }}>
-                        {cafeConsoles.filter(c => c.is_active).map((station) => (
-                          <button
-                            key={station.id}
-                            onClick={() => setBillingSelectedConsole(station.id)}
-                            style={{
-                              padding: '16px 12px',
-                              background: billingSelectedConsole === station.id
-                                ? 'linear-gradient(135deg, #8b5cf6, #7c3aed)'
-                                : 'rgba(15, 23, 42, 0.5)',
-                              border: `2px solid ${billingSelectedConsole === station.id ? '#a78bfa' : 'rgba(148, 163, 184, 0.2)'}`,
-                              borderRadius: 14,
-                              color: billingSelectedConsole === station.id ? 'white' : '#cbd5e1',
-                              fontSize: 13,
-                              fontWeight: 600,
-                              cursor: 'pointer',
-                              display: 'flex',
-                              flexDirection: 'column',
-                              alignItems: 'center',
-                              gap: 8,
-                              transition: 'all 0.2s',
-                              boxShadow: billingSelectedConsole === station.id ? '0 8px 20px rgba(139, 92, 246, 0.4), inset 0 1px 0 rgba(255,255,255,0.1)' : 'none',
-                            }}
-                            onMouseEnter={(e) => {
-                              if (billingSelectedConsole !== station.id) {
-                                e.currentTarget.style.transform = 'translateY(-4px)';
-                                e.currentTarget.style.borderColor = 'rgba(139, 92, 246, 0.5)';
-                                e.currentTarget.style.boxShadow = '0 4px 12px rgba(139, 92, 246, 0.2)';
-                              }
-                            }}
-                            onMouseLeave={(e) => {
-                              if (billingSelectedConsole !== station.id) {
-                                e.currentTarget.style.transform = 'translateY(0)';
-                                e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.2)';
-                                e.currentTarget.style.boxShadow = 'none';
-                              }
-                            }}
-                          >
-                            <span style={{ fontSize: 32 }}>{getConsoleIcon(station.station_type)}</span>
-                            <div style={{ textAlign: 'center' }}>
-                              <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 2 }}>{station.station_name}</div>
-                              <div style={{ fontSize: 11, opacity: 0.7 }}>#{station.station_number}</div>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    ) : (
-                      <div style={{
-                        padding: 30,
-                        textAlign: 'center',
-                        background: 'rgba(239, 68, 68, 0.1)',
-                        border: '2px dashed rgba(239, 68, 68, 0.3)',
-                        borderRadius: 14,
-                      }}>
-                        <div style={{ fontSize: 40, marginBottom: 8 }}>🚫</div>
-                        <p style={{ fontSize: 14, fontWeight: 600, color: '#fca5a5', margin: 0 }}>No Available Stations</p>
-                        <p style={{ fontSize: 12, color: '#94a3b8', margin: '4px 0 0 0' }}>All stations are occupied</p>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Step 3: Session Setup */}
-                  <div style={{
-                    background: "linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(37, 99, 235, 0.05))",
-                    border: "1px solid rgba(59, 130, 246, 0.2)",
-                    borderRadius: 16,
-                    padding: 20,
-                    marginBottom: 16,
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
-                      <div style={{
-                        width: 36,
-                        height: 36,
-                        background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
-                        borderRadius: 10,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: 18,
-                        fontWeight: 700,
-                        color: 'white',
-                        boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)',
-                      }}>
-                        3
-                      </div>
-                      <div>
-                        <h3 style={{ fontSize: 16, fontWeight: 700, color: '#e2e8f0', margin: 0 }}>
-                          Session Duration & Players
-                        </h3>
-                        <p style={{ fontSize: 12, color: '#94a3b8', margin: 0 }}>
-                          Set time and number of controllers
-                        </p>
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr', gap: 12 }}>
-                      {/* Duration Pills */}
-                      <div>
-                        <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
-                          {['30', '60', '90', '120'].map(duration => (
-                            <button
-                              key={duration}
-                              onClick={() => setBillingDuration(duration)}
-                              style={{
-                                flex: 1,
-                                minWidth: 70,
-                                padding: '12px',
-                                background: billingDuration === duration
-                                  ? 'linear-gradient(135deg, #3b82f6, #2563eb)'
-                                  : 'rgba(15, 23, 42, 0.5)',
-                                border: `2px solid ${billingDuration === duration ? '#60a5fa' : 'rgba(148, 163, 184, 0.2)'}`,
-                                borderRadius: 12,
-                                color: billingDuration === duration ? 'white' : '#94a3b8',
-                                fontSize: 14,
-                                fontWeight: 700,
-                                cursor: 'pointer',
-                                transition: 'all 0.2s',
-                                boxShadow: billingDuration === duration ? '0 4px 12px rgba(59, 130, 246, 0.3)' : 'none',
-                              }}
-                              onMouseEnter={(e) => {
-                                if (billingDuration !== duration) {
-                                  e.currentTarget.style.transform = 'scale(1.05)';
-                                  e.currentTarget.style.borderColor = 'rgba(59, 130, 246, 0.5)';
-                                }
-                              }}
-                              onMouseLeave={(e) => {
-                                if (billingDuration !== duration) {
-                                  e.currentTarget.style.transform = 'scale(1)';
-                                  e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.2)';
-                                }
-                              }}
-                            >
-                              {duration}min
-                            </button>
-                          ))}
-                        </div>
-                        <input
-                          type="number"
-                          value={billingDuration}
-                          onChange={(e) => setBillingDuration(e.target.value)}
-                          placeholder="Custom duration (min)"
-                          min="1"
-                          style={{
-                            width: '100%',
-                            padding: "12px 14px",
-                            background: "rgba(15, 23, 42, 0.5)",
-                            border: "2px solid rgba(148, 163, 184, 0.2)",
-                            borderRadius: 12,
-                            color: "#f1f5f9",
-                            fontSize: 14,
-                            fontWeight: 500,
-                            outline: 'none',
-                            MozAppearance: "textfield",
-                          } as React.CSSProperties & { MozAppearance?: string }}
-                          onFocus={(e) => {
-                            e.target.style.borderColor = "#3b82f6";
-                            e.target.style.background = "rgba(15, 23, 42, 0.8)";
-                            e.target.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)";
-                          }}
-                          onBlur={(e) => {
-                            e.target.style.borderColor = "rgba(148, 163, 184, 0.2)";
-                            e.target.style.background = "rgba(15, 23, 42, 0.5)";
-                            e.target.style.boxShadow = "none";
-                          }}
-                        />
-                      </div>
-
-                      {/* Controllers */}
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8 }}>
-                        {['1', '2', '3', '4'].map(count => (
-                          <button
-                            key={count}
-                            onClick={() => setBillingControllers(count)}
-                            style={{
-                              padding: '14px',
-                              background: billingControllers === count
-                                ? 'linear-gradient(135deg, #10b981, #059669)'
-                                : 'rgba(15, 23, 42, 0.5)',
-                              border: `2px solid ${billingControllers === count ? '#34d399' : 'rgba(148, 163, 184, 0.2)'}`,
-                              borderRadius: 12,
-                              color: billingControllers === count ? 'white' : '#94a3b8',
-                              fontSize: 14,
-                              fontWeight: 700,
-                              cursor: 'pointer',
-                              transition: 'all 0.2s',
-                              boxShadow: billingControllers === count ? '0 4px 12px rgba(16, 185, 129, 0.3)' : 'none',
-                            }}
-                            onMouseEnter={(e) => {
-                              if (billingControllers !== count) {
-                                e.currentTarget.style.transform = 'scale(1.05)';
-                                e.currentTarget.style.borderColor = 'rgba(16, 185, 129, 0.5)';
-                              }
-                            }}
-                            onMouseLeave={(e) => {
-                              if (billingControllers !== count) {
-                                e.currentTarget.style.transform = 'scale(1)';
-                                e.currentTarget.style.borderColor = 'rgba(148, 163, 184, 0.2)';
-                              }
-                            }}
-                          >
-                            {count}🎮
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Add to Cart Button */}
-                  <button
-                    onClick={() => {
-                      if (!billingCustomerName || !billingCustomerPhone || !billingSelectedConsole || !billingDuration) {
-                        alert('Please fill all required fields');
-                        return;
-                      }
-
-                      const selectedConsole = cafeConsoles.find(c => c.id === billingSelectedConsole);
-                      if (!selectedConsole) return;
-
-                      // Calculate price
-                      const durationMinutes = parseInt(billingDuration);
-                      const durationHours = durationMinutes / 60;
-                      const controllers = parseInt(billingControllers);
-
-                      // Find pricing from station_pricing
-                      // Use hourly_rate for PC/VR/etc, or single_player_rate for consoles
-                      const basePrice = selectedConsole.hourly_rate || selectedConsole.single_player_rate || 100;
-                      const totalPrice = Math.round(basePrice * durationHours * controllers);
-
-                      const cartItem = {
-                        id: Date.now(),
-                        console_id: selectedConsole.id,
-                        console_type: selectedConsole.station_type,
-                        station_number: selectedConsole.station_number,
-                        station_name: selectedConsole.station_name,
-                        duration: durationMinutes,
-                        controllers,
-                        price: totalPrice,
-                      };
-
-                      setBillingCart([...billingCart, cartItem]);
-
-                      // Reset form
-                      setBillingSelectedConsole('');
-                      setBillingDuration('60');
-                      setBillingControllers('1');
-                    }}
-                    style={{
-                      width: '100%',
-                      padding: '16px 28px',
-                      background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
-                      border: 'none',
-                      borderRadius: 14,
-                      color: 'white',
-                      fontSize: 16,
-                      fontWeight: 800,
-                      cursor: 'pointer',
+                    <div style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 10,
+                      background: 'rgba(99, 102, 241, 0.1)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      gap: 12,
-                      boxShadow: '0 6px 24px rgba(245, 158, 11, 0.4), inset 0 1px 0 rgba(255,255,255,0.2)',
-                      transition: 'all 0.2s',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.5px',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = 'translateY(-3px) scale(1.02)';
-                      e.currentTarget.style.boxShadow = '0 12px 36px rgba(245, 158, 11, 0.5), inset 0 1px 0 rgba(255,255,255,0.2)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'translateY(0) scale(1)';
-                      e.currentTarget.style.boxShadow = '0 6px 24px rgba(245, 158, 11, 0.4), inset 0 1px 0 rgba(255,255,255,0.2)';
-                    }}
-                  >
-                    <span style={{ fontSize: 22 }}>🛒</span>
-                    <span>Add to Cart</span>
-                  </button>
-                </div>
-
-                {/* Right Panel - Cart & Checkout */}
-                <div>
-                  {/* Cart */}
-                  <div style={{
-                    background: theme.cardBackground,
-                    border: `1px solid ${theme.border}`,
-                    borderRadius: isMobile ? 12 : 16,
-                    padding: isMobile ? 20 : 24,
-                    marginBottom: 20,
-                  }}>
-                    <h3 style={{ fontSize: isMobile ? 16 : 18, fontWeight: 700, color: theme.textPrimary, margin: '0 0 16px 0' }}>
-                      Cart ({billingCart.length})
-                    </h3>
-
-                    {billingCart.length === 0 ? (
-                      <div style={{ padding: 40, textAlign: 'center', color: theme.textMuted }}>
-                        <div style={{ fontSize: 48, marginBottom: 12, opacity: 0.3 }}>🛒</div>
-                        <p style={{ fontSize: isMobile ? 13 : 14 }}>No items in cart</p>
-                      </div>
-                    ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                        {billingCart.map((item, index) => (
-                          <div
-                            key={item.id}
-                            style={{
-                              padding: 12,
-                              background: 'rgba(255, 255, 255, 0.02)',
-                              border: `1px solid ${theme.border}`,
-                              borderRadius: 10,
-                            }}
-                          >
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: 8 }}>
-                              <div>
-                                <p style={{ fontSize: isMobile ? 13 : 14, fontWeight: 600, color: theme.textPrimary, margin: 0 }}>
-                                  {getConsoleIcon(item.console_type)} {item.console_type} #{item.station_number}
-                                </p>
-                                <p style={{ fontSize: isMobile ? 11 : 12, color: theme.textMuted, margin: '4px 0 0 0' }}>
-                                  {item.duration}min • {item.controllers} controller{item.controllers > 1 ? 's' : ''}
-                                </p>
-                              </div>
-                              <button
-                                onClick={() => setBillingCart(billingCart.filter((_, i) => i !== index))}
-                                style={{
-                                  background: 'transparent',
-                                  border: 'none',
-                                  color: '#ef4444',
-                                  fontSize: 18,
-                                  cursor: 'pointer',
-                                  padding: 4,
-                                }}
-                              >
-                                🗑️
-                              </button>
-                            </div>
-                            <div style={{ fontSize: isMobile ? 14 : 15, fontWeight: 700, color: theme.textPrimary }}>
-                              ₹{item.price}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Checkout */}
-                  {billingCart.length > 0 && (
-                    <div style={{
-                      background: theme.cardBackground,
-                      border: `1px solid ${theme.border}`,
-                      borderRadius: isMobile ? 12 : 16,
-                      padding: isMobile ? 20 : 24,
+                      fontSize: 18,
                     }}>
-                      <h3 style={{ fontSize: isMobile ? 16 : 18, fontWeight: 700, color: theme.textPrimary, margin: '0 0 16px 0' }}>
-                        Payment
-                      </h3>
-
-                      {/* Payment Mode */}
-                      <div style={{ marginBottom: 16 }}>
-                        <label style={{ fontSize: isMobile ? 12 : 13, fontWeight: 600, color: theme.textMuted, display: 'block', marginBottom: 8 }}>
-                          Payment Method
-                        </label>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-                          {[
-                            { value: 'cash', label: 'Cash', icon: '💵' },
-                            { value: 'upi', label: 'UPI', icon: '📱' },
-                            { value: 'online', label: 'Online', icon: '💳' },
-                          ].map(mode => (
-                            <button
-                              key={mode.value}
-                              onClick={() => setBillingPaymentMode(mode.value as any)}
+                      👤
+                    </div>
+                    <h3 style={{ fontSize: 18, fontWeight: 700, color: theme.textPrimary, margin: 0 }}>
+                      Customer Details
+                    </h3>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 16 }}>
+                    <div style={{ position: "relative" }}>
+                      <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: theme.textSecondary, marginBottom: 8 }}>
+                        Customer Name <span style={{ color: "#ef4444" }}>*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={billingCustomerName}
+                        onChange={(e) => handleBillingNameChange(e.target.value)}
+                        placeholder="Enter full name"
+                        style={{
+                          width: "100%",
+                          padding: "12px 14px",
+                          background: theme.inputBackground,
+                          border: `1px solid ${theme.border}`,
+                          borderRadius: 10,
+                          color: theme.textPrimary,
+                          fontSize: 14,
+                          outline: "none",
+                          transition: "all 0.2s",
+                        }}
+                      />
+                      {/* Suggestions dropdown */}
+                      {billingShowSuggestions && billingActiveSuggestionField === 'name' && billingFilteredSuggestions.length > 0 && (
+                        <div style={{
+                          position: "absolute",
+                          top: "calc(100% + 4px)",
+                          left: 0,
+                          right: 0,
+                          background: "#1a1d29",
+                          border: "1px solid rgba(99, 102, 241, 0.3)",
+                          borderRadius: 8,
+                          maxHeight: 200,
+                          overflowY: "auto",
+                          zIndex: 10000,
+                          boxShadow: "0 8px 24px rgba(0, 0, 0, 0.4)",
+                        }}>
+                          {billingFilteredSuggestions.map((customer, index) => (
+                            <div
+                              key={index}
+                              onClick={() => handleBillingSuggestionClick(customer)}
                               style={{
-                                padding: isMobile ? '8px' : '10px',
-                                background: billingPaymentMode === mode.value ? 'rgba(139, 92, 246, 0.15)' : theme.background,
-                                border: `2px solid ${billingPaymentMode === mode.value ? '#8b5cf6' : theme.border}`,
-                                borderRadius: 8,
-                                color: billingPaymentMode === mode.value ? '#8b5cf6' : theme.textPrimary,
-                                fontSize: isMobile ? 11 : 12,
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'center',
-                                gap: 4,
+                                padding: "10px 12px",
+                                cursor: "pointer",
+                                borderBottom: index < billingFilteredSuggestions.length - 1 ? "1px solid rgba(255, 255, 255, 0.05)" : "none",
+                                transition: "all 0.15s ease",
+                                background: "transparent",
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background = 'rgba(99, 102, 241, 0.15)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'transparent';
                               }}
                             >
-                              <span style={{ fontSize: 16 }}>{mode.icon}</span>
-                              {mode.label}
-                            </button>
+                              <div style={{ fontSize: 14, fontWeight: 600, color: "#e2e8f0", marginBottom: 2 }}>
+                                {customer.name}
+                              </div>
+                              <div style={{ fontSize: 12, color: '#a0aec0' }}>
+                                {customer.phone}
+                              </div>
+                            </div>
                           ))}
                         </div>
-                      </div>
-
-                      {/* Discount */}
-                      <div style={{ marginBottom: 16 }}>
-                        <label style={{ fontSize: isMobile ? 12 : 13, fontWeight: 600, color: theme.textMuted, display: 'block', marginBottom: 8 }}>
-                          Discount (₹)
-                        </label>
-                        <input
-                          type="number"
-                          value={billingDiscount}
-                          onChange={(e) => setBillingDiscount(e.target.value)}
-                          placeholder="0"
-                          min="0"
-                          style={{
-                            width: '100%',
-                            padding: isMobile ? "8px 12px" : "10px 14px",
-                            background: theme.background,
-                            border: `1px solid ${theme.border}`,
-                            borderRadius: 8,
-                            color: theme.textPrimary,
-                            fontSize: isMobile ? 13 : 14,
-                            outline: 'none',
-                          }}
-                        />
-                      </div>
-
-                      {/* Summary */}
-                      <div style={{
-                        padding: 16,
-                        background: 'rgba(255, 255, 255, 0.02)',
-                        borderRadius: 10,
-                        marginBottom: 16,
-                      }}>
-                        {(() => {
-                          const subtotal = billingCart.reduce((sum, item) => sum + item.price, 0);
-                          const discount = parseInt(billingDiscount) || 0;
-                          const total = Math.max(0, subtotal - discount);
-
-                          return (
-                            <>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                                <span style={{ fontSize: isMobile ? 12 : 13, color: theme.textMuted }}>Subtotal</span>
-                                <span style={{ fontSize: isMobile ? 13 : 14, fontWeight: 600, color: theme.textPrimary }}>₹{subtotal}</span>
-                              </div>
-                              {discount > 0 && (
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                                  <span style={{ fontSize: isMobile ? 12 : 13, color: '#10b981' }}>Discount</span>
-                                  <span style={{ fontSize: isMobile ? 13 : 14, fontWeight: 600, color: '#10b981' }}>-₹{discount}</span>
-                                </div>
-                              )}
-                              <div style={{ borderTop: `1px solid ${theme.border}`, paddingTop: 8, marginTop: 8 }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                  <span style={{ fontSize: isMobile ? 14 : 16, fontWeight: 700, color: theme.textPrimary }}>Total</span>
-                                  <span style={{ fontSize: isMobile ? 16 : 18, fontWeight: 700, color: '#10b981' }}>₹{total}</span>
-                                </div>
-                              </div>
-                            </>
-                          );
-                        })()}
-                      </div>
-
-                      {/* Complete Payment Button */}
-                      <button
-                        onClick={async () => {
-                          if (!billingCustomerName || !billingCustomerPhone || billingCart.length === 0) {
-                            alert('Please fill all required fields and add items to cart');
-                            return;
-                          }
-
-                          try {
-                            const subtotal = billingCart.reduce((sum, item) => sum + item.price, 0);
-                            const discount = parseInt(billingDiscount) || 0;
-                            const total = Math.max(0, subtotal - discount);
-
-                            // Create booking for each cart item
-                            for (const item of billingCart) {
-                              const startTime = new Date();
-                              const endTime = new Date(startTime.getTime() + item.duration * 60000);
-
-                              const { data: booking, error: bookingError } = await supabase
-                                .from('bookings')
-                                .insert({
-                                  cafe_id: selectedCafeId || cafes[0]?.id,
-                                  customer_name: billingCustomerName,
-                                  customer_phone: billingCustomerPhone,
-                                  booking_date: new Date().toISOString().slice(0, 10),
-                                  start_time: startTime.toTimeString().slice(0, 5),
-                                  duration: item.duration,
-                                  total_amount: item.price,
-                                  payment_mode: billingPaymentMode,
-                                  status: 'in-progress',
-                                  source: 'walk-in',
-                                })
-                                .select()
-                                .single();
-
-                              if (bookingError) throw bookingError;
-
-                              // Create booking item
-                              await supabase
-                                .from('booking_items')
-                                .insert({
-                                  booking_id: booking.id,
-                                  console: item.station_name,
-                                  quantity: item.controllers,
-                                  price: item.price,
-                                });
-
-                              // Update console status
-                              await supabase
-                                .from('cafe_consoles')
-                                .update({ status: 'occupied' })
-                                .eq('id', item.console_id);
-                            }
-
-                            // If using membership, deduct hours
-                            if (billingUseMembership && billingSelectedMembership) {
-                              const totalDuration = billingCart.reduce((sum, item) => sum + item.duration, 0);
-                              const hoursUsed = totalDuration / 60;
-                              const newHoursRemaining = Math.max(0, billingSelectedMembership.hours_remaining - hoursUsed);
-
-                              await supabase
-                                .from('subscriptions')
-                                .update({ hours_remaining: newHoursRemaining })
-                                .eq('id', billingSelectedMembership.id);
-                            }
-
-                            // Reset form
-                            setBillingCustomerName('');
-                            setBillingCustomerPhone('');
-                            setBillingCart([]);
-                            setBillingDiscount('0');
-                            setBillingUseMembership(false);
-                            setBillingSelectedMembership(null);
-
-                            alert('Payment completed successfully! ✓');
-
-                            // Reload data
-                            setRefreshTrigger(prev => prev + 1);
-                          } catch (error: any) {
-                            console.error('Error creating booking:', error);
-                            alert('Failed to create booking: ' + error.message);
-                          }
-                        }}
+                      )}
+                    </div>
+                    <div style={{ position: "relative" }}>
+                      <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: theme.textSecondary, marginBottom: 8 }}>
+                        Phone Number <span style={{ fontSize: 11, color: theme.textMuted }}>(Optional)</span>
+                      </label>
+                      <input
+                        type="tel"
+                        value={billingCustomerPhone}
+                        onChange={(e) => handleBillingPhoneChange(e.target.value)}
+                        placeholder="Enter phone number"
                         style={{
-                          width: '100%',
-                          padding: isMobile ? '14px 20px' : '16px 24px',
-                          background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                          border: 'none',
+                          width: "100%",
+                          padding: "12px 14px",
+                          background: theme.inputBackground,
+                          border: `1px solid ${theme.border}`,
                           borderRadius: 10,
-                          color: 'white',
-                          fontSize: isMobile ? 15 : 17,
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: 8,
+                          color: theme.textPrimary,
+                          fontSize: 14,
+                          outline: "none",
+                          transition: "all 0.2s",
                         }}
-                      >
-                        <span>💳</span> Complete Payment
-                      </button>
+                      />
+                      {/* Suggestions dropdown */}
+                      {billingShowSuggestions && billingActiveSuggestionField === 'phone' && billingFilteredSuggestions.length > 0 && (
+                        <div style={{
+                          position: "absolute",
+                          top: "calc(100% + 4px)",
+                          left: 0,
+                          right: 0,
+                          background: "#1a1d29",
+                          border: "1px solid rgba(99, 102, 241, 0.3)",
+                          borderRadius: 8,
+                          maxHeight: 200,
+                          overflowY: "auto",
+                          zIndex: 10000,
+                          boxShadow: "0 8px 24px rgba(0, 0, 0, 0.4)",
+                        }}>
+                          {billingFilteredSuggestions.map((customer, index) => (
+                            <div
+                              key={index}
+                              onClick={() => handleBillingSuggestionClick(customer)}
+                              style={{
+                                padding: "10px 12px",
+                                cursor: "pointer",
+                                borderBottom: index < billingFilteredSuggestions.length - 1 ? "1px solid rgba(255, 255, 255, 0.05)" : "none",
+                                transition: "all 0.15s ease",
+                                background: "transparent",
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background = 'rgba(99, 102, 241, 0.15)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'transparent';
+                              }}
+                            >
+                              <div style={{ fontSize: 14, fontWeight: 600, color: "#e2e8f0", marginBottom: 2 }}>
+                                {customer.name}
+                              </div>
+                              <div style={{ fontSize: 12, color: '#a0aec0' }}>
+                                {customer.phone}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Booking Details */}
+                <div style={{ marginBottom: 28 }}>
+                  <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    marginBottom: 20,
+                    paddingBottom: 14,
+                    borderBottom: `1px solid ${theme.border}`
+                  }}>
+                    <div style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 10,
+                      background: 'rgba(59, 130, 246, 0.1)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 18,
+                    }}>
+                      📅
+                    </div>
+                    <h3 style={{ fontSize: 18, fontWeight: 700, color: theme.textPrimary, margin: 0 }}>
+                      Booking Details
+                    </h3>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: 16 }}>
+                    <div>
+                      <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: theme.textSecondary, marginBottom: 8 }}>
+                        Date <span style={{ color: "#ef4444" }}>*</span>
+                      </label>
+                      <input
+                        type="date"
+                        value={billingBookingDate}
+                        onChange={(e) => setBillingBookingDate(e.target.value)}
+                        style={{
+                          width: "100%",
+                          padding: "12px 14px",
+                          background: theme.inputBackground,
+                          border: `1px solid ${theme.border}`,
+                          borderRadius: 10,
+                          color: theme.textPrimary,
+                          fontSize: 14,
+                          outline: "none",
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: theme.textSecondary, marginBottom: 8 }}>
+                        Start Time <span style={{ color: "#ef4444" }}>*</span>
+                      </label>
+                      <input
+                        type="time"
+                        value={billingStartTime}
+                        onChange={(e) => setBillingStartTime(e.target.value)}
+                        style={{
+                          width: "100%",
+                          padding: "12px 14px",
+                          background: theme.inputBackground,
+                          border: `1px solid ${theme.border}`,
+                          borderRadius: 10,
+                          color: theme.textPrimary,
+                          fontSize: 14,
+                          outline: "none",
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Console Items */}
+                <div style={{ marginBottom: 32 }}>
+                  <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    marginBottom: 20,
+                    paddingBottom: 14,
+                    borderBottom: `1px solid ${theme.border}`
+                  }}>
+                    <div style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 10,
+                      background: 'rgba(16, 185, 129, 0.1)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 18,
+                    }}>
+                      🎮
+                    </div>
+                    <h3 style={{ fontSize: 18, fontWeight: 700, color: theme.textPrimary, margin: 0, flex: 1 }}>
+                      Gaming Stations
+                    </h3>
+                    <button
+                      onClick={addBillingItem}
+                      style={{
+                        padding: "10px 18px",
+                        background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                        border: "none",
+                        borderRadius: 10,
+                        color: "white",
+                        fontSize: 14,
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                        boxShadow: "0 2px 8px rgba(16, 185, 129, 0.3)",
+                        transition: "all 0.2s ease",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = 'translateY(-2px)';
+                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.4)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = '0 2px 8px rgba(16, 185, 129, 0.3)';
+                      }}
+                    >
+                      <span style={{ fontSize: 16 }}>+</span> Add Station
+                    </button>
+                  </div>
+
+                  {billingItems.length === 0 ? (
+                    <div style={{
+                      padding: 40,
+                      textAlign: "center",
+                      background: theme.background,
+                      borderRadius: 12,
+                      border: `2px dashed ${theme.border}`,
+                    }}>
+                      <div style={{ fontSize: 40, marginBottom: 12 }}>🎮</div>
+                      <p style={{ color: theme.textSecondary, margin: 0, fontSize: 14 }}>
+                        No gaming stations added yet
+                      </p>
+                      <p style={{ color: theme.textMuted, margin: "6px 0 0 0", fontSize: 12 }}>
+                        Click "Add Station" to begin creating your booking
+                      </p>
+                    </div>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                      {billingItems.map((item) => (
+                        <div
+                          key={item.id}
+                          style={{
+                            padding: 16,
+                            background: theme.background,
+                            borderRadius: 12,
+                            border: `1px solid ${theme.border}`,
+                            display: "grid",
+                            gridTemplateColumns: isMobile ? "1fr" : "2fr 1fr 1fr 1fr auto",
+                            gap: 12,
+                            alignItems: "center",
+                          }}
+                        >
+                          <div>
+                            <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: theme.textMuted, marginBottom: 6 }}>
+                              STATION TYPE
+                            </label>
+                            <select
+                              value={item.console}
+                              onChange={(e) => updateBillingItem(item.id, "console", e.target.value)}
+                              style={{
+                                width: "100%",
+                                padding: "10px 12px",
+                                background: theme.inputBackground,
+                                border: `1px solid ${theme.border}`,
+                                borderRadius: 8,
+                                color: theme.textPrimary,
+                                fontSize: 14,
+                                fontWeight: 500,
+                                outline: "none",
+                                cursor: "pointer",
+                              }}
+                            >
+                              {consoleOptions
+                                .filter((console) => billingAvailableConsoles.includes(console.id))
+                                .map((console) => (
+                                  <option key={console.id} value={console.id}>
+                                    {console.icon} {console.label}
+                                  </option>
+                                ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: theme.textMuted, marginBottom: 6 }}>
+                              CONTROLLERS
+                            </label>
+                            <select
+                              value={item.quantity}
+                              onChange={(e) => updateBillingItem(item.id, "quantity", parseInt(e.target.value))}
+                              style={{
+                                width: "100%",
+                                padding: "10px 12px",
+                                background: theme.inputBackground,
+                                border: `1px solid ${theme.border}`,
+                                borderRadius: 8,
+                                color: theme.textPrimary,
+                                fontSize: 14,
+                                fontWeight: 500,
+                                outline: "none",
+                                cursor: "pointer",
+                              }}
+                            >
+                              <option value="1">1</option>
+                              <option value="2">2</option>
+                              <option value="3">3</option>
+                              <option value="4">4</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: theme.textMuted, marginBottom: 6 }}>
+                              DURATION
+                            </label>
+                            <select
+                              value={item.duration}
+                              onChange={(e) => updateBillingItem(item.id, "duration", parseInt(e.target.value))}
+                              style={{
+                                width: "100%",
+                                padding: "10px 12px",
+                                background: theme.inputBackground,
+                                border: `1px solid ${theme.border}`,
+                                borderRadius: 8,
+                                color: theme.textPrimary,
+                                fontSize: 14,
+                                fontWeight: 500,
+                                outline: "none",
+                                cursor: "pointer",
+                              }}
+                            >
+                              <option value={30}>30 min</option>
+                              <option value={60}>1 hour</option>
+                              <option value={90}>1.5 hours</option>
+                              <option value={120}>2 hours</option>
+                              <option value={180}>3 hours</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: theme.textMuted, marginBottom: 6 }}>
+                              AMOUNT (₹)
+                            </label>
+                            <input
+                              type="number"
+                              value={item.price}
+                              onChange={(e) => updateBillingItem(item.id, "price", parseFloat(e.target.value) || 0)}
+                              placeholder="0"
+                              className="no-spinner"
+                              style={{
+                                width: "100%",
+                                padding: "10px 12px",
+                                background: theme.inputBackground,
+                                border: `1px solid ${theme.border}`,
+                                borderRadius: 8,
+                                color: theme.textPrimary,
+                                fontSize: 14,
+                                fontWeight: 500,
+                                outline: "none",
+                              }}
+                            />
+                          </div>
+                          <button
+                            onClick={() => removeBillingItem(item.id)}
+                            style={{
+                              padding: isMobile ? "10px 12px" : "10px 14px",
+                              background: "rgba(239, 68, 68, 0.1)",
+                              border: "1px solid rgba(239, 68, 68, 0.3)",
+                              borderRadius: 8,
+                              color: "#ef4444",
+                              fontSize: 13,
+                              fontWeight: 600,
+                              cursor: "pointer",
+                              marginTop: isMobile ? 0 : 18,
+                            }}
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ))}
                     </div>
                   )}
+                </div>
+
+                {/* Total Amount */}
+                {billingItems.length > 0 && (
+                  <div style={{ marginBottom: 28 }}>
+                    <div style={{
+                      background: theme.background,
+                      borderRadius: 12,
+                      padding: 20,
+                      border: `2px solid ${theme.border}`,
+                    }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                        <div>
+                          <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.textSecondary, margin: 0 }}>
+                            Total Amount
+                          </h3>
+                          <p style={{ fontSize: 12, color: theme.textMuted, margin: "4px 0 0 0" }}>
+                            Sum of all items (editable)
+                          </p>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <span style={{ fontSize: 20, fontWeight: 700, color: theme.textPrimary }}>₹</span>
+                          <input
+                            type="number"
+                            value={billingTotalAmount}
+                            onChange={(e) => setBillingTotalAmount(parseFloat(e.target.value) || 0)}
+                            className="no-spinner"
+                            style={{
+                              width: 120,
+                              padding: "12px 16px",
+                              background: theme.inputBackground,
+                              border: `2px solid #10b981`,
+                              borderRadius: 10,
+                              color: "#10b981",
+                              fontSize: 24,
+                              fontWeight: 700,
+                              outline: "none",
+                              textAlign: "right",
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Payment Mode */}
+                <div style={{ marginBottom: 24 }}>
+                  <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    marginBottom: 20,
+                    paddingBottom: 14,
+                    borderBottom: `1px solid ${theme.border}`
+                  }}>
+                    <div style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 10,
+                      background: 'rgba(251, 146, 60, 0.1)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 18,
+                    }}>
+                      💳
+                    </div>
+                    <h3 style={{ fontSize: 18, fontWeight: 700, color: theme.textPrimary, margin: 0 }}>
+                      Payment Mode
+                    </h3>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(2, 1fr)", gap: 12, maxWidth: 400 }}>
+                    <button
+                      type="button"
+                      onClick={() => setBillingPaymentMode("cash")}
+                      style={{
+                        padding: "18px",
+                        background: billingPaymentMode === "cash"
+                          ? "linear-gradient(135deg, #10b981 0%, #059669 100%)"
+                          : theme.background,
+                        border: billingPaymentMode === "cash"
+                          ? "2px solid #10b981"
+                          : `2px solid ${theme.border}`,
+                        borderRadius: 12,
+                        color: billingPaymentMode === "cash" ? "white" : theme.textPrimary,
+                        fontSize: 15,
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        gap: 8,
+                        transition: "all 0.2s ease",
+                        boxShadow: billingPaymentMode === "cash" ? "0 4px 12px rgba(16, 185, 129, 0.3)" : "none",
+                      }}
+                      onMouseEnter={(e) => {
+                        if (billingPaymentMode !== "cash") {
+                          e.currentTarget.style.borderColor = '#10b981';
+                          e.currentTarget.style.background = 'rgba(16, 185, 129, 0.05)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (billingPaymentMode !== "cash") {
+                          e.currentTarget.style.borderColor = theme.border;
+                          e.currentTarget.style.background = theme.background;
+                        }
+                      }}
+                    >
+                      <span style={{ fontSize: 32 }}>💵</span>
+                      <span>Cash</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setBillingPaymentMode("upi")}
+                      style={{
+                        padding: "18px",
+                        background: billingPaymentMode === "upi"
+                          ? "linear-gradient(135deg, #10b981 0%, #059669 100%)"
+                          : theme.background,
+                        border: billingPaymentMode === "upi"
+                          ? "2px solid #10b981"
+                          : `2px solid ${theme.border}`,
+                        borderRadius: 12,
+                        color: billingPaymentMode === "upi" ? "white" : theme.textPrimary,
+                        fontSize: 15,
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        gap: 8,
+                        transition: "all 0.2s ease",
+                        boxShadow: billingPaymentMode === "upi" ? "0 4px 12px rgba(16, 185, 129, 0.3)" : "none",
+                      }}
+                      onMouseEnter={(e) => {
+                        if (billingPaymentMode !== "upi") {
+                          e.currentTarget.style.borderColor = '#10b981';
+                          e.currentTarget.style.background = 'rgba(16, 185, 129, 0.05)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (billingPaymentMode !== "upi") {
+                          e.currentTarget.style.borderColor = theme.border;
+                          e.currentTarget.style.background = theme.background;
+                        }
+                      }}
+                    >
+                      <span style={{ fontSize: 32 }}>📱</span>
+                      <span>UPI</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div style={{
+                  display: "flex",
+                  gap: 12,
+                  justifyContent: "flex-end",
+                  paddingTop: 24,
+                  borderTop: `1px solid ${theme.border}`
+                }}>
+                  <button
+                    onClick={handleBillingSubmit}
+                    disabled={billingSubmitting || !selectedCafeId || !billingCustomerName || !billingStartTime || billingItems.length === 0}
+                    style={{
+                      padding: "14px 36px",
+                      background: billingSubmitting || !selectedCafeId || !billingCustomerName || !billingStartTime || billingItems.length === 0
+                        ? "rgba(16, 185, 129, 0.3)"
+                        : "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                      border: "none",
+                      borderRadius: 12,
+                      color: "white",
+                      fontSize: 15,
+                      fontWeight: 700,
+                      cursor: billingSubmitting || !selectedCafeId || !billingCustomerName || !billingStartTime || billingItems.length === 0
+                        ? "not-allowed"
+                        : "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      boxShadow: billingSubmitting || !selectedCafeId || !billingCustomerName || !billingStartTime || billingItems.length === 0
+                        ? "none"
+                        : "0 4px 16px rgba(16, 185, 129, 0.4)",
+                      transition: "all 0.2s ease",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (!billingSubmitting && selectedCafeId && billingCustomerName && billingStartTime && billingItems.length > 0) {
+                        e.currentTarget.style.transform = 'translateY(-2px)';
+                        e.currentTarget.style.boxShadow = '0 6px 20px rgba(16, 185, 129, 0.5)';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = '0 4px 16px rgba(16, 185, 129, 0.4)';
+                    }}
+                  >
+                    {billingSubmitting ? (
+                      <>
+                        <span>⏳</span>
+                        Creating...
+                      </>
+                    ) : (
+                      <>
+                        <span>✓</span>
+                        Create Booking
+                      </>
+                    )}
+                  </button>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Coupons Tab */}
-          {activeTab === 'coupons' && (
-            <div
-              style={{
-                background: theme.cardBackground,
-                borderRadius: 16,
-                border: `1px solid ${theme.border}`,
-                padding: "60px 20px",
-                textAlign: "center",
-              }}
-            >
-              <div style={{ fontSize: 64, marginBottom: 16, opacity: 0.3 }}>🎟️</div>
-              <p style={{ fontSize: 18, color: theme.textSecondary, marginBottom: 8, fontWeight: 500 }}>
-                Coupons & Discounts
-              </p>
-              <p style={{ fontSize: 14, color: theme.textMuted }}>
-                Create and manage promotional coupons here.
-              </p>
-            </div>
-          )}
-
-          {/* Reports Tab */}
-          {activeTab === 'reports' && (
-            <div
-              style={{
-                background: theme.cardBackground,
-                borderRadius: 16,
-                border: `1px solid ${theme.border}`,
-                padding: "60px 20px",
-                textAlign: "center",
-              }}
-            >
-              <div style={{ fontSize: 64, marginBottom: 16, opacity: 0.3 }}>📊</div>
-              <p style={{ fontSize: 18, color: theme.textSecondary, marginBottom: 8, fontWeight: 500 }}>
-                Reports
-              </p>
-              <p style={{ fontSize: 14, color: theme.textMuted }}>
-                Generate detailed reports and exports here.
-              </p>
-            </div>
-          )}
 
           {/* Settings Tab */}
           {activeTab === 'settings' && (
@@ -10422,8 +11055,44 @@ export default function OwnerDashboardPage() {
               borderBottomRightRadius: 20,
             }}>
               <button
+                onClick={() => setShowDeleteConfirm(true)}
+                disabled={saving || deletingBooking}
+                style={{
+                  flex: 1,
+                  padding: "13px 24px",
+                  borderRadius: 12,
+                  border: "none",
+                  background: saving || deletingBooking
+                    ? "rgba(239, 68, 68, 0.25)"
+                    : "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
+                  color: "#fff",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: saving || deletingBooking ? "not-allowed" : "pointer",
+                  opacity: saving || deletingBooking ? 0.5 : 1,
+                  transition: "all 0.2s",
+                  boxShadow: saving || deletingBooking
+                    ? "none"
+                    : "0 4px 16px rgba(239, 68, 68, 0.3)",
+                }}
+                onMouseEnter={(e) => {
+                  if (!saving && !deletingBooking) {
+                    e.currentTarget.style.transform = "translateY(-2px)";
+                    e.currentTarget.style.boxShadow = "0 6px 20px rgba(239, 68, 68, 0.4)";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!saving && !deletingBooking) {
+                    e.currentTarget.style.transform = "translateY(0)";
+                    e.currentTarget.style.boxShadow = "0 4px 16px rgba(239, 68, 68, 0.3)";
+                  }
+                }}
+              >
+                🗑️ Delete
+              </button>
+              <button
                 onClick={() => setEditingBooking(null)}
-                disabled={saving}
+                disabled={saving || deletingBooking}
                 style={{
                   flex: 1,
                   padding: "13px 24px",
@@ -10433,18 +11102,18 @@ export default function OwnerDashboardPage() {
                   color: "#cbd5e1",
                   fontSize: 14,
                   fontWeight: 600,
-                  cursor: saving ? "not-allowed" : "pointer",
-                  opacity: saving ? 0.5 : 1,
+                  cursor: saving || deletingBooking ? "not-allowed" : "pointer",
+                  opacity: saving || deletingBooking ? 0.5 : 1,
                   transition: "all 0.2s",
                 }}
                 onMouseEnter={(e) => {
-                  if (!saving) {
+                  if (!saving && !deletingBooking) {
                     e.currentTarget.style.background = "rgba(15, 23, 42, 0.9)";
                     e.currentTarget.style.borderColor = "rgba(148, 163, 184, 0.4)";
                   }
                 }}
                 onMouseLeave={(e) => {
-                  if (!saving) {
+                  if (!saving && !deletingBooking) {
                     e.currentTarget.style.background = "rgba(15, 23, 42, 0.6)";
                     e.currentTarget.style.borderColor = "rgba(148, 163, 184, 0.2)";
                   }
@@ -10493,6 +11162,164 @@ export default function OwnerDashboardPage() {
           </div>
         </div>
         </>
+      )}
+
+      {/* Delete Booking Confirmation Modal */}
+      {showDeleteConfirm && editingBooking && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(0, 0, 0, 0.8)",
+            backdropFilter: "blur(8px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 10000,
+            padding: "20px",
+          }}
+          onClick={() => !deletingBooking && setShowDeleteConfirm(false)}
+        >
+          <div
+            style={{
+              background: theme.cardBackground,
+              borderRadius: 20,
+              border: `1px solid ${theme.border}`,
+              maxWidth: "500px",
+              width: "100%",
+              boxShadow: "0 25px 50px rgba(0, 0, 0, 0.5)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div style={{
+              padding: "24px 32px",
+              borderBottom: `1px solid ${theme.border}`,
+            }}>
+              <h2 style={{
+                margin: 0,
+                fontSize: 20,
+                fontWeight: 700,
+                color: theme.textPrimary,
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+              }}>
+                <span style={{ fontSize: 24 }}>⚠️</span>
+                Delete Booking
+              </h2>
+              <p style={{
+                margin: "8px 0 0 0",
+                fontSize: 14,
+                color: theme.textSecondary,
+              }}>
+                Are you sure you want to delete this booking?
+              </p>
+            </div>
+
+            {/* Body */}
+            <div style={{ padding: "24px 32px" }}>
+              <div style={{
+                padding: "16px",
+                borderRadius: 12,
+                background: "rgba(239, 68, 68, 0.1)",
+                border: "1px solid rgba(239, 68, 68, 0.3)",
+              }}>
+                <p style={{
+                  margin: 0,
+                  fontSize: 14,
+                  color: theme.textPrimary,
+                  fontWeight: 600,
+                }}>
+                  Booking ID: #{editingBooking.id.slice(0, 8).toUpperCase()}
+                </p>
+                <p style={{
+                  margin: "4px 0",
+                  fontSize: 13,
+                  color: theme.textSecondary,
+                }}>
+                  Customer: {editingBooking.customer_name || editingBooking.user_name || "N/A"}
+                </p>
+                <p style={{
+                  margin: "4px 0",
+                  fontSize: 13,
+                  color: theme.textSecondary,
+                }}>
+                  Amount: ₹{editingBooking.total_amount}
+                </p>
+                <p style={{
+                  margin: "12px 0 0 0",
+                  fontSize: 13,
+                  color: "#ef4444",
+                  fontWeight: 600,
+                }}>
+                  This will permanently remove this booking. This action cannot be undone.
+                </p>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div style={{
+              padding: "20px 32px",
+              borderTop: `1px solid ${theme.border}`,
+              display: "flex",
+              gap: 12,
+              justifyContent: "flex-end",
+            }}>
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={deletingBooking}
+                style={{
+                  padding: "12px 24px",
+                  background: "transparent",
+                  border: `1px solid ${theme.border}`,
+                  borderRadius: 12,
+                  color: theme.textSecondary,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: deletingBooking ? "not-allowed" : "pointer",
+                  opacity: deletingBooking ? 0.5 : 1,
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteBooking}
+                disabled={deletingBooking}
+                style={{
+                  padding: "12px 24px",
+                  background: deletingBooking
+                    ? "rgba(100, 116, 139, 0.3)"
+                    : "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
+                  border: "none",
+                  borderRadius: 12,
+                  color: "#ffffff",
+                  fontSize: 14,
+                  fontWeight: 700,
+                  cursor: deletingBooking ? "not-allowed" : "pointer",
+                  transition: "all 0.2s",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.5px",
+                }}
+                onMouseEnter={(e) => {
+                  if (!deletingBooking) {
+                    e.currentTarget.style.transform = "scale(1.05)";
+                    e.currentTarget.style.boxShadow = "0 8px 20px rgba(239, 68, 68, 0.4)";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "scale(1)";
+                  e.currentTarget.style.boxShadow = "none";
+                }}
+              >
+                {deletingBooking ? "Deleting..." : "Delete Booking"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Edit Station Pricing Modal */}
@@ -12174,31 +13001,49 @@ export default function OwnerDashboardPage() {
                         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                           <thead>
                             <tr style={{ borderBottom: `1px solid ${theme.border}` }}>
-                              <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: isMobile ? 11 : 12, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase' }}>DATE</th>
+                              <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: isMobile ? 11 : 12, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase' }}>DATE & TIME</th>
                               <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: isMobile ? 11 : 12, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase' }}>SESSION</th>
-                              <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: isMobile ? 11 : 12, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase' }}>TIME USED</th>
+                              <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: isMobile ? 11 : 12, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase' }}>DURATION</th>
                             </tr>
                           </thead>
                           <tbody>
-                            {/* Mock data - replace with actual usage history from database */}
-                            {hoursUsed > 0 ? (
-                              <tr style={{ borderBottom: `1px solid ${theme.border}` }}>
-                                <td style={{ padding: '16px', fontSize: isMobile ? 13 : 14, color: theme.textPrimary }}>
-                                  {purchaseDate ? purchaseDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}
-                                </td>
-                                <td style={{ padding: '16px', fontSize: isMobile ? 13 : 14, color: '#3b82f6', fontWeight: 600 }}>
-                                  #22
-                                </td>
-                                <td style={{ padding: '16px', fontSize: isMobile ? 13 : 14, color: '#3b82f6', fontWeight: 600 }}>
-                                  {Math.floor(hoursUsed)}h {Math.round((hoursUsed % 1) * 60)}m
+                            {loadingUsageHistory ? (
+                              <tr>
+                                <td colSpan={3} style={{ padding: '40px 16px', textAlign: 'center', color: theme.textMuted, fontSize: isMobile ? 13 : 14 }}>
+                                  Loading usage history...
                                 </td>
                               </tr>
-                            ) : (
+                            ) : subscriptionUsageHistory.length === 0 ? (
                               <tr>
                                 <td colSpan={3} style={{ padding: '40px 16px', textAlign: 'center', color: theme.textMuted, fontSize: isMobile ? 13 : 14 }}>
                                   No usage history yet
                                 </td>
                               </tr>
+                            ) : (
+                              subscriptionUsageHistory.map((history, index) => {
+                                const startTime = new Date(history.start_time);
+                                const endTime = new Date(history.end_time);
+                                const durationHours = history.duration_hours;
+                                const hours = Math.floor(durationHours);
+                                const minutes = Math.round((durationHours % 1) * 60);
+
+                                return (
+                                  <tr key={history.id} style={{ borderBottom: `1px solid ${theme.border}` }}>
+                                    <td style={{ padding: '16px', fontSize: isMobile ? 13 : 14, color: theme.textPrimary }}>
+                                      <div>{startTime.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+                                      <div style={{ fontSize: isMobile ? 11 : 12, color: theme.textMuted, marginTop: 2 }}>
+                                        {startTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })} - {endTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                                      </div>
+                                    </td>
+                                    <td style={{ padding: '16px', fontSize: isMobile ? 13 : 14, color: '#3b82f6', fontWeight: 600 }}>
+                                      #{subscriptionUsageHistory.length - index}
+                                    </td>
+                                    <td style={{ padding: '16px', fontSize: isMobile ? 13 : 14, color: '#3b82f6', fontWeight: 600 }}>
+                                      {hours}h {minutes}m
+                                    </td>
+                                  </tr>
+                                );
+                              })
                             )}
                           </tbody>
                         </table>
@@ -12208,6 +13053,15 @@ export default function OwnerDashboardPage() {
                     {/* Action Buttons */}
                     <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                       <button
+                        onClick={() => {
+                          setViewingCustomer({
+                            name: sub.customer_name,
+                            phone: sub.customer_phone,
+                            email: sub.customer_email,
+                            subscription: sub
+                          });
+                          setViewingSubscription(null);
+                        }}
                         style={{
                           flex: isMobile ? '1 1 100%' : '1',
                           padding: isMobile ? "12px 20px" : "14px 24px",
@@ -12288,6 +13142,485 @@ export default function OwnerDashboardPage() {
           </div>
         </div>
       )}
+
+      {/* Customer Detail Modal */}
+      {viewingCustomer && (() => {
+        const sub = viewingCustomer.subscription;
+
+        // Use pre-calculated stats from customers tab if available, otherwise calculate from bookings
+        const totalSpent = viewingCustomer.totalSpent !== undefined
+          ? viewingCustomer.totalSpent
+          : customerBookings.reduce((sum, booking) => sum + (booking.total_amount || 0), 0) + (sub?.amount_paid || 0);
+
+        const totalVisits = viewingCustomer.totalVisits !== undefined
+          ? viewingCustomer.totalVisits
+          : customerBookings.length + (subscriptionUsageHistory.length || 0);
+
+        const lastVisit = viewingCustomer.lastVisit
+          ? new Date(viewingCustomer.lastVisit)
+          : (customerBookings[0]?.booking_date ? new Date(customerBookings[0].booking_date) : (sub?.purchase_date ? new Date(sub.purchase_date) : null));
+
+        const hoursRemaining = sub?.hours_remaining || 0;
+        const hoursPurchased = sub?.hours_purchased || 1;
+        const hoursUsed = hoursPurchased - hoursRemaining;
+        const progressPercent = (hoursRemaining / hoursPurchased) * 100;
+        const expiryDate = sub?.expiry_date ? new Date(sub.expiry_date) : null;
+        const daysLeft = expiryDate ? Math.max(0, Math.ceil((expiryDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))) : 0;
+
+        return (
+          <div
+            onClick={() => setViewingCustomer(null)}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(0, 0, 0, 0.7)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 1000,
+              padding: isMobile ? 16 : 20,
+            }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                background: theme.background,
+                borderRadius: isMobile ? 16 : 24,
+                width: '100%',
+                maxWidth: 1200,
+                maxHeight: '90vh',
+                overflow: 'auto',
+                position: 'relative',
+              }}
+            >
+              {/* Header */}
+              <div style={{
+                padding: isMobile ? '20px 20px 16px' : '32px 32px 24px',
+                borderBottom: `1px solid ${theme.border}`,
+                position: 'sticky',
+                top: 0,
+                background: theme.background,
+                zIndex: 10,
+              }}>
+                <button
+                  onClick={() => setViewingCustomer(null)}
+                  style={{
+                    position: 'absolute',
+                    top: isMobile ? 16 : 24,
+                    left: isMobile ? 16 : 24,
+                    background: 'transparent',
+                    border: 'none',
+                    color: theme.textMuted,
+                    fontSize: isMobile ? 14 : 16,
+                    cursor: 'pointer',
+                    padding: 8,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                  }}
+                >
+                  ← Back to Subscriptions
+                </button>
+
+                <div style={{ marginTop: isMobile ? 32 : 40, display: 'flex', alignItems: 'center', gap: 16 }}>
+                  <div style={{
+                    width: isMobile ? 56 : 72,
+                    height: isMobile ? 56 : 72,
+                    borderRadius: '50%',
+                    background: 'linear-gradient(135deg, #8b5cf6, #ec4899)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: isMobile ? 24 : 32,
+                    fontWeight: 700,
+                    color: '#fff',
+                  }}>
+                    {viewingCustomer.name?.charAt(0).toUpperCase() || 'U'}
+                  </div>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <h2 style={{ fontSize: isMobile ? 20 : 28, fontWeight: 700, color: theme.textPrimary, margin: 0 }}>
+                        {viewingCustomer.name}
+                      </h2>
+                      <span style={{
+                        padding: '4px 12px',
+                        background: sub?.status === 'active' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(107, 114, 128, 0.2)',
+                        color: sub?.status === 'active' ? '#10b981' : '#6b7280',
+                        borderRadius: 12,
+                        fontSize: isMobile ? 11 : 12,
+                        fontWeight: 600,
+                        textTransform: 'capitalize',
+                      }}>
+                        Subscriber
+                      </span>
+                    </div>
+                    <p style={{ fontSize: isMobile ? 14 : 16, color: theme.textMuted, margin: '4px 0 0 0' }}>
+                      {viewingCustomer.phone}
+                    </p>
+                  </div>
+                  <div style={{ marginLeft: 'auto', display: 'flex', gap: 12 }}>
+                    <button style={{
+                      padding: isMobile ? '8px 16px' : '10px 20px',
+                      background: 'transparent',
+                      border: `2px solid ${theme.border}`,
+                      borderRadius: 10,
+                      color: theme.textPrimary,
+                      fontSize: isMobile ? 13 : 14,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                    }}>
+                      ✏️ Edit
+                    </button>
+                    <button style={{
+                      padding: isMobile ? '8px 16px' : '10px 20px',
+                      background: 'rgba(239, 68, 68, 0.1)',
+                      border: `2px solid rgba(239, 68, 68, 0.3)`,
+                      borderRadius: 10,
+                      color: '#ef4444',
+                      fontSize: isMobile ? 13 : 14,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                    }}>
+                      🗑️ Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Content */}
+              <div style={{ padding: isMobile ? 20 : 32 }}>
+                {/* Stats Cards */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
+                  gap: isMobile ? 12 : 16,
+                  marginBottom: isMobile ? 24 : 32,
+                }}>
+                  <div style={{
+                    background: 'rgba(59, 130, 246, 0.05)',
+                    border: `1px solid rgba(59, 130, 246, 0.2)`,
+                    borderRadius: 16,
+                    padding: isMobile ? 16 : 20,
+                    textAlign: 'center',
+                  }}>
+                    <div style={{
+                      width: isMobile ? 48 : 56,
+                      height: isMobile ? 48 : 56,
+                      borderRadius: 12,
+                      background: 'rgba(59, 130, 246, 0.1)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      margin: '0 auto 12px',
+                      fontSize: isMobile ? 20 : 24,
+                    }}>
+                      ▶️
+                    </div>
+                    <div style={{ fontSize: isMobile ? 28 : 36, fontWeight: 700, color: theme.textPrimary, marginBottom: 4 }}>
+                      {totalVisits}
+                    </div>
+                    <div style={{ fontSize: isMobile ? 13 : 14, color: theme.textMuted }}>
+                      Total Visits
+                    </div>
+                  </div>
+
+                  <div style={{
+                    background: 'rgba(34, 197, 94, 0.05)',
+                    border: `1px solid rgba(34, 197, 94, 0.2)`,
+                    borderRadius: 16,
+                    padding: isMobile ? 16 : 20,
+                    textAlign: 'center',
+                  }}>
+                    <div style={{
+                      width: isMobile ? 48 : 56,
+                      height: isMobile ? 48 : 56,
+                      borderRadius: 12,
+                      background: 'rgba(34, 197, 94, 0.1)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      margin: '0 auto 12px',
+                      fontSize: isMobile ? 20 : 24,
+                    }}>
+                      ₹
+                    </div>
+                    <div style={{ fontSize: isMobile ? 28 : 36, fontWeight: 700, color: theme.textPrimary, marginBottom: 4 }}>
+                      ₹{totalSpent.toLocaleString()}
+                    </div>
+                    <div style={{ fontSize: isMobile ? 13 : 14, color: theme.textMuted }}>
+                      Total Spent
+                    </div>
+                  </div>
+
+                  <div style={{
+                    background: 'rgba(251, 191, 36, 0.05)',
+                    border: `1px solid rgba(251, 191, 36, 0.2)`,
+                    borderRadius: 16,
+                    padding: isMobile ? 16 : 20,
+                    textAlign: 'center',
+                  }}>
+                    <div style={{
+                      width: isMobile ? 48 : 56,
+                      height: isMobile ? 48 : 56,
+                      borderRadius: 12,
+                      background: 'rgba(251, 191, 36, 0.1)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      margin: '0 auto 12px',
+                      fontSize: isMobile ? 20 : 24,
+                    }}>
+                      ⏱️
+                    </div>
+                    <div style={{ fontSize: isMobile ? 28 : 36, fontWeight: 700, color: theme.textPrimary, marginBottom: 4 }}>
+                      {lastVisit ? (() => {
+                        const now = new Date();
+                        const diff = Math.floor((now.getTime() - lastVisit.getTime()) / (1000 * 60 * 60));
+                        if (diff < 1) return 'Just now';
+                        if (diff < 24) return `${diff} hours ago`;
+                        const days = Math.floor(diff / 24);
+                        return `${days} day${days > 1 ? 's' : ''} ago`;
+                      })() : 'N/A'}
+                    </div>
+                    <div style={{ fontSize: isMobile ? 13 : 14, color: theme.textMuted }}>
+                      Last Visit
+                    </div>
+                  </div>
+                </div>
+
+                {/* Active Subscription */}
+                {sub && (
+                  <div style={{
+                    background: 'rgba(59, 130, 246, 0.05)',
+                    border: `1px solid rgba(59, 130, 246, 0.2)`,
+                    borderRadius: 16,
+                    padding: isMobile ? 20 : 24,
+                    marginBottom: isMobile ? 24 : 32,
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div style={{
+                          width: 48,
+                          height: 48,
+                          borderRadius: 12,
+                          background: 'rgba(59, 130, 246, 0.1)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: 20,
+                        }}>
+                          ⏱️
+                        </div>
+                        <div>
+                          <h3 style={{ fontSize: isMobile ? 16 : 18, fontWeight: 700, color: theme.textPrimary, margin: 0 }}>
+                            Active Subscription
+                          </h3>
+                          <p style={{ fontSize: isMobile ? 13 : 14, color: '#3b82f6', margin: '2px 0 0 0' }}>
+                            {sub.membership_plans?.name || '5 Hour Pack'}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setViewingSubscription(sub);
+                          setViewingCustomer(null);
+                        }}
+                        style={{
+                          padding: '8px 16px',
+                          background: '#3b82f6',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: 8,
+                          fontSize: 13,
+                          fontWeight: 600,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Manage
+                      </button>
+                    </div>
+
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: isMobile ? '1fr' : '3fr 1fr',
+                      gap: 16,
+                      marginBottom: 16,
+                    }}>
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                          <span style={{ fontSize: isMobile ? 13 : 14, color: '#3b82f6', fontWeight: 600 }}>
+                            {Math.floor(hoursRemaining)}h {Math.round((hoursRemaining % 1) * 60)}m remaining
+                          </span>
+                          <span style={{ fontSize: isMobile ? 13 : 14, color: theme.textMuted }}>
+                            {hoursPurchased} Hours total
+                          </span>
+                        </div>
+                        <div style={{
+                          width: '100%',
+                          height: 12,
+                          background: 'rgba(255, 255, 255, 0.1)',
+                          borderRadius: 6,
+                          overflow: 'hidden',
+                        }}>
+                          <div style={{
+                            width: `${progressPercent}%`,
+                            height: '100%',
+                            background: progressPercent > 50 ? '#10b981' : progressPercent > 20 ? '#f59e0b' : '#ef4444',
+                            transition: 'width 0.3s',
+                          }} />
+                        </div>
+                        <div style={{ fontSize: isMobile ? 11 : 12, color: theme.textMuted, marginTop: 6 }}>
+                          Used: {Math.floor(hoursUsed)}h {Math.round((hoursUsed % 1) * 60)}m ({Math.round((hoursUsed / hoursPurchased) * 100)}%)
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(3, 1fr)',
+                      gap: 16,
+                    }}>
+                      <div>
+                        <div style={{ fontSize: isMobile ? 11 : 12, color: theme.textMuted, marginBottom: 4 }}>
+                          Expires
+                        </div>
+                        <div style={{ fontSize: isMobile ? 14 : 15, fontWeight: 600, color: theme.textPrimary }}>
+                          {expiryDate ? expiryDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: isMobile ? 11 : 12, color: theme.textMuted, marginBottom: 4 }}>
+                          Days Left
+                        </div>
+                        <div style={{ fontSize: isMobile ? 14 : 15, fontWeight: 600, color: theme.textPrimary }}>
+                          {daysLeft} days
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Recent Sessions */}
+                <div style={{
+                  background: 'rgba(255, 255, 255, 0.02)',
+                  border: `1px solid ${theme.border}`,
+                  borderRadius: 16,
+                  padding: isMobile ? 20 : 24,
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <div style={{
+                        width: 48,
+                        height: 48,
+                        borderRadius: 12,
+                        background: 'rgba(251, 191, 36, 0.1)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: 20,
+                      }}>
+                        🔄
+                      </div>
+                      <div>
+                        <h3 style={{ fontSize: isMobile ? 16 : 18, fontWeight: 700, color: theme.textPrimary, margin: 0 }}>
+                          Recent Sessions
+                        </h3>
+                        <p style={{ fontSize: isMobile ? 13 : 14, color: theme.textMuted, margin: '2px 0 0 0' }}>
+                          Last 10 gaming sessions
+                        </p>
+                      </div>
+                    </div>
+                    <button style={{
+                      padding: '8px 16px',
+                      background: 'transparent',
+                      border: `2px solid ${theme.border}`,
+                      borderRadius: 8,
+                      color: theme.textPrimary,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                    }}>
+                      View All
+                    </button>
+                  </div>
+
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr style={{ borderBottom: `1px solid ${theme.border}` }}>
+                          <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: isMobile ? 11 : 12, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase' }}>DATE</th>
+                          <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: isMobile ? 11 : 12, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase' }}>STATION</th>
+                          <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: isMobile ? 11 : 12, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase' }}>DURATION</th>
+                          <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: isMobile ? 11 : 12, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase' }}>AMOUNT</th>
+                          <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: isMobile ? 11 : 12, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase' }}>STATUS</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {loadingCustomerData ? (
+                          <tr>
+                            <td colSpan={5} style={{ padding: '40px 16px', textAlign: 'center', color: theme.textMuted }}>
+                              Loading sessions...
+                            </td>
+                          </tr>
+                        ) : customerBookings.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} style={{ padding: '40px 16px', textAlign: 'center', color: theme.textMuted }}>
+                              No sessions yet
+                            </td>
+                          </tr>
+                        ) : (
+                          customerBookings.map((booking) => {
+                            const bookingDate = new Date(booking.booking_date);
+                            const consoleInfo = booking.booking_items?.[0];
+                            const stationName = consoleInfo?.console?.toUpperCase() || 'N/A';
+                            const isSubscription = booking.source === 'subscription' || !booking.total_amount;
+
+                            return (
+                              <tr key={booking.id} style={{ borderBottom: `1px solid ${theme.border}` }}>
+                                <td style={{ padding: '16px', fontSize: isMobile ? 13 : 14, color: theme.textPrimary }}>
+                                  <div>{bookingDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+                                  <div style={{ fontSize: isMobile ? 11 : 12, color: theme.textMuted }}>
+                                    {booking.start_time}
+                                  </div>
+                                </td>
+                                <td style={{ padding: '16px', fontSize: isMobile ? 13 : 14, fontWeight: 600, color: theme.textPrimary }}>
+                                  {stationName}-{consoleInfo?.quantity || 1}
+                                </td>
+                                <td style={{ padding: '16px', fontSize: isMobile ? 13 : 14, color: theme.textPrimary }}>
+                                  {booking.duration ? `${Math.floor(booking.duration / 60)}h ${booking.duration % 60}m` : 'N/A'}
+                                </td>
+                                <td style={{ padding: '16px', fontSize: isMobile ? 13 : 14, fontWeight: 600, color: isSubscription ? '#3b82f6' : theme.textPrimary }}>
+                                  {isSubscription ? 'Subscription' : `₹${booking.total_amount}`}
+                                </td>
+                                <td style={{ padding: '16px' }}>
+                                  <span style={{
+                                    padding: '4px 12px',
+                                    background: booking.status === 'completed' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(107, 114, 128, 0.2)',
+                                    color: booking.status === 'completed' ? '#22c55e' : '#6b7280',
+                                    borderRadius: 12,
+                                    fontSize: isMobile ? 11 : 12,
+                                    fontWeight: 600,
+                                    textTransform: 'capitalize',
+                                  }}>
+                                    {booking.status || 'Completed'}
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

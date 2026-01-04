@@ -179,8 +179,28 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
         profile: b.user_id ? profilesMap[b.user_id] : null
       }));
 
-      // Build console summaries
-      const summaries = buildConsoleSummaries(cafe, enrichedBookings);
+      // Fetch active membership sessions
+      const { data: activeSubscriptions, error: subsError } = await supabase
+        .from("subscriptions")
+        .select(`
+          id,
+          customer_name,
+          assigned_console_station,
+          timer_start_time,
+          membership_plans (
+            console_type
+          )
+        `)
+        .eq("cafe_id", cafeId)
+        .eq("timer_active", true);
+
+      console.log("[ConsoleStatus] Found active memberships:", activeSubscriptions?.length || 0);
+      if (subsError) {
+        logger.error("Error loading subscriptions:", subsError);
+      }
+
+      // Build console summaries with both bookings and memberships
+      const summaries = buildConsoleSummaries(cafe, enrichedBookings, activeSubscriptions || []);
 
       setConsoleData(summaries);
       setLastUpdated(new Date());
@@ -191,7 +211,7 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
     }
   };
 
-  const buildConsoleSummaries = (cafe: CafeConsoleCounts, bookings: BookingData[]): ConsoleSummary[] => {
+  const buildConsoleSummaries = (cafe: CafeConsoleCounts, bookings: BookingData[], memberships: any[]): ConsoleSummary[] => {
     const consoleTypes: Array<{ id: ConsoleId; key: string }> = [
       { id: "ps5", key: "ps5_count" },
       { id: "ps4", key: "ps4_count" },
@@ -246,49 +266,95 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
       const statuses: ConsoleStatus[] = [];
       let busyCount = 0;
 
+      // Map console type names for memberships
+      const consoleTypeMap: Record<string, ConsoleId> = {
+        'PC': 'pc',
+        'PS5': 'ps5',
+        'PS4': 'ps4',
+        'Xbox': 'xbox',
+        'Pool': 'pool',
+        'Snooker': 'snooker',
+        'Arcade': 'arcade',
+        'VR': 'vr',
+        'Steering': 'steering'
+      };
+
+      // Get memberships for this console type
+      const consoleMemberships = memberships.filter(m => {
+        const membershipConsoleType = m.membership_plans?.console_type;
+        return membershipConsoleType && consoleTypeMap[membershipConsoleType] === id;
+      });
+
       // Assign each console unit
       for (let unitNumber = 1; unitNumber <= total; unitNumber++) {
-        const booking = findBookingForUnit(unitNumber, consoleBookings);
+        const stationId = `${id}-${unitNumber.toString().padStart(2, '0')}`;
 
-        if (booking) {
-          const customerName = booking.customer_name || booking.profile?.name || "Guest";
-          const startMinutes = parseTimeToMinutes(booking.start_time);
-          const endMinutes = startMinutes + booking.duration;
-          const hasStarted = currentMinutes >= startMinutes;
+        // Check if this station is occupied by a membership
+        const membership = consoleMemberships.find(m => m.assigned_console_station === stationId);
 
-          let timeRemaining: number;
-          let status: "busy" | "ending_soon";
-
-          if (hasStarted) {
-            // Booking is active
-            timeRemaining = endMinutes - currentMinutes;
-            status = timeRemaining <= 15 ? "ending_soon" : "busy";
-          } else {
-            // Booking is upcoming
-            timeRemaining = startMinutes - currentMinutes;
-            status = "busy"; // Show as busy even if upcoming
-          }
+        if (membership) {
+          // Station occupied by membership
+          const now = new Date();
+          const startTime = new Date(membership.timer_start_time);
+          const elapsedMinutes = Math.floor((now.getTime() - startTime.getTime()) / 60000);
 
           statuses.push({
-            id: `${id}-${unitNumber}`,
+            id: stationId,
             consoleNumber: unitNumber,
-            status,
+            status: "busy",
             booking: {
-              customerName,
-              startTime: booking.start_time,
-              endTime: formatEndTime(startMinutes, booking.duration),
-              timeRemaining,
-              controllerCount: booking.controllerCount
+              customerName: membership.customer_name + " (Membership)",
+              startTime: startTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
+              endTime: "Until stopped",
+              timeRemaining: elapsedMinutes, // Show elapsed time as positive
+              controllerCount: undefined
             }
           });
-
           busyCount++;
         } else {
-          statuses.push({
-            id: `${id}-${unitNumber}`,
-            consoleNumber: unitNumber,
-            status: "free"
-          });
+          // Check for regular booking
+          const booking = findBookingForUnit(unitNumber, consoleBookings);
+
+          if (booking) {
+            const customerName = booking.customer_name || booking.profile?.name || "Guest";
+            const startMinutes = parseTimeToMinutes(booking.start_time);
+            const endMinutes = startMinutes + booking.duration;
+            const hasStarted = currentMinutes >= startMinutes;
+
+            let timeRemaining: number;
+            let status: "busy" | "ending_soon";
+
+            if (hasStarted) {
+              // Booking is active
+              timeRemaining = endMinutes - currentMinutes;
+              status = timeRemaining <= 15 ? "ending_soon" : "busy";
+            } else {
+              // Booking is upcoming
+              timeRemaining = startMinutes - currentMinutes;
+              status = "busy"; // Show as busy even if upcoming
+            }
+
+            statuses.push({
+              id: `${id}-${unitNumber}`,
+              consoleNumber: unitNumber,
+              status,
+              booking: {
+                customerName,
+                startTime: booking.start_time,
+                endTime: formatEndTime(startMinutes, booking.duration),
+                timeRemaining,
+                controllerCount: booking.controllerCount
+              }
+            });
+
+            busyCount++;
+          } else {
+            statuses.push({
+              id: `${id}-${unitNumber}`,
+              consoleNumber: unitNumber,
+              status: "free"
+            });
+          }
         }
       }
 

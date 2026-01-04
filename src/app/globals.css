@@ -45,3 +45,15 @@ img, picture, video, canvas, svg {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Hide number input spinner arrows */
+input[type="number"].no-spinner::-webkit-outer-spin-button,
+input[type="number"].no-spinner::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"].no-spinner {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}

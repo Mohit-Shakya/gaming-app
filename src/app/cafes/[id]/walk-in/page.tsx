@@ -94,11 +94,8 @@ export default function WalkInBookingPage() {
       setError("Please enter customer name");
       return;
     }
-    if (!customerPhone.trim()) {
-      setError("Please enter customer phone");
-      return;
-    }
-    if (customerPhone.trim().length < 10) {
+    // Phone number is now optional
+    if (customerPhone.trim() && customerPhone.trim().length < 10) {
       setError("Please enter a valid 10-digit phone number");
       return;
     }
@@ -563,7 +560,7 @@ export default function WalkInBookingPage() {
                 marginBottom: "10px",
                 letterSpacing: "0.3px"
               }}>
-                Phone Number <span style={{ color: "#EF4444" }}>*</span>
+                Phone Number <span style={{ fontSize: "11px", color: "#999", fontWeight: 400 }}>(Optional)</span>
               </label>
               <input
                 type="tel"
@@ -574,7 +571,7 @@ export default function WalkInBookingPage() {
                   // Limit to 10 digits
                   setCustomerPhone(value.slice(0, 10));
                 }}
-                placeholder="10-digit mobile number"
+                placeholder="10-digit mobile number (optional)"
                 className="form-input"
                 inputMode="numeric"
                 pattern="[0-9]*"
