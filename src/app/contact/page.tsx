@@ -46,7 +46,7 @@ export default function ContactPage() {
           Contact Us
         </h1>
         <p style={{ fontSize: "18px", color: "#888", marginBottom: "48px" }}>
-          Have a question or feedback? We'd love to hear from you.
+          Have a question or feedback? We&apos;d love to hear from you.
         </p>
 
         {submitted ? (
@@ -64,7 +64,7 @@ export default function ContactPage() {
               Message Sent!
             </h2>
             <p style={{ color: "#888", marginBottom: "24px" }}>
-              Thank you for contacting us. We'll get back to you soon.
+              Thank you for contacting us. We&apos;ll get back to you soon.
             </p>
             <button
               onClick={() => setSubmitted(false)}

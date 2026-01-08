@@ -290,7 +290,7 @@ export default function OnboardingPage() {
             color: colors.textSecondary,
             lineHeight: 1.5,
           }}>
-            Let's set up your profile to get started with booking gaming sessions!
+            Let&apos;s set up your profile to get started with booking gaming sessions!
           </p>
         </header>
 

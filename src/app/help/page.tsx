@@ -25,7 +25,7 @@ export default function HelpPage() {
         },
         {
           q: "Do I need to create an account to book?",
-          a: "Yes, you'll need to create a free account to make bookings and track your gaming history.",
+          a: "Yes, you&apos;ll need to create a free account to make bookings and track your gaming history.",
         },
       ],
     },
@@ -55,7 +55,7 @@ export default function HelpPage() {
         },
         {
           q: "Are there any booking fees?",
-          a: "No, we don't charge any additional booking fees. You only pay the café's hourly rate.",
+          a: "No, we don&apos;t charge any additional booking fees. You only pay the café&apos;s hourly rate.",
         },
         {
           q: "Can I get a refund?",
@@ -89,7 +89,7 @@ export default function HelpPage() {
         },
         {
           q: "I forgot my password. What should I do?",
-          a: "Click 'Forgot Password' on the login page and follow the instructions sent to your registered email.",
+          a: "Click &apos;Forgot Password&apos; on the login page and follow the instructions sent to your registered email.",
         },
         {
           q: "How do I view my booking history?",
@@ -296,7 +296,7 @@ export default function HelpPage() {
             Still need help?
           </h2>
           <p style={{ color: "#888", marginBottom: "24px" }}>
-            Can't find what you're looking for? Our support team is here to help.
+            Can&apos;t find what you&apos;re looking for? Our support team is here to help.
           </p>
           <Link
             href="/contact"

@@ -1055,6 +1055,7 @@ export default function AdminDashboardPage() {
   }
 
   // Sorting helper
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sortData = <T extends Record<string, any>>(data: T[], field: string, order: 'asc' | 'desc'): T[] => {
     return [...data].sort((a, b) => {
       const aVal = a[field];
