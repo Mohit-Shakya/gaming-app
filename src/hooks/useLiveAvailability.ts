@@ -69,7 +69,7 @@ export function useLiveAvailability(options: {
 
       setAvailability(result);
       setLastUpdated(new Date());
-    } catch (err) {
+    } catch {
       // Error already logged in service
       setAvailability({});
     } finally {

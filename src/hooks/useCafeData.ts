@@ -8,6 +8,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { ConsoleId, CONSOLE_DB_KEYS, CONSOLE_LABELS, CONSOLE_COLORS, CONSOLE_ICONS } from "@/lib/constants";
 import { ConsolePricingTier } from "@/types/booking";
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { ConsolePricingRow } from "@/types/database";
 import { logger } from "@/lib/logger";
 

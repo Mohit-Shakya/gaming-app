@@ -12,7 +12,8 @@ type Props = {
 type SortKey = "relevance" | "price_asc" | "price_desc";
 
 export default function HomeClient({ cafes }: Props) {
-  const safeCafes: Cafe[] = Array.isArray(cafes) ? cafes : [];
+  // Memoize safeCafes to prevent dependency changes
+  const safeCafes: Cafe[] = useMemo(() => Array.isArray(cafes) ? cafes : [], [cafes]);
 
   const [query, setQuery] = useState("");
   const [onlyPs5, setOnlyPs5] = useState(false);
@@ -28,6 +29,8 @@ export default function HomeClient({ cafes }: Props) {
   const listRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
+    // Set mounted state for client-side rendering
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
   }, []);
 

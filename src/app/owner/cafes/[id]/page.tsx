@@ -335,7 +335,7 @@ export default function OwnerCafeEditPage() {
       const fileName = `${cafeId}/${Date.now()}.${fileExt}`;
 
       // Upload to Supabase storage
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from("cafe-images")
         .upload(fileName, file);
 
@@ -1100,7 +1100,7 @@ export default function OwnerCafeEditPage() {
             {/* Gallery Photos Section */}
             <Section title="Photo Gallery" icon="📸">
               <p style={{ fontSize: 14, color: colors.textMuted, marginBottom: 20 }}>
-                Upload photos or add image URLs to showcase your gaming café to customers. These photos will appear in your café's gallery.
+                Upload photos or add image URLs to showcase your gaming café to customers. These photos will appear in your café&apos;s gallery.
               </p>
 
               {/* Upload Options */}

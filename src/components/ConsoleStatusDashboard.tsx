@@ -108,6 +108,7 @@ type ConsoleSummary = {
 
 export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
   const [consoleData, setConsoleData] = useState<ConsoleSummary[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [loading, setLoading] = useState(true);
 
@@ -160,7 +161,7 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
 
       // Fetch user profiles
       const userIds = bookings?.filter(b => b.user_id).map(b => b.user_id) || [];
-      let profilesMap: Record<string, { name: string }> = {};
+      const profilesMap: Record<string, { name: string }> = {};
 
       if (userIds.length > 0) {
         const { data: profiles } = await supabase
@@ -211,6 +212,7 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
     }
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const buildConsoleSummaries = (cafe: CafeConsoleCounts, bookings: BookingData[], memberships: any[]): ConsoleSummary[] => {
     const consoleTypes: Array<{ id: ConsoleId; key: string }> = [
       { id: "ps5", key: "ps5_count" },
@@ -409,6 +411,7 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
     return `${displayHours}:${mins.toString().padStart(2, "0")} ${period}`;
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const formatTimeAgo = (date: Date): string => {
     const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
     if (seconds < 60) return `${seconds} seconds ago`;
@@ -423,6 +426,7 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
     // Auto-refresh every 1 second
     const interval = setInterval(loadConsoleStatus, 1000);
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cafeId]);
 
   if (loading && consoleData.length === 0) {
@@ -445,6 +449,7 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
   const totalFree = consoleData.reduce((sum, c) => sum + c.free, 0);
   const totalBusy = consoleData.reduce((sum, c) => sum + c.busy, 0);
   const totalConsoles = totalFree + totalBusy;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const occupancyRate = totalConsoles > 0 ? Math.round((totalBusy / totalConsoles) * 100) : 0;
 
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;

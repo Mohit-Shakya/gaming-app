@@ -148,7 +148,7 @@ export default function Footer() {
                 color: colors.textMuted,
               }}
             >
-              India's premier gaming café booking platform. Find, book, and play at the best gaming cafés near you.
+              India&apos;s premier gaming café booking platform. Find, book, and play at the best gaming cafés near you.
             </p>
           </div>
 

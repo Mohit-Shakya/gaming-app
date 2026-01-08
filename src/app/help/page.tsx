@@ -218,7 +218,7 @@ export default function HelpPage() {
             }}
           >
             <div style={{ fontSize: "48px", marginBottom: "16px" }}>🔍</div>
-            <p style={{ color: "#888" }}>No results found for "{searchQuery}"</p>
+            <p style={{ color: "#888" }}>No results found for &quot;{searchQuery}&quot;</p>
           </div>
         )}
 

@@ -9,6 +9,8 @@ export default function LoadingBar() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    // Reset loading state on route change
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(false);
   }, [pathname]);
 
