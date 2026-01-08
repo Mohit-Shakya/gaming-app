@@ -131,7 +131,7 @@ export default function AdminRecentBookings() {
           No bookings yet
         </p>
         <p style={{ margin: 0, fontSize: 13 }}>
-          Once players start booking cafés, you'll see them listed here.
+          Once players start booking cafés, you&apos;ll see them listed here.
         </p>
       </div>
     );

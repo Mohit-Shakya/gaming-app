@@ -152,6 +152,7 @@ export default function AdminDashboardPage() {
   // Sorting
   const [cafeSort, setCafeSort] = useState<{ field: string; order: 'asc' | 'desc' }>({ field: 'created_at', order: 'desc' });
   const [userSort, setUserSort] = useState<{ field: string; order: 'asc' | 'desc' }>({ field: 'created_at', order: 'desc' });
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [bookingSort, setBookingSort] = useState<{ field: string; order: 'asc' | 'desc' }>({ field: 'created_at', order: 'desc' });
 
   // Theme (matching owner dashboard)
@@ -204,7 +205,7 @@ export default function AdminDashboardPage() {
           return;
         }
         sessionUserId = session.userId;
-      } catch (err) {
+      } catch {
         localStorage.removeItem("admin_session");
         router.push("/admin/login");
         return;

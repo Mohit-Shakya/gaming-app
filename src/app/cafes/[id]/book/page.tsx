@@ -1,7 +1,7 @@
 // src/app/cafes/[id]/book/page.tsx
 "use client";
 
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import useUser from "@/hooks/useUser";
@@ -11,21 +11,17 @@ import {
   CONSOLE_LABELS,
   CONSOLE_COLORS,
   CONSOLE_ICONS,
-  CONSOLE_DB_KEYS,
   type ConsoleId
 } from "@/lib/constants";
 
-// Types
-import { SelectedTicketForCheck } from "@/types/booking";
-
 // Utilities
-import { buildNext7Days, buildTimeSlots, getEndTime, timeStringToMinutes } from "@/lib/timeSlotUtils";
+import { buildNext7Days, buildTimeSlots, getEndTime } from "@/lib/timeSlotUtils";
 import { generateTickets } from "@/lib/ticketService";
 import { checkBookingCapacityWithOverlap } from "@/lib/capacityValidator";
 import { logger } from "@/lib/logger";
 
 // Hooks
-import { useCafeData, type ConsoleOption } from "@/hooks/useCafeData";
+import { useCafeData } from "@/hooks/useCafeData";
 import { useLiveAvailability } from "@/hooks/useLiveAvailability";
 
 // Components
@@ -249,7 +245,7 @@ export default function BookingPage() {
 
     try {
       const selectedTickets = Object.entries(quantities)
-        .filter(([_, qty]) => qty > 0)
+        .filter(([, qty]) => qty > 0)
         .map(([ticketId, qty]) => {
           const ticket = tickets.find((t) => t.id === ticketId);
           return {

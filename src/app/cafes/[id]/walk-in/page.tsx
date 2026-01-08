@@ -5,7 +5,6 @@ import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { colors, fonts, CONSOLE_LABELS, CONSOLE_COLORS, CONSOLE_ICONS, type ConsoleId } from "@/lib/constants";
-import { ConsolePricingTier } from "@/types/booking";
 import { useCafeData } from "@/hooks/useCafeData";
 import { determinePriceForTier, calculateConsoleMaxQuantity } from "@/lib/ticketService";
 import { checkBookingCapacityWithOverlap } from "@/lib/capacityValidator";

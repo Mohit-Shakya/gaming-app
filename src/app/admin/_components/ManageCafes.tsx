@@ -301,7 +301,7 @@ export default function ManageCafes({ openNewCafe = false }: ManageCafesProps = 
       const fileName = `${selectedCafe}/${Date.now()}.${fileExt}`;
 
       // Upload to Supabase Storage
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from("cafe_images")
         .upload(fileName, file, {
           cacheControl: "3600",
@@ -563,19 +563,7 @@ export default function ManageCafes({ openNewCafe = false }: ManageCafesProps = 
     letterSpacing: 0.5,
   };
 
-  const saveButtonStyle: React.CSSProperties = {
-    padding: "10px 18px",
-    borderRadius: 8,
-    border: "none",
-    background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
-    color: "white",
-    fontFamily: fonts.heading,
-    fontSize: 12,
-    letterSpacing: 1,
-    textTransform: "uppercase",
-    cursor: "pointer",
-    fontWeight: 600,
-  };
+  // Unused style - removed to fix lint warning
 
   if (loading) {
     return (

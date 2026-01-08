@@ -141,6 +141,8 @@ function BookingSuccessContent() {
     };
   }, [bookingId]);
 
+  // Unused variable - kept for potential future use
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const totalTickets = useMemo(() => {
     if (!data) return 0;
     return data.items.reduce((sum, item) => sum + (item.quantity ?? 0), 0);

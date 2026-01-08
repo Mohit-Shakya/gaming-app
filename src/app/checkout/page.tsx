@@ -98,24 +98,29 @@ export default function CheckoutPage() {
 
   // Load draft from sessionStorage
   useEffect(() => {
-    try {
-      const raw =
-        typeof window !== "undefined"
-          ? window.sessionStorage.getItem("checkoutDraft")
-          : null;
-      if (!raw) {
-        setError("No booking in progress.");
+    // Load checkout data from sessionStorage
+    const loadCheckoutData = () => {
+      try {
+        const raw =
+          typeof window !== "undefined"
+            ? window.sessionStorage.getItem("checkoutDraft")
+            : null;
+        if (!raw) {
+          setError("No booking in progress.");
+          setLoading(false);
+          return;
+        }
+        const parsed = JSON.parse(raw) as CheckoutDraft;
+        setDraft(parsed);
         setLoading(false);
-        return;
+      } catch (err) {
+        console.error("Failed to read checkoutDraft", err);
+        setError("Could not load booking details.");
+        setLoading(false);
       }
-      const parsed = JSON.parse(raw) as CheckoutDraft;
-      setDraft(parsed);
-      setLoading(false);
-    } catch (err) {
-      console.error("Failed to read checkoutDraft", err);
-      setError("Could not load booking details.");
-      setLoading(false);
-    }
+    };
+
+    loadCheckoutData();
   }, []);
 
   async function handlePlaceOrder() {

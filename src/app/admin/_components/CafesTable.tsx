@@ -237,7 +237,7 @@ export default function CafesTable() {
           No cafés yet
         </p>
         <p style={{ margin: 0, fontSize: 13 }}>
-          Once café owners sign up and add their cafés, you'll see them listed
+          Once café owners sign up and add their cafés, you&apos;ll see them listed
           here.
         </p>
       </div>
