@@ -1309,7 +1309,7 @@ export default function BookingPage() {
         }
 
         .loading-container {
-          color: ${colors.blue};
+          color: ${colors.cyan};
         }
 
         .loading-text {
