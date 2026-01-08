@@ -2217,13 +2217,21 @@ export default function OwnerDashboardPage() {
         booking_id: booking.id,
         console: item.console,
         quantity: item.quantity,
+        price: item.price,
       }));
+
+      console.log('[Quick Booking] Items to insert:', itemsToInsert);
 
       const { error: itemsError } = await supabase
         .from("booking_items")
         .insert(itemsToInsert);
 
-      if (itemsError) throw itemsError;
+      if (itemsError) {
+        console.error('[Quick Booking] Error inserting booking items:', itemsError);
+        throw itemsError;
+      }
+
+      console.log('[Quick Booking] Booking items inserted successfully');
 
       alert("Bulk booking created successfully!");
 
