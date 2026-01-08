@@ -1,631 +1,945 @@
-// src/app/onboarding/page.tsx
+// src/app/dashboard/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import useUser from "@/hooks/useUser";
-import { colors, fonts } from "@/lib/constants";
+import {
+  Calendar,
+  Clock,
+  MapPin,
+  DollarSign,
+  CheckCircle,
+  XCircle,
+  Clock4,
+  Gamepad2,
+  TrendingUp,
+  Zap,
+  Award,
+  Users,
+  ChevronRight,
+  ExternalLink,
+  Loader2,
+  AlertCircle,
+  History,
+  CalendarCheck,
+  CreditCard,
+  Sparkles,
+  Crown
+} from "lucide-react";
 
-export default function OnboardingPage() {
+type BookingRow = {
+  id: string;
+  cafe_id: string | null;
+  user_id?: string | null;
+  booking_date?: string | null;
+  start_time?: string | null;
+  end_time?: string | null;
+  total_amount?: number | null;
+  status?: string | null;
+  created_at?: string | null;
+  hours?: number | null;
+};
+
+type CafeRow = {
+  id: string;
+  name: string;
+  address?: string | null;
+  city?: string | null;
+  cover_url?: string | null;
+};
+
+type BookingWithCafe = BookingRow & { cafe?: CafeRow | null };
+
+export default function DashboardPage() {
   const router = useRouter();
-  const { user, loading: userLoading } = useUser();
 
-  // Form fields
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [dob, setDob] = useState(""); // Stored in YYYY-MM-DD format for database
-  const [dobDisplay, setDobDisplay] = useState(""); // Displayed in DD/MM/YYYY format for user
+  const [bookings, setBookings] = useState<BookingWithCafe[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [cancelingId, setCancelingId] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string>("");
+  const [activeTab, setActiveTab] = useState<"upcoming" | "history">("upcoming");
 
-  // UI states
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [checkingProfile, setCheckingProfile] = useState(true);
-
-  // Redirect to login if not authenticated
+  // Load user + bookings
   useEffect(() => {
-    if (!userLoading && !user) {
-      router.replace("/login");
-    }
-  }, [userLoading, user, router]);
+    let cancelled = false;
 
-  // Check if profile is already complete
-  useEffect(() => {
-    async function checkProfile() {
-      if (!user) return;
-
+    async function load() {
       try {
-        setCheckingProfile(true);
+        setLoading(true);
+        setErrorMsg(null);
 
-        const { data, error } = await supabase
-          .from("profiles")
-          .select("first_name, last_name, phone, date_of_birth, onboarding_complete")
-          .eq("id", user.id)
-          .maybeSingle();
+        const {
+          data: { user },
+          error: authError,
+        } = await supabase.auth.getUser();
 
-        if (error) {
-          console.error("Error checking profile:", error);
-          setCheckingProfile(false);
+        if (authError) {
+          console.error("[Dashboard] auth error:", authError);
+          throw authError;
+        }
+
+        if (!user) {
+          router.replace("/login");
           return;
         }
 
-        // If profile is complete, redirect to home or intended destination
-        if (data?.onboarding_complete) {
-          const redirectTo = sessionStorage.getItem("redirectAfterOnboarding") || "/";
-          sessionStorage.removeItem("redirectAfterOnboarding");
-          router.replace(redirectTo);
+        // Get user name from metadata
+        const name = user.user_metadata?.full_name || user.email?.split("@")[0] || "Gamer";
+        setUserName(name);
+
+        const { data: bookingRows, error: bookingError } = await supabase
+          .from("bookings")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("booking_date", { ascending: false })
+          .limit(50);
+
+        if (bookingError) {
+          console.error("Supabase bookingError:", bookingError);
+          throw bookingError;
+        }
+
+        if (!bookingRows || bookingRows.length === 0) {
+          if (!cancelled) setBookings([]);
           return;
         }
 
-        // Pre-fill with existing data if any
-        if (data) {
-          setFirstName(data.first_name || "");
-          setLastName(data.last_name || "");
-          setPhone(data.phone || "");
-          setDob(data.date_of_birth || "");
+        const cafeIds = Array.from(
+          new Set(
+            bookingRows
+              .map((b: BookingRow) => b.cafe_id)
+              .filter((id): id is string => !!id)
+          )
+        );
 
-          // Convert YYYY-MM-DD to DD/MM/YYYY for display
-          if (data.date_of_birth) {
-            const [year, month, day] = data.date_of_birth.split("-");
-            setDobDisplay(`${day}/${month}/${year}`);
-          } else {
-            setDobDisplay("");
+        const cafeMap = new Map<string, CafeRow>();
+
+        if (cafeIds.length > 0) {
+          const { data: cafeRows, error: cafeError } = await supabase
+            .from("cafes")
+            .select("id, name, address, city, cover_url")
+            .in("id", cafeIds);
+
+          if (cafeError) {
+            console.error("Supabase cafeError:", cafeError);
+            throw cafeError;
           }
+
+          (cafeRows || []).forEach((c: CafeRow) => {
+            cafeMap.set(c.id, c);
+          });
         }
 
-        // Pre-fill from Google auth metadata if available
-        if (user.user_metadata?.full_name && !data?.first_name) {
-          const nameParts = user.user_metadata.full_name.split(" ");
-          setFirstName(nameParts[0] || "");
-          setLastName(nameParts.slice(1).join(" ") || "");
-        }
+        const merged: BookingWithCafe[] = (bookingRows as BookingRow[]).map(
+          (b) => ({
+            ...b,
+            cafe: b.cafe_id ? cafeMap.get(b.cafe_id) ?? null : null,
+          })
+        );
 
+        if (!cancelled) setBookings(merged);
       } catch (err) {
-        console.error("Error:", err);
+        console.error("Error loading dashboard bookings:", err);
+        if (!cancelled) {
+          setErrorMsg("Could not load your bookings. Please try again.");
+        }
       } finally {
-        setCheckingProfile(false);
+        if (!cancelled) setLoading(false);
       }
     }
 
-    if (user) checkProfile();
-  }, [user, router]);
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
 
-  // Handle date input change with automatic formatting
-  function handleDateChange(value: string) {
-    // Remove non-digit characters
-    const digitsOnly = value.replace(/\D/g, "");
+  // Split upcoming vs past
+  const { upcoming, past } = useMemo(() => {
+    if (!bookings.length)
+      return {
+        upcoming: [] as BookingWithCafe[],
+        past: [] as BookingWithCafe[],
+      };
 
-    // Format as DD/MM/YYYY
-    let formatted = "";
-    if (digitsOnly.length > 0) {
-      formatted = digitsOnly.substring(0, 2);
-      if (digitsOnly.length >= 3) {
-        formatted += "/" + digitsOnly.substring(2, 4);
-      }
-      if (digitsOnly.length >= 5) {
-        formatted += "/" + digitsOnly.substring(4, 8);
-      }
-    }
+    const todayStr = new Date().toISOString().slice(0, 10);
 
-    setDobDisplay(formatted);
+    const upcomingBookings = bookings
+      .filter((b) => {
+        const date = b.booking_date ?? "";
+        return date >= todayStr;
+      })
+      .sort((a, b) => (a.booking_date ?? "").localeCompare(b.booking_date ?? ""));
 
-    // Convert to YYYY-MM-DD for database storage if valid
-    if (digitsOnly.length === 8) {
-      const day = digitsOnly.substring(0, 2);
-      const month = digitsOnly.substring(2, 4);
-      const year = digitsOnly.substring(4, 8);
+    const pastBookings = bookings
+      .filter((b) => {
+        const date = b.booking_date ?? "";
+        return date < todayStr;
+      })
+      .sort((a, b) => (b.booking_date ?? "").localeCompare(a.booking_date ?? ""));
 
-      // Basic validation
-      const dayNum = parseInt(day, 10);
-      const monthNum = parseInt(month, 10);
-      const yearNum = parseInt(year, 10);
+    return { upcoming: upcomingBookings, past: pastBookings };
+  }, [bookings]);
 
-      if (dayNum >= 1 && dayNum <= 31 && monthNum >= 1 && monthNum <= 12 && yearNum >= 1900 && yearNum <= 2100) {
-        setDob(`${year}-${month}-${day}`);
-      } else {
-        setDob("");
-      }
-    } else {
-      setDob("");
+  // Stats
+  const stats = useMemo(() => {
+    const total = bookings.length;
+    const confirmed = bookings.filter(b => (b.status || "").toLowerCase() === "confirmed").length;
+    const totalSpent = bookings.reduce((sum, b) => sum + (b.total_amount ?? 0), 0);
+    const totalHours = bookings.reduce((sum, b) => sum + (b.hours ?? 1), 0);
+    return { total, confirmed, totalSpent, totalHours };
+  }, [bookings]);
+
+  function formatDate(dateStr?: string | null) {
+    if (!dateStr) return "Date not set";
+    try {
+      const d = new Date(`${dateStr}T00:00:00`);
+      return d.toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      });
+    } catch {
+      return dateStr;
     }
   }
 
-  // Form validation
-  function validateForm() {
-    if (!firstName.trim()) {
-      setError("Please enter your first name");
-      return false;
-    }
-    if (!lastName.trim()) {
-      setError("Please enter your last name");
-      return false;
-    }
-    if (!phone.trim()) {
-      setError("Please enter your phone number");
-      return false;
-    }
-    if (phone.trim().length < 10) {
-      setError("Please enter a valid phone number");
-      return false;
-    }
-    if (!dob) {
-      setError("Please enter your date of birth");
-      return false;
-    }
-    return true;
+  function formatTime(timeStr?: string | null) {
+    if (!timeStr) return "Time not set";
+    return timeStr;
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!user) return;
+  function getStatusInfo(status?: string | null) {
+    const value = (status || "confirmed").toLowerCase();
+    
+    if (value === "cancelled") {
+      return {
+        label: "Cancelled",
+        bg: "bg-gradient-to-r from-red-500/10 to-red-500/5",
+        border: "border-red-500/20",
+        color: "text-red-400",
+        icon: <XCircle className="w-4 h-4" />,
+      };
+    }
+    if (value === "pending") {
+      return {
+        label: "Pending",
+        bg: "bg-gradient-to-r from-amber-500/10 to-amber-500/5",
+        border: "border-amber-500/20",
+        color: "text-amber-400",
+        icon: <Clock4 className="w-4 h-4" />,
+      };
+    }
+    return {
+      label: "Confirmed",
+      bg: "bg-gradient-to-r from-emerald-500/10 to-emerald-500/5",
+      border: "border-emerald-500/20",
+      color: "text-emerald-400",
+      icon: <CheckCircle className="w-4 h-4" />,
+    };
+  }
 
-    setError(null);
+  function canCancelBooking(b: BookingWithCafe) {
+    const status = (b.status || "").toLowerCase();
+    if (status === "cancelled") return false;
+    if (!b.booking_date) return false;
+    const todayStr = new Date().toISOString().slice(0, 10);
+    return b.booking_date >= todayStr;
+  }
 
-    if (!validateForm()) return;
+  async function handleCancelBooking(id: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    
+    const booking = bookings.find((b) => b.id === id);
+    if (!booking) return;
+    if (!canCancelBooking(booking)) return;
 
-    setSaving(true);
+    const ok = window.confirm(
+      "Are you sure you want to cancel this booking? This cannot be undone."
+    );
+    if (!ok) return;
 
     try {
-      const { error: upsertError } = await supabase.from("profiles").upsert({
-        id: user.id,
-        first_name: firstName.trim(),
-        last_name: lastName.trim(),
-        phone: phone.trim(),
-        date_of_birth: dob,
-        onboarding_complete: true,
-        updated_at: new Date().toISOString(),
-      });
+      setCancelingId(id);
 
-      if (upsertError) {
-        console.error("Error saving profile:", upsertError);
-        setError("Could not save your details. Please try again.");
-        return;
-      }
+      const { error } = await supabase
+        .from("bookings")
+        .update({
+          status: "cancelled",
+          cancelled_at: new Date().toISOString(),
+        })
+        .eq("id", id);
 
-      // Redirect to intended destination or home
-      const redirectTo = sessionStorage.getItem("redirectAfterOnboarding") || "/";
-      sessionStorage.removeItem("redirectAfterOnboarding");
-      router.replace(redirectTo);
+      if (error) throw error;
 
+      setBookings((prev) =>
+        prev.map((b) => (b.id === id ? { ...b, status: "cancelled" } : b))
+      );
     } catch (err) {
-      console.error("Unexpected error:", err);
-      setError("Something went wrong. Please try again.");
+      console.error("Error cancelling booking:", err);
+      alert("Could not cancel booking. Please try again.");
     } finally {
-      setSaving(false);
+      setCancelingId(null);
     }
   }
 
   // Loading state
-  if (userLoading || checkingProfile) {
+  if (loading) {
     return (
-      <main style={{
-        minHeight: "100vh",
-        background: `linear-gradient(180deg, ${colors.dark} 0%, #0a0a10 100%)`,
-        fontFamily: fonts.body,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}>
-        <div style={{ textAlign: "center" }}>
-          <div style={{
-            width: "48px",
-            height: "48px",
-            border: `3px solid ${colors.border}`,
-            borderTopColor: colors.cyan,
-            borderRadius: "50%",
-            margin: "0 auto 16px",
-            animation: "spin 1s linear infinite",
-          }} />
-          <p style={{ color: colors.textSecondary, fontSize: "14px" }}>
-            Setting up your account...
-          </p>
+      <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-950">
+        <div className="max-w-6xl mx-auto px-4 py-8">
+          {/* Skeleton Header */}
+          <div className="mb-8">
+            <div className="h-4 w-32 bg-gray-800 rounded-full mb-2 animate-pulse"></div>
+            <div className="h-8 w-48 bg-gray-800 rounded-lg mb-2 animate-pulse"></div>
+            <div className="h-4 w-64 bg-gray-800 rounded-full animate-pulse"></div>
+          </div>
+
+          {/* Skeleton Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-32 bg-gray-800/50 rounded-2xl animate-pulse"></div>
+            ))}
+          </div>
+
+          {/* Skeleton Tabs */}
+          <div className="flex gap-4 mb-6">
+            <div className="h-10 w-32 bg-gray-800 rounded-lg animate-pulse"></div>
+            <div className="h-10 w-32 bg-gray-800 rounded-lg animate-pulse"></div>
+          </div>
+
+          {/* Skeleton Cards */}
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-32 bg-gray-800/30 rounded-xl animate-pulse"></div>
+            ))}
+          </div>
         </div>
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      </main>
+      </div>
     );
   }
 
-  if (!user) return null;
-
   return (
-    <main style={{
-      minHeight: "100vh",
-      background: `linear-gradient(180deg, ${colors.dark} 0%, #0a0a10 100%)`,
-      fontFamily: fonts.body,
-      color: colors.textPrimary,
-      position: "relative",
-    }}>
-      {/* Background glow */}
-      <div style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: `
-          radial-gradient(ellipse at 50% 0%, rgba(255, 7, 58, 0.1) 0%, transparent 50%),
-          radial-gradient(ellipse at 50% 100%, rgba(0, 240, 255, 0.08) 0%, transparent 50%)
-        `,
-        pointerEvents: "none",
-        zIndex: 0,
-      }} />
+    <>
+      <style jsx global>{`
+        .dashboard-bg {
+          background: linear-gradient(135deg, 
+            #08080c 0%, 
+            #0a0a10 50%, 
+            #08080c 100%);
+          min-height: 100vh;
+        }
 
-      <div style={{
-        maxWidth: "480px",
-        margin: "0 auto",
-        padding: "40px 20px",
-        position: "relative",
-        zIndex: 1,
-      }}>
-        {/* Header */}
-        <header style={{ textAlign: "center", marginBottom: "32px" }}>
-          {/* Logo */}
-          <div style={{
-            width: "80px",
-            height: "80px",
-            margin: "0 auto 20px",
-            background: `linear-gradient(135deg, ${colors.red}20 0%, ${colors.cyan}20 100%)`,
-            borderRadius: "20px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: "40px",
-          }}>
-            🎮
-          </div>
+        .glass-card {
+          background: linear-gradient(145deg, 
+            rgba(16, 16, 22, 0.8) 0%, 
+            rgba(10, 10, 15, 0.9) 100%);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          box-shadow: 
+            0 8px 32px rgba(0, 0, 0, 0.3),
+            inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        }
 
-          <h1 style={{
-            fontFamily: fonts.heading,
-            fontSize: "24px",
-            fontWeight: 700,
-            color: colors.textPrimary,
-            marginBottom: "8px",
-          }}>
-            Welcome to BOOKMYGAME
-          </h1>
+        .stat-card {
+          background: linear-gradient(135deg, 
+            rgba(255, 7, 58, 0.1) 0%,
+            rgba(0, 240, 255, 0.1) 100%);
+          border: 1px solid rgba(255, 7, 58, 0.2);
+          position: relative;
+          overflow: hidden;
+          transition: all 0.3s ease;
+        }
 
-          <p style={{
-            fontSize: "15px",
-            color: colors.textSecondary,
-            lineHeight: 1.5,
-          }}>
-            Let&apos;s set up your profile to get started with booking gaming sessions!
-          </p>
-        </header>
+        .stat-card:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 12px 40px rgba(255, 7, 58, 0.15);
+        }
 
-        {/* Progress indicator */}
-        <div style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: "8px",
-          marginBottom: "32px",
-        }}>
-          <div style={{
-            width: "32px",
-            height: "32px",
-            borderRadius: "50%",
-            background: colors.green,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: "14px",
-            fontWeight: 600,
-            color: "white",
-          }}>
-            ✓
-          </div>
-          <div style={{
-            width: "60px",
-            height: "2px",
-            background: colors.green,
-          }} />
-          <div style={{
-            width: "32px",
-            height: "32px",
-            borderRadius: "50%",
-            background: `linear-gradient(135deg, ${colors.red} 0%, #ff3366 100%)`,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: "14px",
-            fontWeight: 600,
-            color: "white",
-          }}>
-            2
-          </div>
-          <div style={{
-            width: "60px",
-            height: "2px",
-            background: colors.border,
-          }} />
-          <div style={{
-            width: "32px",
-            height: "32px",
-            borderRadius: "50%",
-            background: colors.border,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: "14px",
-            fontWeight: 600,
-            color: colors.textMuted,
-          }}>
-            3
-          </div>
+        .booking-card {
+          background: linear-gradient(145deg, 
+            rgba(16, 16, 22, 0.9) 0%,
+            rgba(10, 10, 15, 0.95) 100%);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          cursor: pointer;
+          position: relative;
+          overflow: hidden;
+        }
+
+        .booking-card::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: linear-gradient(135deg, 
+            rgba(255, 7, 58, 0.1) 0%,
+            rgba(0, 240, 255, 0.05) 100%);
+          opacity: 0;
+          transition: opacity 0.3s ease;
+        }
+
+        .booking-card:hover::before {
+          opacity: 1;
+        }
+
+        .booking-card:hover {
+          border-color: rgba(255, 7, 58, 0.3);
+          transform: translateY(-4px);
+          box-shadow: 
+            0 12px 40px rgba(255, 7, 58, 0.2),
+            0 0 0 1px rgba(255, 7, 58, 0.1);
+        }
+
+        .status-badge {
+          background: linear-gradient(135deg, 
+            rgba(34, 197, 94, 0.15) 0%,
+            rgba(34, 197, 94, 0.05) 100%);
+          border: 1px solid rgba(34, 197, 94, 0.2);
+        }
+
+        .cancel-btn {
+          background: linear-gradient(135deg, 
+            rgba(239, 68, 68, 0.15) 0%,
+            rgba(239, 68, 68, 0.05) 100%);
+          border: 1px solid rgba(239, 68, 68, 0.2);
+          transition: all 0.2s ease;
+        }
+
+        .cancel-btn:hover {
+          background: rgba(239, 68, 68, 0.25);
+          transform: scale(1.05);
+        }
+
+        .tab-button {
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          transition: all 0.3s ease;
+        }
+
+        .tab-button.active {
+          background: linear-gradient(135deg, 
+            rgba(255, 7, 58, 0.2) 0%,
+            rgba(0, 240, 255, 0.1) 100%);
+          border-color: rgba(255, 7, 58, 0.3);
+          box-shadow: 0 4px 20px rgba(255, 7, 58, 0.15);
+        }
+
+        .empty-state {
+          background: linear-gradient(145deg, 
+            rgba(16, 16, 22, 0.5) 0%,
+            rgba(10, 10, 15, 0.6) 100%);
+          border: 2px dashed rgba(255, 255, 255, 0.1);
+        }
+
+        .primary-btn {
+          background: linear-gradient(135deg, 
+            #ff073a 0%, 
+            #ff3366 100%);
+          box-shadow: 
+            0 8px 32px rgba(255, 7, 58, 0.3),
+            inset 0 1px 0 rgba(255, 255, 255, 0.2);
+          transition: all 0.3s ease;
+        }
+
+        .primary-btn:hover {
+          transform: translateY(-2px);
+          box-shadow: 
+            0 12px 40px rgba(255, 7, 58, 0.4),
+            inset 0 1px 0 rgba(255, 255, 255, 0.3);
+        }
+
+        .primary-btn:active {
+          transform: translateY(0);
+        }
+
+        /* Mobile Optimizations */
+        @media (max-width: 768px) {
+          .booking-card {
+            padding: 12px !important;
+            border-radius: 16px !important;
+          }
+          
+          .booking-card:hover {
+            transform: none;
+            box-shadow: none;
+          }
+          
+          .stat-card {
+            padding: 16px !important;
+          }
+          
+          .booking-info-grid {
+            grid-template-columns: 1fr !important;
+            gap: 8px !important;
+          }
+          
+          .booking-actions {
+            flex-direction: column !important;
+            gap: 8px !important;
+            width: 100% !important;
+          }
+          
+          .booking-actions button {
+            width: 100% !important;
+            justify-content: center !important;
+          }
+          
+          .tab-button {
+            padding: 12px 16px !important;
+            font-size: 14px !important;
+          }
+          
+          .primary-btn {
+            padding: 14px 20px !important;
+            font-size: 14px !important;
+          }
+        }
+        
+        @media (max-width: 640px) {
+          .stats-grid {
+            grid-template-columns: 1fr 1fr !important;
+            gap: 12px !important;
+          }
+          
+          .booking-details {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 16px !important;
+          }
+          
+          .booking-header {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 12px !important;
+          }
+          
+          .booking-price {
+            align-self: flex-start !important;
+            text-align: left !important;
+          }
+          
+          .mobile-hidden {
+            display: none !important;
+          }
+          
+          .mobile-full-width {
+            width: 100% !important;
+          }
+          
+          .mobile-text-sm {
+            font-size: 14px !important;
+          }
+          
+          .mobile-text-xs {
+            font-size: 12px !important;
+          }
+        }
+        
+        @media (max-width: 480px) {
+          .stats-grid {
+            grid-template-columns: 1fr !important;
+          }
+          
+          .tab-buttons {
+            flex-direction: column !important;
+            gap: 8px !important;
+          }
+          
+          .tab-button {
+            width: 100% !important;
+            text-align: center !important;
+          }
+          
+          .status-badge {
+            padding: 4px 8px !important;
+            font-size: 11px !important;
+          }
+        }
+      `}</style>
+
+      <div className="dashboard-bg text-white">
+        {/* Background Effects */}
+        <div className="fixed inset-0 pointer-events-none">
+          <div className="absolute top-0 left-1/4 w-96 h-96 bg-[#ff073a]/10 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-[#00f0ff]/10 rounded-full blur-3xl"></div>
         </div>
 
-        {/* Form Card */}
-        <section style={{
-          background: colors.darkCard,
-          border: `1px solid ${colors.border}`,
-          borderRadius: "24px",
-          padding: "28px 24px",
-          position: "relative",
-          overflow: "hidden",
-        }}>
-          {/* Top accent */}
-          <div style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            height: "3px",
-            background: `linear-gradient(90deg, ${colors.red}, ${colors.cyan})`,
-          }} />
+        <div className="max-w-6xl mx-auto px-4 py-8 relative z-10">
+          {/* Header - Mobile Optimized */}
+          <header className="mb-10">
+            <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+              <div>
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2 rounded-xl bg-gradient-to-br from-[#ff073a]/20 to-[#00f0ff]/20">
+                    <Gamepad2 className="w-6 h-6 text-white" />
+                  </div>
+                  <span className="text-sm text-zinc-400 uppercase tracking-wider mobile-text-xs">
+                    My Dashboard
+                  </span>
+                </div>
+                <h1 className="text-2xl md:text-4xl font-bold mb-2 mobile-text-sm" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                  Welcome back, <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#ff073a] to-[#00f0ff]">{userName}</span>!
+                </h1>
+                <p className="text-zinc-400 mobile-text-xs" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  Manage your gaming sessions and track your activity
+                </p>
+              </div>
+              
+              <button
+                onClick={() => router.push("/")}
+                className="primary-btn flex items-center justify-center gap-2 px-4 py-3 md:px-6 md:py-3 rounded-xl font-bold mobile-full-width md:w-auto"
+                style={{ fontFamily: 'Orbitron, sans-serif' }}
+              >
+                <Zap className="w-4 h-4" />
+                <span>Book New Session</span>
+                <ChevronRight className="w-4 h-4 mobile-hidden" />
+              </button>
+            </div>
 
-          <h2 style={{
-            fontSize: "16px",
-            fontWeight: 600,
-            color: colors.textPrimary,
-            marginBottom: "20px",
-            display: "flex",
-            alignItems: "center",
-            gap: "10px",
-          }}>
-            <span>👤</span> Complete Your Profile
-          </h2>
+            {/* Stats Grid - Mobile Optimized */}
+            <div className="stats-grid grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-8">
+              <div className="stat-card rounded-2xl p-4 md:p-5">
+                <div className="flex items-center justify-between mb-3 md:mb-4">
+                  <CalendarCheck className="w-6 h-6 md:w-8 md:h-8 text-[#ff073a]" />
+                  <span className="text-xs text-zinc-400 mobile-text-xs">Total</span>
+                </div>
+                <div className="text-xl md:text-2xl font-bold mb-1 mobile-text-sm" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                  {stats.total}
+                </div>
+                <div className="text-sm text-zinc-400 mobile-text-xs">Bookings</div>
+              </div>
 
-          {/* Error message */}
-          {error && (
-            <div style={{
-              padding: "12px 16px",
-              background: "rgba(239, 68, 68, 0.15)",
-              border: "1px solid rgba(239, 68, 68, 0.3)",
-              borderRadius: "10px",
-              marginBottom: "20px",
-              display: "flex",
-              alignItems: "center",
-              gap: "10px",
-            }}>
-              <span style={{ fontSize: "16px" }}>⚠️</span>
-              <p style={{ fontSize: "13px", color: "#ef4444", margin: 0 }}>
-                {error}
+              <div className="stat-card rounded-2xl p-4 md:p-5">
+                <div className="flex items-center justify-between mb-3 md:mb-4">
+                  <TrendingUp className="w-6 h-6 md:w-8 md:h-8 text-[#00f0ff]" />
+                  <span className="text-xs text-zinc-400 mobile-text-xs">Upcoming</span>
+                </div>
+                <div className="text-xl md:text-2xl font-bold mb-1 mobile-text-sm" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                  {upcoming.length}
+                </div>
+                <div className="text-sm text-zinc-400 mobile-text-xs">Sessions</div>
+              </div>
+
+              <div className="stat-card rounded-2xl p-4 md:p-5">
+                <div className="flex items-center justify-between mb-3 md:mb-4">
+                  <Clock className="w-6 h-6 md:w-8 md:h-8 text-emerald-400" />
+                  <span className="text-xs text-zinc-400 mobile-text-xs">Hours</span>
+                </div>
+                <div className="text-xl md:text-2xl font-bold mb-1 mobile-text-sm" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                  {stats.totalHours}
+                </div>
+                <div className="text-sm text-zinc-400 mobile-text-xs">Gaming Time</div>
+              </div>
+
+              <div className="stat-card rounded-2xl p-4 md:p-5">
+                <div className="flex items-center justify-between mb-3 md:mb-4">
+                  <CreditCard className="w-6 h-6 md:w-8 md:h-8 text-amber-400" />
+                  <span className="text-xs text-zinc-400 mobile-text-xs">Spent</span>
+                </div>
+                <div className="text-xl md:text-2xl font-bold mb-1 mobile-text-sm" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                  ₹{stats.totalSpent}
+                </div>
+                <div className="text-sm text-zinc-400 mobile-text-xs">Total</div>
+              </div>
+            </div>
+          </header>
+
+          {/* Error Message */}
+          {errorMsg && (
+            <div className="glass-card rounded-2xl p-4 mb-8 flex items-start gap-3 border-l-4 border-red-500">
+              <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-red-300" style={{ fontFamily: 'Inter, sans-serif' }}>
+                {errorMsg}
               </p>
             </div>
           )}
 
-          <form onSubmit={handleSubmit}>
-            {/* Name fields */}
-            <div style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "14px",
-              marginBottom: "16px",
-            }}>
-              <div>
-                <label style={{
-                  display: "block",
-                  fontSize: "12px",
-                  color: colors.textMuted,
-                  marginBottom: "8px",
-                  fontWeight: 500,
-                }}>
-                  First Name <span style={{ color: colors.red }}>*</span>
-                </label>
-                <input
-                  type="text"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  placeholder="John"
-                  style={{
-                    width: "100%",
-                    padding: "14px 16px",
-                    background: "rgba(255, 255, 255, 0.05)",
-                    border: `1px solid ${colors.border}`,
-                    borderRadius: "12px",
-                    color: colors.textPrimary,
-                    fontSize: "15px",
-                    fontFamily: fonts.body,
-                    outline: "none",
-                    boxSizing: "border-box",
-                    transition: "border-color 0.2s ease",
-                  }}
-                />
-              </div>
-              <div>
-                <label style={{
-                  display: "block",
-                  fontSize: "12px",
-                  color: colors.textMuted,
-                  marginBottom: "8px",
-                  fontWeight: 500,
-                }}>
-                  Last Name <span style={{ color: colors.red }}>*</span>
-                </label>
-                <input
-                  type="text"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  placeholder="Doe"
-                  style={{
-                    width: "100%",
-                    padding: "14px 16px",
-                    background: "rgba(255, 255, 255, 0.05)",
-                    border: `1px solid ${colors.border}`,
-                    borderRadius: "12px",
-                    color: colors.textPrimary,
-                    fontSize: "15px",
-                    fontFamily: fonts.body,
-                    outline: "none",
-                    boxSizing: "border-box",
-                    transition: "border-color 0.2s ease",
-                  }}
-                />
-              </div>
+          {/* Main Content */}
+          <main>
+            {/* Tabs - Mobile Optimized */}
+            <div className="flex tab-buttons gap-2 mb-8">
+              <button
+                onClick={() => setActiveTab("upcoming")}
+                className={`tab-button flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-3 md:px-6 md:py-3 rounded-xl font-medium ${activeTab === "upcoming" ? "active" : ""}`}
+                style={{ fontFamily: 'Inter, sans-serif' }}
+              >
+                <CalendarCheck className="w-4 h-4" />
+                Upcoming ({upcoming.length})
+              </button>
+              <button
+                onClick={() => setActiveTab("history")}
+                className={`tab-button flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-3 md:px-6 md:py-3 rounded-xl font-medium ${activeTab === "history" ? "active" : ""}`}
+                style={{ fontFamily: 'Inter, sans-serif' }}
+              >
+                <History className="w-4 h-4" />
+                History ({past.length})
+              </button>
             </div>
 
-            {/* Phone */}
-            <div style={{ marginBottom: "16px" }}>
-              <label style={{
-                display: "block",
-                fontSize: "12px",
-                color: colors.textMuted,
-                marginBottom: "8px",
-                fontWeight: 500,
-              }}>
-                Phone Number <span style={{ color: colors.red }}>*</span>
-              </label>
-              <div style={{ position: "relative" }}>
-                <span style={{
-                  position: "absolute",
-                  left: "16px",
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  color: colors.textMuted,
-                  fontSize: "15px",
-                }}>
-                  +91
-                </span>
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                  placeholder="98765 43210"
-                  style={{
-                    width: "100%",
-                    padding: "14px 16px 14px 52px",
-                    background: "rgba(255, 255, 255, 0.05)",
-                    border: `1px solid ${colors.border}`,
-                    borderRadius: "12px",
-                    color: colors.textPrimary,
-                    fontSize: "15px",
-                    fontFamily: fonts.body,
-                    outline: "none",
-                    boxSizing: "border-box",
-                    transition: "border-color 0.2s ease",
-                  }}
-                />
-              </div>
-            </div>
-
-            {/* DOB */}
-            <div style={{ marginBottom: "24px" }}>
-              <label style={{
-                display: "block",
-                fontSize: "12px",
-                color: colors.textMuted,
-                marginBottom: "8px",
-                fontWeight: 500,
-              }}>
-                Date of Birth (DD/MM/YYYY) <span style={{ color: colors.red }}>*</span>
-              </label>
-              <input
-                type="text"
-                value={dobDisplay}
-                onChange={(e) => handleDateChange(e.target.value)}
-                placeholder="01/01/2000"
-                maxLength={10}
-                inputMode="numeric"
-                style={{
-                  width: "100%",
-                  padding: "14px 16px",
-                  background: "rgba(255, 255, 255, 0.05)",
-                  border: `1px solid ${colors.border}`,
-                  borderRadius: "12px",
-                  color: colors.textPrimary,
-                  fontSize: "15px",
-                  fontFamily: fonts.body,
-                  outline: "none",
-                  boxSizing: "border-box",
-                  transition: "border-color 0.2s ease",
-                }}
-              />
-            </div>
-
-            {/* Submit button */}
-            <button
-              type="submit"
-              disabled={saving}
-              style={{
-                width: "100%",
-                padding: "16px 24px",
-                background: saving
-                  ? "rgba(255, 255, 255, 0.1)"
-                  : `linear-gradient(135deg, ${colors.red} 0%, #ff3366 100%)`,
-                border: "none",
-                borderRadius: "14px",
-                color: "white",
-                fontFamily: fonts.heading,
-                fontSize: "14px",
-                fontWeight: 600,
-                textTransform: "uppercase",
-                letterSpacing: "1px",
-                cursor: saving ? "not-allowed" : "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "10px",
-                boxShadow: saving ? "none" : `0 8px 32px ${colors.red}40`,
-                transition: "all 0.2s ease",
-              }}
-            >
-              {saving ? (
-                <>
-                  <span style={{
-                    width: "18px",
-                    height: "18px",
-                    border: "2px solid rgba(255,255,255,0.3)",
-                    borderTopColor: "white",
-                    borderRadius: "50%",
-                    animation: "spin 1s linear infinite",
-                  }} />
-                  Saving...
-                </>
+            {/* Booking List */}
+            {activeTab === "upcoming" ? (
+              upcoming.length === 0 ? (
+                <div className="empty-state rounded-2xl p-8 md:p-12 text-center">
+                  <div className="w-16 h-16 md:w-24 md:h-24 mx-auto mb-4 md:mb-6 rounded-full bg-gradient-to-br from-[#ff073a]/10 to-[#00f0ff]/10 flex items-center justify-center">
+                    <CalendarCheck className="w-8 h-8 md:w-12 md:h-12 text-zinc-600" />
+                  </div>
+                  <h3 className="text-lg md:text-xl font-bold mb-3 mobile-text-sm" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                    No Upcoming Sessions
+                  </h3>
+                  <p className="text-zinc-400 mb-6 md:mb-8 max-w-md mx-auto mobile-text-xs" style={{ fontFamily: 'Inter, sans-serif' }}>
+                    You don't have any upcoming gaming sessions. Book your first session to start your gaming journey!
+                  </p>
+                  <button
+                    onClick={() => router.push("/")}
+                    className="primary-btn inline-flex items-center justify-center gap-2 px-6 py-3 md:px-8 md:py-3 rounded-xl font-bold mobile-full-width md:w-auto"
+                    style={{ fontFamily: 'Orbitron, sans-serif' }}
+                  >
+                    <Zap className="w-4 h-4" />
+                    Find Gaming Cafés
+                  </button>
+                </div>
               ) : (
-                <>
-                  🎮 Start Gaming
-                </>
-              )}
-            </button>
-          </form>
-        </section>
+                <div className="space-y-3 md:space-y-4">
+                  {upcoming.map((booking) => {
+                    const statusInfo = getStatusInfo(booking.status);
+                    const canCancel = canCancelBooking(booking);
+                    
+                    return (
+                      <div
+                        key={booking.id}
+                        onClick={() => router.push(`/bookings/${booking.id}`)}
+                        className="booking-card rounded-2xl p-4 md:p-5"
+                      >
+                        <div className="booking-details flex flex-col md:flex-row md:items-center gap-3 md:gap-5">
+                          {/* Left side - Café Info */}
+                          <div className="flex-1">
+                            <div className="booking-header flex flex-col md:flex-row md:items-start gap-3 md:gap-4">
+                              <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-gradient-to-br from-[#ff073a]/20 to-[#00f0ff]/20 flex items-center justify-center flex-shrink-0">
+                                <Gamepad2 className="w-5 h-5 md:w-6 md:h-6 text-white" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-3 mb-2">
+                                  <h3 className="text-base md:text-lg font-bold truncate mobile-text-sm" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                                    {booking.cafe?.name || "Gaming Café"}
+                                  </h3>
+                                  <div className={`status-badge inline-flex items-center gap-1.5 px-2 py-1 md:px-3 md:py-1 rounded-full text-xs font-semibold ${statusInfo.color} w-fit`}>
+                                    {statusInfo.icon}
+                                    {statusInfo.label}
+                                  </div>
+                                </div>
+                                <div className="booking-info-grid grid grid-cols-1 md:flex md:flex-wrap gap-2 md:gap-4 text-sm text-zinc-400 mobile-text-xs">
+                                  <div className="flex items-center gap-1.5">
+                                    <Calendar className="w-4 h-4" />
+                                    <span style={{ fontFamily: 'Inter, sans-serif' }}>
+                                      {formatDate(booking.booking_date)}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5">
+                                    <Clock className="w-4 h-4" />
+                                    <span style={{ fontFamily: 'Inter, sans-serif' }}>
+                                      {formatTime(booking.start_time)} - {formatTime(booking.end_time)}
+                                    </span>
+                                  </div>
+                                  {booking.cafe?.city && (
+                                    <div className="flex items-center gap-1.5 mobile-hidden md:flex">
+                                      <MapPin className="w-4 h-4" />
+                                      <span style={{ fontFamily: 'Inter, sans-serif' }}>
+                                        {booking.cafe.city}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
 
-        {/* Info note */}
-        <p style={{
-          textAlign: "center",
-          fontSize: "12px",
-          color: colors.textMuted,
-          marginTop: "20px",
-          lineHeight: 1.5,
-        }}>
-          Your details help us provide a better booking experience.<br />
-          You can update them anytime from your profile.
-        </p>
+                          {/* Right side - Price & Actions */}
+                          <div className="booking-price flex flex-col md:items-end gap-2 md:gap-3">
+                            <div className="flex items-center gap-2">
+                              <DollarSign className="w-4 h-4 md:w-5 md:h-5 text-[#00f0ff]" />
+                              <span className="text-lg md:text-2xl font-bold text-white mobile-text-sm" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                                ₹{booking.total_amount || 0}
+                              </span>
+                              <span className="text-sm text-zinc-400 mobile-text-xs mobile-hidden md:inline">
+                                for {booking.hours || 1} hour{booking.hours !== 1 ? 's' : ''}
+                              </span>
+                            </div>
+                            
+                            <div className="booking-actions flex gap-2">
+                              {canCancel && (
+                                <button
+                                  onClick={(e) => handleCancelBooking(booking.id, e)}
+                                  disabled={cancelingId === booking.id}
+                                  className="cancel-btn flex items-center justify-center gap-2 px-3 py-2 md:px-4 md:py-2 rounded-lg text-sm font-medium mobile-full-width"
+                                  style={{ fontFamily: 'Inter, sans-serif' }}
+                                >
+                                  {cancelingId === booking.id ? (
+                                    <>
+                                      <Loader2 className="w-4 h-4 animate-spin" />
+                                      <span className="mobile-hidden md:inline">Cancelling...</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <XCircle className="w-4 h-4" />
+                                      <span>Cancel</span>
+                                    </>
+                                  )}
+                                </button>
+                              )}
+                              <button
+                                onClick={() => router.push(`/bookings/${booking.id}`)}
+                                className="flex items-center justify-center gap-2 px-3 py-2 md:px-4 md:py-2 rounded-lg bg-white/5 hover:bg-white/10 text-sm font-medium transition-colors mobile-full-width"
+                                style={{ fontFamily: 'Inter, sans-serif' }}
+                              >
+                                <span>Details</span>
+                                <ExternalLink className="w-4 h-4 mobile-hidden" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )
+            ) : (
+              // History Tab
+              past.length === 0 ? (
+                <div className="empty-state rounded-2xl p-8 md:p-12 text-center">
+                  <div className="w-16 h-16 md:w-24 md:h-24 mx-auto mb-4 md:mb-6 rounded-full bg-gradient-to-br from-[#ff073a]/10 to-[#00f0ff]/10 flex items-center justify-center">
+                    <History className="w-8 h-8 md:w-12 md:h-12 text-zinc-600" />
+                  </div>
+                  <h3 className="text-lg md:text-xl font-bold mb-3 mobile-text-sm" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                    No Gaming History
+                  </h3>
+                  <p className="text-zinc-400 mb-6 md:mb-8 max-w-md mx-auto mobile-text-xs" style={{ fontFamily: 'Inter, sans-serif' }}>
+                    Your gaming history will appear here after your first session. Start gaming to build your history!
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3 md:space-y-4">
+                  {past.map((booking) => {
+                    const statusInfo = getStatusInfo(booking.status);
+                    
+                    return (
+                      <div
+                        key={booking.id}
+                        onClick={() => router.push(`/bookings/${booking.id}`)}
+                        className="booking-card rounded-2xl p-4 md:p-5 opacity-80 hover:opacity-100 transition-opacity"
+                      >
+                        <div className="booking-details flex flex-col md:flex-row md:items-center gap-3 md:gap-5">
+                          {/* Left side - Café Info */}
+                          <div className="flex-1">
+                            <div className="booking-header flex flex-col md:flex-row md:items-start gap-3 md:gap-4">
+                              <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-gradient-to-br from-[#ff073a]/10 to-[#00f0ff]/10 flex items-center justify-center flex-shrink-0">
+                                <Gamepad2 className="w-5 h-5 md:w-6 md:h-6 text-zinc-500" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-3 mb-2">
+                                  <h3 className="text-base md:text-lg font-bold truncate mobile-text-sm" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                                    {booking.cafe?.name || "Gaming Café"}
+                                  </h3>
+                                  <div className={`status-badge inline-flex items-center gap-1.5 px-2 py-1 md:px-3 md:py-1 rounded-full text-xs font-semibold ${statusInfo.color} w-fit`}>
+                                    {statusInfo.icon}
+                                    {statusInfo.label}
+                                  </div>
+                                </div>
+                                <div className="booking-info-grid grid grid-cols-1 md:flex md:flex-wrap gap-2 md:gap-4 text-sm text-zinc-400 mobile-text-xs">
+                                  <div className="flex items-center gap-1.5">
+                                    <Calendar className="w-4 h-4" />
+                                    <span style={{ fontFamily: 'Inter, sans-serif' }}>
+                                      {formatDate(booking.booking_date)}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5">
+                                    <Clock className="w-4 h-4" />
+                                    <span style={{ fontFamily: 'Inter, sans-serif' }}>
+                                      {formatTime(booking.start_time)} - {formatTime(booking.end_time)}
+                                    </span>
+                                  </div>
+                                  {booking.cafe?.city && (
+                                    <div className="flex items-center gap-1.5 mobile-hidden md:flex">
+                                      <MapPin className="w-4 h-4" />
+                                      <span style={{ fontFamily: 'Inter, sans-serif' }}>
+                                        {booking.cafe.city}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Right side - Price */}
+                          <div className="booking-price flex flex-col md:items-end">
+                            <div className="flex items-center gap-2 mb-1 md:mb-2">
+                              <DollarSign className="w-4 h-4 md:w-5 md:h-5 text-[#00f0ff]" />
+                              <span className="text-lg md:text-2xl font-bold text-white mobile-text-sm" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                                ₹{booking.total_amount || 0}
+                              </span>
+                            </div>
+                            <div className="text-sm text-zinc-400 mobile-text-xs">
+                              Completed on {formatDate(booking.booking_date)}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )
+            )}
+          </main>
+
+          {/* Stats Bar - Mobile Optimized */}
+          {bookings.length > 0 && (
+            <div className="glass-card rounded-2xl p-4 md:p-6 mt-8 md:mt-12">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6">
+                <div>
+                  <h3 className="text-base md:text-lg font-bold mb-1 md:mb-2 mobile-text-sm" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                    Your Gaming Stats
+                  </h3>
+                  <p className="text-zinc-400 text-xs md:text-sm mobile-text-xs" style={{ fontFamily: 'Inter, sans-serif' }}>
+                    Track your gaming journey and achievements
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-3 md:gap-4">
+                  <div className="text-center">
+                    <div className="text-lg md:text-2xl font-bold text-[#ff073a] mobile-text-sm" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                      {stats.total}
+                    </div>
+                    <div className="text-xs md:text-sm text-zinc-400 mobile-text-xs">Total Sessions</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-lg md:text-2xl font-bold text-[#00f0ff] mobile-text-sm" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                      {stats.totalHours}
+                    </div>
+                    <div className="text-xs md:text-sm text-zinc-400 mobile-text-xs">Hours Played</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-lg md:text-2xl font-bold text-emerald-400 mobile-text-sm" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                      ₹{stats.totalSpent}
+                    </div>
+                    <div className="text-xs md:text-sm text-zinc-400 mobile-text-xs">Total Spent</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-lg md:text-2xl font-bold text-amber-400 mobile-text-sm" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                      {stats.confirmed}
+                    </div>
+                    <div className="text-xs md:text-sm text-zinc-400 mobile-text-xs">Confirmed</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
-
-      <style>{`
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-        input::placeholder {
-          color: ${colors.textMuted};
-        }
-        input:focus {
-          border-color: ${colors.cyan} !important;
-        }
-      `}</style>
-    </main>
+    </>
   );
 }

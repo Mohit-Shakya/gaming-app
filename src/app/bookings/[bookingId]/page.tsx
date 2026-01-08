@@ -6,6 +6,29 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import { colors, fonts } from "@/lib/constants";
+import {
+  ArrowLeft,
+  Gamepad2,
+  Calendar,
+  Clock,
+  MapPin,
+  Instagram,
+  Ticket,
+  CreditCard,
+  Info,
+  CheckCircle,
+  XCircle,
+  Loader2,
+  Users,
+  Hash,
+  Star,
+  ExternalLink,
+  AlertTriangle,
+  History,
+  Sparkles,
+  ShieldCheck,
+  Share2
+} from "lucide-react";
 
 type BookingRow = {
   id: string;
@@ -16,6 +39,8 @@ type BookingRow = {
   total_amount: number | null;
   status: string | null;
   created_at: string | null;
+  duration?: number | null;
+  source?: string | null;
 };
 
 type BookingItemRow = {
@@ -33,24 +58,12 @@ type CafeRow = {
   name: string;
   google_maps_url?: string | null;
   instagram_url?: string | null;
+  address?: string | null;
 };
 
 type BookingWithRelations = BookingRow & {
   items: BookingItemRow[];
   cafe: CafeRow | null;
-};
-
-// Console icons
-const consoleIcons: Record<string, string> = {
-  ps5: "🎮",
-  ps4: "🎮",
-  xbox: "🎮",
-  pc: "💻",
-  pool: "🎱",
-  arcade: "🕹️",
-  snooker: "🎱",
-  vr: "🥽",
-  steering: "🏎️",
 };
 
 export default function BookingDetailsPage() {
@@ -63,7 +76,7 @@ export default function BookingDetailsPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
 
-  // Load booking + items + cafe
+  // Load booking data
   useEffect(() => {
     if (!bookingId) return;
 
@@ -74,47 +87,38 @@ export default function BookingDetailsPage() {
         setLoading(true);
         setErrorMsg(null);
 
+        // Fetch booking
         const { data: booking, error: bookingError } = await supabase
           .from("bookings")
           .select("*")
           .eq("id", bookingId)
           .maybeSingle<BookingRow>();
 
-        if (bookingError) {
-          console.error("[BookingDetails] bookingError:", bookingError);
-          throw bookingError;
-        }
-
+        if (bookingError) throw bookingError;
         if (!booking) {
-          setErrorMsg("This booking could not be found.");
+          setErrorMsg("Booking not found.");
           return;
         }
 
+        // Fetch items
         const { data: itemsRows, error: itemsError } = await supabase
           .from("booking_items")
           .select("*")
           .eq("booking_id", bookingId);
 
-        if (itemsError) {
-          console.error("[BookingDetails] itemsError:", itemsError);
-          throw itemsError;
-        }
-
+        if (itemsError) throw itemsError;
         const items = (itemsRows || []) as BookingItemRow[];
 
+        // Fetch cafe
         let cafe: CafeRow | null = null;
         if (booking.cafe_id) {
           const { data: cafeRow, error: cafeError } = await supabase
             .from("cafes")
-            .select("id, name, google_maps_url, instagram_url")
+            .select("id, name, google_maps_url, instagram_url, address")
             .eq("id", booking.cafe_id)
             .maybeSingle<CafeRow>();
 
-          if (cafeError) {
-            console.error("[BookingDetails] cafeError:", cafeError);
-            throw cafeError;
-          }
-          cafe = cafeRow ?? null;
+          if (!cafeError) cafe = cafeRow ?? null;
         }
 
         if (!cancelled) {
@@ -125,9 +129,9 @@ export default function BookingDetailsPage() {
           });
         }
       } catch (err) {
-        console.error("Error loading booking details:", err);
+        console.error("Error loading booking:", err);
         if (!cancelled) {
-          setErrorMsg("Could not load booking details. Please try again.");
+          setErrorMsg("Could not load booking details.");
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -141,7 +145,7 @@ export default function BookingDetailsPage() {
     };
   }, [bookingId]);
 
-  // Helpers
+  // Memoized values
   const formattedDate = useMemo(() => {
     if (!data?.booking_date) return "Date not set";
     try {
@@ -178,18 +182,50 @@ export default function BookingDetailsPage() {
     return data.booking_date >= todayStr;
   }, [data]);
 
-  async function handleCancelBooking() {
-    if (!data || !bookingId) return;
-    if (!canCancel) return;
+  const bookingSource = useMemo(() => {
+    if (!data?.source) return "Online";
+    if (data.source === "walk_in") return "Walk-in";
+    return "Online";
+  }, [data?.source]);
 
-    const ok = window.confirm(
-      "Are you sure you want to cancel this booking? This cannot be undone."
-    );
-    if (!ok) return;
+  // Status info - BLACK/RED THEME
+  const getStatusInfo = (status?: string | null) => {
+    const value = (status || "confirmed").toLowerCase();
+    
+    if (value === "cancelled") {
+      return {
+        label: "CANCELLED",
+        bg: "rgba(239, 68, 68, 0.15)",
+        color: "#ef4444",
+        icon: <XCircle className="w-4 h-4" />,
+      };
+    }
+    if (value === "pending") {
+      return {
+        label: "PENDING",
+        bg: "rgba(255, 166, 0, 0.15)",
+        color: "#ffa600",
+        icon: <Loader2 className="w-4 h-4 animate-spin" />,
+      };
+    }
+    return {
+      label: "CONFIRMED",
+      bg: "rgba(0, 255, 0, 0.15)",
+      color: "#00ff00",
+      icon: <CheckCircle className="w-4 h-4" />,
+    };
+  };
+
+  const statusInfo = getStatusInfo(data?.status);
+
+  // Handle cancel booking
+  const handleCancelBooking = async () => {
+    if (!data || !bookingId || !canCancel) return;
+    
+    if (!window.confirm("Cancel this booking? This cannot be undone.")) return;
 
     try {
       setIsCancelling(true);
-
       const { error } = await supabase
         .from("bookings")
         .update({
@@ -199,762 +235,414 @@ export default function BookingDetailsPage() {
         .eq("id", bookingId);
 
       if (error) throw error;
-
-      setData((prev) =>
-        prev
-          ? { ...prev, status: "cancelled" }
-          : prev
-      );
+      
+      setData(prev => prev ? { ...prev, status: "cancelled" } : prev);
     } catch (err) {
-      console.error("Error cancelling booking:", err);
-      alert("Could not cancel booking. Please try again.");
+      console.error("Cancel error:", err);
+      alert("Failed to cancel booking.");
     } finally {
       setIsCancelling(false);
     }
-  }
+  };
 
-  function getStatusInfo(status?: string | null) {
-    const value = (status || "confirmed").toLowerCase();
-    
-    if (value === "cancelled") {
-      return {
-        label: "CANCELLED",
-        bg: "rgba(239, 68, 68, 0.15)",
-        border: "rgba(239, 68, 68, 0.3)",
-        color: "#ef4444",
-        icon: "✕",
-      };
-    }
-    if (value === "pending") {
-      return {
-        label: "PENDING",
-        bg: "rgba(245, 158, 11, 0.15)",
-        border: "rgba(245, 158, 11, 0.3)",
-        color: colors.orange,
-        icon: "⏳",
-      };
-    }
-    return {
-      label: "CONFIRMED",
-      bg: "rgba(34, 197, 94, 0.15)",
-      border: "rgba(34, 197, 94, 0.3)",
-      color: colors.green,
-      icon: "✓",
-    };
-  }
-
-  // Loading state
+  // Loading state - BLACK THEME
   if (loading) {
     return (
-      <div style={{
-        minHeight: "100vh",
-        background: `linear-gradient(180deg, ${colors.dark} 0%, #0a0a10 100%)`,
-        fontFamily: fonts.body,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}>
-        <div style={{ textAlign: "center" }}>
-          <div style={{
-            width: "48px",
-            height: "48px",
-            border: `3px solid ${colors.border}`,
-            borderTopColor: colors.cyan,
-            borderRadius: "50%",
-            margin: "0 auto 16px",
-            animation: "spin 1s linear infinite",
-          }} />
-          <p style={{ color: colors.textSecondary, fontSize: "14px" }}>
-            Loading booking details...
-          </p>
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-center">
+          <Gamepad2 className="w-16 h-16 text-red-500 mx-auto mb-6 animate-pulse" />
+          <p className="text-gray-400 text-sm font-medium">Loading your gaming ticket...</p>
         </div>
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     );
   }
 
-  // Error state
+  // Error state - BLACK/RED THEME
   if (errorMsg || !data) {
     return (
-      <div style={{
-        minHeight: "100vh",
-        background: `linear-gradient(180deg, ${colors.dark} 0%, #0a0a10 100%)`,
-        fontFamily: fonts.body,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "20px",
-      }}>
-        <div style={{ fontSize: "64px", marginBottom: "20px" }}>🎮</div>
-        <h1 style={{
-          fontFamily: fonts.heading,
-          fontSize: "20px",
-          color: colors.red,
-          marginBottom: "12px",
-        }}>
-          Booking Not Found
-        </h1>
-        <p style={{
-          color: colors.textSecondary,
-          fontSize: "14px",
-          marginBottom: "24px",
-          textAlign: "center",
-        }}>
-          {errorMsg ?? "This booking doesn't exist or has been removed."}
-        </p>
-        <button
-          onClick={() => router.push("/dashboard")}
-          style={{
-            padding: "14px 28px",
-            background: `linear-gradient(135deg, ${colors.red} 0%, #ff3366 100%)`,
-            border: "none",
-            borderRadius: "12px",
-            color: "white",
-            fontFamily: fonts.heading,
-            fontSize: "13px",
-            fontWeight: 600,
-            textTransform: "uppercase",
-            letterSpacing: "1px",
-            cursor: "pointer",
-          }}
-        >
-          Go to Dashboard
-        </button>
+      <div className="min-h-screen bg-black flex items-center justify-center p-6">
+        <div className="text-center max-w-md">
+          <XCircle className="w-20 h-20 text-red-500 mx-auto mb-6" />
+          <h1 className="text-2xl font-bold text-white mb-3">Booking Not Found</h1>
+          <p className="text-gray-400 mb-8">{errorMsg || "This booking doesn't exist."}</p>
+          <button
+            onClick={() => router.push("/dashboard")}
+            className="px-6 py-3 bg-gradient-to-r from-red-600 to-red-800 text-white rounded-lg font-semibold hover:opacity-90 transition"
+          >
+            Go to Dashboard
+          </button>
+        </div>
       </div>
     );
   }
 
-  const statusInfo = getStatusInfo(data.status);
-
   return (
-    <div style={{
-      minHeight: "100vh",
-      background: `linear-gradient(180deg, ${colors.dark} 0%, #0a0a10 100%)`,
-      fontFamily: fonts.body,
-      color: colors.textPrimary,
-      position: "relative",
-    }}>
-      {/* Background glow */}
-      <div style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: `
-          radial-gradient(ellipse at 20% 0%, rgba(255, 7, 58, 0.06) 0%, transparent 50%),
-          radial-gradient(ellipse at 80% 100%, rgba(0, 240, 255, 0.04) 0%, transparent 50%)
-        `,
-        pointerEvents: "none",
-        zIndex: 0,
-      }} />
+    <div className="min-h-screen bg-black text-white">
+      {/* Background Effects - BLACK/RED GRADIENT */}
+      <div className="fixed inset-0 overflow-hidden">
+        <div className="absolute top-20 left-10 w-72 h-72 bg-red-500/5 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-20 right-10 w-72 h-72 bg-red-800/5 rounded-full blur-3xl"></div>
+        <div className="absolute inset-0 bg-gradient-to-br from-black via-gray-900 to-black"></div>
+      </div>
 
-      <div style={{
-        maxWidth: "600px",
-        margin: "0 auto",
-        padding: "20px 16px 40px",
-        position: "relative",
-        zIndex: 1,
-      }}>
+      <div className="relative max-w-4xl mx-auto px-4 py-8">
         {/* Header */}
-        <header style={{ marginBottom: "24px" }}>
+        <div className="flex items-center justify-between mb-8">
           <button
-            onClick={() => router.push("/dashboard")}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              background: "none",
-              border: "none",
-              color: colors.textSecondary,
-              fontSize: "14px",
-              cursor: "pointer",
-              padding: "0",
-              marginBottom: "16px",
-            }}
+            onClick={() => router.back()}
+            className="flex items-center gap-2 text-gray-400 hover:text-red-400 transition"
           >
-            <span style={{ fontSize: "18px" }}>←</span>
-            Back to Dashboard
+            <ArrowLeft className="w-5 h-5" />
+            <span className="text-sm font-medium">Back</span>
           </button>
-
-          <div style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}>
-            <div>
-              <p style={{
-                fontSize: "12px",
-                color: colors.cyan,
-                textTransform: "uppercase",
-                letterSpacing: "2px",
-                marginBottom: "4px",
-              }}>
-                Booking Details
-              </p>
-              <h1 style={{
-                fontFamily: fonts.heading,
-                fontSize: "20px",
-                fontWeight: 700,
-                color: colors.textPrimary,
-                margin: 0,
-              }}>
-                #{data.id.slice(0, 8).toUpperCase()}
-              </h1>
-            </div>
-
-            {/* Status Badge */}
-            <div style={{
-              padding: "8px 16px",
-              background: statusInfo.bg,
-              border: `1px solid ${statusInfo.border}`,
-              borderRadius: "20px",
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-            }}>
-              <span style={{ fontSize: "14px" }}>{statusInfo.icon}</span>
-              <span style={{
-                fontSize: "12px",
-                fontWeight: 600,
-                color: statusInfo.color,
-                letterSpacing: "0.5px",
-              }}>
-                {statusInfo.label}
-              </span>
+          
+          <div className="flex items-center gap-3">
+            <div 
+              className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold"
+              style={{ background: statusInfo.bg, color: statusInfo.color }}
+            >
+              {statusInfo.icon}
+              {statusInfo.label}
             </div>
           </div>
-        </header>
+        </div>
 
-        {/* Upcoming/Past Badge */}
-        {data.status?.toLowerCase() !== "cancelled" && (
-          <div style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: "8px",
-            padding: "10px 16px",
-            background: isUpcoming 
-              ? "rgba(0, 240, 255, 0.1)" 
-              : "rgba(255, 255, 255, 0.05)",
-            border: `1px solid ${isUpcoming ? "rgba(0, 240, 255, 0.2)" : colors.border}`,
-            borderRadius: "10px",
-            marginBottom: "20px",
-          }}>
-            <span style={{ fontSize: "16px" }}>
-              {isUpcoming ? "🎯" : "📅"}
-            </span>
-            <span style={{
-              fontSize: "13px",
-              color: isUpcoming ? colors.cyan : colors.textSecondary,
-              fontWeight: 500,
-            }}>
-              {isUpcoming ? "Upcoming Session" : "Past Session"}
-            </span>
-          </div>
-        )}
+        {/* Booking ID */}
+        <div className="mb-8">
+          <p className="text-red-400 text-sm font-semibold uppercase tracking-wider mb-2">
+            Booking Details
+          </p>
+          <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-red-400 to-red-600 bg-clip-text text-transparent">
+            #{data.id.slice(0, 8).toUpperCase()}
+          </h1>
+        </div>
 
-        {/* Ticket-Style Card */}
-        <section style={{
-          background: `linear-gradient(180deg, #1a1a1a 0%, ${colors.darkCard} 100%)`,
-          borderRadius: "12px",
-          marginBottom: "16px",
-          position: "relative",
-          overflow: "hidden",
-          border: `2px dashed ${colors.border}`,
-          boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
-        }}>
-          {/* Ticket Header Bar */}
-          <div style={{
-            background: `linear-gradient(90deg, ${colors.red} 0%, ${colors.cyan} 100%)`,
-            padding: "4px 0",
-            position: "relative",
-          }} />
+        {/* Session Badge - BLACK/RED */}
+        <div className={`flex items-center gap-3 px-5 py-3 rounded-2xl mb-8 ${
+          isUpcoming 
+            ? 'bg-gradient-to-r from-red-500/10 to-red-700/10 border border-red-500/20' 
+            : 'bg-gray-900/50 border border-gray-800'
+        }`}>
+          {isUpcoming ? (
+            <>
+              <Calendar className="w-5 h-5 text-red-400" />
+              <span className="font-semibold text-red-400">Upcoming Session</span>
+              <Sparkles className="w-4 h-4 text-red-400 ml-auto" />
+            </>
+          ) : (
+            <>
+              <History className="w-5 h-5 text-gray-400" />
+              <span className="font-semibold text-gray-400">Past Session</span>
+            </>
+          )}
+        </div>
 
-          {/* Main Ticket Body */}
-          <div style={{ padding: "24px 20px" }}>
-            {/* Venue Name & Icon */}
-            <div style={{ textAlign: "center", marginBottom: "24px" }}>
-              <div style={{ fontSize: "56px", marginBottom: "12px" }}>🎮</div>
-              <h2 style={{
-                fontSize: "20px",
-                fontWeight: 800,
-                color: colors.textPrimary,
-                margin: "0 0 8px 0",
-                fontFamily: fonts.heading,
-                letterSpacing: "1px",
-              }}>
-                {data.cafe?.name ?? "Gaming Café"}
-              </h2>
-              <div style={{
-                display: "inline-block",
-                padding: "4px 12px",
-                background: `linear-gradient(135deg, ${colors.red}30 0%, ${colors.cyan}30 100%)`,
-                borderRadius: "20px",
-                fontSize: "11px",
-                color: colors.cyan,
-                fontWeight: 700,
-                textTransform: "uppercase",
-                letterSpacing: "1px",
-              }}>
-                Gaming Session
+        {/* Main Card - BLACK/RED THEME */}
+        <div className="bg-gradient-to-br from-gray-900/90 to-black/90 backdrop-blur-xl rounded-3xl border border-gray-800 overflow-hidden mb-8 shadow-2xl">
+          {/* Card Header */}
+          <div className="p-6 md:p-8">
+            <div className="flex flex-col md:flex-row md:items-center gap-6 mb-8">
+              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-red-600 to-red-800 flex items-center justify-center">
+                <Gamepad2 className="w-10 h-10 text-white" />
               </div>
-            </div>
-
-            {/* Divider with circles */}
-            <div style={{
-              position: "relative",
-              height: "1px",
-              background: `linear-gradient(90deg, ${colors.border} 0%, ${colors.border} 100%)`,
-              margin: "0 -20px 24px -20px",
-            }}>
-              <div style={{
-                position: "absolute",
-                left: "-10px",
-                top: "-9px",
-                width: "18px",
-                height: "18px",
-                borderRadius: "50%",
-                background: colors.dark,
-                border: `1px solid ${colors.border}`,
-              }} />
-              <div style={{
-                position: "absolute",
-                right: "-10px",
-                top: "-9px",
-                width: "18px",
-                height: "18px",
-                borderRadius: "50%",
-                background: colors.dark,
-                border: `1px solid ${colors.border}`,
-              }} />
-            </div>
-
-            {/* Ticket Details Grid */}
-            <div style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "20px",
-              marginBottom: "24px",
-            }}>
-              {/* Date */}
-              <div>
-                <div style={{
-                  fontSize: "10px",
-                  color: colors.textMuted,
-                  textTransform: "uppercase",
-                  letterSpacing: "1.5px",
-                  marginBottom: "6px",
-                  fontWeight: 600,
-                }}>📅 Date</div>
-                <div style={{
-                  fontSize: "16px",
-                  fontWeight: 700,
-                  color: colors.textPrimary,
-                }}>
-                  {formattedDate}
+              
+              <div className="flex-1">
+                <h2 className="text-2xl font-bold mb-2">
+                  {data.cafe?.name || "Gaming Cafe"}
+                </h2>
+                {data.cafe?.address && (
+                  <div className="flex items-center gap-2 text-gray-400">
+                    <MapPin className="w-4 h-4" />
+                    <span className="text-sm">{data.cafe.address}</span>
+                  </div>
+                )}
+                <div className="flex flex-wrap gap-2 mt-3">
+                  <span className="px-3 py-1 bg-red-500/10 text-red-400 text-xs font-semibold rounded-full">
+                    Premium Gaming
+                  </span>
+                  <span className="px-3 py-1 bg-red-800/10 text-red-300 text-xs font-semibold rounded-full">
+                    High Performance
+                  </span>
                 </div>
               </div>
+            </div>
 
-              {/* Time */}
-              <div>
-                <div style={{
-                  fontSize: "10px",
-                  color: colors.textMuted,
-                  textTransform: "uppercase",
-                  letterSpacing: "1.5px",
-                  marginBottom: "6px",
-                  fontWeight: 600,
-                }}>⏰ Time</div>
-                <div style={{
-                  fontSize: "16px",
-                  fontWeight: 700,
-                  color: colors.cyan,
-                }}>
+            {/* Divider - RED THEME */}
+            <div className="h-px bg-gradient-to-r from-transparent via-red-800/50 to-transparent my-8"></div>
+
+            {/* Details Grid - BLACK/RED */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+              <div className="bg-gray-900/70 p-5 rounded-2xl border border-gray-800">
+                <div className="flex items-center gap-3 text-gray-400 mb-2">
+                  <Calendar className="w-4 h-4" />
+                  <span className="text-xs font-semibold uppercase tracking-wider">Date</span>
+                </div>
+                <p className="text-xl font-bold">{formattedDate}</p>
+              </div>
+
+              <div className="bg-gray-900/70 p-5 rounded-2xl border border-gray-800">
+                <div className="flex items-center gap-3 text-gray-400 mb-2">
+                  <Clock className="w-4 h-4" />
+                  <span className="text-xs font-semibold uppercase tracking-wider">Time</span>
+                </div>
+                <p className="text-xl font-bold text-red-400">
                   {data.start_time || "Time not set"}
+                  {data.duration && ` • ${data.duration} min`}
+                </p>
+              </div>
+
+              <div className="bg-gray-900/70 p-5 rounded-2xl border border-gray-800">
+                <div className="flex items-center gap-3 text-gray-400 mb-2">
+                  <Hash className="w-4 h-4" />
+                  <span className="text-xs font-semibold uppercase tracking-wider">Source</span>
                 </div>
+                <p className="text-xl font-bold">{bookingSource}</p>
+              </div>
+
+              <div className="bg-gray-900/70 p-5 rounded-2xl border border-gray-800">
+                <div className="flex items-center gap-3 text-gray-400 mb-2">
+                  <Ticket className="w-4 h-4" />
+                  <span className="text-xs font-semibold uppercase tracking-wider">Tickets</span>
+                </div>
+                <p className="text-xl font-bold">{totalTickets} {totalTickets === 1 ? 'Ticket' : 'Tickets'}</p>
               </div>
             </div>
 
-            {/* Social Links */}
-            {data.cafe && (data.cafe.google_maps_url || data.cafe.instagram_url) && (
-              <div style={{ marginBottom: "20px" }}>
-                <div style={{
-                  fontSize: "10px",
-                  color: colors.textMuted,
-                  textTransform: "uppercase",
-                  letterSpacing: "1.5px",
-                  marginBottom: "12px",
-                  fontWeight: 600,
-                  textAlign: "center",
-                }}>
-                  Stay Connected
-                </div>
-                <div style={{
-                  display: "grid",
-                  gridTemplateColumns: data.cafe.google_maps_url && data.cafe.instagram_url ? "1fr 1fr" : "1fr",
-                  gap: "10px",
-                }}>
+            {/* Social Links - BLACK/RED */}
+            {(data.cafe?.google_maps_url || data.cafe?.instagram_url) && (
+              <div className="mb-8">
+                <p className="text-gray-400 text-sm font-semibold uppercase tracking-wider mb-4">
+                  Connect With Venue
+                </p>
+                <div className="flex flex-wrap gap-3">
                   {data.cafe.google_maps_url && (
                     <a
                       href={data.cafe.google_maps_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: "6px",
-                        padding: "12px",
-                        borderRadius: "10px",
-                        background: "#4285F4",
-                        textDecoration: "none",
-                        transition: "all 0.2s ease",
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = "scale(1.05)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = "scale(1)";
-                      }}
+                      className="flex items-center gap-3 px-5 py-3 bg-gradient-to-r from-red-700 to-red-900 rounded-xl hover:opacity-90 transition"
                     >
-                      <span style={{ fontSize: "20px" }}>📍</span>
-                      <span style={{
-                        fontSize: "12px",
-                        fontWeight: 700,
-                        color: "white",
-                      }}>
-                        Google Maps
-                      </span>
+                      <MapPin className="w-5 h-5" />
+                      <span className="font-semibold">Google Maps</span>
+                      <ExternalLink className="w-4 h-4 ml-2" />
                     </a>
                   )}
-
+                  
                   {data.cafe.instagram_url && (
                     <a
                       href={data.cafe.instagram_url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: "6px",
-                        padding: "12px",
-                        borderRadius: "10px",
-                        background: "#E1306C",
-                        textDecoration: "none",
-                        transition: "all 0.2s ease",
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = "scale(1.05)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = "scale(1)";
-                      }}
+                      className="flex items-center gap-3 px-5 py-3 bg-gradient-to-r from-red-600 to-pink-700 rounded-xl hover:opacity-90 transition"
                     >
-                      <span style={{ fontSize: "20px" }}>📷</span>
-                      <span style={{
-                        fontSize: "12px",
-                        fontWeight: 700,
-                        color: "white",
-                      }}>
-                        Instagram
-                      </span>
+                      <Instagram className="w-5 h-5" />
+                      <span className="font-semibold">Instagram</span>
+                      <ExternalLink className="w-4 h-4 ml-2" />
                     </a>
                   )}
                 </div>
               </div>
             )}
 
-            {/* Review Banner */}
-            <div style={{
-              padding: "12px",
-              background: `linear-gradient(135deg, rgba(34, 197, 94, 0.15) 0%, rgba(34, 197, 94, 0.05) 100%)`,
-              borderRadius: "10px",
-              border: `1px solid ${colors.green}30`,
-              textAlign: "center",
-            }}>
-              <div style={{ fontSize: "16px", marginBottom: "4px" }}>⭐⭐⭐⭐⭐</div>
-              <div style={{
-                fontSize: "11px",
-                color: colors.textMuted,
-                lineHeight: 1.4,
-              }}>
-                <strong style={{ color: colors.green }}>Love it?</strong> Leave a review!
+            {/* Review Section - BLACK/GREEN */}
+            <div className="bg-gradient-to-r from-green-500/10 to-green-700/10 border border-green-500/20 rounded-2xl p-6">
+              <div className="flex items-center gap-2 mb-3">
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} className="w-5 h-5 text-yellow-400 fill-yellow-400" />
+                ))}
               </div>
+              <p className="text-gray-300">
+                <span className="font-semibold text-green-400">Enjoyed your session?</span>{' '}
+                Leave a review and help other gamers!
+              </p>
             </div>
           </div>
-        </section>
+        </div>
 
-        {/* Tickets Section */}
-        <section style={{
-          background: colors.darkCard,
-          border: `1px solid ${colors.border}`,
-          borderRadius: "16px",
-          padding: "20px",
-          marginBottom: "20px",
-        }}>
-          <h3 style={{
-            fontSize: "12px",
-            color: colors.textMuted,
-            textTransform: "uppercase",
-            letterSpacing: "1.5px",
-            marginBottom: "16px",
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-          }}>
-            <span>🎟️</span> Tickets ({totalTickets})
-          </h3>
+        {/* Tickets Section - BLACK/RED */}
+        <div className="bg-gradient-to-br from-gray-900/90 to-black/90 backdrop-blur-xl rounded-3xl border border-gray-800 p-6 md:p-8 mb-8">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <Ticket className="w-6 h-6 text-red-400" />
+              <h3 className="text-xl font-bold">Your Tickets</h3>
+            </div>
+            <span className="px-4 py-2 bg-gradient-to-r from-red-600 to-red-800 rounded-full text-sm font-bold">
+              {totalTickets} Total
+            </span>
+          </div>
 
-          {data.items.length === 0 ? (
-            <p style={{ fontSize: "13px", color: colors.textSecondary }}>
-              No ticket details available.
-            </p>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-              {data.items.map((item) => (
+          <div className="space-y-4">
+            {data.items.length === 0 ? (
+              <p className="text-gray-400 text-center py-8">No ticket details available.</p>
+            ) : (
+              data.items.map((item) => (
                 <div
-                  key={item.id ?? `${item.ticket_id}-${item.console}`}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    padding: "14px 16px",
-                    background: "rgba(255, 255, 255, 0.03)",
-                    borderRadius: "12px",
-                    border: `1px solid ${colors.border}`,
-                  }}
+                  key={item.id || `${item.ticket_id}-${item.console}`}
+                  className="bg-gray-900/70 p-5 rounded-2xl border border-gray-800 hover:border-red-500/30 transition"
                 >
-                  <div style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "12px",
-                  }}>
-                    <span style={{ fontSize: "24px" }}>
-                      {consoleIcons[item.console || "ps5"] || "🎮"}
-                    </span>
-                    <div>
-                      <p style={{
-                        fontSize: "14px",
-                        fontWeight: 600,
-                        color: colors.textPrimary,
-                        marginBottom: "2px",
-                      }}>
-                        {item.title ?? "Ticket"}
-                      </p>
-                      <p style={{
-                        fontSize: "12px",
-                        color: colors.textMuted,
-                      }}>
-                        {item.quantity ?? 0} × ₹{item.price ?? 0}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-500/20 to-red-800/20 flex items-center justify-center">
+                        <Gamepad2 className="w-6 h-6 text-red-400" />
+                      </div>
+                      <div>
+                        <h4 className="font-bold">{item.title || "Gaming Session"}</h4>
+                        <p className="text-gray-400 text-sm">
+                          {item.quantity} × ₹{item.price}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-2xl font-bold text-red-400">
+                        ₹{(item.price ?? 0) * (item.quantity ?? 0)}
                       </p>
                     </div>
                   </div>
-                  <p style={{
-                    fontFamily: fonts.heading,
-                    fontSize: "16px",
-                    fontWeight: 600,
-                    color: colors.cyan,
-                  }}>
-                    ₹{(item.price ?? 0) * (item.quantity ?? 0)}
-                  </p>
                 </div>
-              ))}
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Payment Section - BLACK/RED */}
+        <div className="bg-gradient-to-br from-gray-900/90 to-black/90 backdrop-blur-xl rounded-3xl border border-gray-800 p-6 md:p-8 mb-8">
+          <div className="flex items-center gap-3 mb-6">
+            <CreditCard className="w-6 h-6 text-red-400" />
+            <h3 className="text-xl font-bold">Payment Summary</h3>
+          </div>
+
+          <div className="bg-gradient-to-r from-green-500/10 to-green-700/10 border border-green-500/20 rounded-2xl p-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div>
+                <p className="text-gray-400 text-sm font-semibold uppercase tracking-wider mb-2">
+                  Total Amount Paid
+                </p>
+                <p className="text-4xl font-bold">
+                  ₹{data.total_amount || 0}
+                </p>
+              </div>
+              <div className="flex items-center gap-3 px-6 py-3 bg-green-500/20 rounded-full border border-green-500/30">
+                <ShieldCheck className="w-5 h-5 text-green-400" />
+                <span className="font-semibold text-green-400">Payment Secured</span>
+              </div>
             </div>
-          )}
-        </section>
+          </div>
+        </div>
 
-        {/* Payment Summary */}
-        <section style={{
-          background: colors.darkCard,
-          border: `1px solid ${colors.border}`,
-          borderRadius: "16px",
-          padding: "20px",
-          marginBottom: "20px",
-        }}>
-          <h3 style={{
-            fontSize: "12px",
-            color: colors.textMuted,
-            textTransform: "uppercase",
-            letterSpacing: "1.5px",
-            marginBottom: "16px",
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-          }}>
-            <span>💳</span> Payment Summary
-          </h3>
-
-          <div style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            padding: "16px",
-            background: "rgba(34, 197, 94, 0.08)",
-            borderRadius: "12px",
-            border: "1px solid rgba(34, 197, 94, 0.15)",
-          }}>
+        {/* Info Section - BLACK/RED */}
+        <div className="bg-gradient-to-br from-red-500/10 to-red-700/10 backdrop-blur-xl rounded-3xl border border-red-500/20 p-6 md:p-8 mb-8">
+          <div className="flex items-start gap-4">
+            <Info className="w-6 h-6 text-red-400 mt-1" />
             <div>
-              <p style={{
-                fontSize: "12px",
-                color: colors.textMuted,
-                marginBottom: "4px",
-              }}>
-                Total Amount Paid
+              <p className="text-lg mb-2">
+                {isUpcoming 
+                  ? "🎮 Show this booking at the venue. Arrive 5 minutes early for the best experience!"
+                  : "🎉 Thank you for gaming with us! Hope you had an epic time."
+                }
               </p>
-              <p style={{
-                fontFamily: fonts.heading,
-                fontSize: "28px",
-                fontWeight: 700,
-                color: colors.textPrimary,
-              }}>
-                ₹{data.total_amount ?? 0}
+              <p className="text-gray-400 text-sm">
+                Booked on: {new Date(data.created_at || "").toLocaleDateString("en-IN", {
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
               </p>
             </div>
-            <div style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              padding: "8px 14px",
-              background: "rgba(34, 197, 94, 0.15)",
-              borderRadius: "8px",
-            }}>
-              <span style={{ color: colors.green }}>✓</span>
-              <span style={{
-                fontSize: "12px",
-                color: colors.green,
-                fontWeight: 600,
-              }}>
-                Paid
-              </span>
-            </div>
           </div>
-        </section>
+        </div>
 
-        {/* Booking Info */}
-        <section style={{
-          background: "rgba(0, 240, 255, 0.05)",
-          border: `1px solid rgba(0, 240, 255, 0.15)`,
-          borderRadius: "12px",
-          padding: "14px 16px",
-          marginBottom: "24px",
-          display: "flex",
-          alignItems: "flex-start",
-          gap: "12px",
-        }}>
-          <span style={{ fontSize: "18px" }}>💡</span>
-          <div>
-            <p style={{
-              fontSize: "13px",
-              color: colors.textSecondary,
-              lineHeight: 1.5,
-              margin: 0,
-            }}>
-              {isUpcoming 
-                ? "Show this booking at the venue. Arrive 5 minutes early for the best experience!"
-                : "Thank you for gaming with us! We hope you had a great time."
-              }
-            </p>
-            <p style={{
-              fontSize: "11px",
-              color: colors.textMuted,
-              marginTop: "8px",
-            }}>
-              Booked on: {new Date(data.created_at || "").toLocaleDateString("en-IN", {
-                day: "numeric",
-                month: "short",
-                year: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            </p>
-          </div>
-        </section>
-
-        {/* Action Buttons */}
-        <div style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: "12px",
-        }}>
+        {/* Action Buttons - BLACK/RED */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           <button
             onClick={() => router.push("/dashboard")}
-            style={{
-              padding: "16px 24px",
-              background: `linear-gradient(135deg, ${colors.cyan} 0%, #0891b2 100%)`,
-              border: "none",
-              borderRadius: "14px",
-              color: colors.dark,
-              fontFamily: fonts.heading,
-              fontSize: "14px",
-              fontWeight: 600,
-              textTransform: "uppercase",
-              letterSpacing: "1px",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "8px",
-              boxShadow: `0 8px 32px ${colors.cyan}40`,
-            }}
+            className="px-6 py-4 bg-gradient-to-r from-red-600 to-red-800 rounded-xl font-bold text-lg hover:opacity-90 transition flex items-center justify-center gap-3"
           >
-            <span>📊</span>
+            <Users className="w-5 h-5" />
             View All Bookings
           </button>
 
           <Link
             href="/"
-            style={{
-              padding: "16px 24px",
-              background: "rgba(255, 255, 255, 0.05)",
-              border: `1px solid ${colors.border}`,
-              borderRadius: "14px",
-              color: colors.textPrimary,
-              fontFamily: fonts.heading,
-              fontSize: "14px",
-              fontWeight: 600,
-              textTransform: "uppercase",
-              letterSpacing: "1px",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "8px",
-              textDecoration: "none",
-            }}
+            className="px-6 py-4 bg-gray-900 border border-gray-800 rounded-xl font-bold text-lg hover:bg-gray-800 transition flex items-center justify-center gap-3 text-center"
           >
-            <span>🎮</span>
+            <Gamepad2 className="w-5 h-5" />
             Book Another Session
           </Link>
 
-          {canCancel && (
+          <button
+            onClick={() => navigator.clipboard.writeText(window.location.href)}
+            className="px-6 py-4 bg-gray-900 border border-gray-800 rounded-xl font-bold text-lg hover:bg-gray-800 transition flex items-center justify-center gap-3"
+          >
+            <Share2 className="w-5 h-5" />
+            Share Booking
+          </button>
+        </div>
+
+        {/* Cancel Button - BLACK/RED */}
+        {canCancel && (
+          <div className="text-center">
             <button
               onClick={handleCancelBooking}
               disabled={isCancelling}
-              style={{
-                padding: "14px 24px",
-                background: "rgba(239, 68, 68, 0.1)",
-                border: `1px solid rgba(239, 68, 68, 0.3)`,
-                borderRadius: "12px",
-                color: "#ef4444",
-                fontFamily: fonts.body,
-                fontSize: "13px",
-                fontWeight: 600,
-                cursor: isCancelling ? "not-allowed" : "pointer",
-                opacity: isCancelling ? 0.6 : 1,
-                marginTop: "8px",
-              }}
+              className="px-8 py-4 bg-gradient-to-r from-red-500/20 to-red-700/20 border border-red-500/30 text-red-400 rounded-xl font-bold text-lg hover:bg-red-500/30 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-3 mx-auto"
             >
-              {isCancelling ? "Cancelling..." : "Cancel Booking"}
+              {isCancelling ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Cancelling...
+                </>
+              ) : (
+                <>
+                  <AlertTriangle className="w-5 h-5" />
+                  Cancel Booking
+                </>
+              )}
             </button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
-      <style>{`
-        @keyframes spin {
-          to { transform: rotate(360deg); }
+      {/* Add Tailwind styles - BLACK/RED THEME */}
+      <style jsx global>{`
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        
+        body {
+          font-family: 'Inter', sans-serif;
+          overflow-x: hidden;
+          background: black;
+        }
+        
+        /* Smooth animations */
+        * {
+          transition: all 0.3s ease;
+        }
+        
+        /* Custom scrollbar - RED THEME */
+        ::-webkit-scrollbar {
+          width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+          background: rgba(255, 255, 255, 0.05);
+        }
+        
+        ::-webkit-scrollbar-thumb {
+          background: linear-gradient(to bottom, #dc2626, #7f1d1d);
+          border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+          background: linear-gradient(to bottom, #ef4444, #991b1b);
+        }
+        
+        /* Gradient text utility - RED THEME */
+        .gradient-text {
+          background: linear-gradient(to right, #ef4444, #dc2626, #b91c1c);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
         }
       `}</style>
     </div>

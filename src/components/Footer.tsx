@@ -2,7 +2,6 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { colors, fonts } from "@/lib/constants";
 
 // Social media links - update with your actual links
@@ -75,13 +74,7 @@ const footerLinks = {
 };
 
 export default function Footer() {
-  const pathname = usePathname();
   const currentYear = new Date().getFullYear();
-
-  // Don't render footer on owner page
-  if (pathname === "/owner") {
-    return null;
-  }
 
   return (
     <footer
@@ -148,7 +141,7 @@ export default function Footer() {
                 color: colors.textMuted,
               }}
             >
-              India&apos;s premier gaming café booking platform. Find, book, and play at the best gaming cafés near you.
+              India's premier gaming café booking platform. Find, book, and play at the best gaming cafés near you.
             </p>
           </div>
 

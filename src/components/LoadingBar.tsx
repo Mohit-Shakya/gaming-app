@@ -9,8 +9,6 @@ export default function LoadingBar() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // Reset loading state on route change
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(false);
   }, [pathname]);
 
@@ -42,20 +40,32 @@ export default function LoadingBar() {
         top: 0,
         left: 0,
         right: 0,
-        height: "3px",
-        background: "linear-gradient(90deg, #ff073a, #00f0ff, #ff073a)",
-        backgroundSize: "200% 100%",
-        animation: "loading-bar 1.5s ease-in-out infinite",
+        bottom: 0,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: "rgba(0, 0, 0, 0.5)",
         zIndex: 9999,
       }}
     >
+      <div
+        style={{
+          width: "60px",
+          height: "60px",
+          border: "4px solid rgba(255, 7, 58, 0.2)",
+          borderTop: "4px solid #ff073a",
+          borderRight: "4px solid #00f0ff",
+          borderRadius: "50%",
+          animation: "spin 1s linear infinite",
+        }}
+      />
       <style>{`
-        @keyframes loading-bar {
+        @keyframes spin {
           0% {
-            background-position: 200% 0;
+            transform: rotate(0deg);
           }
           100% {
-            background-position: -200% 0;
+            transform: rotate(360deg);
           }
         }
       `}</style>

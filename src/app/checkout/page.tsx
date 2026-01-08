@@ -7,6 +7,22 @@ import { supabase } from "@/lib/supabaseClient";
 import useUser from "@/hooks/useUser";
 import { ConsoleId, colors, fonts, CONSOLE_LABELS } from "@/lib/constants";
 import { getEndTime } from "@/lib/timeUtils";
+import {
+  ArrowLeft,
+  CheckCircle,
+  Gamepad2,
+  Ticket,
+  Calendar,
+  Clock,
+  ShieldCheck,
+  Edit2,
+  Trash2,
+  Home,
+  ExternalLink,
+  Loader2,
+  AlertCircle,
+  IndianRupee
+} from "lucide-react";
 
 type CheckoutTicket = {
   ticketId: string;
@@ -19,16 +35,13 @@ type CheckoutTicket = {
 type CheckoutDraft = {
   cafeId: string;
   cafeName: string;
-  bookingDate: string; // "2025-12-06"
-  timeSlot: string;    // "2:04 pm" or "2:30 pm"
+  bookingDate: string;
+  timeSlot: string;
   tickets: CheckoutTicket[];
   totalAmount: number;
-  durationMinutes: 30 | 60 | 90; // Session duration
+  durationMinutes: 30 | 60 | 90;
   source: "online";
 };
-
-// ========= THEME =========
-// Colors, fonts, and constants imported from @/lib/constants
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -42,7 +55,6 @@ export default function CheckoutPage() {
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [successBookingId, setSuccessBookingId] = useState<string | null>(null);
 
-  // Function to remove a ticket from the cart
   const removeTicket = (ticketId: string) => {
     if (!draft) return;
 
@@ -57,24 +69,20 @@ export default function CheckoutPage() {
 
     setDraft(updatedDraft);
 
-    // Update sessionStorage
     if (typeof window !== "undefined") {
       if (updatedTickets.length === 0) {
-        // If no tickets left, remove the draft entirely
         window.sessionStorage.removeItem("checkoutDraft");
-        router.back(); // Go back to booking page
+        router.back();
       } else {
         window.sessionStorage.setItem("checkoutDraft", JSON.stringify(updatedDraft));
       }
     }
   };
 
-  // Function to go back and edit the booking
   const editBooking = () => {
     router.back();
   };
 
-  // Check if user is owner/admin
   useEffect(() => {
     async function checkUserRole() {
       if (!user) return;
@@ -96,31 +104,25 @@ export default function CheckoutPage() {
     checkUserRole();
   }, [user]);
 
-  // Load draft from sessionStorage
   useEffect(() => {
-    // Load checkout data from sessionStorage
-    const loadCheckoutData = () => {
-      try {
-        const raw =
-          typeof window !== "undefined"
-            ? window.sessionStorage.getItem("checkoutDraft")
-            : null;
-        if (!raw) {
-          setError("No booking in progress.");
-          setLoading(false);
-          return;
-        }
-        const parsed = JSON.parse(raw) as CheckoutDraft;
-        setDraft(parsed);
+    try {
+      const raw =
+        typeof window !== "undefined"
+          ? window.sessionStorage.getItem("checkoutDraft")
+          : null;
+      if (!raw) {
+        setError("No booking in progress.");
         setLoading(false);
-      } catch (err) {
-        console.error("Failed to read checkoutDraft", err);
-        setError("Could not load booking details.");
-        setLoading(false);
+        return;
       }
-    };
-
-    loadCheckoutData();
+      const parsed = JSON.parse(raw) as CheckoutDraft;
+      setDraft(parsed);
+      setLoading(false);
+    } catch (err) {
+      console.error("Failed to read checkoutDraft", err);
+      setError("Could not load booking details.");
+      setLoading(false);
+    }
   }, []);
 
   async function handlePlaceOrder() {
@@ -135,22 +137,8 @@ export default function CheckoutPage() {
     setError(null);
 
     try {
-      const { cafeId, bookingDate, timeSlot, totalAmount, tickets } =
-        draft;
+      const { cafeId, bookingDate, timeSlot, totalAmount, tickets } = draft;
 
-      // Fetch user profile for customer name and phone
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("first_name, last_name, phone")
-        .eq("id", user.id)
-        .maybeSingle();
-
-      // Combine first and last name
-      const customerName = profile?.first_name && profile?.last_name
-        ? `${profile.first_name} ${profile.last_name}`.trim()
-        : profile?.first_name || "Guest";
-
-      // 1. Create booking row
       const { data: bookingData, error: bookingError } = await supabase
         .from("bookings")
         .insert({
@@ -158,12 +146,9 @@ export default function CheckoutPage() {
           user_id: user.id,
           booking_date: bookingDate,
           start_time: timeSlot,
-          duration: draft.durationMinutes,
           total_amount: totalAmount,
-          status: "pending", // Owner must confirm before customer arrives
+          status: "confirmed",
           source: "online",
-          customer_name: customerName,
-          customer_phone: profile?.phone || "",
         })
         .select("id")
         .maybeSingle();
@@ -177,10 +162,9 @@ export default function CheckoutPage() {
 
       const bookingId = bookingData.id;
 
-      // 2. Insert booking items  ✅ IMPORTANT: include ticket_id
       const itemsPayload = tickets.map((t) => ({
         booking_id: bookingId,
-        ticket_id: t.ticketId, // <-- this was missing earlier
+        ticket_id: t.ticketId,
         console: t.console,
         title: t.title,
         price: t.price,
@@ -198,12 +182,10 @@ export default function CheckoutPage() {
         return;
       }
 
-      // Clear draft from session storage
       if (typeof window !== "undefined") {
         window.sessionStorage.removeItem("checkoutDraft");
       }
 
-      // Show inline success message for all users
       setSuccessBookingId(bookingId);
       setBookingSuccess(true);
       setPlacing(false);
@@ -215,7 +197,6 @@ export default function CheckoutPage() {
     }
   }
 
-
   if (loading) {
     return (
       <div
@@ -223,18 +204,21 @@ export default function CheckoutPage() {
           minHeight: "100vh",
           background: colors.dark,
           display: "flex",
+          flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
           fontFamily: fonts.body,
           color: colors.textSecondary,
+          gap: "16px",
+          padding: "20px",
         }}
       >
-        Loading checkout…
+        <Loader2 size={32} className="animate-spin" color={colors.cyan} />
+        <p style={{ fontSize: "14px" }}>Loading checkout...</p>
       </div>
     );
   }
 
-  // Show success message for all users
   if (bookingSuccess) {
     return (
       <div
@@ -245,7 +229,7 @@ export default function CheckoutPage() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          padding: "24px",
+          padding: "20px",
         }}
       >
         <div
@@ -253,14 +237,13 @@ export default function CheckoutPage() {
             maxWidth: "500px",
             width: "100%",
             background: colors.darkCard,
-            border: `2px solid ${colors.green}`,
-            borderRadius: "20px",
-            padding: "40px 32px",
+            border: `1px solid ${colors.border}`,
+            borderRadius: "24px",
+            padding: "32px 24px",
             textAlign: "center",
-            boxShadow: `0 0 40px rgba(34, 197, 94, 0.3)`,
+            boxShadow: "0 20px 60px rgba(0, 0, 0, 0.3)",
           }}
         >
-          {/* Success Icon */}
           <div
             style={{
               width: "80px",
@@ -271,17 +254,16 @@ export default function CheckoutPage() {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              fontSize: "40px",
             }}
           >
-            ✓
+            <CheckCircle size={40} color="white" />
           </div>
 
           <h1
             style={{
               fontFamily: fonts.heading,
-              fontSize: "28px",
-              fontWeight: 800,
+              fontSize: "clamp(22px, 5vw, 28px)",
+              fontWeight: 700,
               color: colors.textPrimary,
               marginBottom: "12px",
             }}
@@ -291,31 +273,34 @@ export default function CheckoutPage() {
 
           <p
             style={{
-              fontSize: "16px",
+              fontSize: "14px",
               color: colors.textSecondary,
               marginBottom: "24px",
             }}
           >
-            Booking ID: <strong style={{ color: colors.cyan }}>#{successBookingId?.slice(0, 8)}</strong>
+            Booking ID:{" "}
+            <strong style={{ color: colors.cyan }}>
+              #{successBookingId?.slice(0, 8)}
+            </strong>
           </p>
 
           <p
             style={{
-              fontSize: "14px",
+              fontSize: "13px",
               color: colors.textMuted,
               marginBottom: "32px",
+              lineHeight: 1.6,
             }}
           >
             The booking has been confirmed. You can now create another booking.
           </p>
 
-          {/* Action Buttons */}
-          <div style={{ display: "flex", gap: "12px", flexDirection: "column" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
             <button
               onClick={() => router.push("/")}
               style={{
                 width: "100%",
-                padding: "16px 24px",
+                padding: "14px 20px",
                 background: `linear-gradient(135deg, ${colors.red} 0%, #ff3366 100%)`,
                 border: "none",
                 borderRadius: "12px",
@@ -323,11 +308,15 @@ export default function CheckoutPage() {
                 fontFamily: fonts.heading,
                 fontSize: "14px",
                 fontWeight: 600,
-                textTransform: "uppercase",
-                letterSpacing: "1px",
+                letterSpacing: "0.5px",
                 cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "8px",
               }}
             >
+              <Home size={18} />
               {isOwner ? "Create New Booking" : "Back to Home"}
             </button>
 
@@ -335,7 +324,7 @@ export default function CheckoutPage() {
               onClick={() => router.push(`/bookings/success?ref=${successBookingId}`)}
               style={{
                 width: "100%",
-                padding: "14px 24px",
+                padding: "12px 20px",
                 background: "rgba(255, 255, 255, 0.05)",
                 border: `1px solid ${colors.border}`,
                 borderRadius: "12px",
@@ -344,9 +333,14 @@ export default function CheckoutPage() {
                 fontSize: "13px",
                 fontWeight: 500,
                 cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "8px",
               }}
             >
               View Booking Details
+              <ExternalLink size={14} />
             </button>
           </div>
         </div>
@@ -361,34 +355,58 @@ export default function CheckoutPage() {
           minHeight: "100vh",
           background: colors.dark,
           display: "flex",
+          flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
           fontFamily: fonts.body,
           color: colors.textSecondary,
           padding: "24px",
           textAlign: "center",
+          gap: "16px",
         }}
       >
-        {error || "No booking found. Go back and start a new booking."}
+        <AlertCircle size={48} color={colors.textMuted} />
+        <p style={{ fontSize: "16px" }}>
+          {error || "No booking found. Go back and start a new booking."}
+        </p>
+        <button
+          onClick={() => router.back()}
+          style={{
+            padding: "10px 20px",
+            background: colors.cyan,
+            border: "none",
+            borderRadius: "8px",
+            color: "white",
+            fontFamily: fonts.body,
+            fontSize: "14px",
+            fontWeight: 500,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            marginTop: "12px",
+          }}
+        >
+          <ArrowLeft size={16} />
+          Go Back
+        </button>
       </div>
     );
   }
 
-  // Format date nicely
   const dateLabel = new Date(
     `${draft.bookingDate}T00:00:00`
   ).toLocaleDateString("en-IN", {
-    weekday: "long",
+    weekday: "short",
     day: "numeric",
-    month: "long",
+    month: "short",
     year: "numeric",
   });
 
   const totalTickets = draft.tickets.reduce((sum, t) => sum + t.quantity, 0);
-  const durationMinutes = draft.durationMinutes || 60; // Default to 60 if not set
+  const durationMinutes = draft.durationMinutes || 60;
   const endTime = getEndTime(draft.timeSlot, durationMinutes);
 
-  // Format duration text
   const durationText =
     durationMinutes === 30 ? "30 min" :
     durationMinutes === 60 ? "1 hour" :
@@ -398,43 +416,26 @@ export default function CheckoutPage() {
     <div
       style={{
         minHeight: "100vh",
-        background: `radial-gradient(circle at top, #1e1b4b 0, #050509 45%)`,
+        background: `linear-gradient(180deg, ${colors.dark} 0%, #0a0a10 100%)`,
         fontFamily: fonts.body,
         color: colors.textPrimary,
-        position: "relative",
       }}
     >
-      {/* subtle glow */}
       <div
         style={{
-          position: "fixed",
-          inset: 0,
-          pointerEvents: "none",
-          background: `
-            radial-gradient(circle at 10% 0%, rgba(255,7,58,0.2) 0, transparent 40%),
-            radial-gradient(circle at 90% 100%, rgba(0,240,255,0.12) 0, transparent 45%)
-          `,
-          opacity: 0.9,
-        }}
-      />
-
-      <div
-        style={{
-          maxWidth: "720px",
+          maxWidth: "600px",
           margin: "0 auto",
-          padding: "16px 16px 140px",
-          position: "relative",
-          zIndex: 1,
+          padding: "16px 16px 120px",
         }}
-        className="checkout-container"
       >
-        {/* Top bar */}
+        {/* Header */}
         <header
           style={{
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            marginBottom: "20px",
+            marginBottom: "24px",
+            paddingTop: "8px",
           }}
         >
           <button
@@ -442,244 +443,224 @@ export default function CheckoutPage() {
             style={{
               display: "flex",
               alignItems: "center",
-              gap: 8,
+              gap: "6px",
               background: "transparent",
               border: "none",
               color: colors.textSecondary,
-              fontSize: 14,
+              fontSize: "14px",
               cursor: "pointer",
+              padding: "8px 0",
             }}
           >
-            <span style={{ fontSize: 18 }}>←</span>
-            Back
+            <ArrowLeft size={18} />
+            <span style={{ fontSize: "14px" }}>Back</span>
           </button>
 
-          {/* Top-right chip */}
           <div
             style={{
               display: "inline-flex",
               alignItems: "center",
-              gap: 8,
-              padding: "6px 12px",
-              borderRadius: 999,
-              background: "rgba(22,163,74,0.14)",
-              border: `1px solid rgba(22,163,74,0.7)`,
-              fontSize: 11,
-              textTransform: "uppercase",
-              letterSpacing: 1,
+              gap: "6px",
+              padding: "6px 10px",
+              borderRadius: "20px",
+              background: "rgba(22,163,74,0.12)",
+              border: `1px solid rgba(22,163,74,0.4)`,
+              fontSize: "11px",
+              fontWeight: 500,
+              letterSpacing: "0.3px",
             }}
           >
-            <span
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: "50%",
-                background: colors.green,
-              }}
-            />
-            <span style={{ fontFamily: fonts.heading }}>
-              Secure Online Checkout
-            </span>
+            <ShieldCheck size={12} color={colors.green} />
+            <span>Secure Checkout</span>
           </div>
         </header>
 
-        {/* Title */}
-        <div style={{ marginBottom: "16px" }}>
-          <p
-            style={{
-              fontSize: "11px",
-              letterSpacing: "2px",
-              textTransform: "uppercase",
-              color: colors.textMuted,
-              marginBottom: "6px",
-            }}
-          >
-            Checkout
-          </p>
+        {/* Page Title */}
+        <div style={{ marginBottom: "24px" }}>
           <h1
             style={{
               fontFamily: fonts.heading,
-              fontSize: "20px",
+              fontSize: "clamp(24px, 6vw, 28px)",
               fontWeight: 700,
-              margin: 0,
+              marginBottom: "8px",
+              lineHeight: 1.2,
             }}
-            className="checkout-title"
           >
             Order Summary
           </h1>
+          <p
+            style={{
+              fontSize: "14px",
+              color: colors.textSecondary,
+            }}
+          >
+            Review your booking before confirmation
+          </p>
         </div>
 
-        {/* Cafe + slot card */}
+        {/* Cafe & Time Card */}
         <section
           style={{
-            background:
-              "linear-gradient(135deg, rgba(15,23,42,0.95), rgba(17,24,39,0.95))",
+            background: colors.darkCard,
             borderRadius: "16px",
             border: `1px solid ${colors.border}`,
-            padding: "14px 16px",
-            marginBottom: "16px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: "12px",
+            padding: "16px",
+            marginBottom: "20px",
+            position: "relative",
+            overflow: "hidden",
           }}
-          className="cafe-card"
         >
-          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <div
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              height: "3px",
+              background: `linear-gradient(90deg, ${colors.green}, ${colors.cyan})`,
+            }}
+          />
+          
+          <div style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
             <div
               style={{
-                width: "48px",
-                height: "48px",
-                minWidth: "48px",
-                borderRadius: "14px",
-                background:
-                  "radial-gradient(circle at 0 0, #38bdf8 0, #020617 55%)",
+                width: "44px",
+                height: "44px",
+                borderRadius: "12px",
+                background: "rgba(34, 197, 94, 0.1)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                fontSize: "24px",
+                flexShrink: 0,
               }}
-              className="cafe-icon"
             >
-              🎮
+              <Gamepad2 size={22} color={colors.green} />
             </div>
-            <div style={{ minWidth: 0, flex: 1 }}>
-              <div
+            
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <h2
                 style={{
-                  fontSize: "14px",
+                  fontSize: "16px",
                   fontWeight: 600,
-                  marginBottom: "4px",
+                  marginBottom: "8px",
+                  color: colors.textPrimary,
                 }}
               >
                 {draft.cafeName}
-              </div>
+              </h2>
+              
               <div
                 style={{
-                  fontSize: "12px",
-                  color: colors.textSecondary,
                   display: "flex",
                   flexDirection: "column",
-                  gap: "2px",
+                  gap: "6px",
+                  marginBottom: "12px",
                 }}
               >
-                <span className="date-text">{dateLabel}</span>
-                <span>
-                  {draft.timeSlot} – {endTime}{" "}
-                  <span style={{ color: colors.textMuted }} className="session-duration">
-                    ({durationText} session)
+                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <Calendar size={14} color={colors.textMuted} />
+                  <span style={{ fontSize: "13px", color: colors.textSecondary }}>
+                    {dateLabel}
                   </span>
-                </span>
+                </div>
+                
+                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <Clock size={14} color={colors.textMuted} />
+                  <span style={{ fontSize: "13px", color: colors.textSecondary }}>
+                    {draft.timeSlot} – {endTime}
+                    <span style={{ color: colors.textMuted, marginLeft: "4px" }}>
+                      ({durationText})
+                    </span>
+                  </span>
+                </div>
               </div>
-
-              {/* booking type pill inside card */}
+              
               <div
                 style={{
-                  marginTop: 6,
                   display: "inline-flex",
                   alignItems: "center",
-                  gap: 6,
+                  gap: "4px",
                   padding: "4px 10px",
-                  borderRadius: 999,
-                  background: "rgba(34,197,94,0.18)",
-                  fontSize: 11,
-                  color: colors.green,
-                  border: `1px solid rgba(34,197,94,0.6)`,
-                  textTransform: "uppercase",
-                  letterSpacing: 0.5,
+                  borderRadius: "12px",
+                  background: "rgba(59, 130, 246, 0.1)",
+                  border: `1px solid rgba(59, 130, 246, 0.3)`,
+                  fontSize: "11px",
+                  color: colors.cyan,
                 }}
               >
-                <span>🔒</span>
-                <span>
-                  Online Booking
-                </span>
+                <Clock size={10} />
+                <span>Online Booking</span>
               </div>
             </div>
           </div>
         </section>
 
-        {/* Tickets list */}
+        {/* Tickets Section */}
         <section
           style={{
-            marginTop: "12px",
+            background: colors.darkCard,
             borderRadius: "16px",
-            background: colors.darkerCard,
             border: `1px solid ${colors.border}`,
+            marginBottom: "20px",
             overflow: "hidden",
           }}
-          className="tickets-section"
         >
           <div
             style={{
-              padding: "12px 16px",
+              padding: "16px",
               borderBottom: `1px solid ${colors.border}`,
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              gap: 8,
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 16 }}>🎟️</span>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <div
+                style={{
+                  width: "32px",
+                  height: "32px",
+                  borderRadius: "8px",
+                  background: "rgba(234, 179, 8, 0.1)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Ticket size={16} color="#eab308" />
+              </div>
               <div>
-                <div
-                  style={{
-                    fontSize: 13,
-                    fontWeight: 600,
-                    textTransform: "uppercase",
-                    letterSpacing: 1,
-                  }}
-                >
+                <div style={{ fontSize: "14px", fontWeight: 600 }}>
                   Your Tickets
                 </div>
-                <div
-                  style={{
-                    fontSize: 11,
-                    color: colors.textMuted,
-                  }}
-                >
-                  {totalTickets} ticket
-                  {totalTickets > 1 ? "s" : ""} · {durationText}
+                <div style={{ fontSize: "12px", color: colors.textMuted }}>
+                  {totalTickets} ticket{totalTickets > 1 ? "s" : ""} • {durationText}
                 </div>
               </div>
             </div>
+            
             <button
               onClick={editBooking}
               style={{
-                background: "rgba(0, 240, 255, 0.1)",
-                border: "1px solid rgba(0, 240, 255, 0.3)",
+                background: "rgba(34, 197, 94, 0.1)",
+                border: `1px solid rgba(34, 197, 94, 0.3)`,
                 borderRadius: "8px",
                 padding: "6px 12px",
                 cursor: "pointer",
-                fontSize: "11px",
-                fontWeight: 600,
-                color: colors.cyan,
-                textTransform: "uppercase",
-                letterSpacing: "0.5px",
-                transition: "all 0.2s ease",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = "rgba(0, 240, 255, 0.18)";
-                e.currentTarget.style.transform = "translateY(-1px)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = "rgba(0, 240, 255, 0.1)";
-                e.currentTarget.style.transform = "translateY(0)";
+                fontSize: "12px",
+                fontWeight: 500,
+                color: colors.green,
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
               }}
             >
+              <Edit2 size={12} />
               Edit
             </button>
           </div>
-
-          <div
-            style={{
-              padding: "10px 12px 12px",
-              display: "flex",
-              flexDirection: "column",
-              gap: 10,
-            }}
-          >
+          
+          <div style={{ padding: "12px 16px 16px" }}>
             {draft.tickets.map((t) => {
-              if (t.quantity <= 0) return null;
               const lineTotal = t.price * t.quantity;
               return (
                 <div
@@ -688,277 +669,365 @@ export default function CheckoutPage() {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
-                    padding: "10px 8px",
-                    borderRadius: 12,
-                    background: "rgba(15,23,42,0.9)",
-                    position: "relative",
+                    padding: "12px",
+                    borderRadius: "12px",
+                    background: "rgba(15, 23, 42, 0.5)",
+                    marginBottom: "8px",
+                    border: `1px solid ${colors.border}`,
                   }}
                 >
-                  <div style={{ flex: 1 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
                     <div
                       style={{
-                        fontSize: 13,
+                        fontSize: "14px",
                         fontWeight: 600,
-                        marginBottom: 4,
+                        marginBottom: "4px",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
                       }}
                     >
                       {t.title}
                     </div>
                     <div
                       style={{
-                        fontSize: 11,
+                        fontSize: "12px",
                         color: colors.textMuted,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
                       }}
                     >
-                      {t.quantity} x ₹{t.price} • {CONSOLE_LABELS[t.console]}
+                      <span>{t.quantity} × ₹{t.price}</span>
+                      <span style={{ color: colors.border }}>•</span>
+                      <span>{CONSOLE_LABELS[t.console]}</span>
                     </div>
                   </div>
+                  
                   <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                     <div
                       style={{
                         fontFamily: fonts.heading,
-                        fontSize: 14,
+                        fontSize: "15px",
                         fontWeight: 600,
+                        color: colors.textPrimary,
+                        minWidth: "60px",
+                        textAlign: "right",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "2px",
                       }}
                     >
-                      ₹{lineTotal}
+                      <IndianRupee size={12} />
+                      {lineTotal}
                     </div>
                     <button
                       onClick={() => removeTicket(t.ticketId)}
                       style={{
-                        background: "rgba(239, 68, 68, 0.15)",
-                        border: "1px solid rgba(239, 68, 68, 0.3)",
+                        background: "rgba(239, 68, 68, 0.1)",
+                        border: `1px solid rgba(239, 68, 68, 0.3)`,
                         borderRadius: "8px",
-                        padding: "6px 8px",
+                        padding: "6px",
                         cursor: "pointer",
-                        fontSize: "16px",
-                        lineHeight: "1",
-                        transition: "all 0.2s ease",
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = "rgba(239, 68, 68, 0.25)";
-                        e.currentTarget.style.transform = "scale(1.05)";
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = "rgba(239, 68, 68, 0.15)";
-                        e.currentTarget.style.transform = "scale(1)";
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        width: "32px",
+                        height: "32px",
                       }}
                       title="Remove ticket"
                     >
-                      🗑️
+                      <Trash2 size={16} color="#ef4444" />
                     </button>
                   </div>
                 </div>
               );
             })}
           </div>
-
-          {/* Price summary */}
+          
+          {/* Price Summary */}
           <div
             style={{
-              borderTop: `1px dashed ${colors.border}`,
-              padding: "10px 14px 12px",
-              display: "flex",
-              flexDirection: "column",
-              gap: 6,
+              borderTop: `1px solid ${colors.border}`,
+              padding: "16px",
+              background: "rgba(15, 23, 42, 0.5)",
             }}
           >
             <div
               style={{
                 display: "flex",
                 justifyContent: "space-between",
-                fontSize: 12,
-                color: colors.textSecondary,
+                alignItems: "center",
+                marginBottom: "8px",
               }}
             >
-              <span>Subtotal</span>
-              <span>₹{draft.totalAmount}</span>
-            </div>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                fontSize: 12,
-                color: colors.textSecondary,
-              }}
-            >
-              <span>GST & charges</span>
-              <span>Included</span>
-            </div>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                marginTop: 4,
-                fontSize: 13,
-                fontWeight: 600,
-              }}
-            >
-              <span>Total</span>
-              <span style={{ fontFamily: fonts.heading, fontSize: 16 }}>
+              <span style={{ fontSize: "14px", color: colors.textSecondary }}>
+                Subtotal
+              </span>
+              <span style={{ fontSize: "14px", fontWeight: 500 }}>
                 ₹{draft.totalAmount}
+              </span>
+            </div>
+            
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: "12px",
+              }}
+            >
+              <span style={{ fontSize: "14px", color: colors.textSecondary }}>
+                Taxes & Fees
+              </span>
+              <span style={{ fontSize: "14px", color: colors.textMuted }}>
+                Included
+              </span>
+            </div>
+            
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                paddingTop: "12px",
+                borderTop: `1px solid ${colors.border}`,
+              }}
+            >
+              <span style={{ fontSize: "16px", fontWeight: 600 }}>
+                Total Amount
+              </span>
+              <span
+                style={{
+                  fontFamily: fonts.heading,
+                  fontSize: "20px",
+                  fontWeight: 700,
+                  color: colors.green,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "2px",
+                }}
+              >
+                <IndianRupee size={16} />
+                {draft.totalAmount}
               </span>
             </div>
           </div>
         </section>
 
-        {/* Payment info */}
-        <section
-          style={{ marginTop: 16, fontSize: 12, color: colors.textMuted }}
+        {/* Note */}
+        <div
+          style={{
+            padding: "16px",
+            borderRadius: "12px",
+            background: "rgba(34, 197, 94, 0.05)",
+            border: `1px solid rgba(34, 197, 94, 0.2)`,
+            marginBottom: "20px",
+          }}
         >
-          <p style={{ margin: 0 }}>
-            Complete the payment to{" "}
-            <strong>lock your slot and confirm your booking.</strong>
+          <p
+            style={{
+              fontSize: "13px",
+              color: colors.textSecondary,
+              lineHeight: 1.6,
+              margin: 0,
+              display: "flex",
+              alignItems: "flex-start",
+              gap: "8px",
+            }}
+          >
+            <CheckCircle size={16} color={colors.green} style={{ flexShrink: 0, marginTop: "2px" }} />
+            <span>
+              <strong style={{ color: colors.green }}>Note:</strong> Complete the payment to 
+              lock your slot and confirm your booking. You'll receive a confirmation email.
+            </span>
           </p>
-        </section>
+        </div>
 
-        {/* Error message */}
+        {/* Error Message */}
         {error && (
           <div
             style={{
-              marginTop: 16,
-              padding: "10px 12px",
-              borderRadius: 10,
-              border: "1px solid rgba(248,113,113,0.6)",
-              background: "rgba(248,113,113,0.08)",
-              fontSize: 12,
-              color: "#fecaca",
+              padding: "12px 16px",
+              borderRadius: "12px",
+              background: "rgba(239, 68, 68, 0.1)",
+              border: `1px solid rgba(239, 68, 68, 0.3)`,
+              marginBottom: "20px",
+              display: "flex",
+              alignItems: "flex-start",
+              gap: "8px",
             }}
           >
-            {error}
+            <AlertCircle size={18} color="#ef4444" style={{ flexShrink: 0, marginTop: "1px" }} />
+            <span style={{ fontSize: "13px", color: "#fecaca", lineHeight: 1.5 }}>{error}</span>
           </div>
         )}
       </div>
 
-      {/* Bottom bar */}
+      {/* Fixed Bottom Bar */}
       <div
         style={{
           position: "fixed",
           left: 0,
           right: 0,
           bottom: 0,
+          background: colors.dark,
           borderTop: `1px solid ${colors.border}`,
-          background: "rgba(5,5,9,0.98)",
-          backdropFilter: "blur(18px)",
-          padding: "12px 16px",
-          zIndex: 20,
+          padding: "16px",
+          zIndex: 50,
+          backdropFilter: "blur(10px)",
         }}
       >
         <div
           style={{
-            maxWidth: 720,
+            maxWidth: "600px",
             margin: "0 auto",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            gap: 16,
+            gap: "16px",
           }}
         >
-          <div>
+          <div style={{ minWidth: 0 }}>
             <div
               style={{
-                fontSize: 13,
-                fontWeight: 600,
+                fontSize: "14px",
+                color: colors.textMuted,
+                marginBottom: "2px",
               }}
             >
-              ₹{draft.totalAmount}
+              Total Amount
             </div>
             <div
               style={{
-                fontSize: 11,
-                color: colors.textMuted,
+                fontFamily: fonts.heading,
+                fontSize: "20px",
+                fontWeight: 700,
+                color: colors.green,
+                lineHeight: 1,
+                display: "flex",
+                alignItems: "center",
+                gap: "2px",
               }}
             >
-              {totalTickets} ticket
-              {totalTickets > 1 ? "s" : ""} · {draft.timeSlot} – {endTime}
+              <IndianRupee size={16} />
+              {draft.totalAmount}
             </div>
           </div>
-
+          
           <button
             disabled={placing}
             onClick={handlePlaceOrder}
             style={{
               flexShrink: 0,
-              padding: "14px 20px",
-              minHeight: "48px",
-              borderRadius: "999px",
+              padding: "14px 24px",
+              borderRadius: "12px",
               border: "none",
               fontFamily: fonts.heading,
-              fontSize: "12px",
+              fontSize: "14px",
               fontWeight: 600,
-              letterSpacing: "1px",
-              textTransform: "uppercase",
               cursor: placing ? "not-allowed" : "pointer",
               background: placing
-                ? "rgba(148,163,184,0.3)"
-                : `linear-gradient(135deg, ${colors.green} 0, #16a34a 100%)`,
+                ? "rgba(148, 163, 184, 0.3)"
+                : `linear-gradient(135deg, ${colors.green} 0%, #16a34a 100%)`,
               color: "white",
               minWidth: "160px",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               gap: "8px",
+              boxShadow: placing ? "none" : `0 4px 20px rgba(34, 197, 94, 0.3)`,
             }}
-            className="place-order-button"
           >
-            {placing && (
-              <div
-                style={{
-                  width: "14px",
-                  height: "14px",
-                  border: "2px solid rgba(255, 255, 255, 0.3)",
-                  borderTopColor: "white",
-                  borderRadius: "50%",
-                  animation: "spin 0.6s linear infinite",
-                }}
-              />
+            {placing ? (
+              <>
+                <Loader2 size={16} className="animate-spin" />
+                Processing...
+              </>
+            ) : (
+              <>
+                <IndianRupee size={16} />
+                Pay {draft.totalAmount}
+              </>
             )}
-            {placing
-              ? "Processing..."
-              : `Pay ₹${draft.totalAmount} & Confirm`}
           </button>
         </div>
       </div>
 
-      {/* Responsive styles */}
+      {/* Responsive Styles */}
       <style>{`
         @keyframes spin {
           to { transform: rotate(360deg); }
         }
-
-        @media (min-width: 640px) {
+        
+        .animate-spin {
+          animation: spin 1s linear infinite;
+        }
+        
+        @media (max-width: 640px) {
           .checkout-container {
-            padding: 20px 16px 140px !important;
+            padding-left: 12px !important;
+            padding-right: 12px !important;
           }
-          .checkout-title {
-            font-size: 24px !important;
+          
+          .fixed-bottom-bar {
+            padding: 12px !important;
           }
-          .cafe-card {
-            padding: 16px 18px !important;
-            border-radius: 20px !important;
-            gap: 16px !important;
-          }
-          .cafe-icon {
-            width: 52px !important;
-            height: 52px !important;
-            min-width: 52px !important;
-            font-size: 26px !important;
-          }
-          .tickets-section {
-            border-radius: 18px !important;
-          }
-          .place-order-button {
-            padding: 12px 22px !important;
-            min-width: 190px !important;
+          
+          .confirm-button {
+            min-width: 140px !important;
+            padding: 12px 16px !important;
+            font-size: 13px !important;
           }
         }
-
-        @media (max-width: 400px) {
-          .date-text {
-            font-size: 11px !important;
+        
+        @media (max-width: 480px) {
+          .checkout-title {
+            font-size: 22px !important;
           }
-          .session-duration {
-            display: none;
+          
+          .ticket-item {
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 8px !important;
+          }
+          
+          .ticket-info {
+            width: 100% !important;
+          }
+          
+          .ticket-actions {
+            width: 100% !important;
+            justify-content: space-between !important;
+          }
+          
+          .price-display {
+            min-width: auto !important;
+            text-align: left !important;
+          }
+          
+          .bottom-bar {
+            flex-direction: column !important;
+            gap: 12px !important;
+            text-align: center !important;
+          }
+        }
+        
+        @media (max-width: 360px) {
+          .confirm-button {
+            min-width: 120px !important;
+            padding: 10px 12px !important;
+            font-size: 12px !important;
+          }
+          
+          .header-content {
+            flex-direction: column !important;
+            gap: 8px !important;
+            align-items: flex-start !important;
+          }
+          
+          .secure-badge {
+            align-self: flex-start !important;
           }
         }
       `}</style>

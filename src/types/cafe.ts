@@ -37,8 +37,5 @@ export type Cafe = {
   ram_details?: string | null;
   accessories_details?: string | null;
 
-  // Optional future fields
-  rating?: number | null;
-
   created_at?: string;
 };

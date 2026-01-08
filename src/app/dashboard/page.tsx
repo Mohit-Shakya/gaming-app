@@ -4,7 +4,29 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import { colors, fonts } from "@/lib/constants";
+import {
+  Calendar,
+  Clock,
+  MapPin,
+  DollarSign,
+  CheckCircle,
+  XCircle,
+  Clock4,
+  Gamepad2,
+  TrendingUp,
+  Zap,
+  Award,
+  Users,
+  ChevronRight,
+  ExternalLink,
+  Loader2,
+  AlertCircle,
+  History,
+  CalendarCheck,
+  CreditCard,
+  Sparkles,
+  Crown
+} from "lucide-react";
 
 type BookingRow = {
   id: string;
@@ -12,14 +34,19 @@ type BookingRow = {
   user_id?: string | null;
   booking_date?: string | null;
   start_time?: string | null;
+  end_time?: string | null;
   total_amount?: number | null;
   status?: string | null;
   created_at?: string | null;
+  hours?: number | null;
 };
 
 type CafeRow = {
   id: string;
   name: string;
+  address?: string | null;
+  city?: string | null;
+  cover_url?: string | null;
 };
 
 type BookingWithCafe = BookingRow & { cafe?: CafeRow | null };
@@ -32,6 +59,7 @@ export default function DashboardPage() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [cancelingId, setCancelingId] = useState<string | null>(null);
   const [userName, setUserName] = useState<string>("");
+  const [activeTab, setActiveTab] = useState<"upcoming" | "history">("upcoming");
 
   // Load user + bookings
   useEffect(() => {
@@ -59,13 +87,14 @@ export default function DashboardPage() {
 
         // Get user name from metadata
         const name = user.user_metadata?.full_name || user.email?.split("@")[0] || "Gamer";
-        setUserName(name.split(" ")[0]); // First name only
+        setUserName(name);
 
         const { data: bookingRows, error: bookingError } = await supabase
           .from("bookings")
           .select("*")
           .eq("user_id", user.id)
-          .order("booking_date", { ascending: false });
+          .order("booking_date", { ascending: false })
+          .limit(50);
 
         if (bookingError) {
           console.error("Supabase bookingError:", bookingError);
@@ -90,7 +119,7 @@ export default function DashboardPage() {
         if (cafeIds.length > 0) {
           const { data: cafeRows, error: cafeError } = await supabase
             .from("cafes")
-            .select("id, name")
+            .select("id, name, address, city, cover_url")
             .in("id", cafeIds);
 
           if (cafeError) {
@@ -159,7 +188,8 @@ export default function DashboardPage() {
     const total = bookings.length;
     const confirmed = bookings.filter(b => (b.status || "").toLowerCase() === "confirmed").length;
     const totalSpent = bookings.reduce((sum, b) => sum + (b.total_amount ?? 0), 0);
-    return { total, confirmed, totalSpent };
+    const totalHours = bookings.reduce((sum, b) => sum + (b.hours ?? 1), 0);
+    return { total, confirmed, totalSpent, totalHours };
   }, [bookings]);
 
   function formatDate(dateStr?: string | null) {
@@ -169,11 +199,16 @@ export default function DashboardPage() {
       return d.toLocaleDateString("en-IN", {
         day: "numeric",
         month: "short",
-        weekday: "short",
+        year: "numeric",
       });
     } catch {
       return dateStr;
     }
+  }
+
+  function formatTime(timeStr?: string | null) {
+    if (!timeStr) return "Time not set";
+    return timeStr;
   }
 
   function getStatusInfo(status?: string | null) {
@@ -181,28 +216,28 @@ export default function DashboardPage() {
     
     if (value === "cancelled") {
       return {
-        label: "CANCELLED",
-        bg: "rgba(239, 68, 68, 0.15)",
-        border: "rgba(239, 68, 68, 0.3)",
-        color: "#ef4444",
-        icon: "✕",
+        label: "Cancelled",
+        bg: "bg-gradient-to-r from-red-500/10 to-red-500/5",
+        border: "border-red-500/20",
+        color: "text-red-400",
+        icon: <XCircle className="w-4 h-4" />,
       };
     }
     if (value === "pending") {
       return {
-        label: "PENDING",
-        bg: "rgba(245, 158, 11, 0.15)",
-        border: "rgba(245, 158, 11, 0.3)",
-        color: colors.orange,
-        icon: "⏳",
+        label: "Pending",
+        bg: "bg-gradient-to-r from-amber-500/10 to-amber-500/5",
+        border: "border-amber-500/20",
+        color: "text-amber-400",
+        icon: <Clock4 className="w-4 h-4" />,
       };
     }
     return {
-      label: "CONFIRMED",
-      bg: "rgba(34, 197, 94, 0.15)",
-      border: "rgba(34, 197, 94, 0.3)",
-      color: colors.green,
-      icon: "✓",
+      label: "Confirmed",
+      bg: "bg-gradient-to-r from-emerald-500/10 to-emerald-500/5",
+      border: "border-emerald-500/20",
+      color: "text-emerald-400",
+      icon: <CheckCircle className="w-4 h-4" />,
     };
   }
 
@@ -250,602 +285,567 @@ export default function DashboardPage() {
     }
   }
 
-  // Booking Card Component
-  function BookingCard({ booking, showCancel }: { booking: BookingWithCafe; showCancel?: boolean }) {
-    const statusInfo = getStatusInfo(booking.status);
-    const canCancel = showCancel && canCancelBooking(booking);
-    const isCancelling = cancelingId === booking.id;
-    const isUpcoming = (booking.booking_date ?? "") >= new Date().toISOString().slice(0, 10);
-
-    return (
-      <div
-        onClick={() => router.push(`/bookings/${booking.id}`)}
-        style={{
-          background: colors.darkCard,
-          border: `1px solid ${colors.border}`,
-          borderRadius: "16px",
-          padding: "16px",
-          cursor: "pointer",
-          transition: "all 0.2s ease",
-          position: "relative",
-          overflow: "hidden",
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.borderColor = "rgba(255, 7, 58, 0.3)";
-          e.currentTarget.style.transform = "translateY(-2px)";
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.borderColor = colors.border;
-          e.currentTarget.style.transform = "translateY(0)";
-        }}
-      >
-        {/* Left accent bar */}
-        <div style={{
-          position: "absolute",
-          left: 0,
-          top: 0,
-          bottom: 0,
-          width: "3px",
-          background: isUpcoming ? colors.cyan : colors.textMuted,
-          borderRadius: "3px 0 0 3px",
-        }} />
-
-        <div style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          gap: "12px",
-        }}>
-          {/* Left side - Info */}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "10px",
-              marginBottom: "10px",
-            }}>
-              <div style={{
-                width: "40px",
-                height: "40px",
-                background: `linear-gradient(135deg, ${colors.red}20 0%, ${colors.red}10 100%)`,
-                borderRadius: "10px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: "20px",
-              }}>
-                🎮
-              </div>
-              <div>
-                <p style={{
-                  fontSize: "15px",
-                  fontWeight: 600,
-                  color: colors.textPrimary,
-                  marginBottom: "2px",
-                }}>
-                  {booking.cafe?.name ?? "Gaming Café"}
-                </p>
-                <div style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  fontSize: "12px",
-                  color: colors.textSecondary,
-                }}>
-                  <span>📅 {formatDate(booking.booking_date)}</span>
-                  <span style={{ color: colors.cyan }}>
-                    ⏰ {booking.start_time || "Time TBD"}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Cancel button */}
-            {canCancel && (
-              <button
-                onClick={(e) => handleCancelBooking(booking.id, e)}
-                disabled={isCancelling}
-                style={{
-                  padding: "6px 12px",
-                  background: "rgba(239, 68, 68, 0.1)",
-                  border: "1px solid rgba(239, 68, 68, 0.2)",
-                  borderRadius: "6px",
-                  color: "#ef4444",
-                  fontSize: "11px",
-                  fontWeight: 600,
-                  cursor: isCancelling ? "not-allowed" : "pointer",
-                  opacity: isCancelling ? 0.6 : 1,
-                  marginTop: "8px",
-                }}
-              >
-                {isCancelling ? "Cancelling..." : "Cancel"}
-              </button>
-            )}
-          </div>
-
-          {/* Right side - Price & Status */}
-          <div style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "flex-end",
-            gap: "8px",
-          }}>
-            <p style={{
-              fontFamily: fonts.heading,
-              fontSize: "18px",
-              fontWeight: 700,
-              color: colors.cyan,
-            }}>
-              ₹{booking.total_amount ?? 0}
-            </p>
-            <div style={{
-              padding: "4px 10px",
-              background: statusInfo.bg,
-              border: `1px solid ${statusInfo.border}`,
-              borderRadius: "12px",
-              display: "flex",
-              alignItems: "center",
-              gap: "4px",
-            }}>
-              <span style={{ fontSize: "10px" }}>{statusInfo.icon}</span>
-              <span style={{
-                fontSize: "10px",
-                fontWeight: 600,
-                color: statusInfo.color,
-                letterSpacing: "0.5px",
-              }}>
-                {statusInfo.label}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Section Component
-  function BookingSection({
-    title,
-    icon,
-    items,
-    emptyText,
-    emptyIcon,
-    showCancel
-  }: {
-    title: string;
-    icon: string;
-    items: BookingWithCafe[];
-    emptyText: string;
-    emptyIcon: string;
-    showCancel?: boolean;
-  }) {
-    return (
-      <section style={{ marginBottom: "24px" }}>
-        <h2 style={{
-          fontSize: "12px",
-          fontWeight: 600,
-          color: colors.textSecondary,
-          textTransform: "uppercase",
-          letterSpacing: "1.5px",
-          marginBottom: "12px",
-          display: "flex",
-          alignItems: "center",
-          gap: "8px",
-        }}
-        className="section-heading"
-        >
-          <span>{icon}</span> {title}
-          {items.length > 0 && (
-            <span style={{
-              marginLeft: "auto",
-              padding: "2px 8px",
-              background: colors.red + "20",
-              borderRadius: "10px",
-              fontSize: "11px",
-              color: colors.red,
-            }}>
-              {items.length}
-            </span>
-          )}
-        </h2>
-
-        {items.length === 0 ? (
-          <div style={{
-            padding: "32px 20px",
-            background: colors.darkCard,
-            border: `1px dashed ${colors.border}`,
-            borderRadius: "16px",
-            textAlign: "center",
-          }}>
-            <div style={{ fontSize: "40px", marginBottom: "12px", opacity: 0.5 }}>
-              {emptyIcon}
-            </div>
-            <p style={{
-              fontSize: "13px",
-              color: colors.textMuted,
-              maxWidth: "250px",
-              margin: "0 auto",
-              lineHeight: 1.5,
-            }}>
-              {emptyText}
-            </p>
-          </div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            {items.map((booking) => (
-              <BookingCard 
-                key={booking.id} 
-                booking={booking} 
-                showCancel={showCancel}
-              />
-            ))}
-          </div>
-        )}
-      </section>
-    );
-  }
-
   // Loading state
   if (loading) {
     return (
-      <div style={{
-        minHeight: "100vh",
-        background: `linear-gradient(180deg, ${colors.dark} 0%, #0a0a10 100%)`,
-        fontFamily: fonts.body,
-      }}>
-        <div style={{
-          maxWidth: "600px",
-          margin: "0 auto",
-          padding: "20px 16px",
-        }}>
-          <div style={{
-            height: "100px",
-            background: colors.darkCard,
-            borderRadius: "16px",
-            marginBottom: "20px",
-            animation: "pulse 2s ease-in-out infinite",
-          }} />
-          {[1, 2, 3].map((i) => (
-            <div
-              key={i}
-              style={{
-                height: "80px",
-                background: colors.darkCard,
-                borderRadius: "16px",
-                marginBottom: "12px",
-                animation: "pulse 2s ease-in-out infinite",
-                animationDelay: `${i * 0.2}s`,
-              }}
-            />
-          ))}
+      <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-950">
+        <div className="max-w-6xl mx-auto px-4 py-8">
+          {/* Skeleton Header */}
+          <div className="mb-8">
+            <div className="h-4 w-32 bg-gray-800 rounded-full mb-2 animate-pulse"></div>
+            <div className="h-8 w-48 bg-gray-800 rounded-lg mb-2 animate-pulse"></div>
+            <div className="h-4 w-64 bg-gray-800 rounded-full animate-pulse"></div>
+          </div>
+
+          {/* Skeleton Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="h-32 bg-gray-800/50 rounded-2xl animate-pulse"></div>
+            ))}
+          </div>
+
+          {/* Skeleton Tabs */}
+          <div className="flex gap-4 mb-6">
+            <div className="h-10 w-32 bg-gray-800 rounded-lg animate-pulse"></div>
+            <div className="h-10 w-32 bg-gray-800 rounded-lg animate-pulse"></div>
+          </div>
+
+          {/* Skeleton Cards */}
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-32 bg-gray-800/30 rounded-xl animate-pulse"></div>
+            ))}
+          </div>
         </div>
-        <style>{`
-          @keyframes pulse {
-            0%, 100% { opacity: 0.5; }
-            50% { opacity: 0.8; }
-          }
-        `}</style>
       </div>
     );
   }
 
   return (
-    <div style={{
-      minHeight: "100vh",
-      background: `linear-gradient(180deg, ${colors.dark} 0%, #0a0a10 100%)`,
-      fontFamily: fonts.body,
-      color: colors.textPrimary,
-      position: "relative",
-    }}>
-      {/* Background glow */}
-      <div style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: `
-          radial-gradient(ellipse at 20% 0%, rgba(255, 7, 58, 0.08) 0%, transparent 50%),
-          radial-gradient(ellipse at 80% 100%, rgba(0, 240, 255, 0.06) 0%, transparent 50%)
-        `,
-        pointerEvents: "none",
-        zIndex: 0,
-      }} />
+    <>
+      <style jsx global>{`
+        .dashboard-bg {
+          background: linear-gradient(135deg, 
+            #08080c 0%, 
+            #0a0a10 50%, 
+            #08080c 100%);
+          min-height: 100vh;
+        }
 
-      <div style={{
-        maxWidth: "600px",
-        margin: "0 auto",
-        padding: "16px 16px 40px",
-        position: "relative",
-        zIndex: 1,
-      }}
-      className="dashboard-container"
-      >
-        {/* Header */}
-        <header style={{ marginBottom: "24px" }}>
-          <p style={{
-            fontSize: "12px",
-            color: colors.cyan,
-            textTransform: "uppercase",
-            letterSpacing: "2px",
-            marginBottom: "4px",
-          }}>
-            Dashboard
-          </p>
-          <h1 style={{
-            fontFamily: fonts.heading,
-            fontSize: "20px",
-            fontWeight: 700,
-            color: colors.textPrimary,
-            margin: "0 0 8px 0",
-          }}
-          className="dashboard-title"
-          >
-            Hey, {userName}! 👋
-          </h1>
-          <p style={{
-            fontSize: "14px",
-            color: colors.textSecondary,
-          }}>
-            Manage your gaming sessions
-          </p>
-        </header>
+        .glass-card {
+          background: linear-gradient(145deg, 
+            rgba(16, 16, 22, 0.8) 0%, 
+            rgba(10, 10, 15, 0.9) 100%);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          box-shadow: 
+            0 8px 32px rgba(0, 0, 0, 0.3),
+            inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        }
 
-        {/* Stats Cards */}
-        {bookings.length > 0 && (
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3, 1fr)",
-            gap: "8px",
-            marginBottom: "20px",
-          }}
-          className="stats-grid"
-          >
-            <div style={{
-              background: colors.darkCard,
-              border: `1px solid ${colors.border}`,
-              borderRadius: "12px",
-              padding: "12px 8px",
-              textAlign: "center",
-            }}
-            className="stat-card"
-            >
-              <p style={{
-                fontFamily: fonts.heading,
-                fontSize: "20px",
-                fontWeight: 700,
-                color: colors.cyan,
-                marginBottom: "4px",
-              }}
-              className="stat-number"
-              >
-                {stats.total}
-              </p>
-              <p style={{
-                fontSize: "10px",
-                color: colors.textMuted,
-                textTransform: "uppercase",
-                letterSpacing: "0.5px",
-              }}
-              className="stat-label"
-              >
-                Total
-              </p>
-            </div>
-            <div style={{
-              background: colors.darkCard,
-              border: `1px solid ${colors.border}`,
-              borderRadius: "12px",
-              padding: "12px 8px",
-              textAlign: "center",
-            }}
-            className="stat-card"
-            >
-              <p style={{
-                fontFamily: fonts.heading,
-                fontSize: "20px",
-                fontWeight: 700,
-                color: colors.green,
-                marginBottom: "4px",
-              }}
-              className="stat-number"
-              >
-                {upcoming.length}
-              </p>
-              <p style={{
-                fontSize: "10px",
-                color: colors.textMuted,
-                textTransform: "uppercase",
-                letterSpacing: "0.5px",
-              }}
-              className="stat-label"
-              >
-                Upcoming
-              </p>
-            </div>
-            <div style={{
-              background: colors.darkCard,
-              border: `1px solid ${colors.border}`,
-              borderRadius: "12px",
-              padding: "12px 8px",
-              textAlign: "center",
-            }}
-            className="stat-card"
-            >
-              <p style={{
-                fontFamily: fonts.heading,
-                fontSize: "20px",
-                fontWeight: 700,
-                color: colors.red,
-                marginBottom: "4px",
-              }}
-              className="stat-number"
-              >
-                ₹{stats.totalSpent}
-              </p>
-              <p style={{
-                fontSize: "10px",
-                color: colors.textMuted,
-                textTransform: "uppercase",
-                letterSpacing: "0.5px",
-              }}
-              className="stat-label"
-              >
-                Spent
-              </p>
-            </div>
-          </div>
-        )}
+        .stat-card {
+          background: linear-gradient(135deg, 
+            rgba(255, 7, 58, 0.1) 0%,
+            rgba(0, 240, 255, 0.1) 100%);
+          border: 1px solid rgba(255, 7, 58, 0.2);
+          position: relative;
+          overflow: hidden;
+          transition: all 0.3s ease;
+        }
 
-        {/* Error Message */}
-        {errorMsg && (
-          <div style={{
-            padding: "16px",
-            background: "rgba(239, 68, 68, 0.1)",
-            border: "1px solid rgba(239, 68, 68, 0.3)",
-            borderRadius: "12px",
-            marginBottom: "20px",
-            display: "flex",
-            alignItems: "center",
-            gap: "12px",
-          }}>
-            <span style={{ fontSize: "20px" }}>⚠️</span>
-            <p style={{
-              fontSize: "13px",
-              color: "#ef4444",
-              margin: 0,
-            }}>
-              {errorMsg}
-            </p>
-          </div>
-        )}
+        .stat-card:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 12px 40px rgba(255, 7, 58, 0.15);
+        }
 
-        {/* Quick Action */}
-        <button
-          onClick={() => router.push("/")}
-          style={{
-            width: "100%",
-            padding: "16px 20px",
-            minHeight: "48px",
-            background: `linear-gradient(135deg, ${colors.red} 0%, #ff3366 100%)`,
-            border: "none",
-            borderRadius: "12px",
-            color: "white",
-            fontFamily: fonts.heading,
-            fontSize: "14px",
-            fontWeight: 600,
-            textTransform: "uppercase",
-            letterSpacing: "1px",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: "10px",
-            marginBottom: "20px",
-            boxShadow: `0 8px 32px ${colors.red}40`,
-          }}
-          className="book-button"
-        >
-          <span style={{ fontSize: "18px" }}>🎮</span>
-          Book New Session
-        </button>
+        .booking-card {
+          background: linear-gradient(145deg, 
+            rgba(16, 16, 22, 0.9) 0%,
+            rgba(10, 10, 15, 0.95) 100%);
+          border: 1px solid rgba(255, 255, 255, 0.08);
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          cursor: pointer;
+          position: relative;
+          overflow: hidden;
+        }
 
-        {/* Booking Sections */}
-        {!errorMsg && (
-          <>
-            <BookingSection
-              title="Upcoming Sessions"
-              icon="🎯"
-              items={upcoming}
-              emptyText="No upcoming sessions. Book a gaming café to get started!"
-              emptyIcon="🎮"
-              showCancel
-            />
-            
-            <BookingSection
-              title="Past Sessions"
-              icon="📅"
-              items={past}
-              emptyText="Your gaming history will appear here after your first session."
-              emptyIcon="🕹️"
-            />
-          </>
-        )}
+        .booking-card::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: linear-gradient(135deg, 
+            rgba(255, 7, 58, 0.1) 0%,
+            rgba(0, 240, 255, 0.05) 100%);
+          opacity: 0;
+          transition: opacity 0.3s ease;
+        }
 
-        {/* Empty State for No Bookings */}
-        {!errorMsg && bookings.length === 0 && !loading && (
-          <div style={{
-            textAlign: "center",
-            padding: "40px 20px",
-          }}>
-            <div style={{
-              width: "100px",
-              height: "100px",
-              margin: "0 auto 20px",
-              background: `linear-gradient(135deg, ${colors.red}20 0%, ${colors.cyan}20 100%)`,
-              borderRadius: "50%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "50px",
-            }}>
-              🎮
-            </div>
-            <h2 style={{
-              fontFamily: fonts.heading,
-              fontSize: "18px",
-              color: colors.textPrimary,
-              marginBottom: "8px",
-            }}>
-              No Bookings Yet
-            </h2>
-            <p style={{
-              fontSize: "14px",
-              color: colors.textSecondary,
-              marginBottom: "24px",
-              maxWidth: "280px",
-              margin: "0 auto 24px",
-              lineHeight: 1.5,
-            }}>
-              Start your gaming adventure by booking your first session at a café near you!
-            </p>
-          </div>
-        )}
-      </div>
+        .booking-card:hover::before {
+          opacity: 1;
+        }
 
-      {/* Responsive styles */}
-      <style>{`
-        @media (min-width: 640px) {
-          .dashboard-container {
-            padding: 20px 16px 40px !important;
-          }
-          .dashboard-title {
-            font-size: 24px !important;
-          }
-          .stats-grid {
-            gap: 12px !important;
-            margin-bottom: 28px !important;
-          }
-          .stat-card {
-            padding: 16px !important;
-            border-radius: 14px !important;
-          }
-          .stat-number {
-            font-size: 24px !important;
-          }
-          .stat-label {
-            font-size: 11px !important;
-          }
-          .book-button {
-            border-radius: 14px !important;
-            margin-bottom: 28px !important;
-          }
-          .section-heading {
-            font-size: 13px !important;
-            margin-bottom: 14px !important;
-          }
+        .booking-card:hover {
+          border-color: rgba(255, 7, 58, 0.3);
+          transform: translateY(-4px);
+          box-shadow: 
+            0 12px 40px rgba(255, 7, 58, 0.2),
+            0 0 0 1px rgba(255, 7, 58, 0.1);
+        }
+
+        .status-badge {
+          background: linear-gradient(135deg, 
+            rgba(34, 197, 94, 0.15) 0%,
+            rgba(34, 197, 94, 0.05) 100%);
+          border: 1px solid rgba(34, 197, 94, 0.2);
+        }
+
+        .cancel-btn {
+          background: linear-gradient(135deg, 
+            rgba(239, 68, 68, 0.15) 0%,
+            rgba(239, 68, 68, 0.05) 100%);
+          border: 1px solid rgba(239, 68, 68, 0.2);
+          transition: all 0.2s ease;
+        }
+
+        .cancel-btn:hover {
+          background: rgba(239, 68, 68, 0.25);
+          transform: scale(1.05);
+        }
+
+        .tab-button {
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          transition: all 0.3s ease;
+        }
+
+        .tab-button.active {
+          background: linear-gradient(135deg, 
+            rgba(255, 7, 58, 0.2) 0%,
+            rgba(0, 240, 255, 0.1) 100%);
+          border-color: rgba(255, 7, 58, 0.3);
+          box-shadow: 0 4px 20px rgba(255, 7, 58, 0.15);
+        }
+
+        .empty-state {
+          background: linear-gradient(145deg, 
+            rgba(16, 16, 22, 0.5) 0%,
+            rgba(10, 10, 15, 0.6) 100%);
+          border: 2px dashed rgba(255, 255, 255, 0.1);
+        }
+
+        .primary-btn {
+          background: linear-gradient(135deg, 
+            #ff073a 0%, 
+            #ff3366 100%);
+          box-shadow: 
+            0 8px 32px rgba(255, 7, 58, 0.3),
+            inset 0 1px 0 rgba(255, 255, 255, 0.2);
+          transition: all 0.3s ease;
+        }
+
+        .primary-btn:hover {
+          transform: translateY(-2px);
+          box-shadow: 
+            0 12px 40px rgba(255, 7, 58, 0.4),
+            inset 0 1px 0 rgba(255, 255, 255, 0.3);
+        }
+
+        .primary-btn:active {
+          transform: translateY(0);
         }
       `}</style>
-    </div>
+
+      <div className="dashboard-bg text-white">
+        {/* Background Effects */}
+        <div className="fixed inset-0 pointer-events-none">
+          <div className="absolute top-0 left-1/4 w-96 h-96 bg-[#ff073a]/10 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-[#00f0ff]/10 rounded-full blur-3xl"></div>
+        </div>
+
+        <div className="max-w-6xl mx-auto px-4 py-8 relative z-10">
+          {/* Header */}
+          <header className="mb-10">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="p-2 rounded-xl bg-gradient-to-br from-[#ff073a]/20 to-[#00f0ff]/20">
+                    <Gamepad2 className="w-6 h-6 text-white" />
+                  </div>
+                  <span className="text-sm text-zinc-400 uppercase tracking-wider">
+                    My Dashboard
+                  </span>
+                </div>
+                <h1 className="text-3xl md:text-4xl font-bold mb-2" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                  Welcome back, <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#ff073a] to-[#00f0ff]">{userName}</span>!
+                </h1>
+                <p className="text-zinc-400" style={{ fontFamily: 'Inter, sans-serif' }}>
+                  Manage your gaming sessions and track your activity
+                </p>
+              </div>
+              
+              <button
+                onClick={() => router.push("/")}
+                className="primary-btn hidden md:flex items-center gap-2 px-6 py-3 rounded-xl font-bold"
+                style={{ fontFamily: 'Orbitron, sans-serif' }}
+              >
+                <Zap className="w-4 h-4" />
+                Book New Session
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Mobile Book Button */}
+            <button
+              onClick={() => router.push("/")}
+              className="primary-btn w-full md:hidden flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold mb-6"
+              style={{ fontFamily: 'Orbitron, sans-serif' }}
+            >
+              <Zap className="w-4 h-4" />
+              Book New Gaming Session
+            </button>
+
+            {/* Stats Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+              <div className="stat-card rounded-2xl p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <CalendarCheck className="w-8 h-8 text-[#ff073a]" />
+                  <span className="text-xs text-zinc-400">Total</span>
+                </div>
+                <div className="text-2xl font-bold mb-1" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                  {stats.total}
+                </div>
+                <div className="text-sm text-zinc-400">Bookings</div>
+              </div>
+
+              <div className="stat-card rounded-2xl p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <TrendingUp className="w-8 h-8 text-[#00f0ff]" />
+                  <span className="text-xs text-zinc-400">Upcoming</span>
+                </div>
+                <div className="text-2xl font-bold mb-1" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                  {upcoming.length}
+                </div>
+                <div className="text-sm text-zinc-400">Sessions</div>
+              </div>
+
+              <div className="stat-card rounded-2xl p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <Clock className="w-8 h-8 text-emerald-400" />
+                  <span className="text-xs text-zinc-400">Hours</span>
+                </div>
+                <div className="text-2xl font-bold mb-1" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                  {stats.totalHours}
+                </div>
+                <div className="text-sm text-zinc-400">Gaming Time</div>
+              </div>
+
+              <div className="stat-card rounded-2xl p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <CreditCard className="w-8 h-8 text-amber-400" />
+                  <span className="text-xs text-zinc-400">Spent</span>
+                </div>
+                <div className="text-2xl font-bold mb-1" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                  ₹{stats.totalSpent}
+                </div>
+                <div className="text-sm text-zinc-400">Total</div>
+              </div>
+            </div>
+          </header>
+
+          {/* Error Message */}
+          {errorMsg && (
+            <div className="glass-card rounded-2xl p-4 mb-8 flex items-center gap-3 border-l-4 border-red-500">
+              <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
+              <p className="text-sm text-red-300" style={{ fontFamily: 'Inter, sans-serif' }}>
+                {errorMsg}
+              </p>
+            </div>
+          )}
+
+          {/* Main Content */}
+          <main>
+            {/* Tabs */}
+            <div className="flex gap-2 mb-8">
+              <button
+                onClick={() => setActiveTab("upcoming")}
+                className={`tab-button flex items-center gap-2 px-6 py-3 rounded-xl font-medium ${activeTab === "upcoming" ? "active" : ""}`}
+                style={{ fontFamily: 'Inter, sans-serif' }}
+              >
+                <CalendarCheck className="w-4 h-4" />
+                Upcoming ({upcoming.length})
+              </button>
+              <button
+                onClick={() => setActiveTab("history")}
+                className={`tab-button flex items-center gap-2 px-6 py-3 rounded-xl font-medium ${activeTab === "history" ? "active" : ""}`}
+                style={{ fontFamily: 'Inter, sans-serif' }}
+              >
+                <History className="w-4 h-4" />
+                History ({past.length})
+              </button>
+            </div>
+
+            {/* Booking List */}
+            {activeTab === "upcoming" ? (
+              upcoming.length === 0 ? (
+                <div className="empty-state rounded-2xl p-12 text-center">
+                  <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-[#ff073a]/10 to-[#00f0ff]/10 flex items-center justify-center">
+                    <CalendarCheck className="w-12 h-12 text-zinc-600" />
+                  </div>
+                  <h3 className="text-xl font-bold mb-3" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                    No Upcoming Sessions
+                  </h3>
+                  <p className="text-zinc-400 mb-8 max-w-md mx-auto" style={{ fontFamily: 'Inter, sans-serif' }}>
+                    You don't have any upcoming gaming sessions. Book your first session to start your gaming journey!
+                  </p>
+                  <button
+                    onClick={() => router.push("/")}
+                    className="primary-btn inline-flex items-center gap-2 px-8 py-3 rounded-xl font-bold"
+                    style={{ fontFamily: 'Orbitron, sans-serif' }}
+                  >
+                    <Zap className="w-4 h-4" />
+                    Find Gaming Cafés
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {upcoming.map((booking) => {
+                    const statusInfo = getStatusInfo(booking.status);
+                    const canCancel = canCancelBooking(booking);
+                    
+                    return (
+                      <div
+                        key={booking.id}
+                        onClick={() => router.push(`/bookings/${booking.id}`)}
+                        className="booking-card rounded-2xl p-5"
+                      >
+                        <div className="flex flex-col md:flex-row md:items-center gap-5">
+                          {/* Left side - Café Info */}
+                          <div className="flex-1">
+                            <div className="flex items-start gap-4">
+                              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#ff073a]/20 to-[#00f0ff]/20 flex items-center justify-center flex-shrink-0">
+                                <Gamepad2 className="w-6 h-6 text-white" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-3 mb-2">
+                                  <h3 className="text-lg font-bold truncate" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                                    {booking.cafe?.name || "Gaming Café"}
+                                  </h3>
+                                  <div className={`status-badge inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${statusInfo.color}`}>
+                                    {statusInfo.icon}
+                                    {statusInfo.label}
+                                  </div>
+                                </div>
+                                <div className="flex flex-wrap gap-4 text-sm text-zinc-400">
+                                  <div className="flex items-center gap-1.5">
+                                    <Calendar className="w-4 h-4" />
+                                    <span style={{ fontFamily: 'Inter, sans-serif' }}>
+                                      {formatDate(booking.booking_date)}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5">
+                                    <Clock className="w-4 h-4" />
+                                    <span style={{ fontFamily: 'Inter, sans-serif' }}>
+                                      {formatTime(booking.start_time)} - {formatTime(booking.end_time)}
+                                    </span>
+                                  </div>
+                                  {booking.cafe?.city && (
+                                    <div className="flex items-center gap-1.5">
+                                      <MapPin className="w-4 h-4" />
+                                      <span style={{ fontFamily: 'Inter, sans-serif' }}>
+                                        {booking.cafe.city}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Right side - Price & Actions */}
+                          <div className="flex flex-col md:items-end gap-3">
+                            <div className="flex items-center gap-2">
+                              <DollarSign className="w-5 h-5 text-[#00f0ff]" />
+                              <span className="text-2xl font-bold text-white" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                                ₹{booking.total_amount || 0}
+                              </span>
+                              <span className="text-sm text-zinc-400">
+                                for {booking.hours || 1} hour{booking.hours !== 1 ? 's' : ''}
+                              </span>
+                            </div>
+                            
+                            <div className="flex gap-2">
+                              {canCancel && (
+                                <button
+                                  onClick={(e) => handleCancelBooking(booking.id, e)}
+                                  disabled={cancelingId === booking.id}
+                                  className="cancel-btn flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium"
+                                  style={{ fontFamily: 'Inter, sans-serif' }}
+                                >
+                                  {cancelingId === booking.id ? (
+                                    <>
+                                      <Loader2 className="w-4 h-4 animate-spin" />
+                                      Cancelling...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <XCircle className="w-4 h-4" />
+                                      Cancel
+                                    </>
+                                  )}
+                                </button>
+                              )}
+                              <button
+                                onClick={() => router.push(`/bookings/${booking.id}`)}
+                                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-sm font-medium transition-colors"
+                                style={{ fontFamily: 'Inter, sans-serif' }}
+                              >
+                                View Details
+                                <ExternalLink className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )
+            ) : (
+              // History Tab
+              past.length === 0 ? (
+                <div className="empty-state rounded-2xl p-12 text-center">
+                  <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-[#ff073a]/10 to-[#00f0ff]/10 flex items-center justify-center">
+                    <History className="w-12 h-12 text-zinc-600" />
+                  </div>
+                  <h3 className="text-xl font-bold mb-3" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                    No Gaming History
+                  </h3>
+                  <p className="text-zinc-400 mb-8 max-w-md mx-auto" style={{ fontFamily: 'Inter, sans-serif' }}>
+                    Your gaming history will appear here after your first session. Start gaming to build your history!
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {past.map((booking) => {
+                    const statusInfo = getStatusInfo(booking.status);
+                    
+                    return (
+                      <div
+                        key={booking.id}
+                        onClick={() => router.push(`/bookings/${booking.id}`)}
+                        className="booking-card rounded-2xl p-5 opacity-80 hover:opacity-100 transition-opacity"
+                      >
+                        <div className="flex flex-col md:flex-row md:items-center gap-5">
+                          {/* Left side - Café Info */}
+                          <div className="flex-1">
+                            <div className="flex items-start gap-4">
+                              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#ff073a]/10 to-[#00f0ff]/10 flex items-center justify-center flex-shrink-0">
+                                <Gamepad2 className="w-6 h-6 text-zinc-500" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-3 mb-2">
+                                  <h3 className="text-lg font-bold truncate" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                                    {booking.cafe?.name || "Gaming Café"}
+                                  </h3>
+                                  <div className={`status-badge inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${statusInfo.color}`}>
+                                    {statusInfo.icon}
+                                    {statusInfo.label}
+                                  </div>
+                                </div>
+                                <div className="flex flex-wrap gap-4 text-sm text-zinc-400">
+                                  <div className="flex items-center gap-1.5">
+                                    <Calendar className="w-4 h-4" />
+                                    <span style={{ fontFamily: 'Inter, sans-serif' }}>
+                                      {formatDate(booking.booking_date)}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5">
+                                    <Clock className="w-4 h-4" />
+                                    <span style={{ fontFamily: 'Inter, sans-serif' }}>
+                                      {formatTime(booking.start_time)} - {formatTime(booking.end_time)}
+                                    </span>
+                                  </div>
+                                  {booking.cafe?.city && (
+                                    <div className="flex items-center gap-1.5">
+                                      <MapPin className="w-4 h-4" />
+                                      <span style={{ fontFamily: 'Inter, sans-serif' }}>
+                                        {booking.cafe.city}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Right side - Price */}
+                          <div className="flex flex-col md:items-end">
+                            <div className="flex items-center gap-2 mb-2">
+                              <DollarSign className="w-5 h-5 text-[#00f0ff]" />
+                              <span className="text-2xl font-bold text-white" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                                ₹{booking.total_amount || 0}
+                              </span>
+                            </div>
+                            <div className="text-sm text-zinc-400">
+                              Completed on {formatDate(booking.booking_date)}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )
+            )}
+          </main>
+
+          {/* Stats Bar */}
+          {bookings.length > 0 && (
+            <div className="glass-card rounded-2xl p-6 mt-12">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div>
+                  <h3 className="text-lg font-bold mb-2" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                    Your Gaming Stats
+                  </h3>
+                  <p className="text-zinc-400 text-sm" style={{ fontFamily: 'Inter, sans-serif' }}>
+                    Track your gaming journey and achievements
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-4">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-[#ff073a]" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                      {stats.total}
+                    </div>
+                    <div className="text-sm text-zinc-400">Total Sessions</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-[#00f0ff]" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                      {stats.totalHours}
+                    </div>
+                    <div className="text-sm text-zinc-400">Hours Played</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-emerald-400" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                      ₹{stats.totalSpent}
+                    </div>
+                    <div className="text-sm text-zinc-400">Total Spent</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-amber-400" style={{ fontFamily: 'Orbitron, sans-serif' }}>
+                      {stats.confirmed}
+                    </div>
+                    <div className="text-sm text-zinc-400">Confirmed</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </>
   );
-} 
+}
