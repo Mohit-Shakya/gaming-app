@@ -384,7 +384,10 @@ export default function OwnerDashboardPage() {
   const [editCustomerName, setEditCustomerName] = useState<string>("");
   const [editCustomerPhone, setEditCustomerPhone] = useState<string>("");
   const [editDate, setEditDate] = useState<string>("");
-  const [editStartTime, setEditStartTime] = useState<string>("");
+  const [editStartTime, setEditStartTime] = useState<string>(""); // Store as "HH:MM" 24-hour format
+  const [editStartHour, setEditStartHour] = useState<number>(12);
+  const [editStartMinute, setEditStartMinute] = useState<number>(0);
+  const [editStartPeriod, setEditStartPeriod] = useState<"AM" | "PM">("AM");
   const [editDuration, setEditDuration] = useState<number>(60);
   const [editConsole, setEditConsole] = useState<string>("");
   const [editControllers, setEditControllers] = useState<number>(1);
@@ -1402,25 +1405,57 @@ export default function OwnerDashboardPage() {
     const controllers = booking.booking_items?.[0]?.quantity || 1;
     setEditConsole(consoleType);
     setEditControllers(controllers);
-    // Convert 12-hour format (from DB) to 24-hour format (for input)
-    // If no start_time, default to current time
-    let convertedTime = "";
+    // Parse booking time and set individual components for 12-hour picker
+    let hour = 12;
+    let minute = 0;
+    let period: "AM" | "PM" = "AM";
+
     if (booking.start_time) {
-      convertedTime = convertTo24Hour(booking.start_time);
-    }
+      // Try to parse the time (could be "10:30 am", "10:30 AM", "10:30:00 am", etc.)
+      const timeMatch = booking.start_time.match(/(\d{1,2}):(\d{2})(?::\d{2})?\s*(am|pm)?/i);
+      if (timeMatch) {
+        hour = parseInt(timeMatch[1]);
+        minute = parseInt(timeMatch[2]);
+        const timePeriod = timeMatch[3]?.toUpperCase() as "AM" | "PM";
 
-    // If conversion failed or no time, use current time as default
-    if (!convertedTime) {
+        if (timePeriod) {
+          period = timePeriod;
+        } else {
+          // If no AM/PM, assume 24-hour format and convert
+          if (hour >= 12) {
+            period = "PM";
+            if (hour > 12) hour -= 12;
+          } else {
+            period = "AM";
+            if (hour === 0) hour = 12;
+          }
+        }
+      }
+    } else {
+      // Default to current time
       const now = new Date();
-      convertedTime = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`;
-      console.log('[handleEditBooking] No start_time, using current time:', convertedTime);
+      hour = now.getHours();
+      minute = now.getMinutes();
+      if (hour >= 12) {
+        period = "PM";
+        if (hour > 12) hour -= 12;
+      } else {
+        period = "AM";
+        if (hour === 0) hour = 12;
+      }
     }
 
-    console.log('[handleEditBooking] Time conversion:', {
+    console.log('[handleEditBooking] Time parsing:', {
       original: booking.start_time,
-      converted: convertedTime,
+      parsed: { hour, minute, period },
     });
-    setEditStartTime(convertedTime);
+
+    setEditStartHour(hour);
+    setEditStartMinute(minute);
+    setEditStartPeriod(period);
+    // Also set the combined time string for compatibility
+    const hours24 = period === "PM" ? (hour === 12 ? 12 : hour + 12) : (hour === 12 ? 0 : hour);
+    setEditStartTime(`${hours24.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`);
   }
 
   // Handle save booking
@@ -1436,8 +1471,8 @@ export default function OwnerDashboardPage() {
       console.log('[handleSaveBooking] editConsole:', editConsole);
       console.log('[handleSaveBooking] editControllers:', editControllers);
 
-      // Convert 24-hour format (from input) back to 12-hour format (for DB)
-      const startTime12h = editStartTime ? convertTo12Hour(editStartTime) : editingBooking.start_time;
+      // Convert 12-hour picker values to the format stored in DB (e.g., "10:30 am")
+      const startTime12h = `${editStartHour}:${editStartMinute.toString().padStart(2, "0")} ${editStartPeriod.toLowerCase()}`;
 
       const updatedAmount = parseFloat(editAmount);
 
@@ -10729,30 +10764,97 @@ export default function OwnerDashboardPage() {
                     />
                   </div>
 
-                  {/* Start Time */}
+                  {/* Start Time - 12 Hour Format */}
                   <div>
                     <label style={{ fontSize: 12, color: theme.textMuted, display: "block", marginBottom: 8, fontWeight: 600 }}>
                       Start Time *
                     </label>
-                    <input
-                      type="time"
-                      value={editStartTime}
-                      onChange={(e) => setEditStartTime(e.target.value)}
-                      style={{
-                        width: "100%",
-                        padding: "14px",
-                        background: theme.background,
-                        border: `2px solid ${theme.border}`,
-                        borderRadius: 10,
-                        color: theme.textPrimary,
-                        fontSize: 14,
-                        fontFamily: fonts.body,
-                        fontWeight: 500,
-                        transition: "all 0.2s",
-                      }}
-                      onFocus={(e) => e.target.style.borderColor = "#6366f1"}
-                      onBlur={(e) => e.target.style.borderColor = theme.border}
-                    />
+                    <div style={{ display: "flex", gap: 8 }}>
+                      {/* Hour */}
+                      <select
+                        value={editStartHour}
+                        onChange={(e) => {
+                          const newHour = parseInt(e.target.value);
+                          setEditStartHour(newHour);
+                          // Update combined time string
+                          const hours24 = editStartPeriod === "PM" ? (newHour === 12 ? 12 : newHour + 12) : (newHour === 12 ? 0 : newHour);
+                          setEditStartTime(`${hours24.toString().padStart(2, "0")}:${editStartMinute.toString().padStart(2, "0")}`);
+                        }}
+                        style={{
+                          flex: 1,
+                          padding: "14px 8px",
+                          background: theme.background,
+                          border: `2px solid ${theme.border}`,
+                          borderRadius: 10,
+                          color: theme.textPrimary,
+                          fontSize: 14,
+                          fontFamily: fonts.body,
+                          fontWeight: 500,
+                          cursor: "pointer",
+                          transition: "all 0.2s",
+                        }}
+                      >
+                        {[12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((h) => (
+                          <option key={h} value={h}>{h.toString().padStart(2, "0")}</option>
+                        ))}
+                      </select>
+                      <span style={{ display: "flex", alignItems: "center", color: theme.textPrimary, fontSize: 18, fontWeight: 600 }}>:</span>
+                      {/* Minute */}
+                      <select
+                        value={editStartMinute}
+                        onChange={(e) => {
+                          const newMinute = parseInt(e.target.value);
+                          setEditStartMinute(newMinute);
+                          // Update combined time string
+                          const hours24 = editStartPeriod === "PM" ? (editStartHour === 12 ? 12 : editStartHour + 12) : (editStartHour === 12 ? 0 : editStartHour);
+                          setEditStartTime(`${hours24.toString().padStart(2, "0")}:${newMinute.toString().padStart(2, "0")}`);
+                        }}
+                        style={{
+                          flex: 1,
+                          padding: "14px 8px",
+                          background: theme.background,
+                          border: `2px solid ${theme.border}`,
+                          borderRadius: 10,
+                          color: theme.textPrimary,
+                          fontSize: 14,
+                          fontFamily: fonts.body,
+                          fontWeight: 500,
+                          cursor: "pointer",
+                          transition: "all 0.2s",
+                        }}
+                      >
+                        {[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map((m) => (
+                          <option key={m} value={m}>{m.toString().padStart(2, "0")}</option>
+                        ))}
+                      </select>
+                      {/* AM/PM */}
+                      <select
+                        value={editStartPeriod}
+                        onChange={(e) => {
+                          const newPeriod = e.target.value as "AM" | "PM";
+                          setEditStartPeriod(newPeriod);
+                          // Update combined time string
+                          const hours24 = newPeriod === "PM" ? (editStartHour === 12 ? 12 : editStartHour + 12) : (editStartHour === 12 ? 0 : editStartHour);
+                          setEditStartTime(`${hours24.toString().padStart(2, "0")}:${editStartMinute.toString().padStart(2, "0")}`);
+                        }}
+                        style={{
+                          flex: 1,
+                          padding: "14px 8px",
+                          background: theme.background,
+                          border: `2px solid ${theme.border}`,
+                          borderRadius: 10,
+                          color: theme.textPrimary,
+                          fontSize: 14,
+                          fontFamily: fonts.body,
+                          fontWeight: 600,
+                          cursor: "pointer",
+                          transition: "all 0.2s",
+                        }}
+                      >
+                        <option value="AM">AM</option>
+                        <option value="PM">PM</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
 
@@ -10808,7 +10910,13 @@ export default function OwnerDashboardPage() {
                     fontFamily: fonts.body,
                     fontWeight: 500,
                   }}>
-                    {editStartTime ? getEndTime(convertTo12Hour(editStartTime), editDuration) : "—"}
+                    {(() => {
+                      // Calculate end time from 12-hour picker values
+                      const startTime12h = `${editStartHour}:${editStartMinute.toString().padStart(2, "0")} ${editStartPeriod.toLowerCase()}`;
+                      const endTime = getEndTime(startTime12h, editDuration);
+                      // Format consistently with uppercase AM/PM
+                      return endTime.replace(/\s*(am|pm)$/i, (match) => ` ${match.trim().toUpperCase()}`);
+                    })()}
                   </div>
                 </div>
               </div>
@@ -11200,7 +11308,7 @@ export default function OwnerDashboardPage() {
               </button>
               <button
                 onClick={handleSaveBooking}
-                disabled={saving || !editAmount || !editDate || !editStartTime}
+                disabled={saving || !editAmount || !editDate || !editStartHour}
                 style={{
                   flex: 1.5,
                   padding: "13px 24px",

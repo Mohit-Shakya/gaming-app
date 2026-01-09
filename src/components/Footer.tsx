@@ -2,6 +2,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { colors, fonts } from "@/lib/constants";
 
 // Social media links - update with your actual links
@@ -74,7 +75,16 @@ const footerLinks = {
 };
 
 export default function Footer() {
+  const pathname = usePathname();
   const currentYear = new Date().getFullYear();
+
+  // Hide footer on owner and admin dashboard pages
+  const isOwnerPage = pathname?.startsWith("/owner");
+  const isAdminPage = pathname?.startsWith("/admin");
+
+  if (isOwnerPage || isAdminPage) {
+    return null;
+  }
 
   return (
     <footer

@@ -18,6 +18,14 @@ export default function Navbar() {
 
   const isLoginPage = pathname === "/login";
 
+  // Hide navbar on owner and admin dashboard pages
+  const isOwnerPage = pathname?.startsWith("/owner");
+  const isAdminPage = pathname?.startsWith("/admin");
+
+  if (isOwnerPage || isAdminPage) {
+    return null;
+  }
+
   // Handle scroll effect
   useEffect(() => {
     const handleScroll = () => {
