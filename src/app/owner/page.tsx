@@ -289,11 +289,19 @@ export default function OwnerDashboardPage() {
   const [billingCustomerName, setBillingCustomerName] = useState("");
   const [billingCustomerPhone, setBillingCustomerPhone] = useState("");
   const [billingBookingDate, setBillingBookingDate] = useState(new Date().toISOString().split("T")[0]);
-  const [billingStartTime, setBillingStartTime] = useState(() => {
+  const [billingStartTime, setBillingStartTime] = useState(""); // Will be set from hour/minute/period
+  const [billingStartHour, setBillingStartHour] = useState(() => {
     const now = new Date();
-    const hours = now.getHours().toString().padStart(2, '0');
-    const minutes = now.getMinutes().toString().padStart(2, '0');
-    return `${hours}:${minutes}`;
+    const hours = now.getHours();
+    return hours % 12 || 12; // Convert to 12-hour format
+  });
+  const [billingStartMinute, setBillingStartMinute] = useState(() => {
+    const now = new Date();
+    return now.getMinutes();
+  });
+  const [billingStartPeriod, setBillingStartPeriod] = useState<"AM" | "PM">(() => {
+    const now = new Date();
+    return now.getHours() >= 12 ? "PM" : "AM";
   });
   const [billingItems, setBillingItems] = useState<Array<{
     id: string;
@@ -2306,12 +2314,15 @@ export default function OwnerDashboardPage() {
   };
 
   const handleBillingSubmit = async () => {
-    if (!selectedCafeId || !billingCustomerName || !billingStartTime || billingItems.length === 0) {
+    if (!selectedCafeId || !billingCustomerName || !billingStartHour || billingItems.length === 0) {
       alert("Please fill in all required fields and add at least one console");
       return;
     }
 
     setBillingSubmitting(true);
+
+    // Convert 12-hour picker values to the format stored in DB (e.g., "10:30 am")
+    const startTime12h = `${billingStartHour}:${billingStartMinute.toString().padStart(2, "0")} ${billingStartPeriod.toLowerCase()}`;
 
     try {
       // Use the manually editable total amount
@@ -2322,7 +2333,7 @@ export default function OwnerDashboardPage() {
           customer_name: billingCustomerName,
           user_phone: billingCustomerPhone || null,
           booking_date: billingBookingDate,
-          start_time: billingStartTime,
+          start_time: startTime12h,
           duration: billingItems[0].duration,
           total_amount: billingTotalAmount,
           status: "confirmed",
@@ -8339,21 +8350,69 @@ export default function OwnerDashboardPage() {
                       <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: theme.textSecondary, marginBottom: 8 }}>
                         Start Time <span style={{ color: "#ef4444" }}>*</span>
                       </label>
-                      <input
-                        type="time"
-                        value={billingStartTime}
-                        onChange={(e) => setBillingStartTime(e.target.value)}
-                        style={{
-                          width: "100%",
-                          padding: "12px 14px",
-                          background: theme.inputBackground,
-                          border: `1px solid ${theme.border}`,
-                          borderRadius: 10,
-                          color: theme.textPrimary,
-                          fontSize: 14,
-                          outline: "none",
-                        }}
-                      />
+                      <div style={{ display: "flex", gap: 8 }}>
+                        {/* Hour */}
+                        <select
+                          value={billingStartHour}
+                          onChange={(e) => setBillingStartHour(parseInt(e.target.value))}
+                          style={{
+                            flex: 1,
+                            padding: "12px 8px",
+                            background: theme.inputBackground,
+                            border: `1px solid ${theme.border}`,
+                            borderRadius: 10,
+                            color: theme.textPrimary,
+                            fontSize: 14,
+                            outline: "none",
+                            cursor: "pointer",
+                          }}
+                        >
+                          {[12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((h) => (
+                            <option key={h} value={h}>{h.toString().padStart(2, "0")}</option>
+                          ))}
+                        </select>
+                        <span style={{ display: "flex", alignItems: "center", color: theme.textPrimary, fontSize: 18, fontWeight: 600 }}>:</span>
+                        {/* Minute */}
+                        <select
+                          value={billingStartMinute}
+                          onChange={(e) => setBillingStartMinute(parseInt(e.target.value))}
+                          style={{
+                            flex: 1,
+                            padding: "12px 8px",
+                            background: theme.inputBackground,
+                            border: `1px solid ${theme.border}`,
+                            borderRadius: 10,
+                            color: theme.textPrimary,
+                            fontSize: 14,
+                            outline: "none",
+                            cursor: "pointer",
+                          }}
+                        >
+                          {[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map((m) => (
+                            <option key={m} value={m}>{m.toString().padStart(2, "0")}</option>
+                          ))}
+                        </select>
+                        {/* AM/PM */}
+                        <select
+                          value={billingStartPeriod}
+                          onChange={(e) => setBillingStartPeriod(e.target.value as "AM" | "PM")}
+                          style={{
+                            flex: 1,
+                            padding: "12px 8px",
+                            background: theme.inputBackground,
+                            border: `1px solid ${theme.border}`,
+                            borderRadius: 10,
+                            color: theme.textPrimary,
+                            fontSize: 14,
+                            fontWeight: 600,
+                            outline: "none",
+                            cursor: "pointer",
+                          }}
+                        >
+                          <option value="AM">AM</option>
+                          <option value="PM">PM</option>
+                        </select>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -8734,10 +8793,10 @@ export default function OwnerDashboardPage() {
                 }}>
                   <button
                     onClick={handleBillingSubmit}
-                    disabled={billingSubmitting || !selectedCafeId || !billingCustomerName || !billingStartTime || billingItems.length === 0}
+                    disabled={billingSubmitting || !selectedCafeId || !billingCustomerName || !billingStartHour || billingItems.length === 0}
                     style={{
                       padding: "14px 36px",
-                      background: billingSubmitting || !selectedCafeId || !billingCustomerName || !billingStartTime || billingItems.length === 0
+                      background: billingSubmitting || !selectedCafeId || !billingCustomerName || !billingStartHour || billingItems.length === 0
                         ? "rgba(16, 185, 129, 0.3)"
                         : "linear-gradient(135deg, #10b981 0%, #059669 100%)",
                       border: "none",
@@ -8745,19 +8804,19 @@ export default function OwnerDashboardPage() {
                       color: "white",
                       fontSize: 15,
                       fontWeight: 700,
-                      cursor: billingSubmitting || !selectedCafeId || !billingCustomerName || !billingStartTime || billingItems.length === 0
+                      cursor: billingSubmitting || !selectedCafeId || !billingCustomerName || !billingStartHour || billingItems.length === 0
                         ? "not-allowed"
                         : "pointer",
                       display: "flex",
                       alignItems: "center",
                       gap: 8,
-                      boxShadow: billingSubmitting || !selectedCafeId || !billingCustomerName || !billingStartTime || billingItems.length === 0
+                      boxShadow: billingSubmitting || !selectedCafeId || !billingCustomerName || !billingStartHour || billingItems.length === 0
                         ? "none"
                         : "0 4px 16px rgba(16, 185, 129, 0.4)",
                       transition: "all 0.2s ease",
                     }}
                     onMouseEnter={(e) => {
-                      if (!billingSubmitting && selectedCafeId && billingCustomerName && billingStartTime && billingItems.length > 0) {
+                      if (!billingSubmitting && selectedCafeId && billingCustomerName && billingStartHour && billingItems.length > 0) {
                         e.currentTarget.style.transform = 'translateY(-2px)';
                         e.currentTarget.style.boxShadow = '0 6px 20px rgba(16, 185, 129, 0.5)';
                       }
