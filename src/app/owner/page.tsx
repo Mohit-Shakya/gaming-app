@@ -157,24 +157,37 @@ function convertTo24Hour(timeStr: string): string {
   return "";
 }
 
-function convertTo12Hour(time24h?: string): string {
-  if (!time24h) {
+function convertTo12Hour(timeStr?: string | null): string {
+  if (!timeStr) {
     // If no time provided, use current time
     const now = new Date();
     const hours = now.getHours();
     const minutes = now.getMinutes();
-    const period = hours >= 12 ? "pm" : "am";
+    const period = hours >= 12 ? "PM" : "AM";
     const displayHours = hours % 12 || 12;
     return `${displayHours}:${minutes.toString().padStart(2, "0")} ${period}`;
   }
 
-  const [hoursStr, minutes] = time24h.split(":");
-  let hours = parseInt(hoursStr);
+  // Check if already in 12-hour format (has am/pm)
+  const match12h = timeStr.match(/(\d{1,2}):(\d{2})(?::\d{2})?\s*(am|pm)/i);
+  if (match12h) {
+    const hours = parseInt(match12h[1]);
+    const minutes = match12h[2];
+    const period = match12h[3].toUpperCase();
+    return `${hours}:${minutes} ${period}`;
+  }
 
-  const period = hours >= 12 ? "pm" : "am";
-  hours = hours % 12 || 12;
+  // Parse 24-hour format (e.g., "16:22", "14:30:00")
+  const match24h = timeStr.match(/(\d{1,2}):(\d{2})(?::\d{2})?/);
+  if (match24h) {
+    let hours = parseInt(match24h[1]);
+    const minutes = match24h[2];
+    const period = hours >= 12 ? "PM" : "AM";
+    hours = hours % 12 || 12;
+    return `${hours}:${minutes} ${period}`;
+  }
 
-  return `${hours}:${minutes} ${period}`;
+  return timeStr; // Return original if can't parse
 }
 
 // Helper function to get console icon
@@ -3850,21 +3863,38 @@ export default function OwnerDashboardPage() {
                           }
                         };
 
-                        // Calculate end time
+                        // Calculate end time from start time (handles both 12h and 24h formats)
                         const calculateEndTime = (startTime: string | null, duration: number | null) => {
                           if (!startTime || !duration) return 'N/A';
-                          const [hours, minutesPart] = startTime.split(':');
-                          const minutes = parseInt(minutesPart.split(' ')[0]);
-                          const isPM = startTime.includes('pm');
-                          let hour24 = parseInt(hours);
-                          if (isPM && hour24 !== 12) hour24 += 12;
-                          if (!isPM && hour24 === 12) hour24 = 0;
+
+                          // Parse start time - handle both 12h (10:30 pm) and 24h (16:22) formats
+                          let hour24 = 0;
+                          let minutes = 0;
+
+                          // Try 12-hour format first
+                          const match12h = startTime.match(/(\d{1,2}):(\d{2})(?::\d{2})?\s*(am|pm)/i);
+                          if (match12h) {
+                            hour24 = parseInt(match12h[1]);
+                            minutes = parseInt(match12h[2]);
+                            const isPM = match12h[3].toLowerCase() === 'pm';
+                            if (isPM && hour24 !== 12) hour24 += 12;
+                            if (!isPM && hour24 === 12) hour24 = 0;
+                          } else {
+                            // Try 24-hour format
+                            const match24h = startTime.match(/(\d{1,2}):(\d{2})/);
+                            if (match24h) {
+                              hour24 = parseInt(match24h[1]);
+                              minutes = parseInt(match24h[2]);
+                            } else {
+                              return 'N/A';
+                            }
+                          }
 
                           const totalMinutes = (hour24 * 60 + minutes + duration) % (24 * 60);
                           const endHour24 = Math.floor(totalMinutes / 60);
                           const endMin = totalMinutes % 60;
                           const endHour12 = endHour24 % 12 || 12;
-                          const endAmPm = endHour24 >= 12 ? 'pm' : 'am';
+                          const endAmPm = endHour24 >= 12 ? 'PM' : 'AM';
                           return `${endHour12}:${endMin.toString().padStart(2, '0')} ${endAmPm}`;
                         };
 
@@ -3894,7 +3924,7 @@ export default function OwnerDashboardPage() {
                                 {consoleName}
                               </span>
                               <span style={{ padding: '3px 8px', borderRadius: 4, background: 'rgba(168, 85, 247, 0.1)', color: '#a855f7', fontWeight: 600 }}>
-                                {booking.start_time} - {endTime}
+                                {convertTo12Hour(booking.start_time)} - {endTime}
                               </span>
                               <span style={{
                                 padding: '3px 8px',
@@ -3962,7 +3992,7 @@ export default function OwnerDashboardPage() {
 
                             {/* Start Time */}
                             <div style={{ display: 'flex', alignItems: 'center', fontSize: 14, color: theme.textSecondary }}>
-                              {booking.start_time || 'N/A'}
+                              {booking.start_time ? convertTo12Hour(booking.start_time) : 'N/A'}
                             </div>
 
                             {/* End Time */}
@@ -5865,7 +5895,7 @@ export default function OwnerDashboardPage() {
 
                         // Format started time as "28 Dec at 10:30 PM"
                         const formattedStarted = booking.booking_date && booking.start_time
-                          ? `${new Date(booking.booking_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} at ${booking.start_time}`
+                          ? `${new Date(booking.booking_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} at ${convertTo12Hour(booking.start_time)}`
                           : '-';
 
                         // Calculate end time
@@ -6044,7 +6074,7 @@ export default function OwnerDashboardPage() {
 
                         const statusColor = statusColors[booking.status || 'pending'] || statusColors.pending;
                         const formattedStarted = booking.booking_date && booking.start_time
-                          ? `${new Date(booking.booking_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} at ${booking.start_time}`
+                          ? `${new Date(booking.booking_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} at ${convertTo12Hour(booking.start_time)}`
                           : '-';
 
                         return (
@@ -13768,7 +13798,7 @@ export default function OwnerDashboardPage() {
                                 <td style={{ padding: '16px', fontSize: isMobile ? 13 : 14, color: theme.textPrimary }}>
                                   <div>{bookingDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
                                   <div style={{ fontSize: isMobile ? 11 : 12, color: theme.textMuted }}>
-                                    {booking.start_time}
+                                    {convertTo12Hour(booking.start_time)}
                                   </div>
                                 </td>
                                 <td style={{ padding: '16px', fontSize: isMobile ? 13 : 14, fontWeight: 600, color: theme.textPrimary }}>
