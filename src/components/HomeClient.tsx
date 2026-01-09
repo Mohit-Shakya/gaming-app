@@ -787,53 +787,54 @@ export default function HomeClient({ cafes }: Props) {
                 </div>
 
                 {/* Tabs Navigation */}
-                <div className="flex gap-2 justify-center items-center mb-4">
+                <div className="flex flex-wrap gap-1.5 sm:gap-2 justify-center items-center mb-4 px-1 sm:px-2">
                   <button
                     onClick={() => {
                       setActiveTab("book");
                       handleScrollToList();
                     }}
-                    className={`px-6 py-3 rounded-xl text-sm md:text-lg font-bold tracking-wide uppercase flex items-center gap-2 group transition-all ${
-                      activeTab === "book" 
-                        ? 'btn-glow' 
+                    className={`px-2.5 py-2 sm:px-4 sm:py-2.5 md:px-6 md:py-3 rounded-lg md:rounded-xl text-[11px] sm:text-xs md:text-lg font-bold tracking-wide uppercase flex items-center gap-1 sm:gap-1.5 md:gap-2 group transition-all whitespace-nowrap ${
+                      activeTab === "book"
+                        ? 'btn-glow'
                         : 'btn-ghost'
                     }`}
                     style={{ fontFamily: 'Orbitron, sans-serif' }}
                   >
-                    <Zap className="w-4 h-4 md:w-5 md:h-5 group-hover:scale-125 transition-transform" />
-                    <span>Book Now</span>
+                    <Zap className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-5 md:h-5 group-hover:scale-125 transition-transform" />
+                    <span className="hidden sm:inline">Book Now</span>
+                    <span className="sm:hidden">Book</span>
                   </button>
-                  
+
                   <button
                     onClick={() => {
                       setActiveTab("membership");
                       handleScrollToList();
                     }}
-                    className={`px-4 py-3 rounded-xl text-sm font-semibold flex items-center gap-2 transition-all ${
-                      activeTab === "membership" 
-                        ? 'btn-glow' 
+                    className={`px-2.5 py-2 sm:px-3 sm:py-2.5 md:px-4 md:py-3 rounded-lg md:rounded-xl text-[11px] sm:text-xs md:text-sm font-semibold flex items-center gap-1 sm:gap-1.5 md:gap-2 transition-all whitespace-nowrap ${
+                      activeTab === "membership"
+                        ? 'btn-glow'
                         : 'btn-ghost'
                     }`}
                     style={{ fontFamily: 'Inter, sans-serif' }}
                   >
-                    <Trophy className="w-4 h-4 text-zinc-400" />
-                    <span>Membership</span>
+                    <Trophy className={`w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 ${activeTab === "membership" ? 'text-white' : 'text-zinc-400'}`} />
+                    <span>Member</span>
                   </button>
-                  
+
                   <button
                     onClick={() => {
                       setActiveTab("tournaments");
                       handleScrollToList();
                     }}
-                    className={`px-4 py-3 rounded-xl text-sm font-semibold flex items-center gap-2 transition-all ${
-                      activeTab === "tournaments" 
-                        ? 'btn-glow' 
+                    className={`px-2.5 py-2 sm:px-3 sm:py-2.5 md:px-4 md:py-3 rounded-lg md:rounded-xl text-[11px] sm:text-xs md:text-sm font-semibold flex items-center gap-1 sm:gap-1.5 md:gap-2 transition-all whitespace-nowrap ${
+                      activeTab === "tournaments"
+                        ? 'btn-glow'
                         : 'btn-ghost'
                     }`}
                     style={{ fontFamily: 'Inter, sans-serif' }}
                   >
-                    <Award className="w-4 h-4 text-zinc-400" />
-                    <span>Tournaments</span>
+                    <Award className={`w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 ${activeTab === "tournaments" ? 'text-white' : 'text-zinc-400'}`} />
+                    <span>Tourneys</span>
                   </button>
                 </div>
 
