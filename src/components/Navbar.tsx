@@ -139,22 +139,175 @@ export default function Navbar() {
         .menu-item {
           transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
           position: relative;
+          background: transparent;
+          -webkit-tap-highlight-color: transparent;
         }
 
-        .menu-item::after {
+        /* Desktop hover */
+        @media (hover: hover) and (pointer: fine) {
+          .menu-item:hover {
+            background: rgba(255, 7, 58, 0.08);
+            transform: translateX(4px);
+          }
+
+          .menu-item:hover::before {
+            height: 60%;
+          }
+
+          .menu-item:hover .icon-container {
+            background: rgba(255, 7, 58, 0.15);
+            border-color: rgba(255, 7, 58, 0.4);
+            transform: scale(1.05);
+            box-shadow: 0 0 12px rgba(255, 7, 58, 0.3);
+          }
+
+          .menu-item:hover .menu-text {
+            color: #fff;
+          }
+
+          .menu-item:hover .menu-subtext {
+            color: rgba(255, 255, 255, 0.7);
+          }
+
+          .menu-item:hover .menu-arrow {
+            transform: translateX(3px);
+            color: #ff073a;
+          }
+        }
+
+        /* Mobile touch - active state */
+        @media (hover: none) and (pointer: coarse) {
+          .menu-item:active {
+            background: rgba(255, 7, 58, 0.15);
+            transform: translateX(4px);
+          }
+
+          .menu-item:active::before {
+            height: 60%;
+          }
+
+          .menu-item:active .icon-container {
+            background: rgba(255, 7, 58, 0.2);
+            border-color: rgba(255, 7, 58, 0.5);
+            transform: scale(1.05);
+            box-shadow: 0 0 12px rgba(255, 7, 58, 0.4);
+          }
+
+          .menu-item:active .menu-text {
+            color: #fff;
+          }
+
+          .menu-item:active .menu-subtext {
+            color: rgba(255, 255, 255, 0.7);
+          }
+
+          .menu-item:active .menu-arrow {
+            transform: translateX(3px);
+            color: #ff073a;
+          }
+        }
+
+        .menu-item::before {
           content: '';
           position: absolute;
-          bottom: 0;
-          left: 50%;
-          width: 0;
-          height: 2px;
-          background: linear-gradient(90deg, #ff073a, #ff073a);
-          transition: all 0.3s ease;
-          transform: translateX(-50%);
+          left: 0;
+          top: 50%;
+          transform: translateY(-50%);
+          width: 3px;
+          height: 0;
+          background: linear-gradient(180deg, #ff073a, #00f0ff);
+          border-radius: 0 4px 4px 0;
+          transition: height 0.2s ease;
         }
 
-        .menu-item:hover::after {
-          width: 80%;
+        /* Purple variant (Owner) */
+        @media (hover: hover) and (pointer: fine) {
+          .menu-item-purple:hover {
+            background: rgba(168, 85, 247, 0.08);
+          }
+          .menu-item-purple:hover .icon-container {
+            background: rgba(168, 85, 247, 0.15);
+            border-color: rgba(168, 85, 247, 0.4);
+            box-shadow: 0 0 12px rgba(168, 85, 247, 0.3);
+          }
+          .menu-item-purple:hover::before {
+            background: linear-gradient(180deg, #a855f7, #00f0ff);
+          }
+        }
+        @media (hover: none) and (pointer: coarse) {
+          .menu-item-purple:active {
+            background: rgba(168, 85, 247, 0.15);
+          }
+          .menu-item-purple:active .icon-container {
+            background: rgba(168, 85, 247, 0.2);
+            border-color: rgba(168, 85, 247, 0.5);
+            box-shadow: 0 0 12px rgba(168, 85, 247, 0.4);
+          }
+          .menu-item-purple:active::before {
+            background: linear-gradient(180deg, #a855f7, #00f0ff);
+          }
+        }
+
+        /* Amber variant (Admin) */
+        @media (hover: hover) and (pointer: fine) {
+          .menu-item-amber:hover {
+            background: rgba(245, 158, 11, 0.08);
+          }
+          .menu-item-amber:hover .icon-container {
+            background: rgba(245, 158, 11, 0.15);
+            border-color: rgba(245, 158, 11, 0.4);
+            box-shadow: 0 0 12px rgba(245, 158, 11, 0.3);
+          }
+          .menu-item-amber:hover::before {
+            background: linear-gradient(180deg, #f59e0b, #00f0ff);
+          }
+        }
+        @media (hover: none) and (pointer: coarse) {
+          .menu-item-amber:active {
+            background: rgba(245, 158, 11, 0.15);
+          }
+          .menu-item-amber:active .icon-container {
+            background: rgba(245, 158, 11, 0.2);
+            border-color: rgba(245, 158, 11, 0.5);
+            box-shadow: 0 0 12px rgba(245, 158, 11, 0.4);
+          }
+          .menu-item-amber:active::before {
+            background: linear-gradient(180deg, #f59e0b, #00f0ff);
+          }
+        }
+
+        /* Red variant (Logout) */
+        @media (hover: hover) and (pointer: fine) {
+          .menu-item-red:hover {
+            background: rgba(239, 68, 68, 0.08);
+          }
+          .menu-item-red:hover .icon-container {
+            background: rgba(239, 68, 68, 0.15);
+            border-color: rgba(239, 68, 68, 0.4);
+            box-shadow: 0 0 12px rgba(239, 68, 68, 0.3);
+          }
+          .menu-item-red:hover .menu-text {
+            color: #fca5a5;
+          }
+          .menu-item-red:hover::before {
+            background: linear-gradient(180deg, #ef4444, #00f0ff);
+          }
+        }
+        @media (hover: none) and (pointer: coarse) {
+          .menu-item-red:active {
+            background: rgba(239, 68, 68, 0.15);
+          }
+          .menu-item-red:active .icon-container {
+            background: rgba(239, 68, 68, 0.2);
+            border-color: rgba(239, 68, 68, 0.5);
+            box-shadow: 0 0 12px rgba(239, 68, 68, 0.4);
+          }
+          .menu-item-red:active .menu-text {
+            color: #fca5a5;
+          }
+          .menu-item-red:active::before {
+            background: linear-gradient(180deg, #ef4444, #00f0ff);
+          }
         }
 
         .avatar-container {
@@ -238,9 +391,27 @@ export default function Navbar() {
         }
 
         .menu-item:hover .icon-container {
-          background: rgba(255, 7, 58, 0.1);
-          border-color: rgba(255, 7, 58, 0.3);
-          transform: translateX(2px);
+          background: rgba(255, 7, 58, 0.15);
+          border-color: rgba(255, 7, 58, 0.4);
+          transform: scale(1.05);
+          box-shadow: 0 0 12px rgba(255, 7, 58, 0.3);
+        }
+
+        .menu-item:hover .menu-text {
+          color: #fff;
+        }
+
+        .menu-item:hover .menu-subtext {
+          color: rgba(255, 255, 255, 0.7);
+        }
+
+        .menu-item:hover .menu-arrow {
+          transform: translateX(3px);
+          color: #ff073a;
+        }
+
+        .menu-arrow {
+          transition: all 0.2s ease;
         }
 
         .divider {
@@ -264,38 +435,28 @@ export default function Navbar() {
         }`}
       >
         {/* Top accent line */}
-        <div className="h-[2px] bg-gradient-to-r from-transparent via-[#ff073a] to-transparent opacity-70" />
+        <div className="h-[1px] sm:h-[2px] bg-gradient-to-r from-transparent via-[#ff073a] to-transparent opacity-70" />
 
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-2">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-3 sm:px-6 py-1.5 sm:py-2">
           {/* Brand Section */}
-          <Link href="/" className="flex items-center gap-3 group">
-            
-
-            {/* Brand Text */}
-            <div className="flex flex-col">
-              <div className="flex items-baseline gap-2">
-                <span
-                  className="text-md font-extrabold tracking-tight"
-                  style={{ fontFamily: "Orbitron, sans-serif" }}
-                >
-                  <span className="text-[#ff073a] brand-glow">BOOK</span>
-                  <span className="text-white">MY</span>
-                  <span className="text-white">GAME</span>
-                </span>
-               
-              </div>
-              
-            </div>
+          <Link href="/" className="flex items-center group">
+            <span
+              className="text-base sm:text-lg font-extrabold tracking-tight leading-none"
+              style={{ fontFamily: "Orbitron, sans-serif" }}
+            >
+              <span className="text-[#ff073a] brand-glow">BOOK</span>
+              <span className="text-white">MY</span>
+              <span className="text-white">GAME</span>
+            </span>
           </Link>
 
           {/* Right Side */}
           {!isLoginPage && (
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 sm:gap-4">
               {loading ? (
                 // Loading skeleton
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-24 rounded-lg bg-gradient-to-r from-gray-900/50 to-gray-800/50 animate-pulse"></div>
-                  <div className="h-10 w-10 rounded-full bg-gradient-to-r from-gray-900/50 to-gray-800/50 animate-pulse"></div>
+                <div className="flex items-center">
+                  <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-gradient-to-r from-gray-900/50 to-gray-800/50 animate-pulse"></div>
                 </div>
               ) : user ? (
                 // Logged in state
@@ -303,11 +464,11 @@ export default function Navbar() {
                   <button
                     type="button"
                     onClick={() => setMenuOpen((v) => !v)}
-                    className="flex items-center gap-3 rounded-xl bg-gradient-to-r from-[#0a0a0f] to-[#101016] px-2.5 py-1.5 border border-gray-800/50 hover:border-gray-700/50 transition-all duration-300 hover:shadow-lg hover:shadow-[#ff073a]/5"
+                    className="flex items-center gap-1.5 sm:gap-2 rounded-full sm:rounded-xl bg-gradient-to-r from-[#0a0a0f] to-[#101016] p-0.5 sm:px-2 sm:py-1 border border-gray-800/50 hover:border-gray-700/50 transition-all duration-300 hover:shadow-lg hover:shadow-[#ff073a]/5"
                   >
                     {/* Avatar */}
                     <div className="avatar-container rounded-full">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#101016] text-sm font-bold text-white uppercase shadow-lg">
+                      <div className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full bg-[#101016] text-xs sm:text-sm font-bold text-white uppercase shadow-lg">
                         {initialsFromUser(user)}
                       </div>
                     </div>
@@ -325,9 +486,9 @@ export default function Navbar() {
                       </div>
                     </div>
 
-                    {/* Dropdown arrow */}
+                    {/* Dropdown arrow - hidden on mobile */}
                     <svg
-                      className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${
+                      className={`hidden sm:block w-4 h-4 text-gray-400 transition-transform duration-200 ${
                         menuOpen ? "rotate-180" : ""
                       }`}
                       fill="none"
@@ -345,39 +506,39 @@ export default function Navbar() {
 
                   {/* Dropdown Menu */}
                   {menuOpen && (
-                    <div className="dropdown-menu absolute right-0 mt-2 w-64 rounded-2xl p-2 z-50">
+                    <div className="dropdown-menu absolute right-0 mt-2 w-56 sm:w-64 rounded-xl sm:rounded-2xl p-1.5 sm:p-2 z-50">
                       {/* User info header */}
-                      <div className="px-4 py-3 mb-2">
+                      <div className="px-3 py-2 sm:px-4 sm:py-3 mb-1 sm:mb-2">
                         <div
-                          className="text-sm font-semibold text-white truncate"
+                          className="text-xs sm:text-sm font-semibold text-white truncate"
                           style={{ fontFamily: "Inter, sans-serif" }}
                         >
                           {displayName(user)}
                         </div>
-                        <div className="text-xs text-gray-400 truncate">
+                        <div className="text-[10px] sm:text-xs text-gray-400 truncate">
                           {user.email}
                         </div>
                         <div className="mt-1">
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium status-badge text-[#ff073a]">
+                          <span className="inline-flex items-center px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-medium status-badge text-[#ff073a]">
                             {userRole ? capitalizeFirst(userRole) : "Player"}
                           </span>
                         </div>
                       </div>
 
-                      <div className="divider h-px my-2" />
+                      <div className="divider h-px my-1 sm:my-2" />
 
                       {/* Menu Items */}
-                      <div className="space-y-1">
+                      <div className="space-y-0.5 sm:space-y-1">
                         <button
                           onClick={() => {
                             setMenuOpen(false);
                             router.push("/dashboard");
                           }}
-                          className="menu-item flex w-full items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5"
+                          className="menu-item flex w-full items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2 sm:py-2.5 rounded-lg sm:rounded-xl"
                         >
-                          <div className="icon-container flex h-10 w-10 items-center justify-center rounded-xl">
+                          <div className="icon-container flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-lg sm:rounded-xl bg-white/5 border border-white/10 transition-all duration-200">
                             <svg
-                              className="w-5 h-5 text-[#00f0ff]"
+                              className="w-4 h-4 sm:w-5 sm:h-5 text-[#00f0ff]"
                               fill="none"
                               stroke="currentColor"
                               viewBox="0 0 24 24"
@@ -390,18 +551,18 @@ export default function Navbar() {
                               />
                             </svg>
                           </div>
-                          <div className="flex-1">
+                          <div className="flex-1 text-left">
                             <div
-                              className="text-sm font-medium text-white"
+                              className="menu-text text-xs sm:text-sm font-medium text-white transition-colors"
                               style={{ fontFamily: "Inter, sans-serif" }}
                             >
                               My Bookings
                             </div>
-                            <div className="text-xs text-gray-400">
-                              View your reservations
+                            <div className="menu-subtext text-[10px] sm:text-xs text-gray-400 transition-colors">
+                              View reservations
                             </div>
                           </div>
-                          <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="menu-arrow w-3 h-3 sm:w-4 sm:h-4 text-gray-500 transition-all duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                           </svg>
                         </button>
@@ -411,11 +572,11 @@ export default function Navbar() {
                             setMenuOpen(false);
                             router.push("/profile");
                           }}
-                          className="menu-item flex w-full items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5"
+                          className="menu-item flex w-full items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2 sm:py-2.5 rounded-lg sm:rounded-xl"
                         >
-                          <div className="icon-container flex h-10 w-10 items-center justify-center rounded-xl">
+                          <div className="icon-container flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-lg sm:rounded-xl bg-white/5 border border-white/10 transition-all duration-200">
                             <svg
-                              className="w-5 h-5 text-gray-300"
+                              className="w-4 h-4 sm:w-5 sm:h-5 text-gray-300"
                               fill="none"
                               stroke="currentColor"
                               viewBox="0 0 24 24"
@@ -428,14 +589,14 @@ export default function Navbar() {
                               />
                             </svg>
                           </div>
-                          <div className="flex-1">
+                          <div className="flex-1 text-left">
                             <div
-                              className="text-sm font-medium text-white"
+                              className="menu-text text-xs sm:text-sm font-medium text-white transition-colors"
                               style={{ fontFamily: "Inter, sans-serif" }}
                             >
                               Profile Settings
                             </div>
-                            <div className="text-xs text-gray-400">
+                            <div className="menu-subtext text-[10px] sm:text-xs text-gray-400 transition-colors">
                               Account settings
                             </div>
                           </div>
@@ -448,14 +609,11 @@ export default function Navbar() {
                               setMenuOpen(false);
                               router.push("/owner");
                             }}
-                            className="menu-item flex w-full items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5"
+                            className="menu-item menu-item-purple flex w-full items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2 sm:py-2.5 rounded-lg sm:rounded-xl"
                           >
-                            <div className="icon-container flex h-10 w-10 items-center justify-center rounded-xl" style={{
-                              background: 'rgba(168, 85, 247, 0.1)',
-                              border: '1px solid rgba(168, 85, 247, 0.2)'
-                            }}>
+                            <div className="icon-container flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-lg sm:rounded-xl bg-purple-500/10 border border-purple-500/20 transition-all duration-200">
                               <svg
-                                className="w-5 h-5 text-purple-400"
+                                className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400"
                                 fill="none"
                                 stroke="currentColor"
                                 viewBox="0 0 24 24"
@@ -468,15 +626,15 @@ export default function Navbar() {
                                 />
                               </svg>
                             </div>
-                            <div className="flex-1">
+                            <div className="flex-1 text-left">
                               <div
-                                className="text-sm font-medium text-white"
+                                className="menu-text text-xs sm:text-sm font-medium text-white transition-colors"
                                 style={{ fontFamily: "Inter, sans-serif" }}
                               >
                                 Owner Dashboard
                               </div>
-                              <div className="text-xs text-gray-400">
-                                Manage your cafés
+                              <div className="menu-subtext text-[10px] sm:text-xs text-gray-400 transition-colors">
+                                Manage cafés
                               </div>
                             </div>
                           </button>
@@ -489,14 +647,11 @@ export default function Navbar() {
                               setMenuOpen(false);
                               router.push("/admin");
                             }}
-                            className="menu-item flex w-full items-center gap-3 px-3 py-3 rounded-xl hover:bg-white/5"
+                            className="menu-item menu-item-amber flex w-full items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2 sm:py-2.5 rounded-lg sm:rounded-xl"
                           >
-                            <div className="icon-container flex h-10 w-10 items-center justify-center rounded-xl" style={{
-                              background: 'rgba(245, 158, 11, 0.1)',
-                              border: '1px solid rgba(245, 158, 11, 0.2)'
-                            }}>
+                            <div className="icon-container flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-lg sm:rounded-xl bg-amber-500/10 border border-amber-500/20 transition-all duration-200">
                               <svg
-                                className="w-5 h-5 text-amber-400"
+                                className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400"
                                 fill="none"
                                 stroke="currentColor"
                                 viewBox="0 0 24 24"
@@ -515,14 +670,14 @@ export default function Navbar() {
                                 />
                               </svg>
                             </div>
-                            <div className="flex-1">
+                            <div className="flex-1 text-left">
                               <div
-                                className="text-sm font-medium text-white"
+                                className="menu-text text-xs sm:text-sm font-medium text-white transition-colors"
                                 style={{ fontFamily: "Inter, sans-serif" }}
                               >
                                 Admin Dashboard
                               </div>
-                              <div className="text-xs text-gray-400">
+                              <div className="menu-subtext text-[10px] sm:text-xs text-gray-400 transition-colors">
                                 System management
                               </div>
                             </div>
@@ -530,16 +685,16 @@ export default function Navbar() {
                         )}
                       </div>
 
-                      <div className="divider h-px my-2" />
+                      <div className="divider h-px my-1 sm:my-2" />
 
                       {/* Logout */}
                       <button
                         onClick={handleLogout}
-                        className="menu-item flex w-full items-center gap-3 px-3 py-3 rounded-xl hover:bg-red-500/10 group"
+                        className="menu-item menu-item-red flex w-full items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2 sm:py-2.5 rounded-lg sm:rounded-xl"
                       >
-                        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-r from-red-500/10 to-red-500/5 group-hover:from-red-500/20 group-hover:to-red-500/10 transition-all duration-300">
+                        <div className="icon-container flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-lg sm:rounded-xl bg-red-500/10 border border-red-500/20 transition-all duration-200">
                           <svg
-                            className="w-5 h-5 text-red-400 group-hover:text-red-300"
+                            className="w-4 h-4 sm:w-5 sm:h-5 text-red-400"
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -552,15 +707,15 @@ export default function Navbar() {
                             />
                           </svg>
                         </div>
-                        <div className="flex-1">
+                        <div className="flex-1 text-left">
                           <div
-                            className="text-sm font-medium text-red-400 group-hover:text-red-300"
+                            className="menu-text text-xs sm:text-sm font-medium text-red-400 transition-colors"
                             style={{ fontFamily: "Inter, sans-serif" }}
                           >
                             Logout
                           </div>
-                          <div className="text-xs text-gray-400 group-hover:text-gray-300">
-                            Sign out of account
+                          <div className="menu-subtext text-[10px] sm:text-xs text-gray-400 transition-colors">
+                            Sign out
                           </div>
                         </div>
                       </button>
@@ -571,11 +726,11 @@ export default function Navbar() {
                 // Not logged in
                 <button
                   onClick={() => router.push("/login")}
-                  className="login-btn flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white"
+                  className="login-btn flex items-center gap-1.5 sm:gap-2 rounded-lg sm:rounded-xl px-2.5 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-semibold text-white"
                   style={{ fontFamily: "Inter, sans-serif" }}
                 >
                   <svg
-                    className="w-4 h-4"
+                    className="w-3.5 h-3.5 sm:w-4 sm:h-4"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"

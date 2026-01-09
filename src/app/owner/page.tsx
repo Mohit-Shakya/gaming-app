@@ -98,21 +98,63 @@ type BookingRow = {
 type NavTab = 'dashboard' | 'sessions' | 'customers' | 'stations' | 'subscriptions' | 'memberships' | 'coupons' | 'reports' | 'settings' | 'overview' | 'live-status' | 'bookings' | 'cafe-details' | 'analytics' | 'billing';
 
 // Helper functions for time conversion
-function convertTo24Hour(time12h: string): string {
-  const match = time12h.match(/(\d{1,2}):(\d{2})\s*(am|pm)/i);
-  if (!match) return "";
+function convertTo24Hour(timeStr: string): string {
+  if (!timeStr) return "";
 
-  let hours = parseInt(match[1]);
-  const minutes = match[2];
-  const period = match[3].toLowerCase();
+  // Trim whitespace
+  const time = timeStr.trim();
 
-  if (period === "pm" && hours !== 12) {
-    hours += 12;
-  } else if (period === "am" && hours === 12) {
-    hours = 0;
+  console.log('[convertTo24Hour] Input:', JSON.stringify(time), 'Length:', time.length);
+
+  // Try 12-hour format with am/pm (e.g., "10:30 am", "2:00pm", "10:30 AM")
+  const match12h = time.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(am|pm)$/i);
+  if (match12h) {
+    let hours = parseInt(match12h[1]);
+    const minutes = match12h[2];
+    const period = match12h[3].toLowerCase();
+
+    if (period === "pm" && hours !== 12) {
+      hours += 12;
+    } else if (period === "am" && hours === 12) {
+      hours = 0;
+    }
+
+    const result = `${hours.toString().padStart(2, "0")}:${minutes}`;
+    console.log('[convertTo24Hour] Matched 12h format, result:', result);
+    return result;
   }
 
-  return `${hours.toString().padStart(2, "0")}:${minutes}`;
+  // Try 24-hour format (e.g., "14:30", "14:30:00", "9:30")
+  const match24h = time.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+  if (match24h) {
+    const hours = match24h[1].padStart(2, "0");
+    const minutes = match24h[2];
+    const result = `${hours}:${minutes}`;
+    console.log('[convertTo24Hour] Matched 24h format, result:', result);
+    return result;
+  }
+
+  // Try extracting numbers from any format (e.g., "10:30:00 am", with extra spaces)
+  const matchAny = time.match(/(\d{1,2}):(\d{2})(?::\d{2})?\s*(am|pm)?/i);
+  if (matchAny) {
+    let hours = parseInt(matchAny[1]);
+    const minutes = matchAny[2];
+    const period = matchAny[3]?.toLowerCase();
+
+    if (period === "pm" && hours !== 12) {
+      hours += 12;
+    } else if (period === "am" && hours === 12) {
+      hours = 0;
+    }
+
+    const result = `${hours.toString().padStart(2, "0")}:${minutes}`;
+    console.log('[convertTo24Hour] Matched relaxed format, result:', result);
+    return result;
+  }
+
+  // If nothing matches, return empty string
+  console.warn('[convertTo24Hour] Unrecognized time format:', JSON.stringify(timeStr));
+  return "";
 }
 
 function convertTo12Hour(time24h?: string): string {
@@ -1339,6 +1381,13 @@ export default function OwnerDashboardPage() {
   // Handle edit booking
   function handleEditBooking(booking: BookingRow) {
     // Allow editing all bookings, not just walk-ins
+    console.log('[handleEditBooking] Opening edit modal for booking:', {
+      id: booking.id?.slice(0, 8),
+      start_time_raw: booking.start_time,
+      booking_date: booking.booking_date,
+      total_amount: booking.total_amount,
+    });
+
     setEditingBooking(booking);
     setEditAmount(booking.total_amount?.toString() || "");
     setEditAmountManuallyEdited(false); // Reset manual edit flag
@@ -1349,12 +1398,29 @@ export default function OwnerDashboardPage() {
     setEditDate(booking.booking_date || "");
     setEditDuration(booking.duration || 60);
     // Get console and controllers from booking_items
-    const console = booking.booking_items?.[0]?.console || "";
+    const consoleType = booking.booking_items?.[0]?.console || "";
     const controllers = booking.booking_items?.[0]?.quantity || 1;
-    setEditConsole(console);
+    setEditConsole(consoleType);
     setEditControllers(controllers);
     // Convert 12-hour format (from DB) to 24-hour format (for input)
-    setEditStartTime(booking.start_time ? convertTo24Hour(booking.start_time) : "");
+    // If no start_time, default to current time
+    let convertedTime = "";
+    if (booking.start_time) {
+      convertedTime = convertTo24Hour(booking.start_time);
+    }
+
+    // If conversion failed or no time, use current time as default
+    if (!convertedTime) {
+      const now = new Date();
+      convertedTime = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`;
+      console.log('[handleEditBooking] No start_time, using current time:', convertedTime);
+    }
+
+    console.log('[handleEditBooking] Time conversion:', {
+      original: booking.start_time,
+      converted: convertedTime,
+    });
+    setEditStartTime(convertedTime);
   }
 
   // Handle save booking

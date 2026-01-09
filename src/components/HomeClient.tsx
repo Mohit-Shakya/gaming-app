@@ -844,61 +844,63 @@ export default function HomeClient({ cafes }: Props) {
 
             {/* ===== SEARCH & FILTERS (Only for Book Now tab) ===== */}
             {activeTab === "book" && (
-              <section 
+              <section
                 ref={listRef}
-                className={`sticky top-16 z-30 mb-4 lg:mb-12 bg-[#08080c]/95 backdrop-blur-xl rounded-2xl border border-white/5 p-4 shadow-xl filters-compact ${
+                className={`sticky top-16 z-30 mb-3 sm:mb-4 lg:mb-12 bg-[#08080c]/95 backdrop-blur-xl rounded-xl sm:rounded-2xl border border-white/5 p-2.5 sm:p-4 shadow-xl filters-compact ${
                   mounted ? 'animate-fade-in' : 'opacity-0'
                 }`}
                 style={{ animationDelay: '0.1s' }}
               >
               {/* Search Bar */}
-              <div className="relative mb-4">
-                <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none search-icon-mobile">
+              <div className="relative mb-2.5 sm:mb-4 h-10 sm:h-12">
+                <div className="absolute inset-0 flex items-center pointer-events-none pl-3">
                   <Search className="w-4 h-4 text-zinc-500" />
                 </div>
                 <input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search cafes, arenas, or equipment..."
-                  className="input-field w-full pl-10 pr-10 py-3 rounded-xl text-sm placeholder:text-zinc-600 focus:outline-none"
+                  placeholder="Search cafes..."
+                  className="input-field w-full h-full pl-10 pr-10 rounded-lg sm:rounded-xl text-xs sm:text-sm placeholder:text-zinc-600 focus:outline-none"
                   style={{ fontFamily: 'Inter, sans-serif' }}
                 />
                 {query && (
-                  <button 
-                    onClick={() => setQuery("")}
-                    className="absolute inset-y-0 right-3 flex items-center p-1 hover:bg-white/5 rounded-lg transition-colors"
-                  >
-                    <X className="w-4 h-4 text-zinc-500" />
-                  </button>
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                    <button
+                      onClick={() => setQuery("")}
+                      className="hover:bg-white/5 rounded-lg transition-colors p-1"
+                    >
+                      <X className="w-4 h-4 text-zinc-500" />
+                    </button>
+                  </div>
                 )}
               </div>
 
               {/* Filters Section */}
-              <div className="space-y-4">
+              <div className="space-y-2 sm:space-y-4">
                 {/* Filter Header */}
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Filter className="w-4 h-4 text-[#ff073a]" />
-                    <h2 
-                      className="text-lg font-bold"
+                  <div className="flex items-center gap-1.5 sm:gap-2">
+                    <Filter className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#ff073a]" />
+                    <h2
+                      className="text-sm sm:text-lg font-bold"
                       style={{ fontFamily: 'Orbitron, sans-serif' }}
                     >
                       Find Your Cafes
                     </h2>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 sm:gap-2">
                     <button
                       onClick={() => setShowFilters(true)}
-                      className="md:hidden relative p-2 rounded-lg btn-ghost"
+                      className="md:hidden relative p-1.5 sm:p-2 rounded-lg btn-ghost"
                     >
-                      <Filter className="w-4 h-4" />
+                      <Filter className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                       {activeFiltersCount > 0 && (
-                        <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#ff073a] text-white text-xs font-bold rounded-full flex items-center justify-center">
+                        <span className="absolute -top-1 -right-1 w-3.5 h-3.5 sm:w-4 sm:h-4 bg-[#ff073a] text-white text-[10px] sm:text-xs font-bold rounded-full flex items-center justify-center">
                           {activeFiltersCount}
                         </span>
                       )}
                     </button>
-                    
+
                     <select
                       value={sortBy}
                       onChange={(e) => setSortBy(e.target.value as SortKey)}
@@ -909,14 +911,14 @@ export default function HomeClient({ cafes }: Props) {
                       <option value="price_asc">Price: Low to High</option>
                       <option value="price_desc">Price: High to Low</option>
                     </select>
-                    
+
                     {activeFiltersCount > 0 && (
                       <button
                         onClick={clearAllFilters}
-                        className="text-xs font-medium text-[#ff073a] hover:text-[#ff073a]/80 transition-colors"
+                        className="text-[10px] sm:text-xs font-medium text-[#ff073a] hover:text-[#ff073a]/80 transition-colors"
                         style={{ fontFamily: 'Inter, sans-serif' }}
                       >
-                        Clear All
+                        Clear
                       </button>
                     )}
                   </div>
@@ -929,15 +931,15 @@ export default function HomeClient({ cafes }: Props) {
                       key={filter.key}
                       onClick={filter.toggle}
                       className={`flex items-center justify-center gap-2 p-3 rounded-lg transition-all ${
-                        filter.active 
-                          ? 'chip-active text-white' 
+                        filter.active
+                          ? 'chip-active text-white'
                           : 'chip text-zinc-400 hover:text-white'
                       }`}
                       style={{ fontFamily: 'Inter, sans-serif' }}
                     >
                       <div className={`p-1.5 rounded ${
-                        filter.active 
-                          ? 'bg-white/20' 
+                        filter.active
+                          ? 'bg-white/20'
                           : 'bg-white/5'
                       }`}>
                         {filter.icon}
@@ -951,12 +953,12 @@ export default function HomeClient({ cafes }: Props) {
                 </div>
 
                 {/* Sort Options (Mobile) */}
-                <div className="md:hidden flex gap-2 overflow-x-auto hide-scrollbar py-1">
+                <div className="md:hidden flex gap-1.5 overflow-x-auto hide-scrollbar py-0.5">
                   <button
                     onClick={() => setSortBy("relevance")}
-                    className={`shrink-0 px-3 py-2 rounded-lg text-xs font-medium transition-all compact-sort-btn ${
-                      sortBy === "relevance" 
-                        ? 'bg-[#ff073a] text-white' 
+                    className={`shrink-0 px-2.5 py-1.5 rounded-md text-[11px] font-medium transition-all ${
+                      sortBy === "relevance"
+                        ? 'bg-[#ff073a] text-white'
                         : 'bg-white/5 text-zinc-400'
                     }`}
                     style={{ fontFamily: 'Inter, sans-serif' }}
@@ -965,26 +967,26 @@ export default function HomeClient({ cafes }: Props) {
                   </button>
                   <button
                     onClick={() => setSortBy("price_asc")}
-                    className={`shrink-0 px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-1 transition-all compact-sort-btn ${
-                      sortBy === "price_asc" 
-                        ? 'bg-[#00f0ff] text-black' 
+                    className={`shrink-0 px-2.5 py-1.5 rounded-md text-[11px] font-medium flex items-center gap-1 transition-all ${
+                      sortBy === "price_asc"
+                        ? 'bg-[#00f0ff] text-black'
                         : 'bg-white/5 text-zinc-400'
                     }`}
                     style={{ fontFamily: 'Inter, sans-serif' }}
                   >
-                    <TrendingUp className="w-3 h-3" />
+                    <TrendingUp className="w-2.5 h-2.5" />
                     Price Low
                   </button>
                   <button
                     onClick={() => setSortBy("price_desc")}
-                    className={`shrink-0 px-3 py-2 rounded-lg text-xs font-medium flex items-center gap-1 transition-all compact-sort-btn ${
-                      sortBy === "price_desc" 
-                        ? 'bg-[#00f0ff] text-black' 
+                    className={`shrink-0 px-2.5 py-1.5 rounded-md text-[11px] font-medium flex items-center gap-1 transition-all ${
+                      sortBy === "price_desc"
+                        ? 'bg-[#00f0ff] text-black'
                         : 'bg-white/5 text-zinc-400'
                     }`}
                     style={{ fontFamily: 'Inter, sans-serif' }}
                   >
-                    <TrendingDown className="w-3 h-3" />
+                    <TrendingDown className="w-2.5 h-2.5" />
                     Price High
                   </button>
                 </div>
