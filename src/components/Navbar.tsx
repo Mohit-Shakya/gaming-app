@@ -497,29 +497,29 @@ export default function Navbar() {
 
                   {/* Dropdown Menu */}
                   {menuOpen && (
-                    <div className="dropdown-menu absolute right-0 mt-2 w-56 sm:w-64 rounded-xl sm:rounded-2xl p-1.5 sm:p-2 z-50">
+                    <div className="dropdown-menu absolute right-0 mt-2 w-64 rounded-2xl p-2 z-50">
                       {/* User info header */}
-                      <div className="px-3 py-2 sm:px-4 sm:py-3 mb-1 sm:mb-2">
+                      <div className="px-4 py-3 mb-2">
                         <div
-                          className="text-xs sm:text-sm font-semibold text-white truncate"
+                          className="text-sm font-semibold text-white truncate"
                           style={{ fontFamily: "Inter, sans-serif" }}
                         >
                           {displayName(user)}
                         </div>
-                        <div className="text-[10px] sm:text-xs text-gray-400 truncate">
+                        <div className="text-xs text-gray-400 truncate">
                           {user.email}
                         </div>
                         <div className="mt-1">
-                          <span className="inline-flex items-center px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] sm:text-xs font-medium status-badge text-[#ff073a]">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium status-badge text-[#ff073a]">
                             {userRole ? capitalizeFirst(userRole) : "Player"}
                           </span>
                         </div>
                       </div>
 
-                      <div className="divider h-px my-1 sm:my-2" />
+                      <div className="divider h-px my-2" />
 
                       {/* Menu Items */}
-                      <div className="space-y-0.5 sm:space-y-1">
+                      <div className="space-y-1">
                         <button
                           onClick={() => {
                             setMenuOpen(false);
@@ -528,11 +528,11 @@ export default function Navbar() {
                           onTouchStart={() => setPressedItem("bookings")}
                           onTouchEnd={() => setPressedItem(null)}
                           onTouchCancel={() => setPressedItem(null)}
-                          className={`menu-item flex w-full items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2 sm:py-2.5 rounded-lg sm:rounded-xl ${pressedItem === "bookings" ? "menu-item-pressed" : ""}`}
+                          className={`menu-item flex w-full items-center gap-3 px-3 py-3 rounded-xl ${pressedItem === "bookings" ? "menu-item-pressed" : ""}`}
                         >
-                          <div className="icon-container flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-lg sm:rounded-xl bg-white/5 border border-white/10 transition-all duration-200">
+                          <div className="icon-container flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200">
                             <svg
-                              className="w-4 h-4 sm:w-5 sm:h-5 text-[#00f0ff]"
+                              className="w-5 h-5 text-[#00f0ff]"
                               fill="none"
                               stroke="currentColor"
                               viewBox="0 0 24 24"
@@ -547,16 +547,16 @@ export default function Navbar() {
                           </div>
                           <div className="flex-1 text-left">
                             <div
-                              className="menu-text text-xs sm:text-sm font-medium text-white transition-colors"
+                              className="menu-text text-sm font-medium text-white transition-colors"
                               style={{ fontFamily: "Inter, sans-serif" }}
                             >
                               My Bookings
                             </div>
-                            <div className="menu-subtext text-[10px] sm:text-xs text-gray-400 transition-colors">
-                              View reservations
+                            <div className="menu-subtext text-xs text-gray-400 transition-colors">
+                              View your reservations
                             </div>
                           </div>
-                          <svg className="menu-arrow w-3 h-3 sm:w-4 sm:h-4 text-gray-500 transition-all duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="menu-arrow w-4 h-4 text-gray-500 transition-all duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                           </svg>
                         </button>
@@ -569,11 +569,11 @@ export default function Navbar() {
                           onTouchStart={() => setPressedItem("profile")}
                           onTouchEnd={() => setPressedItem(null)}
                           onTouchCancel={() => setPressedItem(null)}
-                          className={`menu-item flex w-full items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2 sm:py-2.5 rounded-lg sm:rounded-xl ${pressedItem === "profile" ? "menu-item-pressed" : ""}`}
+                          className={`menu-item flex w-full items-center gap-3 px-3 py-3 rounded-xl ${pressedItem === "profile" ? "menu-item-pressed" : ""}`}
                         >
-                          <div className="icon-container flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-lg sm:rounded-xl bg-white/5 border border-white/10 transition-all duration-200">
+                          <div className="icon-container flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-200">
                             <svg
-                              className="w-4 h-4 sm:w-5 sm:h-5 text-gray-300"
+                              className="w-5 h-5 text-gray-300"
                               fill="none"
                               stroke="currentColor"
                               viewBox="0 0 24 24"
@@ -588,12 +588,12 @@ export default function Navbar() {
                           </div>
                           <div className="flex-1 text-left">
                             <div
-                              className="menu-text text-xs sm:text-sm font-medium text-white transition-colors"
+                              className="menu-text text-sm font-medium text-white transition-colors"
                               style={{ fontFamily: "Inter, sans-serif" }}
                             >
                               Profile Settings
                             </div>
-                            <div className="menu-subtext text-[10px] sm:text-xs text-gray-400 transition-colors">
+                            <div className="menu-subtext text-xs text-gray-400 transition-colors">
                               Account settings
                             </div>
                           </div>
@@ -609,11 +609,11 @@ export default function Navbar() {
                             onTouchStart={() => setPressedItem("owner")}
                             onTouchEnd={() => setPressedItem(null)}
                             onTouchCancel={() => setPressedItem(null)}
-                            className={`menu-item menu-item-purple flex w-full items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2 sm:py-2.5 rounded-lg sm:rounded-xl ${pressedItem === "owner" ? "menu-item-pressed" : ""}`}
+                            className={`menu-item menu-item-purple flex w-full items-center gap-3 px-3 py-3 rounded-xl ${pressedItem === "owner" ? "menu-item-pressed" : ""}`}
                           >
-                            <div className="icon-container flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-lg sm:rounded-xl bg-purple-500/10 border border-purple-500/20 transition-all duration-200">
+                            <div className="icon-container flex h-10 w-10 items-center justify-center rounded-xl bg-purple-500/10 border border-purple-500/20 transition-all duration-200">
                               <svg
-                                className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400"
+                                className="w-5 h-5 text-purple-400"
                                 fill="none"
                                 stroke="currentColor"
                                 viewBox="0 0 24 24"
@@ -628,13 +628,13 @@ export default function Navbar() {
                             </div>
                             <div className="flex-1 text-left">
                               <div
-                                className="menu-text text-xs sm:text-sm font-medium text-white transition-colors"
+                                className="menu-text text-sm font-medium text-white transition-colors"
                                 style={{ fontFamily: "Inter, sans-serif" }}
                               >
                                 Owner Dashboard
                               </div>
-                              <div className="menu-subtext text-[10px] sm:text-xs text-gray-400 transition-colors">
-                                Manage cafés
+                              <div className="menu-subtext text-xs text-gray-400 transition-colors">
+                                Manage your cafés
                               </div>
                             </div>
                           </button>
@@ -650,11 +650,11 @@ export default function Navbar() {
                             onTouchStart={() => setPressedItem("admin")}
                             onTouchEnd={() => setPressedItem(null)}
                             onTouchCancel={() => setPressedItem(null)}
-                            className={`menu-item menu-item-amber flex w-full items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2 sm:py-2.5 rounded-lg sm:rounded-xl ${pressedItem === "admin" ? "menu-item-pressed" : ""}`}
+                            className={`menu-item menu-item-amber flex w-full items-center gap-3 px-3 py-3 rounded-xl ${pressedItem === "admin" ? "menu-item-pressed" : ""}`}
                           >
-                            <div className="icon-container flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-lg sm:rounded-xl bg-amber-500/10 border border-amber-500/20 transition-all duration-200">
+                            <div className="icon-container flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 border border-amber-500/20 transition-all duration-200">
                               <svg
-                                className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400"
+                                className="w-5 h-5 text-amber-400"
                                 fill="none"
                                 stroke="currentColor"
                                 viewBox="0 0 24 24"
@@ -675,12 +675,12 @@ export default function Navbar() {
                             </div>
                             <div className="flex-1 text-left">
                               <div
-                                className="menu-text text-xs sm:text-sm font-medium text-white transition-colors"
+                                className="menu-text text-sm font-medium text-white transition-colors"
                                 style={{ fontFamily: "Inter, sans-serif" }}
                               >
                                 Admin Dashboard
                               </div>
-                              <div className="menu-subtext text-[10px] sm:text-xs text-gray-400 transition-colors">
+                              <div className="menu-subtext text-xs text-gray-400 transition-colors">
                                 System management
                               </div>
                             </div>
@@ -688,7 +688,7 @@ export default function Navbar() {
                         )}
                       </div>
 
-                      <div className="divider h-px my-1 sm:my-2" />
+                      <div className="divider h-px my-2" />
 
                       {/* Logout */}
                       <button
@@ -696,11 +696,11 @@ export default function Navbar() {
                         onTouchStart={() => setPressedItem("logout")}
                         onTouchEnd={() => setPressedItem(null)}
                         onTouchCancel={() => setPressedItem(null)}
-                        className={`menu-item menu-item-red flex w-full items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2 sm:py-2.5 rounded-lg sm:rounded-xl ${pressedItem === "logout" ? "menu-item-pressed" : ""}`}
+                        className={`menu-item menu-item-red flex w-full items-center gap-3 px-3 py-3 rounded-xl ${pressedItem === "logout" ? "menu-item-pressed" : ""}`}
                       >
-                        <div className="icon-container flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-lg sm:rounded-xl bg-red-500/10 border border-red-500/20 transition-all duration-200">
+                        <div className="icon-container flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/10 border border-red-500/20 transition-all duration-200">
                           <svg
-                            className="w-4 h-4 sm:w-5 sm:h-5 text-red-400"
+                            className="w-5 h-5 text-red-400"
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -715,13 +715,13 @@ export default function Navbar() {
                         </div>
                         <div className="flex-1 text-left">
                           <div
-                            className="menu-text text-xs sm:text-sm font-medium text-red-400 transition-colors"
+                            className="menu-text text-sm font-medium text-red-400 transition-colors"
                             style={{ fontFamily: "Inter, sans-serif" }}
                           >
                             Logout
                           </div>
-                          <div className="menu-subtext text-[10px] sm:text-xs text-gray-400 transition-colors">
-                            Sign out
+                          <div className="menu-subtext text-xs text-gray-400 transition-colors">
+                            Sign out of account
                           </div>
                         </div>
                       </button>
