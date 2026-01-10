@@ -179,14 +179,21 @@ export default function Navbar() {
         }
 
         /* Mobile touch - pressed state (JS-controlled for better mobile experience) */
+        .menu-item-pressed {
+          background: rgba(255, 255, 255, 0.03);
+        }
+
         .menu-item-pressed::after {
           width: 80% !important;
+          height: 3px;
+          box-shadow: 0 0 8px rgba(255, 7, 58, 0.5);
         }
 
         .menu-item-pressed .icon-container {
-          background: rgba(255, 7, 58, 0.1) !important;
-          border-color: rgba(255, 7, 58, 0.3) !important;
+          background: rgba(255, 7, 58, 0.15) !important;
+          border-color: rgba(255, 7, 58, 0.4) !important;
           transform: translateX(2px);
+          box-shadow: 0 0 10px rgba(255, 7, 58, 0.2);
         }
 
         /* Purple variant (Owner) - simple underline */
@@ -202,11 +209,13 @@ export default function Navbar() {
         }
         .menu-item-purple.menu-item-pressed::after {
           background: linear-gradient(90deg, #a855f7, #a855f7) !important;
+          box-shadow: 0 0 8px rgba(168, 85, 247, 0.5);
         }
         .menu-item-purple.menu-item-pressed .icon-container {
-          background: rgba(168, 85, 247, 0.1) !important;
-          border-color: rgba(168, 85, 247, 0.3) !important;
+          background: rgba(168, 85, 247, 0.15) !important;
+          border-color: rgba(168, 85, 247, 0.4) !important;
           transform: translateX(2px);
+          box-shadow: 0 0 10px rgba(168, 85, 247, 0.2);
         }
 
         /* Amber variant (Admin) - simple underline */
@@ -222,11 +231,13 @@ export default function Navbar() {
         }
         .menu-item-amber.menu-item-pressed::after {
           background: linear-gradient(90deg, #f59e0b, #f59e0b) !important;
+          box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
         }
         .menu-item-amber.menu-item-pressed .icon-container {
-          background: rgba(245, 158, 11, 0.1) !important;
-          border-color: rgba(245, 158, 11, 0.3) !important;
+          background: rgba(245, 158, 11, 0.15) !important;
+          border-color: rgba(245, 158, 11, 0.4) !important;
           transform: translateX(2px);
+          box-shadow: 0 0 10px rgba(245, 158, 11, 0.2);
         }
 
         /* Red variant (Logout) - simple underline */
@@ -242,11 +253,13 @@ export default function Navbar() {
         }
         .menu-item-red.menu-item-pressed::after {
           background: linear-gradient(90deg, #ef4444, #ef4444) !important;
+          box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
         }
         .menu-item-red.menu-item-pressed .icon-container {
-          background: rgba(239, 68, 68, 0.1) !important;
-          border-color: rgba(239, 68, 68, 0.3) !important;
+          background: rgba(239, 68, 68, 0.15) !important;
+          border-color: rgba(239, 68, 68, 0.4) !important;
           transform: translateX(2px);
+          box-shadow: 0 0 10px rgba(239, 68, 68, 0.2);
         }
 
         .avatar-container {
