@@ -14,6 +14,7 @@ export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [pressedItem, setPressedItem] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const isLoginPage = pathname === "/login";
@@ -183,36 +184,34 @@ export default function Navbar() {
           }
         }
 
-        /* Mobile touch - active state */
-        @media (hover: none) and (pointer: coarse) {
-          .menu-item:active {
-            background: rgba(255, 7, 58, 0.15);
-            transform: translateX(4px);
-          }
+        /* Mobile touch - pressed state (JS-controlled for better mobile experience) */
+        .menu-item-pressed {
+          background: rgba(255, 7, 58, 0.15) !important;
+          transform: translateX(4px);
+        }
 
-          .menu-item:active::before {
-            height: 60%;
-          }
+        .menu-item-pressed::before {
+          height: 60% !important;
+        }
 
-          .menu-item:active .icon-container {
-            background: rgba(255, 7, 58, 0.2);
-            border-color: rgba(255, 7, 58, 0.5);
-            transform: scale(1.05);
-            box-shadow: 0 0 12px rgba(255, 7, 58, 0.4);
-          }
+        .menu-item-pressed .icon-container {
+          background: rgba(255, 7, 58, 0.2) !important;
+          border-color: rgba(255, 7, 58, 0.5) !important;
+          transform: scale(1.05);
+          box-shadow: 0 0 12px rgba(255, 7, 58, 0.4);
+        }
 
-          .menu-item:active .menu-text {
-            color: #fff;
-          }
+        .menu-item-pressed .menu-text {
+          color: #fff !important;
+        }
 
-          .menu-item:active .menu-subtext {
-            color: rgba(255, 255, 255, 0.7);
-          }
+        .menu-item-pressed .menu-subtext {
+          color: rgba(255, 255, 255, 0.7) !important;
+        }
 
-          .menu-item:active .menu-arrow {
-            transform: translateX(3px);
-            color: #ff073a;
-          }
+        .menu-item-pressed .menu-arrow {
+          transform: translateX(3px);
+          color: #ff073a !important;
         }
 
         .menu-item::before {
@@ -242,18 +241,16 @@ export default function Navbar() {
             background: linear-gradient(180deg, #a855f7, #00f0ff);
           }
         }
-        @media (hover: none) and (pointer: coarse) {
-          .menu-item-purple:active {
-            background: rgba(168, 85, 247, 0.15);
-          }
-          .menu-item-purple:active .icon-container {
-            background: rgba(168, 85, 247, 0.2);
-            border-color: rgba(168, 85, 247, 0.5);
-            box-shadow: 0 0 12px rgba(168, 85, 247, 0.4);
-          }
-          .menu-item-purple:active::before {
-            background: linear-gradient(180deg, #a855f7, #00f0ff);
-          }
+        .menu-item-purple.menu-item-pressed {
+          background: rgba(168, 85, 247, 0.15) !important;
+        }
+        .menu-item-purple.menu-item-pressed .icon-container {
+          background: rgba(168, 85, 247, 0.2) !important;
+          border-color: rgba(168, 85, 247, 0.5) !important;
+          box-shadow: 0 0 12px rgba(168, 85, 247, 0.4);
+        }
+        .menu-item-purple.menu-item-pressed::before {
+          background: linear-gradient(180deg, #a855f7, #00f0ff) !important;
         }
 
         /* Amber variant (Admin) */
@@ -270,18 +267,16 @@ export default function Navbar() {
             background: linear-gradient(180deg, #f59e0b, #00f0ff);
           }
         }
-        @media (hover: none) and (pointer: coarse) {
-          .menu-item-amber:active {
-            background: rgba(245, 158, 11, 0.15);
-          }
-          .menu-item-amber:active .icon-container {
-            background: rgba(245, 158, 11, 0.2);
-            border-color: rgba(245, 158, 11, 0.5);
-            box-shadow: 0 0 12px rgba(245, 158, 11, 0.4);
-          }
-          .menu-item-amber:active::before {
-            background: linear-gradient(180deg, #f59e0b, #00f0ff);
-          }
+        .menu-item-amber.menu-item-pressed {
+          background: rgba(245, 158, 11, 0.15) !important;
+        }
+        .menu-item-amber.menu-item-pressed .icon-container {
+          background: rgba(245, 158, 11, 0.2) !important;
+          border-color: rgba(245, 158, 11, 0.5) !important;
+          box-shadow: 0 0 12px rgba(245, 158, 11, 0.4);
+        }
+        .menu-item-amber.menu-item-pressed::before {
+          background: linear-gradient(180deg, #f59e0b, #00f0ff) !important;
         }
 
         /* Red variant (Logout) */
@@ -301,21 +296,19 @@ export default function Navbar() {
             background: linear-gradient(180deg, #ef4444, #00f0ff);
           }
         }
-        @media (hover: none) and (pointer: coarse) {
-          .menu-item-red:active {
-            background: rgba(239, 68, 68, 0.15);
-          }
-          .menu-item-red:active .icon-container {
-            background: rgba(239, 68, 68, 0.2);
-            border-color: rgba(239, 68, 68, 0.5);
-            box-shadow: 0 0 12px rgba(239, 68, 68, 0.4);
-          }
-          .menu-item-red:active .menu-text {
-            color: #fca5a5;
-          }
-          .menu-item-red:active::before {
-            background: linear-gradient(180deg, #ef4444, #00f0ff);
-          }
+        .menu-item-red.menu-item-pressed {
+          background: rgba(239, 68, 68, 0.15) !important;
+        }
+        .menu-item-red.menu-item-pressed .icon-container {
+          background: rgba(239, 68, 68, 0.2) !important;
+          border-color: rgba(239, 68, 68, 0.5) !important;
+          box-shadow: 0 0 12px rgba(239, 68, 68, 0.4);
+        }
+        .menu-item-red.menu-item-pressed .menu-text {
+          color: #fca5a5 !important;
+        }
+        .menu-item-red.menu-item-pressed::before {
+          background: linear-gradient(180deg, #ef4444, #00f0ff) !important;
         }
 
         .avatar-container {
@@ -522,7 +515,10 @@ export default function Navbar() {
                             setMenuOpen(false);
                             router.push("/dashboard");
                           }}
-                          className="menu-item flex w-full items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2 sm:py-2.5 rounded-lg sm:rounded-xl"
+                          onTouchStart={() => setPressedItem("bookings")}
+                          onTouchEnd={() => setPressedItem(null)}
+                          onTouchCancel={() => setPressedItem(null)}
+                          className={`menu-item flex w-full items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2 sm:py-2.5 rounded-lg sm:rounded-xl ${pressedItem === "bookings" ? "menu-item-pressed" : ""}`}
                         >
                           <div className="icon-container flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-lg sm:rounded-xl bg-white/5 border border-white/10 transition-all duration-200">
                             <svg
@@ -560,7 +556,10 @@ export default function Navbar() {
                             setMenuOpen(false);
                             router.push("/profile");
                           }}
-                          className="menu-item flex w-full items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2 sm:py-2.5 rounded-lg sm:rounded-xl"
+                          onTouchStart={() => setPressedItem("profile")}
+                          onTouchEnd={() => setPressedItem(null)}
+                          onTouchCancel={() => setPressedItem(null)}
+                          className={`menu-item flex w-full items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2 sm:py-2.5 rounded-lg sm:rounded-xl ${pressedItem === "profile" ? "menu-item-pressed" : ""}`}
                         >
                           <div className="icon-container flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-lg sm:rounded-xl bg-white/5 border border-white/10 transition-all duration-200">
                             <svg
@@ -597,7 +596,10 @@ export default function Navbar() {
                               setMenuOpen(false);
                               router.push("/owner");
                             }}
-                            className="menu-item menu-item-purple flex w-full items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2 sm:py-2.5 rounded-lg sm:rounded-xl"
+                            onTouchStart={() => setPressedItem("owner")}
+                            onTouchEnd={() => setPressedItem(null)}
+                            onTouchCancel={() => setPressedItem(null)}
+                            className={`menu-item menu-item-purple flex w-full items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2 sm:py-2.5 rounded-lg sm:rounded-xl ${pressedItem === "owner" ? "menu-item-pressed" : ""}`}
                           >
                             <div className="icon-container flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-lg sm:rounded-xl bg-purple-500/10 border border-purple-500/20 transition-all duration-200">
                               <svg
@@ -635,7 +637,10 @@ export default function Navbar() {
                               setMenuOpen(false);
                               router.push("/admin");
                             }}
-                            className="menu-item menu-item-amber flex w-full items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2 sm:py-2.5 rounded-lg sm:rounded-xl"
+                            onTouchStart={() => setPressedItem("admin")}
+                            onTouchEnd={() => setPressedItem(null)}
+                            onTouchCancel={() => setPressedItem(null)}
+                            className={`menu-item menu-item-amber flex w-full items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2 sm:py-2.5 rounded-lg sm:rounded-xl ${pressedItem === "admin" ? "menu-item-pressed" : ""}`}
                           >
                             <div className="icon-container flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-lg sm:rounded-xl bg-amber-500/10 border border-amber-500/20 transition-all duration-200">
                               <svg
@@ -678,7 +683,10 @@ export default function Navbar() {
                       {/* Logout */}
                       <button
                         onClick={handleLogout}
-                        className="menu-item menu-item-red flex w-full items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2 sm:py-2.5 rounded-lg sm:rounded-xl"
+                        onTouchStart={() => setPressedItem("logout")}
+                        onTouchEnd={() => setPressedItem(null)}
+                        onTouchCancel={() => setPressedItem(null)}
+                        className={`menu-item menu-item-red flex w-full items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2 sm:py-2.5 rounded-lg sm:rounded-xl ${pressedItem === "logout" ? "menu-item-pressed" : ""}`}
                       >
                         <div className="icon-container flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-lg sm:rounded-xl bg-red-500/10 border border-red-500/20 transition-all duration-200">
                           <svg
