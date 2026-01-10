@@ -787,54 +787,58 @@ export default function HomeClient({ cafes }: Props) {
                 </div>
 
                 {/* Tabs Navigation */}
-                <div className="flex flex-nowrap gap-1.5 sm:gap-2 justify-center items-center mb-4">
+                <div className="flex flex-col items-center gap-2 mb-4">
+                  {/* Book Now - Top Row */}
                   <button
                     onClick={() => {
                       setActiveTab("book");
                       handleScrollToList();
                     }}
-                    className={`shrink-0 px-3 py-2.5 sm:px-6 sm:py-3 rounded-xl text-xs sm:text-sm md:text-lg font-bold tracking-wide uppercase flex items-center gap-1.5 sm:gap-2 group transition-all ${
+                    className={`px-6 py-3 rounded-xl text-sm md:text-lg font-bold tracking-wide uppercase flex items-center gap-2 group transition-all ${
                       activeTab === "book"
                         ? 'btn-glow'
                         : 'btn-ghost'
                     }`}
                     style={{ fontFamily: 'Orbitron, sans-serif' }}
                   >
-                    <Zap className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 group-hover:scale-125 transition-transform" />
+                    <Zap className="w-4 h-4 md:w-5 md:h-5 group-hover:scale-125 transition-transform" />
                     <span>Book Now</span>
                   </button>
 
-                  <button
-                    onClick={() => {
-                      setActiveTab("membership");
-                      handleScrollToList();
-                    }}
-                    className={`shrink-0 px-2.5 py-2.5 sm:px-4 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 sm:gap-2 transition-all ${
-                      activeTab === "membership"
-                        ? 'btn-glow'
-                        : 'btn-ghost'
-                    }`}
-                    style={{ fontFamily: 'Inter, sans-serif' }}
-                  >
-                    <Trophy className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${activeTab === "membership" ? 'text-white' : 'text-zinc-400'}`} />
-                    <span>Membership</span>
-                  </button>
+                  {/* Membership & Tournaments - Bottom Row */}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        setActiveTab("membership");
+                        handleScrollToList();
+                      }}
+                      className={`px-4 py-3 rounded-xl text-sm font-semibold flex items-center gap-2 transition-all ${
+                        activeTab === "membership"
+                          ? 'btn-glow'
+                          : 'btn-ghost'
+                      }`}
+                      style={{ fontFamily: 'Inter, sans-serif' }}
+                    >
+                      <Trophy className={`w-4 h-4 ${activeTab === "membership" ? 'text-white' : 'text-zinc-400'}`} />
+                      <span>Membership</span>
+                    </button>
 
-                  <button
-                    onClick={() => {
-                      setActiveTab("tournaments");
-                      handleScrollToList();
-                    }}
-                    className={`shrink-0 px-2.5 py-2.5 sm:px-4 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-1.5 sm:gap-2 transition-all ${
-                      activeTab === "tournaments"
-                        ? 'btn-glow'
-                        : 'btn-ghost'
-                    }`}
-                    style={{ fontFamily: 'Inter, sans-serif' }}
-                  >
-                    <Award className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${activeTab === "tournaments" ? 'text-white' : 'text-zinc-400'}`} />
-                    <span>Tournaments</span>
-                  </button>
+                    <button
+                      onClick={() => {
+                        setActiveTab("tournaments");
+                        handleScrollToList();
+                      }}
+                      className={`px-4 py-3 rounded-xl text-sm font-semibold flex items-center gap-2 transition-all ${
+                        activeTab === "tournaments"
+                          ? 'btn-glow'
+                          : 'btn-ghost'
+                      }`}
+                      style={{ fontFamily: 'Inter, sans-serif' }}
+                    >
+                      <Award className={`w-4 h-4 ${activeTab === "tournaments" ? 'text-white' : 'text-zinc-400'}`} />
+                      <span>Tournaments</span>
+                    </button>
+                  </div>
                 </div>
 
                 
