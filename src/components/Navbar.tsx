@@ -398,26 +398,6 @@ export default function Navbar() {
           transition: all 0.3s ease;
         }
 
-        .menu-item:hover .icon-container {
-          background: rgba(255, 7, 58, 0.15);
-          border-color: rgba(255, 7, 58, 0.4);
-          transform: scale(1.05);
-          box-shadow: 0 0 12px rgba(255, 7, 58, 0.3);
-        }
-
-        .menu-item:hover .menu-text {
-          color: #fff;
-        }
-
-        .menu-item:hover .menu-subtext {
-          color: rgba(255, 255, 255, 0.7);
-        }
-
-        .menu-item:hover .menu-arrow {
-          transform: translateX(3px);
-          color: #ff073a;
-        }
-
         .menu-arrow {
           transition: all 0.2s ease;
         }
