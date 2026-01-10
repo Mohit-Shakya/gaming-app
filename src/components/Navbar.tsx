@@ -152,173 +152,101 @@ export default function Navbar() {
           -webkit-tap-highlight-color: transparent;
         }
 
+        /* Bottom underline effect (like prince repo) */
+        .menu-item::after {
+          content: '';
+          position: absolute;
+          bottom: 0;
+          left: 50%;
+          width: 0;
+          height: 2px;
+          background: linear-gradient(90deg, #ff073a, #ff073a);
+          transition: all 0.3s ease;
+          transform: translateX(-50%);
+        }
+
         /* Desktop hover */
         @media (hover: hover) and (pointer: fine) {
-          .menu-item:hover {
-            background: rgba(255, 7, 58, 0.08);
-            transform: translateX(4px);
-          }
-
-          .menu-item:hover::before {
-            height: 60%;
+          .menu-item:hover::after {
+            width: 80%;
           }
 
           .menu-item:hover .icon-container {
-            background: rgba(255, 7, 58, 0.15);
-            border-color: rgba(255, 7, 58, 0.4);
-            transform: scale(1.05);
-            box-shadow: 0 0 12px rgba(255, 7, 58, 0.3);
-          }
-
-          .menu-item:hover .menu-text {
-            color: #fff;
-          }
-
-          .menu-item:hover .menu-subtext {
-            color: rgba(255, 255, 255, 0.7);
-          }
-
-          .menu-item:hover .menu-arrow {
-            transform: translateX(3px);
-            color: #ff073a;
+            background: rgba(255, 7, 58, 0.1);
+            border-color: rgba(255, 7, 58, 0.3);
+            transform: translateX(2px);
           }
         }
 
         /* Mobile touch - pressed state (JS-controlled for better mobile experience) */
-        .menu-item-pressed {
-          background: rgba(255, 7, 58, 0.25) !important;
-          transform: translateX(6px) scale(1.01);
-          box-shadow: inset 0 0 20px rgba(255, 7, 58, 0.15);
-        }
-
-        .menu-item-pressed::before {
-          height: 70% !important;
-          box-shadow: 0 0 8px rgba(255, 7, 58, 0.6);
+        .menu-item-pressed::after {
+          width: 80% !important;
         }
 
         .menu-item-pressed .icon-container {
-          background: rgba(255, 7, 58, 0.3) !important;
-          border-color: rgba(255, 7, 58, 0.6) !important;
-          transform: scale(1.1);
-          box-shadow: 0 0 16px rgba(255, 7, 58, 0.5), 0 0 8px rgba(255, 7, 58, 0.3) inset;
+          background: rgba(255, 7, 58, 0.1) !important;
+          border-color: rgba(255, 7, 58, 0.3) !important;
+          transform: translateX(2px);
         }
 
-        .menu-item-pressed .menu-text {
-          color: #fff !important;
-          text-shadow: 0 0 8px rgba(255, 7, 58, 0.4);
-        }
-
-        .menu-item-pressed .menu-subtext {
-          color: rgba(255, 255, 255, 0.8) !important;
-        }
-
-        .menu-item-pressed .menu-arrow {
-          transform: translateX(5px);
-          color: #ff073a !important;
-        }
-
-        .menu-item::before {
-          content: '';
-          position: absolute;
-          left: 0;
-          top: 50%;
-          transform: translateY(-50%);
-          width: 3px;
-          height: 0;
-          background: linear-gradient(180deg, #ff073a, #00f0ff);
-          border-radius: 0 4px 4px 0;
-          transition: height 0.2s ease;
-        }
-
-        /* Purple variant (Owner) */
+        /* Purple variant (Owner) - simple underline */
         @media (hover: hover) and (pointer: fine) {
-          .menu-item-purple:hover {
-            background: rgba(168, 85, 247, 0.08);
+          .menu-item-purple:hover::after {
+            background: linear-gradient(90deg, #a855f7, #a855f7);
           }
           .menu-item-purple:hover .icon-container {
-            background: rgba(168, 85, 247, 0.15);
-            border-color: rgba(168, 85, 247, 0.4);
-            box-shadow: 0 0 12px rgba(168, 85, 247, 0.3);
-          }
-          .menu-item-purple:hover::before {
-            background: linear-gradient(180deg, #a855f7, #00f0ff);
+            background: rgba(168, 85, 247, 0.1);
+            border-color: rgba(168, 85, 247, 0.3);
+            transform: translateX(2px);
           }
         }
-        .menu-item-purple.menu-item-pressed {
-          background: rgba(168, 85, 247, 0.25) !important;
-          box-shadow: inset 0 0 20px rgba(168, 85, 247, 0.15);
+        .menu-item-purple.menu-item-pressed::after {
+          background: linear-gradient(90deg, #a855f7, #a855f7) !important;
         }
         .menu-item-purple.menu-item-pressed .icon-container {
-          background: rgba(168, 85, 247, 0.35) !important;
-          border-color: rgba(168, 85, 247, 0.6) !important;
-          box-shadow: 0 0 16px rgba(168, 85, 247, 0.5), 0 0 8px rgba(168, 85, 247, 0.3) inset;
-        }
-        .menu-item-purple.menu-item-pressed::before {
-          background: linear-gradient(180deg, #a855f7, #00f0ff) !important;
-          box-shadow: 0 0 8px rgba(168, 85, 247, 0.6);
+          background: rgba(168, 85, 247, 0.1) !important;
+          border-color: rgba(168, 85, 247, 0.3) !important;
+          transform: translateX(2px);
         }
 
-        /* Amber variant (Admin) */
+        /* Amber variant (Admin) - simple underline */
         @media (hover: hover) and (pointer: fine) {
-          .menu-item-amber:hover {
-            background: rgba(245, 158, 11, 0.08);
+          .menu-item-amber:hover::after {
+            background: linear-gradient(90deg, #f59e0b, #f59e0b);
           }
           .menu-item-amber:hover .icon-container {
-            background: rgba(245, 158, 11, 0.15);
-            border-color: rgba(245, 158, 11, 0.4);
-            box-shadow: 0 0 12px rgba(245, 158, 11, 0.3);
-          }
-          .menu-item-amber:hover::before {
-            background: linear-gradient(180deg, #f59e0b, #00f0ff);
+            background: rgba(245, 158, 11, 0.1);
+            border-color: rgba(245, 158, 11, 0.3);
+            transform: translateX(2px);
           }
         }
-        .menu-item-amber.menu-item-pressed {
-          background: rgba(245, 158, 11, 0.25) !important;
-          box-shadow: inset 0 0 20px rgba(245, 158, 11, 0.15);
+        .menu-item-amber.menu-item-pressed::after {
+          background: linear-gradient(90deg, #f59e0b, #f59e0b) !important;
         }
         .menu-item-amber.menu-item-pressed .icon-container {
-          background: rgba(245, 158, 11, 0.35) !important;
-          border-color: rgba(245, 158, 11, 0.6) !important;
-          box-shadow: 0 0 16px rgba(245, 158, 11, 0.5), 0 0 8px rgba(245, 158, 11, 0.3) inset;
-        }
-        .menu-item-amber.menu-item-pressed::before {
-          background: linear-gradient(180deg, #f59e0b, #00f0ff) !important;
-          box-shadow: 0 0 8px rgba(245, 158, 11, 0.6);
+          background: rgba(245, 158, 11, 0.1) !important;
+          border-color: rgba(245, 158, 11, 0.3) !important;
+          transform: translateX(2px);
         }
 
-        /* Red variant (Logout) */
+        /* Red variant (Logout) - simple underline */
         @media (hover: hover) and (pointer: fine) {
-          .menu-item-red:hover {
-            background: rgba(239, 68, 68, 0.08);
+          .menu-item-red:hover::after {
+            background: linear-gradient(90deg, #ef4444, #ef4444);
           }
           .menu-item-red:hover .icon-container {
-            background: rgba(239, 68, 68, 0.15);
-            border-color: rgba(239, 68, 68, 0.4);
-            box-shadow: 0 0 12px rgba(239, 68, 68, 0.3);
-          }
-          .menu-item-red:hover .menu-text {
-            color: #fca5a5;
-          }
-          .menu-item-red:hover::before {
-            background: linear-gradient(180deg, #ef4444, #00f0ff);
+            background: rgba(239, 68, 68, 0.1);
+            border-color: rgba(239, 68, 68, 0.3);
+            transform: translateX(2px);
           }
         }
-        .menu-item-red.menu-item-pressed {
-          background: rgba(239, 68, 68, 0.25) !important;
-          box-shadow: inset 0 0 20px rgba(239, 68, 68, 0.15);
+        .menu-item-red.menu-item-pressed::after {
+          background: linear-gradient(90deg, #ef4444, #ef4444) !important;
         }
         .menu-item-red.menu-item-pressed .icon-container {
-          background: rgba(239, 68, 68, 0.35) !important;
-          border-color: rgba(239, 68, 68, 0.6) !important;
-          box-shadow: 0 0 16px rgba(239, 68, 68, 0.5), 0 0 8px rgba(239, 68, 68, 0.3) inset;
-        }
-        .menu-item-red.menu-item-pressed .menu-text {
-          color: #fca5a5 !important;
-          text-shadow: 0 0 8px rgba(239, 68, 68, 0.4);
-        }
-        .menu-item-red.menu-item-pressed::before {
-          background: linear-gradient(180deg, #ef4444, #00f0ff) !important;
-          box-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
+          background: rgba(239, 68, 68, 0.1) !important;
+          border-color: rgba(239, 68, 68, 0.3) !important;
+          transform: translateX(2px);
         }
 
         .avatar-container {
