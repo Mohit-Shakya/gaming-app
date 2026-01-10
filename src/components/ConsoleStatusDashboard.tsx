@@ -244,26 +244,27 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
 
       // Get bookings for this console type
       // NOTE: quantity in booking_items represents number of controllers, not console units
-      // Each booking occupies exactly 1 console unit regardless of controller count
+      // For bulk bookings, we need to count EACH booking_item as occupying a separate console unit
       // Handle console name mapping: "steering_wheel" in DB maps to "steering" in app
-      const consoleBookings = activeBookings
-        .filter(b => b.booking_items?.some(item => {
-          // Map steering_wheel to steering for comparison
+      const consoleBookings: Array<BookingData & { quantity: number; controllerCount: number }> = [];
+
+      activeBookings.forEach(b => {
+        // Find ALL booking_items that match this console type (not just the first one)
+        const matchingItems = b.booking_items?.filter(item => {
           const itemConsole = (item.console as string) === 'steering_wheel' ? 'steering' : item.console;
           return itemConsole === id;
-        }))
-        .map(b => {
-          const itemConsole = b.booking_items?.find(item => {
-            const mappedConsole = (item.console as string) === 'steering_wheel' ? 'steering' : item.console;
-            return mappedConsole === id;
-          });
-          const controllerCount = itemConsole?.quantity || 1;
-          return {
+        }) || [];
+
+        // Add one entry to consoleBookings for EACH matching booking_item
+        // This ensures bulk bookings with multiple consoles are counted correctly
+        matchingItems.forEach(item => {
+          consoleBookings.push({
             ...b,
-            quantity: 1, // Always 1 console unit per booking
-            controllerCount: controllerCount
-          };
+            quantity: 1, // Each booking_item occupies 1 console unit
+            controllerCount: item.quantity || 1 // Controllers per console
+          });
         });
+      });
 
       const statuses: ConsoleStatus[] = [];
       let busyCount = 0;

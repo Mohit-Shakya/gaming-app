@@ -145,9 +145,9 @@ export default function WalkInBookingPage() {
           .select("console_type, quantity, duration_minutes, price")
           .eq("cafe_id", data.id);
 
-        if (!pricingError && pricingData) {
-          const pricing: Partial<Record<ConsoleId, ConsolePricingTier>> = {};
+        let pricing: Partial<Record<ConsoleId, ConsolePricingTier>> = {};
 
+        if (!pricingError && pricingData && pricingData.length > 0) {
           pricingData.forEach((item: any) => {
             let consoleId = item.console_type as ConsoleId;
 
@@ -167,9 +167,92 @@ export default function WalkInBookingPage() {
             const key = `qty${item.quantity}_${item.duration_minutes}min` as keyof ConsolePricingTier;
             pricing[consoleId]![key] = item.price;
           });
+        } else {
+          // Fallback: Load from station_pricing table (used by owner dashboard)
+          const { data: stationPricingData, error: stationPricingError } = await supabase
+            .from("station_pricing")
+            .select("station_type, controller_1_half_hour, controller_1_full_hour, controller_2_half_hour, controller_2_full_hour, controller_3_half_hour, controller_3_full_hour, controller_4_half_hour, controller_4_full_hour, half_hour_rate, hourly_rate, single_player_half_hour_rate, single_player_rate, multi_player_half_hour_rate, multi_player_rate")
+            .eq("cafe_id", data.id);
 
-          setConsolePricing(pricing);
+          if (!stationPricingError && stationPricingData && stationPricingData.length > 0) {
+            // Group by station_type and use the first station's pricing for each type
+            const stationTypeMap: Record<string, any> = {};
+            stationPricingData.forEach((sp: any) => {
+              if (!stationTypeMap[sp.station_type]) {
+                stationTypeMap[sp.station_type] = sp;
+              }
+            });
+
+            // Convert station_type (Title Case) to ConsoleId (lowercase)
+            const typeToConsoleId: Record<string, ConsoleId> = {
+              "PS5": "ps5",
+              "PS4": "ps4",
+              "Xbox": "xbox",
+              "PC": "pc",
+              "Pool": "pool",
+              "Snooker": "snooker",
+              "Arcade": "arcade",
+              "VR": "vr",
+              "Steering": "steering_wheel",
+            };
+
+            Object.entries(stationTypeMap).forEach(([stationType, sp]: [string, any]) => {
+              const consoleId = typeToConsoleId[stationType];
+              if (!consoleId) return;
+
+              const tier: ConsolePricingTier = {
+                qty1_30min: null,
+                qty1_60min: null,
+                qty2_30min: null,
+                qty2_60min: null,
+                qty3_30min: null,
+                qty3_60min: null,
+                qty4_30min: null,
+                qty4_60min: null,
+              };
+
+              // PS5/Xbox use controller pricing
+              if (stationType === "PS5" || stationType === "Xbox") {
+                tier.qty1_30min = sp.controller_1_half_hour || null;
+                tier.qty1_60min = sp.controller_1_full_hour || null;
+                tier.qty2_30min = sp.controller_2_half_hour || null;
+                tier.qty2_60min = sp.controller_2_full_hour || null;
+                tier.qty3_30min = sp.controller_3_half_hour || null;
+                tier.qty3_60min = sp.controller_3_full_hour || null;
+                tier.qty4_30min = sp.controller_4_half_hour || null;
+                tier.qty4_60min = sp.controller_4_full_hour || null;
+              }
+              // PS4 uses single/multi player pricing
+              else if (stationType === "PS4") {
+                tier.qty1_30min = sp.single_player_half_hour_rate || null;
+                tier.qty1_60min = sp.single_player_rate || null;
+                tier.qty2_30min = sp.multi_player_half_hour_rate || null;
+                tier.qty2_60min = sp.multi_player_rate || null;
+                // For 3-4 players, use multi-player pricing
+                tier.qty3_30min = sp.multi_player_half_hour_rate || null;
+                tier.qty3_60min = sp.multi_player_rate || null;
+                tier.qty4_30min = sp.multi_player_half_hour_rate || null;
+                tier.qty4_60min = sp.multi_player_rate || null;
+              }
+              // Other consoles (PC, VR, Pool, etc.) use simple hourly pricing
+              else {
+                tier.qty1_30min = sp.half_hour_rate || null;
+                tier.qty1_60min = sp.hourly_rate || null;
+                // For these, quantity doesn't multiply the price per person
+                tier.qty2_30min = sp.half_hour_rate || null;
+                tier.qty2_60min = sp.hourly_rate || null;
+                tier.qty3_30min = sp.half_hour_rate || null;
+                tier.qty3_60min = sp.hourly_rate || null;
+                tier.qty4_30min = sp.half_hour_rate || null;
+                tier.qty4_60min = sp.hourly_rate || null;
+              }
+
+              pricing[consoleId] = tier;
+            });
+          }
         }
+
+        setConsolePricing(pricing);
 
         // Auto-select first available console
         if (available.length > 0) {

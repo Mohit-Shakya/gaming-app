@@ -335,6 +335,7 @@ export default function OwnerDashboardPage() {
 
   // Edit modal state
   const [editingBooking, setEditingBooking] = useState<BookingRow | null>(null);
+  const [editingBookingItemId, setEditingBookingItemId] = useState<string | null>(null); // Track specific item for bulk bookings
 
   // Settings state
   const [settingsChanged, setSettingsChanged] = useState(false);
@@ -1391,32 +1392,47 @@ export default function OwnerDashboardPage() {
 
   // Handle edit booking
   function handleEditBooking(booking: BookingRow) {
+    // If this is a flattened booking entry (from bulk booking), find the original booking
+    const originalBookingId = (booking as any).originalBookingId;
+    const actualBooking = originalBookingId
+      ? bookings.find(b => b.id === originalBookingId) || booking
+      : booking;
+
+    // Track which specific booking_item is being edited (for bulk bookings)
+    // The flattened entry has only one item in booking_items array
+    const specificItemId = originalBookingId && booking.booking_items?.[0]?.id
+      ? booking.booking_items[0].id
+      : null;
+
     // Allow editing all bookings, not just walk-ins
     console.log('[handleEditBooking] Opening edit modal for booking:', {
-      id: booking.id?.slice(0, 8),
-      start_time_raw: booking.start_time,
-      booking_date: booking.booking_date,
-      total_amount: booking.total_amount,
+      id: actualBooking.id?.slice(0, 8),
+      start_time_raw: actualBooking.start_time,
+      booking_date: actualBooking.booking_date,
+      total_amount: actualBooking.total_amount,
+      isFromFlattenedEntry: !!originalBookingId,
+      specificItemId: specificItemId,
     });
 
-    setEditingBooking(booking);
-    setEditAmount(booking.total_amount?.toString() || "");
+    setEditingBooking(actualBooking);
+    setEditingBookingItemId(specificItemId);
+    setEditAmount(actualBooking.total_amount?.toString() || "");
     setEditAmountManuallyEdited(false); // Reset manual edit flag
-    setEditStatus(booking.status || "confirmed");
-    setEditPaymentMethod(booking.payment_mode || "cash");
-    setEditCustomerName(booking.user_name || booking.customer_name || "");
-    setEditCustomerPhone(booking.user_phone || booking.customer_phone || "");
-    setEditDate(booking.booking_date || "");
-    setEditDuration(booking.duration || 60);
+    setEditStatus(actualBooking.status || "confirmed");
+    setEditPaymentMethod(actualBooking.payment_mode || "cash");
+    setEditCustomerName(actualBooking.user_name || actualBooking.customer_name || "");
+    setEditCustomerPhone(actualBooking.user_phone || actualBooking.customer_phone || "");
+    setEditDate(actualBooking.booking_date || "");
+    setEditDuration(actualBooking.duration || 60);
     // Get console and controllers from booking_items
-    const consoleType = booking.booking_items?.[0]?.console || "";
-    const controllers = booking.booking_items?.[0]?.quantity || 1;
+    const consoleType = actualBooking.booking_items?.[0]?.console || "";
+    const controllers = actualBooking.booking_items?.[0]?.quantity || 1;
     setEditConsole(consoleType);
     setEditControllers(controllers);
     // Parse booking time to 24-hour format for time input
-    if (booking.start_time) {
+    if (actualBooking.start_time) {
       // Try to parse the time (could be "10:30 am", "10:30 AM", "10:30:00 am", "14:30", etc.)
-      const timeMatch = booking.start_time.match(/(\d{1,2}):(\d{2})(?::\d{2})?\s*(am|pm)?/i);
+      const timeMatch = actualBooking.start_time.match(/(\d{1,2}):(\d{2})(?::\d{2})?\s*(am|pm)?/i);
       if (timeMatch) {
         let hour = parseInt(timeMatch[1]);
         const minute = parseInt(timeMatch[2]);
@@ -1694,6 +1710,7 @@ export default function OwnerDashboardPage() {
       console.log('[handleSaveBooking] ✓ Update complete - Local state updated');
 
       setEditingBooking(null);
+      setEditingBookingItemId(null);
       alert("Booking updated successfully!");
 
       // Force a refresh after 1 second to ensure UI shows updated data from database
@@ -1717,69 +1734,128 @@ export default function OwnerDashboardPage() {
 
       console.log('[handleDeleteBooking] ===== DELETE BOOKING START =====');
       console.log('[handleDeleteBooking] Booking ID:', editingBooking.id);
+      console.log('[handleDeleteBooking] Specific item ID:', editingBookingItemId);
       console.log('[handleDeleteBooking] Booking details:', {
         customer: editingBooking.customer_name,
         amount: editingBooking.total_amount,
         date: editingBooking.booking_date,
         source: editingBooking.source,
         user_id: editingBooking.user_id,
-        cafe_id: editingBooking.cafe_id
+        cafe_id: editingBooking.cafe_id,
+        totalItems: editingBooking.booking_items?.length || 0
       });
-      console.log('[handleDeleteBooking] CRITICAL - Source field:', editingBooking.source, '(Type:', typeof editingBooking.source, ')');
 
-      // First, delete booking_items manually to avoid RLS issues
-      if (editingBooking.booking_items && editingBooking.booking_items.length > 0) {
-        const bookingItemIds = editingBooking.booking_items.map(item => item.id);
-        console.log('[handleDeleteBooking] Deleting booking_items:', bookingItemIds);
+      const allItems = editingBooking.booking_items || [];
+      const isPartOfBulkBooking = editingBookingItemId && allItems.length > 1;
 
-        const { error: itemsError } = await supabase
+      if (isPartOfBulkBooking) {
+        // Delete only the specific booking_item, not the whole booking
+        console.log('[handleDeleteBooking] Deleting single item from bulk booking:', editingBookingItemId);
+
+        // Find the item to be deleted to get its price
+        const itemToDelete = allItems.find(item => item.id === editingBookingItemId);
+        const itemPrice = itemToDelete?.price || 0;
+
+        // Delete only this specific booking_item
+        const { error: itemError } = await supabase
           .from("booking_items")
           .delete()
-          .in("id", bookingItemIds);
+          .eq("id", editingBookingItemId);
 
-        if (itemsError) {
-          console.error('[handleDeleteBooking] Error deleting booking_items:', itemsError);
-          throw new Error(`Failed to delete booking items: ${itemsError.message}`);
+        if (itemError) {
+          console.error('[handleDeleteBooking] Error deleting booking_item:', itemError);
+          throw new Error(`Failed to delete booking item: ${itemError.message}`);
         }
-        console.log('[handleDeleteBooking] ✓ Booking items deleted');
+        console.log('[handleDeleteBooking] ✓ Single booking item deleted');
+
+        // Update the parent booking's total_amount
+        const newTotalAmount = (editingBooking.total_amount || 0) - itemPrice;
+        const { error: updateError } = await supabase
+          .from("bookings")
+          .update({ total_amount: newTotalAmount })
+          .eq("id", editingBooking.id);
+
+        if (updateError) {
+          console.error('[handleDeleteBooking] Error updating booking total:', updateError);
+          // Don't throw - item is already deleted, just log the error
+        } else {
+          console.log('[handleDeleteBooking] ✓ Booking total updated to:', newTotalAmount);
+        }
+
+        // Update local state - remove the deleted item from booking_items
+        setBookings((prev) => prev.map((b) => {
+          if (b.id === editingBooking.id) {
+            return {
+              ...b,
+              booking_items: b.booking_items?.filter(item => item.id !== editingBookingItemId),
+              total_amount: newTotalAmount
+            };
+          }
+          return b;
+        }));
+
+        console.log('[handleDeleteBooking] ✓ Local state updated (single item removed)');
+        alert("Console removed from booking successfully!");
+      } else {
+        // Delete the entire booking (single item or all items)
+        console.log('[handleDeleteBooking] Deleting entire booking');
+
+        // First, delete all booking_items manually to avoid RLS issues
+        if (allItems.length > 0) {
+          const bookingItemIds = allItems.map(item => item.id);
+          console.log('[handleDeleteBooking] Deleting all booking_items:', bookingItemIds);
+
+          const { error: itemsError } = await supabase
+            .from("booking_items")
+            .delete()
+            .in("id", bookingItemIds);
+
+          if (itemsError) {
+            console.error('[handleDeleteBooking] Error deleting booking_items:', itemsError);
+            throw new Error(`Failed to delete booking items: ${itemsError.message}`);
+          }
+          console.log('[handleDeleteBooking] ✓ All booking items deleted');
+        }
+
+        // Then delete the booking
+        const { error, count } = await supabase
+          .from("bookings")
+          .delete()
+          .eq("id", editingBooking.id);
+
+        if (error) {
+          console.error('[handleDeleteBooking] ❌ Error deleting booking:', error);
+          throw new Error(`Failed to delete booking: ${error.message}`);
+        }
+
+        console.log('[handleDeleteBooking] ✓ Delete command executed, rows affected:', count);
+
+        // Verify deletion
+        const { data: checkBooking } = await supabase
+          .from("bookings")
+          .select("id")
+          .eq("id", editingBooking.id)
+          .maybeSingle();
+
+        if (checkBooking) {
+          console.error('[handleDeleteBooking] ❌ ERROR: Booking still exists in database!');
+          throw new Error('Booking was not deleted from database');
+        }
+
+        console.log('[handleDeleteBooking] ✓ Verified: Booking deleted from database');
+
+        // Update local state immediately for instant UI feedback
+        setBookings((prev) => prev.filter((b) => b.id !== editingBooking.id));
+
+        console.log('[handleDeleteBooking] ✓ Local state updated (booking removed)');
+        alert("Booking deleted successfully!");
       }
 
-      // Then delete the booking
-      const { error, count } = await supabase
-        .from("bookings")
-        .delete()
-        .eq("id", editingBooking.id);
-
-      if (error) {
-        console.error('[handleDeleteBooking] ❌ Error deleting booking:', error);
-        throw new Error(`Failed to delete booking: ${error.message}`);
-      }
-
-      console.log('[handleDeleteBooking] ✓ Delete command executed, rows affected:', count);
-
-      // Verify deletion
-      const { data: checkBooking } = await supabase
-        .from("bookings")
-        .select("id")
-        .eq("id", editingBooking.id)
-        .maybeSingle();
-
-      if (checkBooking) {
-        console.error('[handleDeleteBooking] ❌ ERROR: Booking still exists in database!');
-        throw new Error('Booking was not deleted from database');
-      }
-
-      console.log('[handleDeleteBooking] ✓ Verified: Booking deleted from database');
-
-      // Update local state immediately for instant UI feedback
-      setBookings((prev) => prev.filter((b) => b.id !== editingBooking.id));
-
-      console.log('[handleDeleteBooking] ✓ Local state updated');
       console.log('[handleDeleteBooking] ===== DELETE BOOKING COMPLETE =====');
 
       setEditingBooking(null);
+      setEditingBookingItemId(null);
       setShowDeleteConfirm(false);
-      alert("Booking deleted successfully!");
     } catch (err) {
       console.error("[handleDeleteBooking] ===== DELETE BOOKING FAILED =====");
       console.error("Error deleting booking:", err);
@@ -2191,10 +2267,13 @@ export default function OwnerDashboardPage() {
   const getBillingPrice = (consoleType: string, quantity: number, duration: number): number => {
     if (!selectedCafeId) return 100;
 
-    // Get pricing tier for this cafe and console type
-    const pricingTier = consolePricing[selectedCafeId]?.[consoleType] || null;
+    // Map console ID to database console_type (steering -> steering_wheel)
+    const dbConsoleType = consoleType === "steering" ? "steering_wheel" : consoleType;
 
-    console.log('getBillingPrice:', { consoleType, quantity, duration, pricingTier, selectedCafeId });
+    // Get pricing tier for this cafe and console type
+    const pricingTier = consolePricing[selectedCafeId]?.[dbConsoleType] || null;
+
+    console.log('getBillingPrice:', { consoleType, dbConsoleType, quantity, duration, pricingTier, selectedCafeId });
 
     // Use same logic as walk-in page (determinePriceForTier)
     if (pricingTier) {
@@ -2228,7 +2307,93 @@ export default function OwnerDashboardPage() {
       console.log('Available console types:', consolePricing[selectedCafeId] ? Object.keys(consolePricing[selectedCafeId]) : 'none');
     }
 
-    // Fallback to default pricing
+    // Fallback: Try to get pricing from stationPricing
+    // Map console ID to station_type (Title Case)
+    const stationTypeMap: Record<string, string> = {
+      "ps5": "PS5",
+      "ps4": "PS4",
+      "xbox": "Xbox",
+      "pc": "PC",
+      "pool": "Pool",
+      "snooker": "Snooker",
+      "arcade": "Arcade",
+      "vr": "VR",
+      "steering": "Steering",
+      "steering_wheel": "Steering",
+    };
+    const stationType = stationTypeMap[consoleType] || consoleType;
+
+    // Find a station with matching type in stationPricing
+    const matchingStation = Object.values(stationPricing).find(
+      (sp: any) => sp.station_type === stationType
+    );
+
+    if (matchingStation) {
+      console.log('Using stationPricing fallback for:', stationType, matchingStation);
+
+      // PS5/Xbox use controller pricing
+      if (stationType === "PS5" || stationType === "Xbox") {
+        if (duration === 30) {
+          return matchingStation[`controller_${quantity}_half_hour`] || 100;
+        } else if (duration === 60) {
+          return matchingStation[`controller_${quantity}_full_hour`] || 100;
+        } else if (duration === 90) {
+          const half = matchingStation[`controller_${quantity}_half_hour`] || 50;
+          const full = matchingStation[`controller_${quantity}_full_hour`] || 100;
+          return half + full;
+        } else if (duration === 120) {
+          return (matchingStation[`controller_${quantity}_full_hour`] || 100) * 2;
+        } else if (duration === 180) {
+          return (matchingStation[`controller_${quantity}_full_hour`] || 100) * 3;
+        }
+      }
+      // PS4 uses single/multi player pricing
+      else if (stationType === "PS4") {
+        const isSingle = quantity === 1;
+        if (duration === 30) {
+          return isSingle
+            ? matchingStation.single_player_half_hour_rate || 75
+            : matchingStation.multi_player_half_hour_rate || 150;
+        } else if (duration === 60) {
+          return isSingle
+            ? matchingStation.single_player_rate || 150
+            : matchingStation.multi_player_rate || 300;
+        } else if (duration === 90) {
+          const half = isSingle
+            ? matchingStation.single_player_half_hour_rate || 75
+            : matchingStation.multi_player_half_hour_rate || 150;
+          const full = isSingle
+            ? matchingStation.single_player_rate || 150
+            : matchingStation.multi_player_rate || 300;
+          return half + full;
+        } else if (duration === 120) {
+          return (isSingle
+            ? matchingStation.single_player_rate || 150
+            : matchingStation.multi_player_rate || 300) * 2;
+        } else if (duration === 180) {
+          return (isSingle
+            ? matchingStation.single_player_rate || 150
+            : matchingStation.multi_player_rate || 300) * 3;
+        }
+      }
+      // Other consoles use simple hourly rate
+      else {
+        if (duration === 30) {
+          return matchingStation.half_hour_rate || 50;
+        } else if (duration === 60) {
+          return matchingStation.hourly_rate || 100;
+        } else if (duration === 90) {
+          return (matchingStation.half_hour_rate || 50) + (matchingStation.hourly_rate || 100);
+        } else if (duration === 120) {
+          return (matchingStation.hourly_rate || 100) * 2;
+        } else if (duration === 180) {
+          return (matchingStation.hourly_rate || 100) * 3;
+        }
+      }
+    }
+
+    // Final fallback to default pricing
+    console.log('No stationPricing found, using default 100');
     return 100;
   };
 
@@ -2863,6 +3028,27 @@ export default function OwnerDashboardPage() {
     return true;
   });
 
+  // Flatten filtered bookings so each booking_item appears as a separate row
+  // This handles bulk bookings where one booking has multiple consoles
+  const flattenedFilteredBookings = filteredBookings.flatMap(booking => {
+    const items = booking.booking_items || [];
+    if (items.length <= 1) {
+      // Single item or no items - keep as is
+      return [booking];
+    }
+    // Multiple items - create a separate entry for each
+    return items.map((item, itemIndex) => ({
+      ...booking,
+      // Create a unique ID for each flattened entry
+      id: `${booking.id}-item-${itemIndex}`,
+      originalBookingId: booking.id,
+      // Replace booking_items with just this single item
+      booking_items: [item],
+      // Use item price for display
+      total_amount: item.price || (booking.total_amount || 0) / items.length,
+    }));
+  });
+
   // Loading state
   if (checkingRole) {
     return (
@@ -3429,8 +3615,27 @@ export default function OwnerDashboardPage() {
 
                   const activeMemberships = subscriptions.filter(sub => activeTimers.has(sub.id));
 
+                  // Flatten bookings so each booking_item appears as a separate session
+                  // This handles bulk bookings where one booking has multiple consoles
+                  const flattenedBookings = activeBookings.flatMap(booking => {
+                    const items = booking.booking_items || [];
+                    if (items.length <= 1) {
+                      // Single item or no items - keep as is
+                      return [booking];
+                    }
+                    // Multiple items - create a separate entry for each
+                    return items.map((item, itemIndex) => ({
+                      ...booking,
+                      // Create a unique ID for each flattened entry
+                      id: `${booking.id}-item-${itemIndex}`,
+                      originalBookingId: booking.id,
+                      // Replace booking_items with just this single item
+                      booking_items: [item],
+                    }));
+                  });
+
                   // Sort active bookings by time remaining (urgent first)
-                  const sortedActiveBookings = [...activeBookings].sort((a, b) => {
+                  const sortedActiveBookings = [...flattenedBookings].sort((a, b) => {
                     // Calculate time remaining for booking a
                     const currentMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
 
@@ -3758,8 +3963,30 @@ export default function OwnerDashboardPage() {
 
                 {(() => {
                   const today = new Date().toISOString().split('T')[0];
-                  const todaysBookings = bookings.filter(b => b.booking_date === today);
-                  const totalAmount = todaysBookings.reduce((sum, booking) => sum + (booking.total_amount || 0), 0);
+                  const todaysBookingsRaw = bookings.filter(b => b.booking_date === today);
+                  // Calculate total amount from original bookings (before flattening)
+                  const totalAmount = todaysBookingsRaw.reduce((sum, booking) => sum + (booking.total_amount || 0), 0);
+
+                  // Flatten bookings so each booking_item appears as a separate row
+                  // This handles bulk bookings where one booking has multiple consoles
+                  const todaysBookings = todaysBookingsRaw.flatMap(booking => {
+                    const items = booking.booking_items || [];
+                    if (items.length <= 1) {
+                      // Single item or no items - keep as is
+                      return [booking];
+                    }
+                    // Multiple items - create a separate entry for each
+                    return items.map((item, itemIndex) => ({
+                      ...booking,
+                      // Create a unique ID for each flattened entry
+                      id: `${booking.id}-item-${itemIndex}`,
+                      originalBookingId: booking.id,
+                      // Replace booking_items with just this single item
+                      booking_items: [item],
+                      // Divide total amount by number of items for display (or use item price)
+                      total_amount: item.price || (booking.total_amount || 0) / items.length,
+                    }));
+                  });
 
                   if (todaysBookings.length === 0) {
                     return (
@@ -5192,7 +5419,7 @@ export default function OwnerDashboardPage() {
               {/* Active Filters Summary */}
               {(statusFilter !== "all" || sourceFilter !== "all" || dateRangeFilter !== "all" || searchQuery) && (
                 <div style={{ marginBottom: 16, fontSize: 13, color: theme.textMuted }}>
-                  📊 Showing {filteredBookings.length} of {bookings.length} bookings
+                  📊 Showing {flattenedFilteredBookings.length} of {bookings.length} bookings
                 </div>
               )}
 
@@ -5204,7 +5431,7 @@ export default function OwnerDashboardPage() {
                   color: theme.textMuted,
                 }}
               >
-                Showing {filteredBookings.length} of {bookings.length} bookings
+                Showing {flattenedFilteredBookings.length} of {bookings.length} bookings
               </div>
 
               {/* Bookings Table */}
@@ -5216,7 +5443,7 @@ export default function OwnerDashboardPage() {
                   overflow: "hidden",
                 }}
               >
-                {filteredBookings.length === 0 ? (
+                {flattenedFilteredBookings.length === 0 ? (
                   <div
                     style={{
                       textAlign: "center",
@@ -5273,7 +5500,7 @@ export default function OwnerDashboardPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredBookings.map((booking, index) => {
+                        {flattenedFilteredBookings.map((booking, index) => {
                           const source = booking.source?.toLowerCase() === "walk-in" ? "Walk-in" : "Online";
 
                           // Check if booking has ended (time-based)
@@ -5311,7 +5538,7 @@ export default function OwnerDashboardPage() {
                             <tr
                               key={booking.id}
                               style={{
-                                borderBottom: index < filteredBookings.length - 1 ? `1px solid rgba(71, 85, 105, 0.2)` : "none",
+                                borderBottom: index < flattenedFilteredBookings.length - 1 ? `1px solid rgba(71, 85, 105, 0.2)` : "none",
                                 transition: "background 0.2s ease",
                               }}
                               onMouseEnter={(e) => {
@@ -5856,7 +6083,7 @@ export default function OwnerDashboardPage() {
                     <div style={{ fontSize: isMobile ? 32 : 48, marginBottom: isMobile ? 8 : 12, opacity: 0.3 }}>⏳</div>
                     <p style={{ color: theme.textMuted, fontSize: isMobile ? 12 : 14 }}>Loading bookings...</p>
                   </div>
-                ) : filteredBookings.length === 0 ? (
+                ) : flattenedFilteredBookings.length === 0 ? (
                   <div style={{ padding: isMobile ? 40 : 60, textAlign: 'center' }}>
                     <div style={{ fontSize: isMobile ? 32 : 48, marginBottom: isMobile ? 8 : 12, opacity: 0.3 }}>📅</div>
                     <p style={{ fontSize: isMobile ? 14 : 16, color: theme.textSecondary, marginBottom: isMobile ? 4 : 6, fontWeight: 500 }}>No bookings yet</p>
@@ -5885,7 +6112,7 @@ export default function OwnerDashboardPage() {
                 ) : isMobile ? (
                   // Mobile Card Layout
                   <div>
-                    {filteredBookings.map((booking, index) => {
+                    {flattenedFilteredBookings.map((booking, index) => {
                         const isWalkIn = booking.source === 'walk-in';
                         const customerName = isWalkIn ? booking.customer_name : booking.user_name || booking.user_email;
                         const customerPhone = isWalkIn ? (booking.customer_phone || booking.user_phone || '-') : (booking.user_phone || '-');
@@ -5962,7 +6189,7 @@ export default function OwnerDashboardPage() {
                             key={booking.id}
                             style={{
                               padding: '12px 16px',
-                              borderBottom: index < filteredBookings.length - 1 ? `1px solid ${theme.border}` : 'none',
+                              borderBottom: index < flattenedFilteredBookings.length - 1 ? `1px solid ${theme.border}` : 'none',
                               display: 'flex',
                               flexDirection: 'column',
                               gap: 10,
@@ -6089,6 +6316,7 @@ export default function OwnerDashboardPage() {
                         <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Station</th>
                         <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Duration</th>
                         <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Started</th>
+                        <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Ends</th>
                         <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Payment</th>
                         <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Source</th>
                         <th style={{ padding: '16px 20px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>Amount</th>
@@ -6097,7 +6325,7 @@ export default function OwnerDashboardPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredBookings.map((booking, index) => {
+                      {flattenedFilteredBookings.map((booking, index) => {
                         const isWalkIn = booking.source === 'walk-in';
                         const customerName = isWalkIn ? booking.customer_name : booking.user_name || booking.user_email;
                         const customerPhone = isWalkIn ? (booking.customer_phone || booking.user_phone || '-') : (booking.user_phone || '-');
@@ -6151,7 +6379,7 @@ export default function OwnerDashboardPage() {
                           <tr
                             key={booking.id}
                             style={{
-                              borderBottom: index < filteredBookings.length - 1 ? `1px solid ${theme.border}` : 'none',
+                              borderBottom: index < flattenedFilteredBookings.length - 1 ? `1px solid ${theme.border}` : 'none',
                               transition: 'background 0.15s ease',
                             }}
                             onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(51,65,85,0.2)'}
@@ -6173,6 +6401,11 @@ export default function OwnerDashboardPage() {
                             </td>
                             <td style={{ padding: '16px 20px', fontSize: 14, color: theme.textSecondary }}>
                               {formattedStarted}
+                            </td>
+                            <td style={{ padding: '16px 20px', fontSize: 14, color: theme.textSecondary }}>
+                              {booking.start_time && booking.duration
+                                ? getEndTime(booking.start_time, booking.duration)
+                                : '-'}
                             </td>
                             <td style={{ padding: '16px 20px' }}>
                               {(() => {
@@ -6311,7 +6544,7 @@ export default function OwnerDashboardPage() {
               </div>
 
               {/* Pagination Controls */}
-              {filteredBookings.length > 0 && (
+              {flattenedFilteredBookings.length > 0 && (
                 <div style={{
                   marginTop: 24,
                   padding: '16px 20px',
@@ -10604,7 +10837,7 @@ export default function OwnerDashboardPage() {
               zIndex: 1000,
               padding: "20px",
             }}
-            onClick={() => setEditingBooking(null)}
+            onClick={() => { setEditingBooking(null); setEditingBookingItemId(null); }}
           >
           <div
             style={{
@@ -11314,7 +11547,7 @@ export default function OwnerDashboardPage() {
                 🗑️ Delete
               </button>
               <button
-                onClick={() => setEditingBooking(null)}
+                onClick={() => { setEditingBooking(null); setEditingBookingItemId(null); }}
                 disabled={saving || deletingBooking}
                 style={{
                   flex: 1,
