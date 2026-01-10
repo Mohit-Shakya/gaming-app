@@ -186,31 +186,34 @@ export default function Navbar() {
 
         /* Mobile touch - pressed state (JS-controlled for better mobile experience) */
         .menu-item-pressed {
-          background: rgba(255, 7, 58, 0.15) !important;
-          transform: translateX(4px);
+          background: rgba(255, 7, 58, 0.25) !important;
+          transform: translateX(6px) scale(1.01);
+          box-shadow: inset 0 0 20px rgba(255, 7, 58, 0.15);
         }
 
         .menu-item-pressed::before {
-          height: 60% !important;
+          height: 70% !important;
+          box-shadow: 0 0 8px rgba(255, 7, 58, 0.6);
         }
 
         .menu-item-pressed .icon-container {
-          background: rgba(255, 7, 58, 0.2) !important;
-          border-color: rgba(255, 7, 58, 0.5) !important;
-          transform: scale(1.05);
-          box-shadow: 0 0 12px rgba(255, 7, 58, 0.4);
+          background: rgba(255, 7, 58, 0.3) !important;
+          border-color: rgba(255, 7, 58, 0.6) !important;
+          transform: scale(1.1);
+          box-shadow: 0 0 16px rgba(255, 7, 58, 0.5), 0 0 8px rgba(255, 7, 58, 0.3) inset;
         }
 
         .menu-item-pressed .menu-text {
           color: #fff !important;
+          text-shadow: 0 0 8px rgba(255, 7, 58, 0.4);
         }
 
         .menu-item-pressed .menu-subtext {
-          color: rgba(255, 255, 255, 0.7) !important;
+          color: rgba(255, 255, 255, 0.8) !important;
         }
 
         .menu-item-pressed .menu-arrow {
-          transform: translateX(3px);
+          transform: translateX(5px);
           color: #ff073a !important;
         }
 
@@ -242,15 +245,17 @@ export default function Navbar() {
           }
         }
         .menu-item-purple.menu-item-pressed {
-          background: rgba(168, 85, 247, 0.15) !important;
+          background: rgba(168, 85, 247, 0.25) !important;
+          box-shadow: inset 0 0 20px rgba(168, 85, 247, 0.15);
         }
         .menu-item-purple.menu-item-pressed .icon-container {
-          background: rgba(168, 85, 247, 0.2) !important;
-          border-color: rgba(168, 85, 247, 0.5) !important;
-          box-shadow: 0 0 12px rgba(168, 85, 247, 0.4);
+          background: rgba(168, 85, 247, 0.35) !important;
+          border-color: rgba(168, 85, 247, 0.6) !important;
+          box-shadow: 0 0 16px rgba(168, 85, 247, 0.5), 0 0 8px rgba(168, 85, 247, 0.3) inset;
         }
         .menu-item-purple.menu-item-pressed::before {
           background: linear-gradient(180deg, #a855f7, #00f0ff) !important;
+          box-shadow: 0 0 8px rgba(168, 85, 247, 0.6);
         }
 
         /* Amber variant (Admin) */
@@ -268,15 +273,17 @@ export default function Navbar() {
           }
         }
         .menu-item-amber.menu-item-pressed {
-          background: rgba(245, 158, 11, 0.15) !important;
+          background: rgba(245, 158, 11, 0.25) !important;
+          box-shadow: inset 0 0 20px rgba(245, 158, 11, 0.15);
         }
         .menu-item-amber.menu-item-pressed .icon-container {
-          background: rgba(245, 158, 11, 0.2) !important;
-          border-color: rgba(245, 158, 11, 0.5) !important;
-          box-shadow: 0 0 12px rgba(245, 158, 11, 0.4);
+          background: rgba(245, 158, 11, 0.35) !important;
+          border-color: rgba(245, 158, 11, 0.6) !important;
+          box-shadow: 0 0 16px rgba(245, 158, 11, 0.5), 0 0 8px rgba(245, 158, 11, 0.3) inset;
         }
         .menu-item-amber.menu-item-pressed::before {
           background: linear-gradient(180deg, #f59e0b, #00f0ff) !important;
+          box-shadow: 0 0 8px rgba(245, 158, 11, 0.6);
         }
 
         /* Red variant (Logout) */
@@ -297,18 +304,21 @@ export default function Navbar() {
           }
         }
         .menu-item-red.menu-item-pressed {
-          background: rgba(239, 68, 68, 0.15) !important;
+          background: rgba(239, 68, 68, 0.25) !important;
+          box-shadow: inset 0 0 20px rgba(239, 68, 68, 0.15);
         }
         .menu-item-red.menu-item-pressed .icon-container {
-          background: rgba(239, 68, 68, 0.2) !important;
-          border-color: rgba(239, 68, 68, 0.5) !important;
-          box-shadow: 0 0 12px rgba(239, 68, 68, 0.4);
+          background: rgba(239, 68, 68, 0.35) !important;
+          border-color: rgba(239, 68, 68, 0.6) !important;
+          box-shadow: 0 0 16px rgba(239, 68, 68, 0.5), 0 0 8px rgba(239, 68, 68, 0.3) inset;
         }
         .menu-item-red.menu-item-pressed .menu-text {
           color: #fca5a5 !important;
+          text-shadow: 0 0 8px rgba(239, 68, 68, 0.4);
         }
         .menu-item-red.menu-item-pressed::before {
           background: linear-gradient(180deg, #ef4444, #00f0ff) !important;
+          box-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
         }
 
         .avatar-container {
