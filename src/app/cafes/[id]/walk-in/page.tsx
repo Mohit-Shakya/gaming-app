@@ -262,8 +262,8 @@ export default function WalkInBookingPage() {
           start_time: startTime,
           duration: duration,
           total_amount: totalAmount,
-          status: "confirmed",
-          source: "walk_in",
+          status: "in-progress",
+          source: "walk-in",
           customer_name: customerName.trim(),
           customer_phone: customerPhone.trim(),
         })

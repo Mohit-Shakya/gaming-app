@@ -289,20 +289,10 @@ export default function OwnerDashboardPage() {
   const [billingCustomerName, setBillingCustomerName] = useState("");
   const [billingCustomerPhone, setBillingCustomerPhone] = useState("");
   const [billingBookingDate, setBillingBookingDate] = useState(new Date().toISOString().split("T")[0]);
-  const [billingStartTime, setBillingStartTime] = useState(""); // Will be set from hour/minute/period
-  const [billingStartHour, setBillingStartHour] = useState(() => {
+  const [billingStartTime, setBillingStartTime] = useState(() => {
     const now = new Date();
-    const hours = now.getHours();
-    return hours % 12 || 12; // Convert to 12-hour format
-  });
-  const [billingStartMinute, setBillingStartMinute] = useState(() => {
-    const now = new Date();
-    return now.getMinutes();
-  });
-  const [billingStartPeriod, setBillingStartPeriod] = useState<"AM" | "PM">(() => {
-    const now = new Date();
-    return now.getHours() >= 12 ? "PM" : "AM";
-  });
+    return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+  }); // 24-hour format HH:MM
   const [billingItems, setBillingItems] = useState<Array<{
     id: string;
     console: ConsoleId;
@@ -406,9 +396,6 @@ export default function OwnerDashboardPage() {
   const [editCustomerPhone, setEditCustomerPhone] = useState<string>("");
   const [editDate, setEditDate] = useState<string>("");
   const [editStartTime, setEditStartTime] = useState<string>(""); // Store as "HH:MM" 24-hour format
-  const [editStartHour, setEditStartHour] = useState<number>(12);
-  const [editStartMinute, setEditStartMinute] = useState<number>(0);
-  const [editStartPeriod, setEditStartPeriod] = useState<"AM" | "PM">("AM");
   const [editDuration, setEditDuration] = useState<number>(60);
   const [editConsole, setEditConsole] = useState<string>("");
   const [editControllers, setEditControllers] = useState<number>(1);
@@ -1426,57 +1413,30 @@ export default function OwnerDashboardPage() {
     const controllers = booking.booking_items?.[0]?.quantity || 1;
     setEditConsole(consoleType);
     setEditControllers(controllers);
-    // Parse booking time and set individual components for 12-hour picker
-    let hour = 12;
-    let minute = 0;
-    let period: "AM" | "PM" = "AM";
-
+    // Parse booking time to 24-hour format for time input
     if (booking.start_time) {
-      // Try to parse the time (could be "10:30 am", "10:30 AM", "10:30:00 am", etc.)
+      // Try to parse the time (could be "10:30 am", "10:30 AM", "10:30:00 am", "14:30", etc.)
       const timeMatch = booking.start_time.match(/(\d{1,2}):(\d{2})(?::\d{2})?\s*(am|pm)?/i);
       if (timeMatch) {
-        hour = parseInt(timeMatch[1]);
-        minute = parseInt(timeMatch[2]);
-        const timePeriod = timeMatch[3]?.toUpperCase() as "AM" | "PM";
+        let hour = parseInt(timeMatch[1]);
+        const minute = parseInt(timeMatch[2]);
+        const period = timeMatch[3]?.toLowerCase();
 
-        if (timePeriod) {
-          period = timePeriod;
-        } else {
-          // If no AM/PM, assume 24-hour format and convert
-          if (hour >= 12) {
-            period = "PM";
-            if (hour > 12) hour -= 12;
-          } else {
-            period = "AM";
-            if (hour === 0) hour = 12;
-          }
-        }
+        // Convert to 24-hour format
+        if (period === 'pm' && hour !== 12) hour += 12;
+        else if (period === 'am' && hour === 12) hour = 0;
+
+        setEditStartTime(`${hour.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`);
+      } else {
+        // Default to current time if parsing fails
+        const now = new Date();
+        setEditStartTime(`${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`);
       }
     } else {
-      // Default to current time
+      // Default to current time if no start_time
       const now = new Date();
-      hour = now.getHours();
-      minute = now.getMinutes();
-      if (hour >= 12) {
-        period = "PM";
-        if (hour > 12) hour -= 12;
-      } else {
-        period = "AM";
-        if (hour === 0) hour = 12;
-      }
+      setEditStartTime(`${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`);
     }
-
-    console.log('[handleEditBooking] Time parsing:', {
-      original: booking.start_time,
-      parsed: { hour, minute, period },
-    });
-
-    setEditStartHour(hour);
-    setEditStartMinute(minute);
-    setEditStartPeriod(period);
-    // Also set the combined time string for compatibility
-    const hours24 = period === "PM" ? (hour === 12 ? 12 : hour + 12) : (hour === 12 ? 0 : hour);
-    setEditStartTime(`${hours24.toString().padStart(2, "0")}:${minute.toString().padStart(2, "0")}`);
   }
 
   // Handle save booking
@@ -1492,8 +1452,11 @@ export default function OwnerDashboardPage() {
       console.log('[handleSaveBooking] editConsole:', editConsole);
       console.log('[handleSaveBooking] editControllers:', editControllers);
 
-      // Convert 12-hour picker values to the format stored in DB (e.g., "10:30 am")
-      const startTime12h = `${editStartHour}:${editStartMinute.toString().padStart(2, "0")} ${editStartPeriod.toLowerCase()}`;
+      // Convert 24-hour time (HH:MM) to 12-hour format for DB (e.g., "10:30 am")
+      const [hours, minutes] = editStartTime.split(':').map(Number);
+      const period = hours >= 12 ? 'pm' : 'am';
+      const hours12 = hours % 12 || 12;
+      const startTime12h = `${hours12}:${minutes.toString().padStart(2, "0")} ${period}`;
 
       const updatedAmount = parseFloat(editAmount);
 
@@ -2314,15 +2277,18 @@ export default function OwnerDashboardPage() {
   };
 
   const handleBillingSubmit = async () => {
-    if (!selectedCafeId || !billingCustomerName || !billingStartHour || billingItems.length === 0) {
+    if (!selectedCafeId || !billingCustomerName || !billingStartTime || billingItems.length === 0) {
       alert("Please fill in all required fields and add at least one console");
       return;
     }
 
     setBillingSubmitting(true);
 
-    // Convert 12-hour picker values to the format stored in DB (e.g., "10:30 am")
-    const startTime12h = `${billingStartHour}:${billingStartMinute.toString().padStart(2, "0")} ${billingStartPeriod.toLowerCase()}`;
+    // Convert 24-hour time (HH:MM) to 12-hour format for DB (e.g., "10:30 am")
+    const [hours, minutes] = billingStartTime.split(':').map(Number);
+    const period = hours >= 12 ? 'pm' : 'am';
+    const hours12 = hours % 12 || 12;
+    const startTime12h = `${hours12}:${minutes.toString().padStart(2, "0")} ${period}`;
 
     try {
       // Use the manually editable total amount
@@ -2331,12 +2297,12 @@ export default function OwnerDashboardPage() {
         .insert({
           cafe_id: selectedCafeId,
           customer_name: billingCustomerName,
-          user_phone: billingCustomerPhone || null,
+          customer_phone: billingCustomerPhone || null,
           booking_date: billingBookingDate,
           start_time: startTime12h,
           duration: billingItems[0].duration,
           total_amount: billingTotalAmount,
-          status: "confirmed",
+          status: "in-progress",
           source: "walk-in",
           payment_mode: billingPaymentMode,
         })
@@ -2384,6 +2350,25 @@ export default function OwnerDashboardPage() {
     const calculatedTotal = billingItems.reduce((sum, item) => sum + item.price, 0);
     setBillingTotalAmount(calculatedTotal);
   }, [billingItems]);
+
+  // Auto-update billing time and date in real-time when billing tab is active
+  useEffect(() => {
+    if (activeTab !== 'billing') return;
+
+    // Update immediately when tab is selected
+    const updateTime = () => {
+      const now = new Date();
+      setBillingStartTime(`${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`);
+      setBillingBookingDate(now.toISOString().split("T")[0]);
+    };
+
+    updateTime();
+
+    // Update every 10 seconds while on billing tab
+    const interval = setInterval(updateTime, 10000);
+
+    return () => clearInterval(interval);
+  }, [activeTab]);
 
   // Load available consoles for billing tab
   useEffect(() => {
@@ -3859,9 +3844,40 @@ export default function OwnerDashboardPage() {
                       {todaysBookings.map((booking, index) => {
                         const isWalkIn = booking.source === 'walk-in';
                         const customerName = isWalkIn ? booking.customer_name : booking.user_name || booking.user_email || 'Unknown';
-                        const customerPhone = isWalkIn ? booking.customer_phone : booking.user_phone || 'N/A';
+                        const customerPhone = isWalkIn ? (booking.customer_phone || booking.user_phone || '-') : (booking.user_phone || 'N/A');
                         const consoleInfo = booking.booking_items?.[0];
                         const consoleName = consoleInfo?.console?.toUpperCase() || 'N/A';
+
+                        // Check if booking has ended (time-based)
+                        const isBookingEnded = (() => {
+                          try {
+                            const bookingDate = booking.booking_date || "";
+                            const startTime = booking.start_time || "";
+                            const duration = booking.duration || 60;
+                            if (!bookingDate || !startTime) return false;
+                            const now = new Date();
+                            const todayStr = now.toISOString().split('T')[0];
+                            if (bookingDate < todayStr) return true;
+                            if (bookingDate > todayStr) return false;
+                            const timeParts = startTime.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
+                            if (!timeParts) return false;
+                            let hours = parseInt(timeParts[1]);
+                            const minutes = parseInt(timeParts[2]);
+                            const period = timeParts[3]?.toLowerCase();
+                            if (period) {
+                              if (period === 'pm' && hours !== 12) hours += 12;
+                              else if (period === 'am' && hours === 12) hours = 0;
+                            }
+                            const endMinutes = hours * 60 + minutes + duration;
+                            const currentMinutes = now.getHours() * 60 + now.getMinutes();
+                            return currentMinutes > endMinutes;
+                          } catch { return false; }
+                        })();
+
+                        // Display status: show "completed" if booking time has ended
+                        const displayStatus = isBookingEnded && (booking.status === "confirmed" || booking.status === "in-progress")
+                          ? "completed"
+                          : (booking.status || "pending");
 
                         const paymentMode = booking.payment_mode || 'cash';
                         const getPaymentIcon = (mode: string) => {
@@ -3944,17 +3960,17 @@ export default function OwnerDashboardPage() {
                                 fontWeight: 600,
                                 textTransform: 'capitalize',
                                 background:
-                                  booking.status === 'confirmed' ? 'rgba(34, 197, 94, 0.1)' :
-                                  booking.status === 'in-progress' ? 'rgba(59, 130, 246, 0.1)' :
-                                  booking.status === 'completed' ? 'rgba(107, 114, 128, 0.1)' :
+                                  displayStatus === 'confirmed' ? 'rgba(34, 197, 94, 0.1)' :
+                                  displayStatus === 'in-progress' ? 'rgba(59, 130, 246, 0.1)' :
+                                  displayStatus === 'completed' ? 'rgba(107, 114, 128, 0.1)' :
                                   'rgba(239, 68, 68, 0.1)',
                                 color:
-                                  booking.status === 'confirmed' ? '#22c55e' :
-                                  booking.status === 'in-progress' ? '#3b82f6' :
-                                  booking.status === 'completed' ? '#6b7280' :
+                                  displayStatus === 'confirmed' ? '#22c55e' :
+                                  displayStatus === 'in-progress' ? '#3b82f6' :
+                                  displayStatus === 'completed' ? '#6b7280' :
                                   '#ef4444',
                               }}>
-                                {booking.status || 'Unknown'}
+                                {displayStatus}
                               </span>
                               <span style={{ padding: '3px 8px', borderRadius: 4, background: 'rgba(168, 85, 247, 0.1)', color: '#a855f7', fontWeight: 600 }}>
                                 {getPaymentIcon(paymentMode)} {paymentMode}
@@ -4025,17 +4041,17 @@ export default function OwnerDashboardPage() {
                                 fontWeight: 600,
                                 textTransform: 'capitalize',
                                 background:
-                                  booking.status === 'confirmed' ? 'rgba(34, 197, 94, 0.1)' :
-                                  booking.status === 'in-progress' ? 'rgba(59, 130, 246, 0.1)' :
-                                  booking.status === 'completed' ? 'rgba(107, 114, 128, 0.1)' :
+                                  displayStatus === 'confirmed' ? 'rgba(34, 197, 94, 0.1)' :
+                                  displayStatus === 'in-progress' ? 'rgba(59, 130, 246, 0.1)' :
+                                  displayStatus === 'completed' ? 'rgba(107, 114, 128, 0.1)' :
                                   'rgba(239, 68, 68, 0.1)',
                                 color:
-                                  booking.status === 'confirmed' ? '#22c55e' :
-                                  booking.status === 'in-progress' ? '#3b82f6' :
-                                  booking.status === 'completed' ? '#6b7280' :
+                                  displayStatus === 'confirmed' ? '#22c55e' :
+                                  displayStatus === 'in-progress' ? '#3b82f6' :
+                                  displayStatus === 'completed' ? '#6b7280' :
                                   '#ef4444',
                               }}>
-                                {booking.status || 'Unknown'}
+                                {displayStatus}
                               </span>
                             </div>
 
@@ -5259,6 +5275,38 @@ export default function OwnerDashboardPage() {
                       <tbody>
                         {filteredBookings.map((booking, index) => {
                           const source = booking.source?.toLowerCase() === "walk-in" ? "Walk-in" : "Online";
+
+                          // Check if booking has ended (time-based)
+                          const isBookingEnded = (() => {
+                            try {
+                              const bookingDate = booking.booking_date || "";
+                              const startTime = booking.start_time || "";
+                              const duration = booking.duration || 60;
+                              if (!bookingDate || !startTime) return false;
+                              const now = new Date();
+                              const todayStr = now.toISOString().split('T')[0];
+                              if (bookingDate < todayStr) return true;
+                              if (bookingDate > todayStr) return false;
+                              const timeParts = startTime.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
+                              if (!timeParts) return false;
+                              let hours = parseInt(timeParts[1]);
+                              const minutes = parseInt(timeParts[2]);
+                              const period = timeParts[3]?.toLowerCase();
+                              if (period) {
+                                if (period === 'pm' && hours !== 12) hours += 12;
+                                else if (period === 'am' && hours === 12) hours = 0;
+                              }
+                              const endMinutes = hours * 60 + minutes + duration;
+                              const currentMinutes = now.getHours() * 60 + now.getMinutes();
+                              return currentMinutes > endMinutes;
+                            } catch { return false; }
+                          })();
+
+                          // Display status: show "completed" if booking time has ended
+                          const displayStatus = isBookingEnded && (booking.status === "confirmed" || booking.status === "in-progress")
+                            ? "completed"
+                            : (booking.status || "pending");
+
                           return (
                             <tr
                               key={booking.id}
@@ -5441,7 +5489,7 @@ export default function OwnerDashboardPage() {
                               </td>
 
                               <td style={{ padding: "14px 16px" }}>
-                                <StatusBadge status={booking.status || "pending"} />
+                                <StatusBadge status={displayStatus} />
                               </td>
                               <td style={{ padding: "14px 16px", textAlign: "right" }}>
                                 <div style={{
@@ -5462,61 +5510,10 @@ export default function OwnerDashboardPage() {
                               <td style={{ padding: "14px 16px", textAlign: "center" }}>
                                 <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
                                   {(() => {
-                                    const status = booking.status || "pending";
-
-                                    // Check if booking has ended (past booking)
-                                    const isBookingEnded = (() => {
-                                      try {
-                                        const bookingDate = booking.booking_date || "";
-                                        const startTime = booking.start_time || "";
-                                        const duration = booking.duration || 60;
-
-                                        if (!bookingDate || !startTime) return false;
-
-                                        const now = new Date();
-                                        const todayStr = now.toISOString().split('T')[0];
-
-                                        // If booking is on a past date, it's definitely ended
-                                        if (bookingDate < todayStr) return true;
-
-                                        // If booking is on a future date, it hasn't ended
-                                        if (bookingDate > todayStr) return false;
-
-                                        // Booking is today - check the time
-                                        // Parse start time
-                                        const timeParts = startTime.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
-                                        if (!timeParts) return false;
-
-                                        let hours = parseInt(timeParts[1]);
-                                        const minutes = parseInt(timeParts[2]);
-                                        const period = timeParts[3]?.toLowerCase();
-
-                                        // Convert to 24-hour format if period exists
-                                        if (period) {
-                                          if (period === 'pm' && hours !== 12) {
-                                            hours += 12;
-                                          } else if (period === 'am' && hours === 12) {
-                                            hours = 0;
-                                          }
-                                        }
-
-                                        // Calculate end time in minutes from midnight
-                                        const startMinutes = hours * 60 + minutes;
-                                        const endMinutes = startMinutes + duration;
-
-                                        // Get current time in minutes from midnight
-                                        const currentMinutes = now.getHours() * 60 + now.getMinutes();
-
-                                        return currentMinutes > endMinutes;
-                                      } catch (e) {
-                                        return false;
-                                      }
-                                    })();
-
                                     return (
                                       <>
                                         {/* Confirm button for pending online bookings */}
-                                        {status === "pending" && source !== "Walk-in" && (
+                                        {displayStatus === "pending" && source !== "Walk-in" && (
                                           <button
                                             onClick={() => handleConfirmBooking(booking)}
                                             style={{
@@ -5542,7 +5539,7 @@ export default function OwnerDashboardPage() {
                                         )}
 
                                         {/* Start button for confirmed online bookings only (not walk-in, not ended) */}
-                                        {status === "confirmed" && source !== "Walk-in" && !isBookingEnded && (
+                                        {displayStatus === "confirmed" && source !== "Walk-in" && (
                                           <button
                                             onClick={() => handleStartBooking(booking)}
                                             style={{
@@ -5568,7 +5565,7 @@ export default function OwnerDashboardPage() {
                                         )}
 
                                         {/* Edit button for all bookings except pending online bookings */}
-                                        {!(status === "pending" && source !== "Walk-in") && (
+                                        {!(displayStatus === "pending" && source !== "Walk-in") && (
                                           <button
                                             onClick={() => handleEditBooking(booking)}
                                             style={{
@@ -5891,8 +5888,39 @@ export default function OwnerDashboardPage() {
                     {filteredBookings.map((booking, index) => {
                         const isWalkIn = booking.source === 'walk-in';
                         const customerName = isWalkIn ? booking.customer_name : booking.user_name || booking.user_email;
-                        const customerPhone = isWalkIn ? booking.customer_phone : booking.user_phone;
+                        const customerPhone = isWalkIn ? (booking.customer_phone || booking.user_phone || '-') : (booking.user_phone || '-');
                         const consoleInfo = booking.booking_items?.[0];
+
+                        // Check if booking has ended (time-based)
+                        const isBookingEnded = (() => {
+                          try {
+                            const bookingDate = booking.booking_date || "";
+                            const startTime = booking.start_time || "";
+                            const duration = booking.duration || 60;
+                            if (!bookingDate || !startTime) return false;
+                            const now = new Date();
+                            const todayStr = now.toISOString().split('T')[0];
+                            if (bookingDate < todayStr) return true;
+                            if (bookingDate > todayStr) return false;
+                            const timeParts = startTime.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
+                            if (!timeParts) return false;
+                            let hours = parseInt(timeParts[1]);
+                            const minutes = parseInt(timeParts[2]);
+                            const period = timeParts[3]?.toLowerCase();
+                            if (period) {
+                              if (period === 'pm' && hours !== 12) hours += 12;
+                              else if (period === 'am' && hours === 12) hours = 0;
+                            }
+                            const endMinutes = hours * 60 + minutes + duration;
+                            const currentMinutes = now.getHours() * 60 + now.getMinutes();
+                            return currentMinutes > endMinutes;
+                          } catch { return false; }
+                        })();
+
+                        // Display status: show "completed" if booking time has ended
+                        const displayStatus = isBookingEnded && (booking.status === "confirmed" || booking.status === "in-progress")
+                          ? "completed"
+                          : (booking.status || "pending");
 
                         const statusColors: Record<string, { bg: string; text: string }> = {
                           'pending': { bg: 'rgba(234, 179, 8, 0.15)', text: '#eab308' },
@@ -5902,7 +5930,7 @@ export default function OwnerDashboardPage() {
                           'cancelled': { bg: 'rgba(239, 68, 68, 0.15)', text: '#ef4444' },
                         };
 
-                        const statusColor = statusColors[booking.status || 'pending'] || statusColors.pending;
+                        const statusColor = statusColors[displayStatus] || statusColors.pending;
 
                         // Format started time as "28 Dec at 10:30 PM"
                         const formattedStarted = booking.booking_date && booking.start_time
@@ -5967,7 +5995,7 @@ export default function OwnerDashboardPage() {
                                 {booking.duration}m
                               </span>
                               <span style={{ padding: '4px 8px', borderRadius: 5, background: statusColor.bg, color: statusColor.text, fontWeight: 600, textTransform: 'capitalize' }}>
-                                {booking.status?.replace('-', ' ') || 'pending'}
+                                {displayStatus.replace('-', ' ')}
                               </span>
                               <span style={{ padding: '4px 8px', borderRadius: 5, background: 'rgba(168, 85, 247, 0.1)', color: '#a855f7', fontWeight: 600 }}>
                                 {(() => {
@@ -5986,7 +6014,7 @@ export default function OwnerDashboardPage() {
 
                             {/* Action buttons */}
                             <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
-                              {booking.status === 'pending' && booking.source === 'online' && (
+                              {displayStatus === 'pending' && booking.source === 'online' && (
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -6007,7 +6035,7 @@ export default function OwnerDashboardPage() {
                                   Confirm
                                 </button>
                               )}
-                              {booking.status === 'confirmed' && (
+                              {displayStatus === 'confirmed' && !isWalkIn && (
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
@@ -6072,8 +6100,39 @@ export default function OwnerDashboardPage() {
                       {filteredBookings.map((booking, index) => {
                         const isWalkIn = booking.source === 'walk-in';
                         const customerName = isWalkIn ? booking.customer_name : booking.user_name || booking.user_email;
-                        const customerPhone = isWalkIn ? booking.customer_phone : booking.user_phone;
+                        const customerPhone = isWalkIn ? (booking.customer_phone || booking.user_phone || '-') : (booking.user_phone || '-');
                         const consoleInfo = booking.booking_items?.[0];
+
+                        // Check if booking has ended (time-based)
+                        const isBookingEnded = (() => {
+                          try {
+                            const bookingDate = booking.booking_date || "";
+                            const startTime = booking.start_time || "";
+                            const duration = booking.duration || 60;
+                            if (!bookingDate || !startTime) return false;
+                            const now = new Date();
+                            const todayStr = now.toISOString().split('T')[0];
+                            if (bookingDate < todayStr) return true;
+                            if (bookingDate > todayStr) return false;
+                            const timeParts = startTime.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
+                            if (!timeParts) return false;
+                            let hours = parseInt(timeParts[1]);
+                            const minutes = parseInt(timeParts[2]);
+                            const period = timeParts[3]?.toLowerCase();
+                            if (period) {
+                              if (period === 'pm' && hours !== 12) hours += 12;
+                              else if (period === 'am' && hours === 12) hours = 0;
+                            }
+                            const endMinutes = hours * 60 + minutes + duration;
+                            const currentMinutes = now.getHours() * 60 + now.getMinutes();
+                            return currentMinutes > endMinutes;
+                          } catch { return false; }
+                        })();
+
+                        // Display status: show "completed" if booking time has ended
+                        const displayStatus = isBookingEnded && (booking.status === "confirmed" || booking.status === "in-progress")
+                          ? "completed"
+                          : (booking.status || "pending");
 
                         const statusColors: Record<string, { bg: string; text: string }> = {
                           'pending': { bg: 'rgba(234, 179, 8, 0.15)', text: '#eab308' },
@@ -6083,7 +6142,7 @@ export default function OwnerDashboardPage() {
                           'cancelled': { bg: 'rgba(239, 68, 68, 0.15)', text: '#ef4444' },
                         };
 
-                        const statusColor = statusColors[booking.status || 'pending'] || statusColors.pending;
+                        const statusColor = statusColors[displayStatus] || statusColors.pending;
                         const formattedStarted = booking.booking_date && booking.start_time
                           ? `${new Date(booking.booking_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })} at ${convertTo12Hour(booking.start_time)}`
                           : '-';
@@ -6173,12 +6232,12 @@ export default function OwnerDashboardPage() {
                                 background: statusColor.bg,
                                 color: statusColor.text,
                               }}>
-                                {booking.status?.replace('-', ' ') || 'pending'}
+                                {displayStatus.replace('-', ' ')}
                               </span>
                             </td>
                             <td style={{ padding: '16px 20px' }}>
                               <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'center' }}>
-                                {booking.status === 'pending' && booking.source === 'online' && (
+                                {displayStatus === 'pending' && booking.source === 'online' && (
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
@@ -6199,7 +6258,7 @@ export default function OwnerDashboardPage() {
                                     Confirm
                                   </button>
                                 )}
-                                {booking.status === 'confirmed' && (
+                                {displayStatus === 'confirmed' && !isWalkIn && (
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
@@ -8350,69 +8409,22 @@ export default function OwnerDashboardPage() {
                       <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: theme.textSecondary, marginBottom: 8 }}>
                         Start Time <span style={{ color: "#ef4444" }}>*</span>
                       </label>
-                      <div style={{ display: "flex", gap: 8 }}>
-                        {/* Hour */}
-                        <select
-                          value={billingStartHour}
-                          onChange={(e) => setBillingStartHour(parseInt(e.target.value))}
-                          style={{
-                            flex: 1,
-                            padding: "12px 8px",
-                            background: theme.inputBackground,
-                            border: `1px solid ${theme.border}`,
-                            borderRadius: 10,
-                            color: theme.textPrimary,
-                            fontSize: 14,
-                            outline: "none",
-                            cursor: "pointer",
-                          }}
-                        >
-                          {[12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((h) => (
-                            <option key={h} value={h}>{h.toString().padStart(2, "0")}</option>
-                          ))}
-                        </select>
-                        <span style={{ display: "flex", alignItems: "center", color: theme.textPrimary, fontSize: 18, fontWeight: 600 }}>:</span>
-                        {/* Minute */}
-                        <select
-                          value={billingStartMinute}
-                          onChange={(e) => setBillingStartMinute(parseInt(e.target.value))}
-                          style={{
-                            flex: 1,
-                            padding: "12px 8px",
-                            background: theme.inputBackground,
-                            border: `1px solid ${theme.border}`,
-                            borderRadius: 10,
-                            color: theme.textPrimary,
-                            fontSize: 14,
-                            outline: "none",
-                            cursor: "pointer",
-                          }}
-                        >
-                          {[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map((m) => (
-                            <option key={m} value={m}>{m.toString().padStart(2, "0")}</option>
-                          ))}
-                        </select>
-                        {/* AM/PM */}
-                        <select
-                          value={billingStartPeriod}
-                          onChange={(e) => setBillingStartPeriod(e.target.value as "AM" | "PM")}
-                          style={{
-                            flex: 1,
-                            padding: "12px 8px",
-                            background: theme.inputBackground,
-                            border: `1px solid ${theme.border}`,
-                            borderRadius: 10,
-                            color: theme.textPrimary,
-                            fontSize: 14,
-                            fontWeight: 600,
-                            outline: "none",
-                            cursor: "pointer",
-                          }}
-                        >
-                          <option value="AM">AM</option>
-                          <option value="PM">PM</option>
-                        </select>
-                      </div>
+                      <input
+                        type="time"
+                        value={billingStartTime}
+                        onChange={(e) => setBillingStartTime(e.target.value)}
+                        style={{
+                          width: "100%",
+                          padding: "12px 14px",
+                          background: theme.inputBackground,
+                          border: `1px solid ${theme.border}`,
+                          borderRadius: 10,
+                          color: theme.textPrimary,
+                          fontSize: 14,
+                          outline: "none",
+                          cursor: "pointer",
+                        }}
+                      />
                     </div>
                   </div>
                 </div>
@@ -8793,10 +8805,10 @@ export default function OwnerDashboardPage() {
                 }}>
                   <button
                     onClick={handleBillingSubmit}
-                    disabled={billingSubmitting || !selectedCafeId || !billingCustomerName || !billingStartHour || billingItems.length === 0}
+                    disabled={billingSubmitting || !selectedCafeId || !billingCustomerName || !billingStartTime || billingItems.length === 0}
                     style={{
                       padding: "14px 36px",
-                      background: billingSubmitting || !selectedCafeId || !billingCustomerName || !billingStartHour || billingItems.length === 0
+                      background: billingSubmitting || !selectedCafeId || !billingCustomerName || !billingStartTime || billingItems.length === 0
                         ? "rgba(16, 185, 129, 0.3)"
                         : "linear-gradient(135deg, #10b981 0%, #059669 100%)",
                       border: "none",
@@ -8804,19 +8816,19 @@ export default function OwnerDashboardPage() {
                       color: "white",
                       fontSize: 15,
                       fontWeight: 700,
-                      cursor: billingSubmitting || !selectedCafeId || !billingCustomerName || !billingStartHour || billingItems.length === 0
+                      cursor: billingSubmitting || !selectedCafeId || !billingCustomerName || !billingStartTime || billingItems.length === 0
                         ? "not-allowed"
                         : "pointer",
                       display: "flex",
                       alignItems: "center",
                       gap: 8,
-                      boxShadow: billingSubmitting || !selectedCafeId || !billingCustomerName || !billingStartHour || billingItems.length === 0
+                      boxShadow: billingSubmitting || !selectedCafeId || !billingCustomerName || !billingStartTime || billingItems.length === 0
                         ? "none"
                         : "0 4px 16px rgba(16, 185, 129, 0.4)",
                       transition: "all 0.2s ease",
                     }}
                     onMouseEnter={(e) => {
-                      if (!billingSubmitting && selectedCafeId && billingCustomerName && billingStartHour && billingItems.length > 0) {
+                      if (!billingSubmitting && selectedCafeId && billingCustomerName && billingStartTime && billingItems.length > 0) {
                         e.currentTarget.style.transform = 'translateY(-2px)';
                         e.currentTarget.style.boxShadow = '0 6px 20px rgba(16, 185, 129, 0.5)';
                       }
@@ -10858,92 +10870,26 @@ export default function OwnerDashboardPage() {
                     <label style={{ fontSize: 12, color: theme.textMuted, display: "block", marginBottom: 8, fontWeight: 600 }}>
                       Start Time *
                     </label>
-                    <div style={{ display: "flex", gap: 8 }}>
-                      {/* Hour */}
-                      <select
-                        value={editStartHour}
-                        onChange={(e) => {
-                          const newHour = parseInt(e.target.value);
-                          setEditStartHour(newHour);
-                          // Update combined time string
-                          const hours24 = editStartPeriod === "PM" ? (newHour === 12 ? 12 : newHour + 12) : (newHour === 12 ? 0 : newHour);
-                          setEditStartTime(`${hours24.toString().padStart(2, "0")}:${editStartMinute.toString().padStart(2, "0")}`);
-                        }}
-                        style={{
-                          flex: 1,
-                          padding: "14px 8px",
-                          background: theme.background,
-                          border: `2px solid ${theme.border}`,
-                          borderRadius: 10,
-                          color: theme.textPrimary,
-                          fontSize: 14,
-                          fontFamily: fonts.body,
-                          fontWeight: 500,
-                          cursor: "pointer",
-                          transition: "all 0.2s",
-                        }}
-                      >
-                        {[12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((h) => (
-                          <option key={h} value={h}>{h.toString().padStart(2, "0")}</option>
-                        ))}
-                      </select>
-                      <span style={{ display: "flex", alignItems: "center", color: theme.textPrimary, fontSize: 18, fontWeight: 600 }}>:</span>
-                      {/* Minute */}
-                      <select
-                        value={editStartMinute}
-                        onChange={(e) => {
-                          const newMinute = parseInt(e.target.value);
-                          setEditStartMinute(newMinute);
-                          // Update combined time string
-                          const hours24 = editStartPeriod === "PM" ? (editStartHour === 12 ? 12 : editStartHour + 12) : (editStartHour === 12 ? 0 : editStartHour);
-                          setEditStartTime(`${hours24.toString().padStart(2, "0")}:${newMinute.toString().padStart(2, "0")}`);
-                        }}
-                        style={{
-                          flex: 1,
-                          padding: "14px 8px",
-                          background: theme.background,
-                          border: `2px solid ${theme.border}`,
-                          borderRadius: 10,
-                          color: theme.textPrimary,
-                          fontSize: 14,
-                          fontFamily: fonts.body,
-                          fontWeight: 500,
-                          cursor: "pointer",
-                          transition: "all 0.2s",
-                        }}
-                      >
-                        {[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map((m) => (
-                          <option key={m} value={m}>{m.toString().padStart(2, "0")}</option>
-                        ))}
-                      </select>
-                      {/* AM/PM */}
-                      <select
-                        value={editStartPeriod}
-                        onChange={(e) => {
-                          const newPeriod = e.target.value as "AM" | "PM";
-                          setEditStartPeriod(newPeriod);
-                          // Update combined time string
-                          const hours24 = newPeriod === "PM" ? (editStartHour === 12 ? 12 : editStartHour + 12) : (editStartHour === 12 ? 0 : editStartHour);
-                          setEditStartTime(`${hours24.toString().padStart(2, "0")}:${editStartMinute.toString().padStart(2, "0")}`);
-                        }}
-                        style={{
-                          flex: 1,
-                          padding: "14px 8px",
-                          background: theme.background,
-                          border: `2px solid ${theme.border}`,
-                          borderRadius: 10,
-                          color: theme.textPrimary,
-                          fontSize: 14,
-                          fontFamily: fonts.body,
-                          fontWeight: 600,
-                          cursor: "pointer",
-                          transition: "all 0.2s",
-                        }}
-                      >
-                        <option value="AM">AM</option>
-                        <option value="PM">PM</option>
-                      </select>
-                    </div>
+                    <input
+                      type="time"
+                      value={editStartTime}
+                      onChange={(e) => setEditStartTime(e.target.value)}
+                      style={{
+                        width: "100%",
+                        padding: "14px",
+                        background: theme.background,
+                        border: `2px solid ${theme.border}`,
+                        borderRadius: 10,
+                        color: theme.textPrimary,
+                        fontSize: 14,
+                        fontFamily: fonts.body,
+                        fontWeight: 500,
+                        cursor: "pointer",
+                        transition: "all 0.2s",
+                      }}
+                      onFocus={(e) => e.target.style.borderColor = "#6366f1"}
+                      onBlur={(e) => e.target.style.borderColor = theme.border}
+                    />
                   </div>
                 </div>
 
@@ -11000,8 +10946,11 @@ export default function OwnerDashboardPage() {
                     fontWeight: 500,
                   }}>
                     {(() => {
-                      // Calculate end time from 12-hour picker values
-                      const startTime12h = `${editStartHour}:${editStartMinute.toString().padStart(2, "0")} ${editStartPeriod.toLowerCase()}`;
+                      // Calculate end time from 24-hour time input
+                      const [hours, minutes] = editStartTime.split(':').map(Number);
+                      const period = hours >= 12 ? 'pm' : 'am';
+                      const hours12 = hours % 12 || 12;
+                      const startTime12h = `${hours12}:${minutes.toString().padStart(2, "0")} ${period}`;
                       const endTime = getEndTime(startTime12h, editDuration);
                       // Format consistently with uppercase AM/PM
                       return endTime.replace(/\s*(am|pm)$/i, (match) => ` ${match.trim().toUpperCase()}`);
@@ -11397,7 +11346,7 @@ export default function OwnerDashboardPage() {
               </button>
               <button
                 onClick={handleSaveBooking}
-                disabled={saving || !editAmount || !editDate || !editStartHour}
+                disabled={saving || !editAmount || !editDate || !editStartTime}
                 style={{
                   flex: 1.5,
                   padding: "13px 24px",
