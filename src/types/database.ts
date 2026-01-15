@@ -75,8 +75,9 @@ export interface BookingRow {
   start_time: string;
   duration: number;
   total_amount: number;
-  status: "pending" | "confirmed" | "completed" | "cancelled";
+  status: "pending" | "confirmed" | "completed" | "cancelled" | "in-progress";
   source: "online" | "walk_in";
+  payment_mode?: "cash" | "online" | "upi";
   customer_name: string | null;
   customer_phone: string | null;
   created_at: string;
