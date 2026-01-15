@@ -19,7 +19,7 @@ const TAB_TITLES: Record<string, string> = {
     dashboard: 'Dashboard',
     'live-status': 'Live Console Status',
     billing: 'Billing',
-    sessions: 'Bookings',
+    bookings: 'Bookings',
     customers: 'Customers',
     stations: 'Stations',
     memberships: 'Memberships',
