@@ -21,7 +21,7 @@ const NAV_ITEMS = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'live-status', label: 'Live Status', icon: MonitorPlay },
     { id: 'billing', label: 'Billing', icon: CreditCard },
-    { id: 'sessions', label: 'Bookings', icon: CalendarCheck },
+    { id: 'bookings', label: 'Bookings', icon: CalendarCheck },
     { id: 'customers', label: 'Customers', icon: Users },
     { id: 'stations', label: 'Stations', icon: Gamepad2 },
     { id: 'memberships', label: 'Memberships', icon: Ticket },
