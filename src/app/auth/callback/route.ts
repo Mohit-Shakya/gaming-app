@@ -13,7 +13,11 @@ export async function GET(req: NextRequest) {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
     );
 
-    const { data: sessionData } = await supabase.auth.exchangeCodeForSession(code);
+    const { data: sessionData, error: sessionError } = await supabase.auth.exchangeCodeForSession(code);
+
+    if (sessionError) {
+      console.error('Session exchange error:', sessionError);
+    }
 
     // Send email notifications after successful login
     if (sessionData?.user) {
@@ -40,15 +44,18 @@ export async function GET(req: NextRequest) {
 
         // Send emails - must await on serverless platforms
         try {
+          console.log('Sending login alert to:', userEmail);
           if (isNewUser) {
+            console.log('New user detected, sending welcome email');
             await sendWelcomeEmail({ email: userEmail, name: userName });
           }
-          await sendLoginAlert({
+          const loginResult = await sendLoginAlert({
             email: userEmail,
             name: userName,
             loginTime,
             device,
           });
+          console.log('Login alert result:', loginResult);
         } catch (emailError) {
           console.error('Failed to send email:', emailError);
         }
