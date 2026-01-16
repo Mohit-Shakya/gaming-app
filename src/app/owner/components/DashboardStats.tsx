@@ -80,7 +80,7 @@ export function DashboardStats({
             <StatCard
                 title="Today's Revenue"
                 value={`₹${loadingData ? '...' : totalRevenue}`}
-                subtitle={`Cash: ₹${cashRevenue} • Online: ₹${onlineRevenue}`}
+                subtitle={`Cash: ₹${cashRevenue} • Online: ₹${onlineRevenue} • Memberships: ₹${membershipRevenue}`}
                 icon="₹"
                 gradient="radial-gradient(circle at top right, rgba(34, 197, 94, 0.15), transparent 70%), linear-gradient(135deg, rgba(30, 41, 59, 0.4), rgba(15, 23, 42, 0.6))"
                 color="#22c55e"
