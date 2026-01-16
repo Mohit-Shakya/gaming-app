@@ -1444,7 +1444,24 @@ export default function OwnerDashboardPage() {
     setEditDate(actualBooking.booking_date || "");
     setEditDuration(actualBooking.duration || 60);
     // Get console and controllers from booking_items
-    const consoleType = actualBooking.booking_items?.[0]?.console || "";
+    let consoleType = actualBooking.booking_items?.[0]?.console || "";
+    // Map 'steering' to 'steering_wheel' for the dropdown
+    if (consoleType === 'steering') {
+      consoleType = 'steering_wheel';
+    }
+    // If no console type, try to get first available console from cafe
+    if (!consoleType && cafes.length > 0) {
+      const cafe = cafes.find(c => c.id === actualBooking.cafe_id) || cafes[0];
+      if (cafe?.ps5_count && cafe.ps5_count > 0) consoleType = 'ps5';
+      else if (cafe?.ps4_count && cafe.ps4_count > 0) consoleType = 'ps4';
+      else if (cafe?.xbox_count && cafe.xbox_count > 0) consoleType = 'xbox';
+      else if (cafe?.pc_count && cafe.pc_count > 0) consoleType = 'pc';
+      else if (cafe?.pool_count && cafe.pool_count > 0) consoleType = 'pool';
+      else if (cafe?.snooker_count && cafe.snooker_count > 0) consoleType = 'snooker';
+      else if (cafe?.arcade_count && cafe.arcade_count > 0) consoleType = 'arcade';
+      else if (cafe?.vr_count && cafe.vr_count > 0) consoleType = 'vr';
+      else if (cafe?.steering_wheel_count && cafe.steering_wheel_count > 0) consoleType = 'steering_wheel';
+    }
     const controllers = actualBooking.booking_items?.[0]?.quantity || 1;
     setEditConsole(consoleType);
     setEditControllers(controllers);
