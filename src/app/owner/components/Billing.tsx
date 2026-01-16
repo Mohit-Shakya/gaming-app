@@ -275,12 +275,12 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess }: BillingP
                 </div>
 
                 {/* Customer Details */}
-                <Card className="space-y-4">
+                <Card className="space-y-4 overflow-visible relative z-10">
                     <h3 className="text-lg font-semibold text-white flex items-center gap-2">
                         <User className="text-blue-500" size={20} /> Customer Info
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="relative">
+                        <div className="relative z-20">
                             <Input
                                 label="Name"
                                 value={customerName}
