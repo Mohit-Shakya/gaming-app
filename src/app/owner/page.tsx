@@ -10,12 +10,13 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { fonts, CONSOLE_LABELS, CONSOLE_ICONS, type ConsoleId } from "@/lib/constants";
 import { getEndTime } from "@/lib/timeUtils";
-import ConsoleStatusDashboard from "@/components/ConsoleStatusDashboard";
+// ConsoleStatusDashboard removed
+
 // Types imported but not directly used in this file - used for type safety
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 
 import { ConsolePricingRow, BookingItemRow } from "@/types/database";
-import { DashboardLayout, DashboardStats, BookingsTable, ActiveSessions, StatusBadge as NewStatusBadge, Card, Button, LoadingSpinner } from "./components";
+import { DashboardLayout, DashboardStats, BookingsTable, ActiveSessions, LiveStatus, StatusBadge as NewStatusBadge, Card, Button, LoadingSpinner } from "./components";
 
 type OwnerStats = {
   cafesCount: number;
@@ -3897,7 +3898,7 @@ export default function OwnerDashboardPage() {
                 </div>
               )}
 
-              <ConsoleStatusDashboard cafeId={selectedCafeId || cafes[0].id} />
+              <LiveStatus cafeId={selectedCafeId || cafes[0].id} isMobile={isMobile} />
             </div>
           )}
 
