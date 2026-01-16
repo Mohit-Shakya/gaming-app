@@ -258,12 +258,12 @@ export default function TermsPage() {
               </p>
               <p className="my-1">
                 <strong>Phone:</strong>{" "}
-                <a href="tel:+919910457855" style={{ color: colors.cyan }}>
-                  +91 99104 57855
+                <a href="tel:+919315319103" style={{ color: colors.cyan }}>
+                  +91 93153 19103
                 </a>
               </p>
               <p className="my-1">
-                <strong>Location:</strong> Delhi, India
+                <strong>Location:</strong> 1st Floor, A-166, Devli Rd, near by Aggrawal and Lower floor of Fit box Gym, Pocket B, Jawahar Park, Khanpur, New Delhi, Delhi 110080
               </p>
             </div>
           </Section>

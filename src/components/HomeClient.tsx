@@ -5,10 +5,10 @@ import { useMemo, useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import CafeList from "@/components/CafeList";
 import type { Cafe } from "../types/cafe";
-import { 
-  Search, 
-  X, 
-  Filter, 
+import {
+  Search,
+  X,
+  Filter,
   ChevronRight,
   Award,
   Trophy,
@@ -26,7 +26,7 @@ import {
   Check,
   TrendingUp,
   TrendingDown
-  
+
 } from "lucide-react";
 
 type Props = {
@@ -145,47 +145,47 @@ export default function HomeClient({ cafes }: Props) {
   };
 
   const filterButtons = [
-    { 
-      key: "ps5", 
-      label: "PS5", 
-      icon: <GamepadDirectional className="w-4 h-4" />, 
-      active: onlyPs5, 
-      toggle: () => setOnlyPs5((v) => !v) 
+    {
+      key: "ps5",
+      label: "PS5",
+      icon: <GamepadDirectional className="w-4 h-4" />,
+      active: onlyPs5,
+      toggle: () => setOnlyPs5((v) => !v)
     },
-    { 
-      key: "pc", 
-      label: "PC", 
-      icon: <Monitor className="w-4 h-4" />, 
-      active: onlyPc, 
-      toggle: () => setOnlyPc((v) => !v) 
+    {
+      key: "pc",
+      label: "PC",
+      icon: <Monitor className="w-4 h-4" />,
+      active: onlyPc,
+      toggle: () => setOnlyPc((v) => !v)
     },
-    { 
-      key: "pool", 
-      label: "Pool", 
-      icon: <CircleDollarSign className="w-4 h-4" />, 
-      active: onlyPool, 
-      toggle: () => setOnlyPool((v) => !v) 
+    {
+      key: "pool",
+      label: "Pool",
+      icon: <CircleDollarSign className="w-4 h-4" />,
+      active: onlyPool,
+      toggle: () => setOnlyPool((v) => !v)
     },
-    { 
-      key: "wheel", 
-      label: "Racing", 
-      icon: <Car className="w-4 h-4" />, 
-      active: onlyWheel, 
-      toggle: () => setOnlyWheel((v) => !v) 
+    {
+      key: "wheel",
+      label: "Racing",
+      icon: <Car className="w-4 h-4" />,
+      active: onlyWheel,
+      toggle: () => setOnlyWheel((v) => !v)
     },
-    { 
-      key: "vr", 
-      label: "VR", 
-      icon: <RectangleGoggles className="w-4 h-4" />, 
-      active: onlyVr, 
-      toggle: () => setOnlyVr((v) => !v) 
+    {
+      key: "vr",
+      label: "VR",
+      icon: <RectangleGoggles className="w-4 h-4" />,
+      active: onlyVr,
+      toggle: () => setOnlyVr((v) => !v)
     },
-    { 
-      key: "snooker", 
-      label: "Snooker", 
-      icon: <Target className="w-4 h-4" />, 
-      active: onlySnooker, 
-      toggle: () => setOnlySnooker((v) => !v) 
+    {
+      key: "snooker",
+      label: "Snooker",
+      icon: <Target className="w-4 h-4" />,
+      active: onlySnooker,
+      toggle: () => setOnlySnooker((v) => !v)
     },
   ];
 
@@ -675,14 +675,14 @@ export default function HomeClient({ cafes }: Props) {
 
         <div className="hero-content">
           <div className="mx-auto max-w-7xl px-4 pb-12 lg:px-8 relative z-30">
-            
+
             {/* ===== HERO SECTION ===== */}
             <section className={`pt-6 lg:pt-16 mb-6 lg:mb-16 ${mounted ? 'animate-fade-in' : 'opacity-0'}`}>
               <div className="text-center relative">
                 {/* Main Title */}
                 <div className="relative inline-block mb-2">
                   <div className="absolute -inset-4 bg-gradient-to-r from-[#ff073a] via-[#00f0ff] to-[#ff073a] blur-2xl opacity-10 rounded-full"></div>
-                  
+
                   {/* Championship Badge */}
                   <div className="hidden md:flex absolute -top-6 left-1/2 -translate-x-1/2">
                     <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-[#ff073a] to-[#ff3366] shadow-lg">
@@ -691,7 +691,7 @@ export default function HomeClient({ cafes }: Props) {
                     </div>
                   </div>
 
-                  <h1 
+                  <h1
                     className="relative text-3xl md:text-6xl lg:text-7xl font-black tracking-tight leading-tight"
                     style={{ fontFamily: 'Orbitron, sans-serif' }}
                   >
@@ -701,83 +701,83 @@ export default function HomeClient({ cafes }: Props) {
                     <span className="text-white">MY</span>
                     <span className="text-white">GAME</span>
                   </h1>
-                  
+
                   {/* Subtitle */}
                   <div className="mt-2 relative subtitle">
                     <p className="relative text-xs md:text-base text-white px-2 py-1 inline-block">
-                     Book your gaming seat instantly at nearby cafes!
+                      Book your gaming seat instantly at nearby cafes!
                     </p>
                   </div>
                 </div>
-                               
+
 
                 {/* Tournament Stats Grid - Hidden on mobile */}
                 <div className="hidden md:grid grid-cols-2 lg:grid-cols-4 gap-3 max-w-3xl mx-auto mb-6">
                   <div className="stat-card rounded-xl p-3 text-center border border-[#ff073a]/30">
                     <div className="flex items-center justify-center gap-2 mb-1">
                       <Trophy className="w-4 h-4 text-[#ff073a]" />
-                      <div 
+                      <div
                         className="text-xl md:text-3xl font-bold text-white"
                         style={{ fontFamily: 'Orbitron, sans-serif' }}
                       >
                         {safeCafes.length}+
                       </div>
                     </div>
-                    <div 
+                    <div
                       className="text-xs text-zinc-300 uppercase tracking-wider"
                       style={{ fontFamily: 'Inter, sans-serif' }}
                     >
                       Cafes
                     </div>
                   </div>
-                  
+
                   <div className="stat-card rounded-xl p-3 text-center border border-[#00f0ff]/30">
                     <div className="flex items-center justify-center gap-2 mb-1">
                       <Clock className="w-4 h-4 text-[#00f0ff]" />
-                      <div 
+                      <div
                         className="text-xl md:text-3xl font-bold text-white"
                         style={{ fontFamily: 'Orbitron, sans-serif' }}
                       >
                         24/7
                       </div>
                     </div>
-                    <div 
+                    <div
                       className="text-xs text-zinc-300 uppercase tracking-wider"
                       style={{ fontFamily: 'Inter, sans-serif' }}
                     >
                       Open
                     </div>
                   </div>
-                  
+
                   <div className="stat-card rounded-xl p-3 text-center border border-[#ff073a]/30">
                     <div className="flex items-center justify-center gap-2 mb-1">
                       <Users className="w-4 h-4 text-[#ff073a]" />
-                      <div 
+                      <div
                         className="text-xl md:text-3xl font-bold text-white"
                         style={{ fontFamily: 'Orbitron, sans-serif' }}
                       >
                         50K+
                       </div>
                     </div>
-                    <div 
+                    <div
                       className="text-xs text-zinc-300 uppercase tracking-wider"
                       style={{ fontFamily: 'Inter, sans-serif' }}
                     >
                       Gamers
                     </div>
                   </div>
-                  
+
                   <div className="stat-card rounded-xl p-3 text-center border border-[#00f0ff]/30">
                     <div className="flex items-center justify-center gap-2 mb-1">
                       <Award className="w-4 h-4 text-[#00f0ff]" />
-                      <div 
+                      <div
                         className="text-xl md:text-3xl font-bold text-white"
                         style={{ fontFamily: 'Orbitron, sans-serif' }}
                       >
                         10+
                       </div>
                     </div>
-                    <div 
+                    <div
                       className="text-xs text-zinc-300 uppercase tracking-wider"
                       style={{ fontFamily: 'Inter, sans-serif' }}
                     >
@@ -794,11 +794,10 @@ export default function HomeClient({ cafes }: Props) {
                       setActiveTab("book");
                       handleScrollToList();
                     }}
-                    className={`px-6 py-3 rounded-xl text-sm md:text-lg font-bold tracking-wide uppercase flex items-center gap-2 group transition-all ${
-                      activeTab === "book"
-                        ? 'btn-glow'
-                        : 'btn-ghost'
-                    }`}
+                    className={`px-6 py-3 rounded-xl text-sm md:text-lg font-bold tracking-wide uppercase flex items-center gap-2 group transition-all ${activeTab === "book"
+                      ? 'btn-glow'
+                      : 'btn-ghost'
+                      }`}
                     style={{ fontFamily: 'Orbitron, sans-serif' }}
                   >
                     <Zap className="w-4 h-4 md:w-5 md:h-5 group-hover:scale-125 transition-transform" />
@@ -812,11 +811,10 @@ export default function HomeClient({ cafes }: Props) {
                         setActiveTab("membership");
                         handleScrollToList();
                       }}
-                      className={`px-4 py-3 rounded-xl text-sm font-semibold flex items-center gap-2 transition-all ${
-                        activeTab === "membership"
-                          ? 'btn-glow'
-                          : 'btn-ghost'
-                      }`}
+                      className={`px-4 py-3 rounded-xl text-sm font-semibold flex items-center gap-2 transition-all ${activeTab === "membership"
+                        ? 'btn-glow'
+                        : 'btn-ghost'
+                        }`}
                       style={{ fontFamily: 'Inter, sans-serif' }}
                     >
                       <Trophy className={`w-4 h-4 ${activeTab === "membership" ? 'text-white' : 'text-zinc-400'}`} />
@@ -828,11 +826,10 @@ export default function HomeClient({ cafes }: Props) {
                         setActiveTab("tournaments");
                         handleScrollToList();
                       }}
-                      className={`px-4 py-3 rounded-xl text-sm font-semibold flex items-center gap-2 transition-all ${
-                        activeTab === "tournaments"
-                          ? 'btn-glow'
-                          : 'btn-ghost'
-                      }`}
+                      className={`px-4 py-3 rounded-xl text-sm font-semibold flex items-center gap-2 transition-all ${activeTab === "tournaments"
+                        ? 'btn-glow'
+                        : 'btn-ghost'
+                        }`}
                       style={{ fontFamily: 'Inter, sans-serif' }}
                     >
                       <Award className={`w-4 h-4 ${activeTab === "tournaments" ? 'text-white' : 'text-zinc-400'}`} />
@@ -841,7 +838,7 @@ export default function HomeClient({ cafes }: Props) {
                   </div>
                 </div>
 
-                
+
               </div>
             </section>
 
@@ -849,156 +846,153 @@ export default function HomeClient({ cafes }: Props) {
             {activeTab === "book" && (
               <section
                 ref={listRef}
-                className={`sticky top-16 z-30 mb-3 sm:mb-4 lg:mb-12 bg-[#08080c]/95 backdrop-blur-xl rounded-xl sm:rounded-2xl border border-white/5 p-2.5 sm:p-4 shadow-xl filters-compact ${
-                  mounted ? 'animate-fade-in' : 'opacity-0'
-                }`}
+                className={`sticky top-16 z-30 mb-3 sm:mb-4 lg:mb-12 bg-[#08080c]/95 backdrop-blur-xl rounded-xl sm:rounded-2xl border border-white/5 p-2.5 sm:p-4 shadow-xl filters-compact ${mounted ? 'animate-fade-in' : 'opacity-0'
+                  }`}
                 style={{ animationDelay: '0.1s' }}
               >
-              {/* Search Bar */}
-              <div className="relative mb-2.5 sm:mb-4 h-10 sm:h-12">
-                <div className="absolute inset-0 flex items-center pointer-events-none pl-3">
-                  <Search className="w-4 h-4 text-zinc-500" />
-                </div>
-                <input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Search cafes..."
-                  className="input-field w-full h-full pl-10 pr-10 rounded-lg sm:rounded-xl text-xs sm:text-sm placeholder:text-zinc-600 focus:outline-none"
-                  style={{ fontFamily: 'Inter, sans-serif' }}
-                />
-                {query && (
-                  <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-                    <button
-                      onClick={() => setQuery("")}
-                      className="hover:bg-white/5 rounded-lg transition-colors p-1"
-                    >
-                      <X className="w-4 h-4 text-zinc-500" />
-                    </button>
+                {/* Search Bar */}
+                <div className="relative mb-2.5 sm:mb-4 h-10 sm:h-12">
+                  <div className="absolute inset-0 flex items-center pointer-events-none pl-3">
+                    <Search className="w-4 h-4 text-zinc-500" />
                   </div>
-                )}
-              </div>
-
-              {/* Filters Section */}
-              <div className="space-y-2 sm:space-y-4">
-                {/* Filter Header */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 sm:gap-2">
-                    <Filter className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#ff073a]" />
-                    <h2
-                      className="text-sm sm:text-lg font-bold"
-                      style={{ fontFamily: 'Orbitron, sans-serif' }}
-                    >
-                      Find Your Cafes
-                    </h2>
-                  </div>
-                  <div className="flex items-center gap-1.5 sm:gap-2">
-                    <button
-                      onClick={() => setShowFilters(true)}
-                      className="md:hidden relative p-1.5 sm:p-2 rounded-lg btn-ghost"
-                    >
-                      <Filter className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                      {activeFiltersCount > 0 && (
-                        <span className="absolute -top-1 -right-1 w-3.5 h-3.5 sm:w-4 sm:h-4 bg-[#ff073a] text-white text-[10px] sm:text-xs font-bold rounded-full flex items-center justify-center">
-                          {activeFiltersCount}
-                        </span>
-                      )}
-                    </button>
-
-                    <select
-                      value={sortBy}
-                      onChange={(e) => setSortBy(e.target.value as SortKey)}
-                      className="hidden md:flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-xs font-medium appearance-none cursor-pointer"
-                      style={{ fontFamily: 'Inter, sans-serif' }}
-                    >
-                      <option value="relevance">Tournament Ready</option>
-                      <option value="price_asc">Price: Low to High</option>
-                      <option value="price_desc">Price: High to Low</option>
-                    </select>
-
-                    {activeFiltersCount > 0 && (
+                  <input
+                    id="cafe-search"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Search cafes..."
+                    className="input-field w-full h-full pl-10 pr-10 rounded-lg sm:rounded-xl text-xs sm:text-sm placeholder:text-zinc-600 focus:outline-none"
+                    style={{ fontFamily: 'Inter, sans-serif' }}
+                  />
+                  {query && (
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3">
                       <button
-                        onClick={clearAllFilters}
-                        className="text-[10px] sm:text-xs font-medium text-[#ff073a] hover:text-[#ff073a]/80 transition-colors"
+                        onClick={() => setQuery("")}
+                        className="hover:bg-white/5 rounded-lg transition-colors p-1"
+                      >
+                        <X className="w-4 h-4 text-zinc-500" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Filters Section */}
+                <div className="space-y-2 sm:space-y-4">
+                  {/* Filter Header */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
+                      <Filter className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#ff073a]" />
+                      <h2
+                        className="text-sm sm:text-lg font-bold"
+                        style={{ fontFamily: 'Orbitron, sans-serif' }}
+                      >
+                        Find Your Cafes
+                      </h2>
+                    </div>
+                    <div className="flex items-center gap-1.5 sm:gap-2">
+                      <button
+                        onClick={() => setShowFilters(true)}
+                        className="md:hidden relative p-1.5 sm:p-2 rounded-lg btn-ghost"
+                      >
+                        <Filter className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                        {activeFiltersCount > 0 && (
+                          <span className="absolute -top-1 -right-1 w-3.5 h-3.5 sm:w-4 sm:h-4 bg-[#ff073a] text-white text-[10px] sm:text-xs font-bold rounded-full flex items-center justify-center">
+                            {activeFiltersCount}
+                          </span>
+                        )}
+                      </button>
+
+                      <select
+                        id="sort-by"
+                        name="sort-by"
+                        value={sortBy}
+                        onChange={(e) => setSortBy(e.target.value as SortKey)}
+                        className="hidden md:flex items-center gap-2 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-xs font-medium appearance-none cursor-pointer"
                         style={{ fontFamily: 'Inter, sans-serif' }}
                       >
-                        Clear
-                      </button>
-                    )}
-                  </div>
-                </div>
+                        <option value="relevance">Tournament Ready</option>
+                        <option value="price_asc">Price: Low to High</option>
+                        <option value="price_desc">Price: High to Low</option>
+                      </select>
 
-                {/* Filter Grid */}
-                <div className="hidden md:grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-2">
-                  {filterButtons.map((filter) => (
-                    <button
-                      key={filter.key}
-                      onClick={filter.toggle}
-                      className={`flex items-center justify-center gap-2 p-3 rounded-lg transition-all ${
-                        filter.active
+                      {activeFiltersCount > 0 && (
+                        <button
+                          onClick={clearAllFilters}
+                          className="text-[10px] sm:text-xs font-medium text-[#ff073a] hover:text-[#ff073a]/80 transition-colors"
+                          style={{ fontFamily: 'Inter, sans-serif' }}
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Filter Grid */}
+                  <div className="hidden md:grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-2">
+                    {filterButtons.map((filter) => (
+                      <button
+                        key={filter.key}
+                        onClick={filter.toggle}
+                        className={`flex items-center justify-center gap-2 p-3 rounded-lg transition-all ${filter.active
                           ? 'chip-active text-white'
                           : 'chip text-zinc-400 hover:text-white'
-                      }`}
-                      style={{ fontFamily: 'Inter, sans-serif' }}
-                    >
-                      <div className={`p-1.5 rounded ${
-                        filter.active
+                          }`}
+                        style={{ fontFamily: 'Inter, sans-serif' }}
+                      >
+                        <div className={`p-1.5 rounded ${filter.active
                           ? 'bg-white/20'
                           : 'bg-white/5'
-                      }`}>
-                        {filter.icon}
-                      </div>
-                      <span className="text-sm font-semibold">{filter.label}</span>
-                      {filter.active && (
-                        <Check className="w-3 h-3 ml-1" />
-                      )}
-                    </button>
-                  ))}
-                </div>
+                          }`}>
+                          {filter.icon}
+                        </div>
+                        <span className="text-sm font-semibold">{filter.label}</span>
+                        {filter.active && (
+                          <Check className="w-3 h-3 ml-1" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
 
-                {/* Sort Options (Mobile) */}
-                <div className="md:hidden flex gap-1.5 overflow-x-auto hide-scrollbar py-0.5">
-                  <button
-                    onClick={() => setSortBy("relevance")}
-                    className={`shrink-0 px-2.5 py-1.5 rounded-md text-[11px] font-medium transition-all ${
-                      sortBy === "relevance"
+                  {/* Sort Options (Mobile) */}
+                  <div className="md:hidden flex gap-1.5 overflow-x-auto hide-scrollbar py-0.5">
+                    <button
+                      onClick={() => setSortBy("relevance")}
+                      className={`shrink-0 px-2.5 py-1.5 rounded-md text-[11px] font-medium transition-all ${sortBy === "relevance"
                         ? 'bg-[#ff073a] text-white'
                         : 'bg-white/5 text-zinc-400'
-                    }`}
-                    style={{ fontFamily: 'Inter, sans-serif' }}
-                  >
-                    Tournament
-                  </button>
-                  <button
-                    onClick={() => setSortBy("price_asc")}
-                    className={`shrink-0 px-2.5 py-1.5 rounded-md text-[11px] font-medium flex items-center gap-1 transition-all ${
-                      sortBy === "price_asc"
+                        }`}
+                      style={{ fontFamily: 'Inter, sans-serif' }}
+                    >
+                      Tournament
+                    </button>
+                    <button
+                      onClick={() => setSortBy("price_asc")}
+                      className={`shrink-0 px-2.5 py-1.5 rounded-md text-[11px] font-medium flex items-center gap-1 transition-all ${sortBy === "price_asc"
                         ? 'bg-[#00f0ff] text-black'
                         : 'bg-white/5 text-zinc-400'
-                    }`}
-                    style={{ fontFamily: 'Inter, sans-serif' }}
-                  >
-                    <TrendingUp className="w-2.5 h-2.5" />
-                    Price Low
-                  </button>
-                  <button
-                    onClick={() => setSortBy("price_desc")}
-                    className={`shrink-0 px-2.5 py-1.5 rounded-md text-[11px] font-medium flex items-center gap-1 transition-all ${
-                      sortBy === "price_desc"
+                        }`}
+                      style={{ fontFamily: 'Inter, sans-serif' }}
+                    >
+                      <TrendingUp className="w-2.5 h-2.5" />
+                      Price Low
+                    </button>
+                    <button
+                      onClick={() => setSortBy("price_desc")}
+                      className={`shrink-0 px-2.5 py-1.5 rounded-md text-[11px] font-medium flex items-center gap-1 transition-all ${sortBy === "price_desc"
                         ? 'bg-[#00f0ff] text-black'
                         : 'bg-white/5 text-zinc-400'
-                    }`}
-                    style={{ fontFamily: 'Inter, sans-serif' }}
-                  >
-                    <TrendingDown className="w-2.5 h-2.5" />
-                    Price High
-                  </button>
+                        }`}
+                      style={{ fontFamily: 'Inter, sans-serif' }}
+                    >
+                      <TrendingDown className="w-2.5 h-2.5" />
+                      Price High
+                    </button>
+                  </div>
                 </div>
-              </div>
-            </section>
+              </section>
             )}
 
             {/* ===== CONTENT SECTION ===== */}
-            <section 
+            <section
               ref={activeTab !== "book" ? listRef : undefined}
               className={`${mounted ? 'animate-fade-in' : 'opacity-0'}`}
               style={{ animationDelay: '0.15s' }}
@@ -1009,20 +1003,20 @@ export default function HomeClient({ cafes }: Props) {
                   {/* Results Header */}
                   <div className="flex items-center justify-between mb-4 results-header">
                     <div>
-                      <h2 
+                      <h2
                         className="text-xl font-bold text-white mb-1"
                         style={{ fontFamily: 'Orbitron, sans-serif' }}
                       >
                         {query || activeFiltersCount > 0 ? 'Filtered Cafes' : 'All Gaming Cafes'}
                       </h2>
-                      <p 
+                      <p
                         className="text-zinc-400"
                         style={{ fontFamily: 'Inter, sans-serif' }}
                       >
                         {filteredCafes.length} venue{filteredCafes.length !== 1 ? 's' : ''} found
                       </p>
                     </div>
-                    
+
                     {activeFiltersCount > 0 && (
                       <button
                         onClick={clearAllFilters}
@@ -1043,13 +1037,13 @@ export default function HomeClient({ cafes }: Props) {
                       <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-[#ff073a]/10 to-[#00f0ff]/10 flex items-center justify-center">
                         <Frown className="w-8 h-8 text-zinc-600" />
                       </div>
-                      <h3 
+                      <h3
                         className="text-xl font-bold text-white mb-2"
                         style={{ fontFamily: 'Orbitron, sans-serif' }}
                       >
                         No Venues Found
                       </h3>
-                      <p 
+                      <p
                         className="text-zinc-400 mb-6 max-w-md mx-auto"
                         style={{ fontFamily: 'Inter, sans-serif' }}
                       >
@@ -1080,7 +1074,7 @@ export default function HomeClient({ cafes }: Props) {
               {activeTab === "membership" && (
                 <div className="space-y-6">
                   <div className="text-center mb-8">
-                    <h2 
+                    <h2
                       className="text-3xl md:text-4xl font-bold text-white mb-3"
                       style={{ fontFamily: 'Orbitron, sans-serif' }}
                     >
@@ -1088,7 +1082,7 @@ export default function HomeClient({ cafes }: Props) {
                         Premium Memberships
                       </span>
                     </h2>
-                    <p 
+                    <p
                       className="text-zinc-400 text-lg"
                       style={{ fontFamily: 'Inter, sans-serif' }}
                     >
@@ -1121,14 +1115,14 @@ export default function HomeClient({ cafes }: Props) {
                         features: ["Unlimited Gaming", "Weekend Priority", "Discount on Food", "Friends Bonus"]
                       }
                     ].map((membership, idx) => (
-                      <div 
+                      <div
                         key={idx}
                         className="card-glass rounded-2xl overflow-hidden group hover:scale-[1.02] transition-all duration-300"
                       >
                         {/* Image */}
                         <div className="relative h-48 overflow-hidden">
-                          <img 
-                            src={membership.image} 
+                          <img
+                            src={membership.image}
                             alt={membership.cafeName}
                             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                           />
@@ -1140,15 +1134,15 @@ export default function HomeClient({ cafes }: Props) {
 
                         {/* Content */}
                         <div className="p-6">
-                          <h3 
+                          <h3
                             className="text-xl font-bold text-white mb-2"
                             style={{ fontFamily: 'Orbitron, sans-serif' }}
                           >
                             {membership.cafeName}
                           </h3>
-                          
+
                           <div className="flex items-baseline gap-2 mb-4">
-                            <span 
+                            <span
                               className="text-3xl font-bold text-[#00f0ff]"
                               style={{ fontFamily: 'Orbitron, sans-serif' }}
                             >
@@ -1185,7 +1179,7 @@ export default function HomeClient({ cafes }: Props) {
               {activeTab === "tournaments" && (
                 <div className="space-y-6">
                   <div className="text-center mb-8">
-                    <h2 
+                    <h2
                       className="text-3xl md:text-4xl font-bold text-white mb-3"
                       style={{ fontFamily: 'Orbitron, sans-serif' }}
                     >
@@ -1193,7 +1187,7 @@ export default function HomeClient({ cafes }: Props) {
                         Upcoming Tournaments
                       </span>
                     </h2>
-                    <p 
+                    <p
                       className="text-zinc-400 text-lg"
                       style={{ fontFamily: 'Inter, sans-serif' }}
                     >
@@ -1229,14 +1223,14 @@ export default function HomeClient({ cafes }: Props) {
                         game: "Valorant"
                       }
                     ].map((tournament, idx) => (
-                      <div 
+                      <div
                         key={idx}
                         className="card-glass rounded-2xl overflow-hidden group hover:scale-[1.02] transition-all duration-300"
                       >
                         {/* Image */}
                         <div className="relative h-48 overflow-hidden">
-                          <img 
-                            src={tournament.image} 
+                          <img
+                            src={tournament.image}
                             alt={tournament.name}
                             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                           />
@@ -1248,13 +1242,13 @@ export default function HomeClient({ cafes }: Props) {
 
                         {/* Content */}
                         <div className="p-6">
-                          <h3 
+                          <h3
                             className="text-xl font-bold text-white mb-3"
                             style={{ fontFamily: 'Orbitron, sans-serif' }}
                           >
                             {tournament.name}
                           </h3>
-                          
+
                           <div className="space-y-2 mb-4">
                             <div className="flex items-center gap-2 text-zinc-300">
                               <Clock className="w-4 h-4 text-[#00f0ff]" />
@@ -1286,143 +1280,140 @@ export default function HomeClient({ cafes }: Props) {
 
             {/* ===== MOBILE FILTER SHEET ===== */}
             {showFilters && (
-          <div 
-            className="fixed inset-0 z-50 mobile-filter-sheet"
-            onClick={() => setShowFilters(false)}
-          >
-            {/* Overlay */}
-            <div className="overlay-bg absolute inset-0 animate-fade-in" style={{ animationDuration: '0.2s' }} />
-            
-            {/* Sheet */}
-            <div 
-              className="absolute bottom-0 left-0 right-0 bg-[#101016] rounded-t-[28px] border-t border-white/10 animate-slide-up safe-bottom shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Handle bar */}
-              <div className="flex justify-center pt-3 pb-1">
-                <div className="w-10 h-1 rounded-full bg-white/20" />
-              </div>
-              
-              {/* Header */}
-              <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
-                <div>
-                  <h3 
-                    className="text-lg font-bold"
-                    style={{ fontFamily: 'Orbitron, sans-serif' }}
-                  >
-                    Filters
-                  </h3>
-                  <p 
-                    className="text-xs text-zinc-400"
-                    style={{ fontFamily: 'Inter, sans-serif' }}
-                  >
-                    {activeFiltersCount} filter{activeFiltersCount !== 1 ? 's' : ''} active
-                  </p>
-                </div>
-                <button
-                  onClick={() => setShowFilters(false)}
-                  className="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
-                  aria-label="Close filters"
+              <div
+                className="fixed inset-0 z-50 mobile-filter-sheet"
+                onClick={() => setShowFilters(false)}
+              >
+                {/* Overlay */}
+                <div className="overlay-bg absolute inset-0 animate-fade-in" style={{ animationDuration: '0.2s' }} />
+
+                {/* Sheet */}
+                <div
+                  className="absolute bottom-0 left-0 right-0 bg-[#101016] rounded-t-[28px] border-t border-white/10 animate-slide-up safe-bottom shadow-2xl"
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-              
-              {/* Content */}
-              <div className="px-4 py-3 max-h-[60vh] overflow-y-auto">
-                {/* Equipment Filters */}
-                <div className="mb-4">
-                  <h4 
-                    className="text-xs font-semibold text-zinc-300 mb-2"
-                    style={{ fontFamily: 'Inter, sans-serif' }}
-                  >
-                    EQUIPMENT
-                  </h4>
-                  <div className="grid grid-cols-2 gap-2">
-                    {filterButtons.map((filter) => (
-                      <button
-                        key={filter.key}
-                        onClick={filter.toggle}
-                        className={`flex items-center gap-2 p-3 rounded-lg transition-all ${
-                          filter.active 
-                            ? 'bg-gradient-to-r from-[#ff073a] to-[#ff073a]/80 text-white' 
-                            : 'bg-white/5 text-zinc-400 border border-white/10'
-                        }`}
+                  {/* Handle bar */}
+                  <div className="flex justify-center pt-3 pb-1">
+                    <div className="w-10 h-1 rounded-full bg-white/20" />
+                  </div>
+
+                  {/* Header */}
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+                    <div>
+                      <h3
+                        className="text-lg font-bold"
+                        style={{ fontFamily: 'Orbitron, sans-serif' }}
+                      >
+                        Filters
+                      </h3>
+                      <p
+                        className="text-xs text-zinc-400"
                         style={{ fontFamily: 'Inter, sans-serif' }}
                       >
-                        <div className={`p-1.5 rounded ${
-                          filter.active 
-                            ? 'bg-white/20' 
-                            : 'bg-white/5'
-                        }`}>
-                          {filter.icon}
-                        </div>
-                        <span className="text-sm font-semibold">{filter.label}</span>
-                      </button>
-                    ))}
+                        {activeFiltersCount} filter{activeFiltersCount !== 1 ? 's' : ''} active
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setShowFilters(false)}
+                      className="p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
+                      aria-label="Close filters"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
                   </div>
-                </div>
-                
-                {/* Sort Options */}
-                <div className="pt-3 border-t border-white/10">
-                  <h4 
-                    className="text-xs font-semibold text-zinc-300 mb-2"
-                    style={{ fontFamily: 'Inter, sans-serif' }}
-                  >
-                    SORT BY
-                  </h4>
-                  <div className="space-y-1">
-                    {[
-                      { value: 'relevance', label: 'Tournament Ready', icon: <Trophy className="w-3 h-3" /> },
-                      { value: 'price_asc', label: 'Price: Low to High', icon: <TrendingUp className="w-3 h-3" /> },
-                      { value: 'price_desc', label: 'Price: High to Low', icon: <TrendingDown className="w-3 h-3" /> },
-                    ].map((option) => (
-                      <button
-                        key={option.value}
-                        onClick={() => setSortBy(option.value as SortKey)}
-                        className={`flex items-center justify-between w-full p-3 rounded-lg transition-all ${
-                          sortBy === option.value
-                            ? 'bg-gradient-to-r from-[#00f0ff] to-[#00f0ff]/80 text-black'
-                            : 'bg-white/5 text-zinc-400 hover:bg-white/10'
-                        }`}
+
+                  {/* Content */}
+                  <div className="px-4 py-3 max-h-[60vh] overflow-y-auto">
+                    {/* Equipment Filters */}
+                    <div className="mb-4">
+                      <h4
+                        className="text-xs font-semibold text-zinc-300 mb-2"
                         style={{ fontFamily: 'Inter, sans-serif' }}
                       >
-                        <div className="flex items-center gap-2">
-                          {option.icon}
-                          <span className="text-sm">{option.label}</span>
-                        </div>
-                        {sortBy === option.value && (
-                          <Check className="w-4 h-4" />
-                        )}
-                      </button>
-                    ))}
+                        EQUIPMENT
+                      </h4>
+                      <div className="grid grid-cols-2 gap-2">
+                        {filterButtons.map((filter) => (
+                          <button
+                            key={filter.key}
+                            onClick={filter.toggle}
+                            className={`flex items-center gap-2 p-3 rounded-lg transition-all ${filter.active
+                              ? 'bg-gradient-to-r from-[#ff073a] to-[#ff073a]/80 text-white'
+                              : 'bg-white/5 text-zinc-400 border border-white/10'
+                              }`}
+                            style={{ fontFamily: 'Inter, sans-serif' }}
+                          >
+                            <div className={`p-1.5 rounded ${filter.active
+                              ? 'bg-white/20'
+                              : 'bg-white/5'
+                              }`}>
+                              {filter.icon}
+                            </div>
+                            <span className="text-sm font-semibold">{filter.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Sort Options */}
+                    <div className="pt-3 border-t border-white/10">
+                      <h4
+                        className="text-xs font-semibold text-zinc-300 mb-2"
+                        style={{ fontFamily: 'Inter, sans-serif' }}
+                      >
+                        SORT BY
+                      </h4>
+                      <div className="space-y-1">
+                        {[
+                          { value: 'relevance', label: 'Tournament Ready', icon: <Trophy className="w-3 h-3" /> },
+                          { value: 'price_asc', label: 'Price: Low to High', icon: <TrendingUp className="w-3 h-3" /> },
+                          { value: 'price_desc', label: 'Price: High to Low', icon: <TrendingDown className="w-3 h-3" /> },
+                        ].map((option) => (
+                          <button
+                            key={option.value}
+                            onClick={() => setSortBy(option.value as SortKey)}
+                            className={`flex items-center justify-between w-full p-3 rounded-lg transition-all ${sortBy === option.value
+                              ? 'bg-gradient-to-r from-[#00f0ff] to-[#00f0ff]/80 text-black'
+                              : 'bg-white/5 text-zinc-400 hover:bg-white/10'
+                              }`}
+                            style={{ fontFamily: 'Inter, sans-serif' }}
+                          >
+                            <div className="flex items-center gap-2">
+                              {option.icon}
+                              <span className="text-sm">{option.label}</span>
+                            </div>
+                            {sortBy === option.value && (
+                              <Check className="w-4 h-4" />
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex gap-2 px-4 py-3 border-t border-white/10 action-buttons">
+                    <button
+                      onClick={() => {
+                        clearAllFilters();
+                        setShowFilters(false);
+                      }}
+                      className="flex-1 py-3 rounded-lg text-sm font-semibold bg-white/5 hover:bg-white/10 transition-colors"
+                      style={{ fontFamily: 'Inter, sans-serif' }}
+                    >
+                      Reset All
+                    </button>
+                    <button
+                      onClick={() => setShowFilters(false)}
+                      className="flex-[2] py-3 rounded-lg text-sm font-bold btn-glow"
+                      style={{ fontFamily: 'Orbitron, sans-serif' }}
+                    >
+                      Show {filteredCafes.length} Venues
+                    </button>
                   </div>
                 </div>
               </div>
-              
-              {/* Action Buttons */}
-              <div className="flex gap-2 px-4 py-3 border-t border-white/10 action-buttons">
-                <button
-                  onClick={() => {
-                    clearAllFilters();
-                    setShowFilters(false);
-                  }}
-                  className="flex-1 py-3 rounded-lg text-sm font-semibold bg-white/5 hover:bg-white/10 transition-colors"
-                  style={{ fontFamily: 'Inter, sans-serif' }}
-                >
-                  Reset All
-                </button>
-                <button
-                  onClick={() => setShowFilters(false)}
-                  className="flex-[2] py-3 rounded-lg text-sm font-bold btn-glow"
-                  style={{ fontFamily: 'Orbitron, sans-serif' }}
-                >
-                  Show {filteredCafes.length} Venues
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+            )}
           </div>
         </div>
       </main>

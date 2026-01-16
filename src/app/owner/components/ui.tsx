@@ -199,6 +199,7 @@ export function Button({
 
 // Input Component
 interface InputProps {
+    id?: string;
     label?: string;
     placeholder?: string;
     value: string;
@@ -209,6 +210,7 @@ interface InputProps {
 }
 
 export function Input({
+    id,
     label,
     placeholder,
     value,
@@ -217,6 +219,7 @@ export function Input({
     disabled = false,
     className = '',
 }: InputProps) {
+    const inputId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
     return (
         <div className={className}>
             {label && (
@@ -225,6 +228,8 @@ export function Input({
                 </label>
             )}
             <input
+                id={inputId}
+                name={inputId}
                 type={type}
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
@@ -245,6 +250,7 @@ export function Input({
 
 // Select Component
 interface SelectProps {
+    id?: string;
     label?: string;
     value: string;
     onChange: (value: string) => void;
@@ -254,6 +260,7 @@ interface SelectProps {
 }
 
 export function Select({
+    id,
     label,
     value,
     onChange,
@@ -261,6 +268,7 @@ export function Select({
     disabled = false,
     className = '',
 }: SelectProps) {
+    const selectId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
     return (
         <div className={className}>
             {label && (
@@ -269,6 +277,8 @@ export function Select({
                 </label>
             )}
             <select
+                id={selectId}
+                name={selectId}
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
                 disabled={disabled}

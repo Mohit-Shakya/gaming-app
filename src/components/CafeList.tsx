@@ -285,16 +285,16 @@ export default function CafeList({ cafes }: Props) {
                     priority={index === 0}
                     quality={index === 0 ? 90 : index < 3 ? 80 : 70}
                   />
-                  
+
                   <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0f] via-transparent to-transparent opacity-90" />
                   <div className="absolute inset-0 bg-gradient-to-r from-[#ff073a]/10 via-transparent to-[#00f0ff]/10 opacity-30" />
-                  
+
                   <div className="absolute top-4 left-4 flex flex-col gap-2">
                     <OpeningBadge
                       openingHours={cafe.opening_hours}
                       isActive={cafe.is_active !== false}
                     />
-                    
+
                     {(cafe as any).is_verified && (
                       <div className="flex items-center gap-1.5 rounded-full bg-black/60 backdrop-blur-sm px-3 py-1.5">
                         <Shield className="w-3.5 h-3.5 text-[#00f0ff]" />
@@ -304,11 +304,11 @@ export default function CafeList({ cafes }: Props) {
                       </div>
                     )}
                   </div>
-                  
+
                   <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/90 via-black/50 to-transparent">
                     <div className="flex items-center justify-between">
                       <div>
-                        <h2 
+                        <h2
                           className="text-xl font-bold text-white mb-1"
                           style={{ fontFamily: 'Orbitron, sans-serif' }}
                         >
@@ -321,7 +321,7 @@ export default function CafeList({ cafes }: Props) {
                           </span>
                         </div>
                       </div>
-                      
+
                       {(cafe as any).rating && (
                         <div className="flex items-center gap-1.5 bg-black/60 backdrop-blur-sm px-3 py-2 rounded-xl">
                           <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
@@ -343,16 +343,16 @@ export default function CafeList({ cafes }: Props) {
                   <div className="relative">
                     <Gamepad2 className="w-16 h-16 text-zinc-700 opacity-50" />
                   </div>
-                  
+
                   <div className="absolute top-4 left-4">
                     <OpeningBadge
                       openingHours={cafe.opening_hours}
                       isActive={cafe.is_active !== false}
                     />
                   </div>
-                  
+
                   <div className="absolute bottom-4 left-4 right-4">
-                    <h2 
+                    <h2
                       className="text-xl font-bold text-white mb-1"
                       style={{ fontFamily: 'Orbitron, sans-serif' }}
                     >
@@ -389,7 +389,7 @@ export default function CafeList({ cafes }: Props) {
                       </span>
                     </div>
                   )}
-                  
+
                   {(cafe as any).popularity && (
                     <div className="flex items-center gap-1.5">
                       <Users className="w-4 h-4 text-[#ff073a]" />
@@ -404,20 +404,20 @@ export default function CafeList({ cafes }: Props) {
               <div className="mt-6 pt-4 border-t border-white/10 flex items-center justify-between">
                 <div className="price-tag rounded-2xl px-5 py-3">
                   <div className="flex items-baseline gap-2">
-                    <span 
+                    <span
                       className="text-2xl font-bold text-white"
                       style={{ fontFamily: 'Orbitron, sans-serif' }}
                     >
                       ₹{cafe.hourly_price ?? 0}
                     </span>
-                    <span 
+                    <span
                       className="text-sm text-zinc-400"
                       style={{ fontFamily: 'Inter, sans-serif' }}
                     >
                       / hour
                     </span>
                   </div>
-                  <div 
+                  <div
                     className="text-xs text-zinc-500 mt-1"
                     style={{ fontFamily: 'Inter, sans-serif' }}
                   >
@@ -425,14 +425,14 @@ export default function CafeList({ cafes }: Props) {
                   </div>
                 </div>
 
-                <button 
+                <button
                   className="book-btn rounded-2xl px-6 py-3.5 flex items-center gap-2 group"
                   onClick={(e) => {
                     e.preventDefault();
                     window.location.href = `/cafes/${cafe.slug || cafe.id}`;
                   }}
                 >
-                  <span 
+                  <span
                     className="text-sm font-bold text-white flex items-center gap-2"
                     style={{ fontFamily: 'Orbitron, sans-serif' }}
                   >
@@ -456,7 +456,7 @@ export default function CafeList({ cafes }: Props) {
             className="mobile-cafe-card"
           >
             {/* Image Section - All content on image */}
-            <div className="mobile-cafe-image">
+            <div className="mobile-cafe-image relative">
               {cafe.cover_url ? (
                 <Image
                   src={cafe.cover_url}
@@ -469,7 +469,7 @@ export default function CafeList({ cafes }: Props) {
               ) : (
                 <div className="w-full h-full bg-gradient-to-br from-zinc-800 to-zinc-900" />
               )}
-              
+
               {/* Status Badge */}
               <div className="mobile-status-badge">
                 <OpeningBadge
@@ -477,7 +477,7 @@ export default function CafeList({ cafes }: Props) {
                   isActive={cafe.is_active !== false}
                 />
               </div>
-              
+
               {/* Rating Badge */}
               {(cafe as any).rating && (
                 <div className="mobile-rating-badge">
@@ -487,19 +487,19 @@ export default function CafeList({ cafes }: Props) {
                   </span>
                 </div>
               )}
-              
+
               {/* Title */}
               <div className="mobile-cafe-title">
                 <h3>{cafe.name}</h3>
               </div>
-              
+
               {/* Location */}
               <div className="mobile-cafe-location">
                 <MapPin className="w-3 h-3" />
                 <span>{cafe.city || cafe.address?.split(',')[0] || 'Location'}</span>
               </div>
             </div>
-            
+
             {/* Equipment icons moved below image to keep image area clean */}
             <div className="mobile-equipment-row">
               <EquipmentIconsMobile cafe={cafe} />
@@ -601,31 +601,31 @@ const CONSOLE_CONFIG: {
   label: string;
   color: string;
 }[] = [
-  { 
-    key: "ps5_count", 
-    icon: <GamepadDirectional className="w-4 h-4" />, 
-    label: "PS5", 
-    color: "linear-gradient(135deg, rgba(0, 112, 243, 0.2) 0%, rgba(0, 112, 243, 0.1) 100%)" 
-  },
-  { 
-    key: "ps4_count", 
-    icon: <Gamepad2 className="w-4 h-4" />, 
-    label: "PS4", 
-    color: "linear-gradient(135deg, rgba(0, 112, 243, 0.15) 0%, rgba(0, 112, 243, 0.08) 100%)" 
-  },
-  { 
-    key: "xbox_count", 
-    icon: <Gamepad2 className="w-4 h-4 text-green-400" />, 
-    label: "Xbox", 
-    color: "linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(16, 185, 129, 0.08) 100%)" 
-  },
-  { 
-    key: "pc_count", 
-    icon: <Monitor className="w-4 h-4" />, 
-    label: "PC", 
-    color: "linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(139, 92, 246, 0.08) 100%)" 
-  },
-];
+    {
+      key: "ps5_count",
+      icon: <GamepadDirectional className="w-4 h-4" />,
+      label: "PS5",
+      color: "linear-gradient(135deg, rgba(0, 112, 243, 0.2) 0%, rgba(0, 112, 243, 0.1) 100%)"
+    },
+    {
+      key: "ps4_count",
+      icon: <Gamepad2 className="w-4 h-4" />,
+      label: "PS4",
+      color: "linear-gradient(135deg, rgba(0, 112, 243, 0.15) 0%, rgba(0, 112, 243, 0.08) 100%)"
+    },
+    {
+      key: "xbox_count",
+      icon: <Gamepad2 className="w-4 h-4 text-green-400" />,
+      label: "Xbox",
+      color: "linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(16, 185, 129, 0.08) 100%)"
+    },
+    {
+      key: "pc_count",
+      icon: <Monitor className="w-4 h-4" />,
+      label: "PC",
+      color: "linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(139, 92, 246, 0.08) 100%)"
+    },
+  ];
 
 function ConsoleIconsRow({ cafe }: { cafe: Cafe }) {
   const available = CONSOLE_CONFIG.filter(
@@ -642,7 +642,7 @@ function ConsoleIconsRow({ cafe }: { cafe: Cafe }) {
           Available Equipment
         </span>
       </div>
-      
+
       <div className="flex flex-wrap gap-2">
         {available.map(({ key, icon, label, color }, idx) => {
           const count = ((cafe as any)[key] as number | null) ?? 0;
@@ -676,53 +676,53 @@ function ConsoleIconsRow({ cafe }: { cafe: Cafe }) {
 function EquipmentIconsMobile({ cafe }: { cafe: Cafe }) {
   // Simple small icons for mobile - displayed between title and location
   const mobileIcons = [
-    { 
-      key: "ps5_count", 
-      icon: <GamepadDirectional className="mobile-icon-small" />, 
+    {
+      key: "ps5_count",
+      icon: <GamepadDirectional className="mobile-icon-small" />,
       label: "PS5",
-      show: (((cafe as any)["ps5_count"] as number | null) ?? 0) > 0 
+      show: (((cafe as any)["ps5_count"] as number | null) ?? 0) > 0
     },
-    { 
-      key: "ps4_count", 
-      icon: <Gamepad2 className="mobile-icon-small" />, 
+    {
+      key: "ps4_count",
+      icon: <Gamepad2 className="mobile-icon-small" />,
       label: "PS4",
-      show: (((cafe as any)["ps4_count"] as number | null) ?? 0) > 0 
+      show: (((cafe as any)["ps4_count"] as number | null) ?? 0) > 0
     },
-    { 
-      key: "xbox_count", 
-      icon: <Gamepad2 className="mobile-icon-small" />, 
+    {
+      key: "xbox_count",
+      icon: <Gamepad2 className="mobile-icon-small" />,
       label: "Xbox",
-      show: (((cafe as any)["xbox_count"] as number | null) ?? 0) > 0 
+      show: (((cafe as any)["xbox_count"] as number | null) ?? 0) > 0
     },
-    { 
-      key: "pc_count", 
-      icon: <Monitor className="mobile-icon-small" />, 
+    {
+      key: "pc_count",
+      icon: <Monitor className="mobile-icon-small" />,
       label: "PC",
-      show: (((cafe as any)["pc_count"] as number | null) ?? 0) > 0 
+      show: (((cafe as any)["pc_count"] as number | null) ?? 0) > 0
     },
-    { 
-      key: "pool_count", 
-      icon: <DollarSign className="mobile-icon-small" />, 
+    {
+      key: "pool_count",
+      icon: <DollarSign className="mobile-icon-small" />,
       label: "Pool",
-      show: (((cafe as any)["pool_count"] as number | null) ?? 0) > 0 
+      show: (((cafe as any)["pool_count"] as number | null) ?? 0) > 0
     },
-    { 
-      key: "vr_count", 
-      icon: <RectangleGoggles className="mobile-icon-small" />, 
+    {
+      key: "vr_count",
+      icon: <RectangleGoggles className="mobile-icon-small" />,
       label: "VR",
-      show: (((cafe as any)["vr_count"] as number | null) ?? 0) > 0 
+      show: (((cafe as any)["vr_count"] as number | null) ?? 0) > 0
     },
-    { 
-      key: "arcade_count", 
-      icon: <MonitorPlay className="mobile-icon-small" />, 
+    {
+      key: "arcade_count",
+      icon: <MonitorPlay className="mobile-icon-small" />,
       label: "Arcade",
-      show: (((cafe as any)["arcade_count"] as number | null) ?? 0) > 0 
+      show: (((cafe as any)["arcade_count"] as number | null) ?? 0) > 0
     },
-    { 
-      key: "snooker_count", 
-      icon: <Target className="mobile-icon-small" />, 
+    {
+      key: "snooker_count",
+      icon: <Target className="mobile-icon-small" />,
       label: "Snooker",
-      show: (((cafe as any)["snooker_count"] as number | null) ?? 0) > 0 
+      show: (((cafe as any)["snooker_count"] as number | null) ?? 0) > 0
     },
   ];
 
@@ -748,7 +748,7 @@ function EquipmentIconsMobile({ cafe }: { cafe: Cafe }) {
           <span className="mobile-icon-label">{label}</span>
         </div>
       ))}
-      
+
       {/* Show +X if there are more icons */}
       {availableIcons.length > 3 && (
         <div className="mobile-icon-item">

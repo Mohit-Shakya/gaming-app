@@ -81,28 +81,6 @@ export default function RefundPage() {
 
           <Section title="2. Cancellation Windows">
             <div className="grid gap-3 sm:gap-4 mt-3 sm:mt-4">
-              {/* Full Refund */}
-              <div
-                className="p-4 sm:p-5 rounded-lg sm:rounded-xl"
-                style={{
-                  background: "rgba(34, 197, 94, 0.1)",
-                  border: "2px solid rgba(34, 197, 94, 0.3)",
-                }}
-              >
-                <div className="flex items-center gap-2 sm:gap-3 mb-2">
-                  <span className="text-xl sm:text-2xl">✅</span>
-                  <h3 className="text-base sm:text-lg font-semibold m-0" style={{ color: colors.green }}>
-                    Full Refund (100%)
-                  </h3>
-                </div>
-                <p className="mt-2 ml-7 sm:ml-9" style={{ color: colors.textSecondary }}>
-                  Cancel <strong>24+ hours before</strong> your scheduled session
-                </p>
-                <p className="mt-1 ml-7 sm:ml-9 text-xs sm:text-sm" style={{ color: colors.textMuted }}>
-                  Full booking amount refunded to your original payment method within 5-7 business days
-                </p>
-              </div>
-
               {/* Partial Refund */}
               <div
                 className="p-4 sm:p-5 rounded-lg sm:rounded-xl"
@@ -118,7 +96,7 @@ export default function RefundPage() {
                   </h3>
                 </div>
                 <p className="mt-2 ml-7 sm:ml-9" style={{ color: colors.textSecondary }}>
-                  Cancel <strong>6-24 hours before</strong> your scheduled session
+                  Cancel <strong>before</strong> your scheduled session
                 </p>
                 <p className="mt-1 ml-7 sm:ml-9 text-xs sm:text-sm" style={{ color: colors.textMuted }}>
                   50% of booking amount refunded; 50% charged as cancellation fee
@@ -140,7 +118,7 @@ export default function RefundPage() {
                   </h3>
                 </div>
                 <p className="mt-2 ml-7 sm:ml-9" style={{ color: colors.textSecondary }}>
-                  Cancel <strong>less than 6 hours before</strong> or no-show
+                  <strong>No-show</strong> or cancellation after session start
                 </p>
                 <p className="mt-1 ml-7 sm:ml-9 text-xs sm:text-sm" style={{ color: colors.textMuted }}>
                   Full amount forfeited; no refund provided
@@ -175,8 +153,8 @@ export default function RefundPage() {
               </li>
               <li>
                 Phone:{" "}
-                <a href="tel:+919910457855" style={{ color: colors.cyan }}>
-                  +91 99104 57855
+                <a href="tel:+919315319103" style={{ color: colors.cyan }}>
+                  +91 93153 19103
                 </a>
               </li>
             </ul>
@@ -361,8 +339,8 @@ export default function RefundPage() {
               </p>
               <p className="my-1">
                 <strong>Phone:</strong>{" "}
-                <a href="tel:+919910457855" style={{ color: colors.cyan }}>
-                  +91 99104 57855
+                <a href="tel:+919315319103" style={{ color: colors.cyan }}>
+                  +91 93153 19103
                 </a>
               </p>
               <p className="my-1">

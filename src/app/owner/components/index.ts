@@ -17,3 +17,4 @@ export {
   EmptyState,
   LoadingSpinner,
 } from './ui';
+export { Memberships } from './Memberships';

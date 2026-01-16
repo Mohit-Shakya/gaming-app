@@ -238,17 +238,27 @@ export default function ContactPage() {
             <div>
               <div style={{ fontSize: "24px", marginBottom: "8px" }}>📧</div>
               <div style={{ fontSize: "14px", color: "#888", marginBottom: "4px" }}>Email</div>
-              <div style={{ fontSize: "16px", fontWeight: 500 }}>support@bookmygame.co.in</div>
+              <div style={{ fontSize: "16px", fontWeight: 500 }}>bookmygame169@gmail.com</div>
             </div>
             <div>
               <div style={{ fontSize: "24px", marginBottom: "8px" }}>📱</div>
               <div style={{ fontSize: "14px", color: "#888", marginBottom: "4px" }}>Phone</div>
-              <div style={{ fontSize: "16px", fontWeight: 500 }}>+91 XXX XXX XXXX</div>
+              <div style={{ fontSize: "16px", fontWeight: 500 }}>+91 93153 19103</div>
             </div>
             <div>
               <div style={{ fontSize: "24px", marginBottom: "8px" }}>⏰</div>
               <div style={{ fontSize: "14px", color: "#888", marginBottom: "4px" }}>Hours</div>
               <div style={{ fontSize: "16px", fontWeight: 500 }}>Mon-Sun, 9 AM - 9 PM</div>
+            </div>
+            <div>
+              <div style={{ fontSize: "24px", marginBottom: "8px" }}>📍</div>
+              <div style={{ fontSize: "14px", color: "#888", marginBottom: "4px" }}>Address</div>
+              <div style={{ fontSize: "16px", fontWeight: 500, lineHeight: "1.4" }}>
+                1st Floor, A-166, Devli Rd,<br />
+                near by Aggrawal and Lower floor of Fit box Gym,<br />
+                Pocket B, Jawahar Park, Khanpur,<br />
+                New Delhi, Delhi 110080
+              </div>
             </div>
           </div>
         </div>

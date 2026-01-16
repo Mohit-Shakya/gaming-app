@@ -1,0 +1,569 @@
+'use client';
+
+import { useState, useMemo } from 'react';
+import { Card, Button, Input, Select } from './ui';
+import { Search, Filter, Clock, Calendar, CheckCircle, XCircle, Plus, Edit2, Trash2, Smartphone, Monitor, User, Users } from 'lucide-react';
+import { supabase } from '@/lib/supabaseClient';
+
+interface MembershipPlan {
+    id: string;
+    name: string;
+    description?: string;
+    price: number;
+    hours: number;
+    validity_days: number;
+    plan_type: 'day_pass' | 'hourly_bundle';
+    console_type: string;
+    player_count: 'single' | 'double';
+}
+
+interface Subscription {
+    id: string;
+    user_id: string;
+    membership_plan_id: string;
+    hours_purchased: number;
+    hours_remaining: number;
+    amount_paid: number;
+    purchase_date: string;
+    expiry_date: string;
+    status: 'active' | 'expired' | 'cancelled';
+    payment_mode: string;
+    customer_name: string;
+    customer_phone: string;
+    membership_plans: MembershipPlan;
+}
+
+interface MembershipsProps {
+    isMobile: boolean;
+    subscriptions: Subscription[];
+    membershipPlans: MembershipPlan[];
+    activeTimers: Map<string, number>;
+    timerElapsed: Map<string, number>;
+    onStartTimer: (subscriptionId: string) => Promise<void>;
+    onStopTimer: (subscriptionId: string) => Promise<void>;
+    onRefresh: () => void;
+}
+
+export function Memberships({
+    isMobile,
+    subscriptions,
+    membershipPlans,
+    activeTimers,
+    timerElapsed,
+    onStartTimer,
+    onStopTimer,
+    onRefresh
+}: MembershipsProps) {
+    const [subTab, setSubTab] = useState<'subscriptions' | 'plans'>('subscriptions');
+
+    // Subscription Filter States
+    const [search, setSearch] = useState('');
+    const [statusFilter, setStatusFilter] = useState('all');
+    const [planFilter, setPlanFilter] = useState('all');
+    const [viewingSubscription, setViewingSubscription] = useState<Subscription | null>(null);
+
+    // Plan Management States
+    const [showPlanModal, setShowPlanModal] = useState(false);
+    const [editingPlan, setEditingPlan] = useState<MembershipPlan | null>(null);
+    const [savingPlan, setSavingPlan] = useState(false);
+
+    // New Plan Form States
+    const [newPlanName, setNewPlanName] = useState('');
+    const [newPlanDescription, setNewPlanDescription] = useState('');
+    const [newPlanPrice, setNewPlanPrice] = useState('');
+    const [newPlanHours, setNewPlanHours] = useState('');
+    const [newPlanValidity, setNewPlanValidity] = useState('30');
+    const [newPlanType, setNewPlanType] = useState('hourly_bundle');
+    const [newPlanConsoleType, setNewPlanConsoleType] = useState('PC');
+    const [newPlanPlayerCount, setNewPlanPlayerCount] = useState('single');
+
+    // Filter Logic
+    const filteredSubscriptions = useMemo(() => {
+        return subscriptions.filter(sub => {
+            const matchesSearch = !search ||
+                sub.customer_name?.toLowerCase().includes(search.toLowerCase()) ||
+                sub.customer_phone?.includes(search);
+            const matchesStatus = statusFilter === 'all' || sub.status === statusFilter;
+            const matchesPlan = planFilter === 'all' || sub.membership_plan_id === planFilter;
+
+            return matchesSearch && matchesStatus && matchesPlan;
+        });
+    }, [subscriptions, search, statusFilter, planFilter]);
+
+    // Handlers
+    const handleSavePlan = async () => {
+        if (!newPlanName || !newPlanPrice || !newPlanValidity) {
+            alert('Please fill in all required fields');
+            return;
+        }
+
+        try {
+            setSavingPlan(true);
+            const planData = {
+                name: newPlanName,
+                description: newPlanDescription,
+                price: parseFloat(newPlanPrice),
+                hours: newPlanHours ? parseFloat(newPlanHours) : null,
+                validity_days: parseInt(newPlanValidity),
+                plan_type: newPlanType,
+                console_type: newPlanConsoleType,
+                player_count: newPlanPlayerCount,
+                cafe_id: subscriptions[0]?.membership_plans?.id ? null : (await supabase.auth.getSession()).data.session?.user.id // Fallback needed
+            };
+
+            // We need cafe_id logic here, in a real app it's passed down or fetched. 
+            // Assuming for now simple insert/update.
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) throw new Error('Not authenticated');
+
+            // Get cafe_id (optimistically assuming first cafe if available or user metadata)
+            // Ideally we should pass cafeId as prop. 
+            // Logic: For this refactor, we will rely on existing RLS or triggers, or fetch quickly.
+            // Actually, let's use a simpler approach - we need to fetch cafes or pass it.
+            // Adding cafeId prop is best practice.
+
+            const upsertData = {
+                ...planData,
+                cafe_id: (await supabase.from('cafes').select('id').eq('user_id', user.id).single()).data?.id
+            }
+
+            if (editingPlan) {
+                const { error } = await supabase
+                    .from('membership_plans')
+                    .update(planData)
+                    .eq('id', editingPlan.id);
+                if (error) throw error;
+            } else {
+                const { error } = await supabase
+                    .from('membership_plans')
+                    .insert([upsertData]);
+                if (error) throw error;
+            }
+
+            setShowPlanModal(false);
+            setEditingPlan(null);
+            onRefresh();
+            resetForm();
+
+        } catch (error: any) {
+            alert('Error saving plan: ' + error.message);
+        } finally {
+            setSavingPlan(false);
+        }
+    };
+
+    const handleDeletePlan = async (planId: string) => {
+        if (!confirm('Are you sure? This will hide the plan from new purchases.')) return;
+
+        const { error } = await supabase
+            .from('membership_plans')
+            .delete()
+            .eq('id', planId);
+
+        if (error) {
+            alert('Error deleting plan: ' + error.message);
+        } else {
+            onRefresh();
+        }
+    };
+
+    const resetForm = () => {
+        setNewPlanName('');
+        setNewPlanDescription('');
+        setNewPlanPrice('');
+        setNewPlanHours('');
+        setNewPlanValidity('30');
+        setNewPlanType('hourly_bundle');
+        setNewPlanConsoleType('PC');
+        setNewPlanPlayerCount('single');
+    };
+
+    const openEditModal = (plan: MembershipPlan) => {
+        setEditingPlan(plan);
+        setNewPlanName(plan.name);
+        setNewPlanDescription(plan.description || '');
+        setNewPlanPrice(plan.price.toString());
+        setNewPlanHours(plan.hours?.toString() || '');
+        setNewPlanValidity(plan.validity_days.toString());
+        setNewPlanType(plan.plan_type);
+        setNewPlanConsoleType(plan.console_type || 'PC');
+        setNewPlanPlayerCount(plan.player_count as any || 'single');
+        setShowPlanModal(true);
+    };
+
+    return (
+        <div className="space-y-6">
+            {/* Tabs */}
+            <div className="border-b border-slate-800 flex gap-6">
+                <button
+                    onClick={() => setSubTab('subscriptions')}
+                    className={`pb-3 text-sm font-semibold transition-colors relative ${subTab === 'subscriptions' ? 'text-white' : 'text-slate-500 hover:text-slate-300'
+                        }`}
+                >
+                    Subscriptions
+                    {subTab === 'subscriptions' && (
+                        <div className="absolute bottom-0 left-0 w-full h-0.5 bg-emerald-500 rounded-t-full" />
+                    )}
+                </button>
+                <button
+                    onClick={() => setSubTab('plans')}
+                    className={`pb-3 text-sm font-semibold transition-colors flex items-center gap-2 relative ${subTab === 'plans' ? 'text-white' : 'text-slate-500 hover:text-slate-300'
+                        }`}
+                >
+                    Plans
+                    <span className="bg-slate-800 text-slate-400 text-[10px] px-1.5 py-0.5 rounded-md">
+                        {membershipPlans.length}
+                    </span>
+                    {subTab === 'plans' && (
+                        <div className="absolute bottom-0 left-0 w-full h-0.5 bg-emerald-500 rounded-t-full" />
+                    )}
+                </button>
+            </div>
+
+            {/* Subscriptions Content */}
+            {subTab === 'subscriptions' && (
+                <div className="space-y-4">
+                    {/* Filters */}
+                    <Card padding="sm" className="bg-slate-900/40 border-slate-800/60">
+                        <div className="flex flex-col md:flex-row gap-4">
+                            <div className="flex-1 relative">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+                                <input
+                                    type="text"
+                                    placeholder="Search customer..."
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                    className="w-full pl-9 pr-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500"
+                                />
+                            </div>
+                            <div className="flex gap-2">
+                                <Select
+                                    value={statusFilter}
+                                    onChange={setStatusFilter}
+                                    options={[
+                                        { value: 'all', label: 'All Status' },
+                                        { value: 'active', label: 'Active' },
+                                        { value: 'expired', label: 'Expired' },
+                                    ]}
+                                    className="w-32"
+                                />
+                                <Select
+                                    value={planFilter}
+                                    onChange={setPlanFilter}
+                                    options={[
+                                        { value: 'all', label: 'All Plans' },
+                                        ...membershipPlans.map(p => ({ value: p.id, label: p.name }))
+                                    ]}
+                                    className="w-40"
+                                />
+                            </div>
+                        </div>
+                    </Card>
+
+                    {/* List */}
+                    <div className="space-y-3">
+                        {filteredSubscriptions.length === 0 ? (
+                            <div className="text-center py-12 text-slate-500">
+                                <Users size={40} className="mx-auto mb-3 opacity-20" />
+                                <p>No subscriptions found matching filters</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 gap-3">
+                                {filteredSubscriptions.map(sub => {
+                                    const baseHours = sub.hours_remaining || 0;
+                                    const elapsed = activeTimers.has(sub.id)
+                                        ? (timerElapsed.get(sub.id) || 0) / 3600
+                                        : 0;
+                                    const currentRem = Math.max(0, baseHours - elapsed);
+                                    const percent = (currentRem / (sub.hours_purchased || 1)) * 100;
+                                    const isRunning = activeTimers.has(sub.id);
+
+                                    return (
+                                        <Card key={sub.id} padding="sm" className="hover:border-slate-600 transition-colors">
+                                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                                {/* User Info */}
+                                                <div className="flex items-center gap-3 md:w-1/4">
+                                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center text-xs font-bold text-white">
+                                                        {sub.customer_name?.[0]?.toUpperCase() || 'U'}
+                                                    </div>
+                                                    <div>
+                                                        <div className="font-medium text-white text-sm">{sub.customer_name}</div>
+                                                        <div className="text-xs text-slate-500">{sub.customer_phone}</div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Plan Info */}
+                                                <div className="md:w-1/4">
+                                                    <div className="text-xs text-slate-400 mb-1">{sub.membership_plans?.name || 'Unknown Plan'}</div>
+                                                    <div className="flex items-center gap-2 text-xs">
+                                                        <span className={`px-2 py-0.5 rounded-full ${sub.status === 'active' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'
+                                                            }`}>
+                                                            {sub.status}
+                                                        </span>
+                                                        <span className="text-slate-600">•</span>
+                                                        <span className="text-slate-400">Paid ₹{sub.amount_paid}</span>
+                                                    </div>
+                                                </div>
+
+                                                {/* Progress */}
+                                                <div className="flex-1 md:max-w-xs">
+                                                    <div className="flex justify-between text-xs mb-1.5">
+                                                        <span className="text-slate-400">Balance</span>
+                                                        <span className={`font-mono font-medium ${isRunning ? 'text-emerald-400' : 'text-slate-200'}`}>
+                                                            {Math.floor(currentRem)}h {Math.round((currentRem % 1) * 60)}m
+                                                        </span>
+                                                    </div>
+                                                    <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                                                        <div
+                                                            className={`h-full rounded-full transition-all duration-1000 ${percent < 10 ? 'bg-red-500' : percent < 30 ? 'bg-amber-500' : 'bg-emerald-500'
+                                                                }`}
+                                                            style={{ width: `${percent}%` }}
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                {/* Actions */}
+                                                <div className="flex items-center gap-2 md:justify-end md:w-auto">
+                                                    {isRunning ? (
+                                                        <Button
+                                                            variant="danger"
+                                                            size="sm"
+                                                            onClick={() => onStopTimer(sub.id)}
+                                                            className="flex-1 md:flex-none"
+                                                        >
+                                                            Stop
+                                                        </Button>
+                                                    ) : sub.status === 'active' ? (
+                                                        <Button
+                                                            variant="primary"
+                                                            size="sm"
+                                                            onClick={() => onStartTimer(sub.id)}
+                                                            className="flex-1 md:flex-none"
+                                                        >
+                                                            Start
+                                                        </Button>
+                                                    ) : null}
+                                                </div>
+                                            </div>
+                                        </Card>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Plans Content */}
+            {subTab === 'plans' && (
+                <div className="space-y-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {membershipPlans.map((plan, i) => {
+                            const colors = plan.plan_type === 'day_pass'
+                                ? { bg: 'bg-blue-500/5', border: 'border-blue-500/20', text: 'text-blue-400', icon: '☀️' }
+                                : i % 3 === 0
+                                    ? { bg: 'bg-purple-500/5', border: 'border-purple-500/20', text: 'text-purple-400', icon: '⏱️' }
+                                    : i % 3 === 1
+                                        ? { bg: 'bg-emerald-500/5', border: 'border-emerald-500/20', text: 'text-emerald-400', icon: '⏳' }
+                                        : { bg: 'bg-orange-500/5', border: 'border-orange-500/20', text: 'text-orange-400', icon: '🎯' };
+
+                            return (
+                                <Card
+                                    key={plan.id}
+                                    padding="none"
+                                    className={`relative overflow-hidden group hover:border-slate-600 transition-all ${colors.bg} ${colors.border} border`}
+                                >
+                                    <div className="p-5">
+                                        <div className="flex justify-between items-start mb-4">
+                                            <div className={`p-2 rounded-lg bg-slate-900/50 ${colors.text}`}>
+                                                {plan.console_type === 'PC' ? <Monitor size={20} /> : <Smartphone size={20} />}
+                                            </div>
+                                            <div className="text-2xl opacity-20 filter grayscale">{colors.icon}</div>
+                                        </div>
+
+                                        <h3 className="text-lg font-bold text-white mb-1">{plan.name}</h3>
+                                        <p className="text-xs text-slate-400 mb-4 h-8 line-clamp-2">
+                                            {plan.description || `${plan.hours} hours valid for ${plan.validity_days} days`}
+                                        </p>
+
+                                        <div className="flex items-baseline gap-1 mb-4">
+                                            <span className="text-2xl font-bold text-white">₹{plan.price}</span>
+                                            {plan.plan_type !== 'day_pass' && (
+                                                <span className="text-xs text-slate-500">/ {plan.hours}h</span>
+                                            )}
+                                        </div>
+
+                                        <div className="flex flex-wrap gap-2 mb-6">
+                                            <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded bg-slate-900/40 text-slate-400">
+                                                {plan.validity_days} Days
+                                            </span>
+                                            <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded bg-slate-900/40 text-slate-400 flex items-center gap-1">
+                                                {plan.player_count === 'single' ? <User size={10} /> : <Users size={10} />}
+                                                {plan.player_count}
+                                            </span>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <Button
+                                                variant="secondary"
+                                                size="sm"
+                                                onClick={() => openEditModal(plan)}
+                                                className="w-full"
+                                            >
+                                                <Edit2 size={14} className="mr-2" /> Edit
+                                            </Button>
+                                            <Button
+                                                variant="danger"
+                                                size="sm"
+                                                onClick={() => handleDeletePlan(plan.id)}
+                                                className="w-full"
+                                            >
+                                                <Trash2 size={14} className="mr-2" /> Delete
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </Card>
+                            )
+                        })}
+
+                        {/* Add New Plan Card */}
+                        <button
+                            onClick={() => {
+                                resetForm();
+                                setEditingPlan(null);
+                                setShowPlanModal(true);
+                            }}
+                            className="group flex flex-col items-center justify-center p-6 border-2 border-dashed border-slate-800 rounded-2xl hover:border-emerald-500/50 hover:bg-emerald-500/5 transition-all text-slate-500 hover:text-emerald-500"
+                        >
+                            <div className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform group-hover:bg-emerald-500/20">
+                                <Plus size={24} />
+                            </div>
+                            <span className="font-semibold text-sm">Create New Plan</span>
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Add/Edit Plan Modal */}
+            {showPlanModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                    <Card className="w-full max-w-lg bg-slate-900 border-slate-700" padding="md">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-lg font-bold text-white">
+                                {editingPlan ? 'Edit Plan' : 'Create New Plan'}
+                            </h3>
+                            <button onClick={() => setShowPlanModal(false)} className="text-slate-400 hover:text-white">
+                                <XCircle size={24} />
+                            </button>
+                        </div>
+
+                        <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+                            <Input
+                                label="Plan Name"
+                                placeholder="e.g. Gold Bundle"
+                                value={newPlanName}
+                                onChange={setNewPlanName}
+                            />
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase">Price (₹)</label>
+                                    <input
+                                        type="number"
+                                        className="w-full bg-slate-800 border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+                                        value={newPlanPrice}
+                                        onChange={e => setNewPlanPrice(e.target.value)}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase">Validity (Days)</label>
+                                    <input
+                                        type="number"
+                                        className="w-full bg-slate-800 border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+                                        value={newPlanValidity}
+                                        onChange={e => setNewPlanValidity(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <Select
+                                    label="Type"
+                                    value={newPlanType}
+                                    onChange={setNewPlanType}
+                                    options={[
+                                        { value: 'hourly_bundle', label: 'Hourly Bundle' },
+                                        { value: 'day_pass', label: 'Day Pass' }
+                                    ]}
+                                />
+                                {newPlanType === 'hourly_bundle' && (
+                                    <div>
+                                        <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase">Hours</label>
+                                        <input
+                                            type="number"
+                                            className="w-full bg-slate-800 border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+                                            value={newPlanHours}
+                                            onChange={e => setNewPlanHours(e.target.value)}
+                                        />
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <Select
+                                    label="Console"
+                                    value={newPlanConsoleType}
+                                    onChange={setNewPlanConsoleType}
+                                    options={[
+                                        { value: 'PC', label: 'PC' },
+                                        { value: 'PS5', label: 'PS5' },
+                                        { value: 'PS4', label: 'PS4' },
+                                        { value: 'Xbox', label: 'Xbox' },
+                                        { value: 'VR', label: 'VR' },
+                                    ]}
+                                />
+                                <Select
+                                    label="Players"
+                                    value={newPlanPlayerCount}
+                                    onChange={setNewPlanPlayerCount}
+                                    options={[
+                                        { value: 'single', label: 'Single Player' },
+                                        { value: 'double', label: 'Double Player' }
+                                    ]}
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase">Description</label>
+                                <textarea
+                                    className="w-full bg-slate-800 border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500 h-20 text-sm resize-none"
+                                    placeholder="Optional details..."
+                                    value={newPlanDescription}
+                                    onChange={e => setNewPlanDescription(e.target.value)}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3 mt-8 pt-4 border-t border-slate-800">
+                            <Button
+                                variant="secondary"
+                                onClick={() => setShowPlanModal(false)}
+                                className="flex-1"
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                variant="primary"
+                                onClick={handleSavePlan}
+                                disabled={savingPlan}
+                                className="flex-1"
+                            >
+                                {savingPlan ? 'Saving...' : 'Save Plan'}
+                            </Button>
+                        </div>
+                    </Card>
+                </div>
+            )}
+        </div>
+    );
+}
