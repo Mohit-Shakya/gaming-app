@@ -207,12 +207,12 @@ export async function sendBookingConfirmation({
     .map(
       (ticket) => `
       <tr>
-        <td style="padding: 12px 0; border-bottom: 1px solid #334155;">
-          <p style="margin: 0; color: #ffffff; font-size: 14px;">${ticket.console}</p>
+        <td style="padding: 14px 0; border-bottom: 1px solid #1e293b;">
+          <p style="margin: 0; color: #ffffff; font-size: 15px; font-weight: 500;">${ticket.console}</p>
           <p style="margin: 4px 0 0; color: #64748b; font-size: 12px;">${ticket.quantity} player(s)</p>
         </td>
-        <td style="padding: 12px 0; border-bottom: 1px solid #334155; text-align: right;">
-          <p style="margin: 0; color: #10b981; font-size: 14px; font-weight: 600;">₹${ticket.price}</p>
+        <td style="padding: 14px 0; border-bottom: 1px solid #1e293b; text-align: right;">
+          <p style="margin: 0; color: #10b981; font-size: 16px; font-weight: 600;">₹${ticket.price}</p>
         </td>
       </tr>
     `
@@ -220,57 +220,114 @@ export async function sendBookingConfirmation({
     .join('');
 
   const content = `
-    <div style="text-align: center; margin-bottom: 24px;">
-      <div style="width: 64px; height: 64px; background-color: #10b981; border-radius: 50%; margin: 0 auto 16px; display: flex; align-items: center; justify-content: center;">
-        <span style="font-size: 32px;">✓</span>
-      </div>
-      <h2 style="margin: 0; color: #ffffff; font-size: 24px;">Booking Confirmed!</h2>
-    </div>
-
-    <p style="margin: 0 0 24px; color: #94a3b8; font-size: 14px; line-height: 1.6; text-align: center;">
-      Hi${name ? ` ${name}` : ''}, your booking has been confirmed. Here are the details:
-    </p>
-
-    <div style="background-color: #0f172a; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
-      <p style="margin: 0 0 4px; color: #64748b; font-size: 12px;">Booking ID</p>
-      <p style="margin: 0 0 16px; color: #10b981; font-size: 16px; font-weight: 600;">#${bookingId.slice(0, 8).toUpperCase()}</p>
-
-      <p style="margin: 0 0 4px; color: #64748b; font-size: 12px;">Venue</p>
-      <p style="margin: 0; color: #ffffff; font-size: 16px; font-weight: 600;">${cafeName}</p>
-      ${cafeAddress ? `<p style="margin: 4px 0 16px; color: #94a3b8; font-size: 12px;">${cafeAddress}</p>` : '<div style="height: 16px;"></div>'}
-
-      <div style="display: flex; gap: 24px;">
-        <div style="flex: 1;">
-          <p style="margin: 0 0 4px; color: #64748b; font-size: 12px;">Date</p>
-          <p style="margin: 0; color: #ffffff; font-size: 14px;">${bookingDate}</p>
-        </div>
-        <div style="flex: 1;">
-          <p style="margin: 0 0 4px; color: #64748b; font-size: 12px;">Time</p>
-          <p style="margin: 0; color: #ffffff; font-size: 14px;">${startTime}</p>
-        </div>
-        <div style="flex: 1;">
-          <p style="margin: 0 0 4px; color: #64748b; font-size: 12px;">Duration</p>
-          <p style="margin: 0; color: #ffffff; font-size: 14px;">${duration} min</p>
-        </div>
-      </div>
-    </div>
-
-    <h3 style="margin: 0 0 16px; color: #ffffff; font-size: 16px;">Your Tickets</h3>
-    <table role="presentation" style="width: 100%; margin-bottom: 16px;">
-      ${ticketRows}
+    <!-- Success Icon -->
+    <table role="presentation" style="width: 100%; margin-bottom: 24px;">
       <tr>
-        <td style="padding: 16px 0 0;">
-          <p style="margin: 0; color: #ffffff; font-size: 16px; font-weight: 600;">Total</p>
-        </td>
-        <td style="padding: 16px 0 0; text-align: right;">
-          <p style="margin: 0; color: #10b981; font-size: 20px; font-weight: 700;">₹${totalAmount}</p>
+        <td style="text-align: center;">
+          <table role="presentation" style="margin: 0 auto;">
+            <tr>
+              <td style="width: 72px; height: 72px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 50%; text-align: center; vertical-align: middle;">
+                <span style="color: #ffffff; font-size: 36px; line-height: 72px;">&#10003;</span>
+              </td>
+            </tr>
+          </table>
+          <h2 style="margin: 20px 0 8px; color: #ffffff; font-size: 26px; font-weight: 700;">Booking Confirmed!</h2>
+          <p style="margin: 0; color: #10b981; font-size: 14px; font-weight: 500;">Your gaming session is all set</p>
         </td>
       </tr>
     </table>
 
-    <p style="margin: 24px 0 0; color: #94a3b8; font-size: 14px; line-height: 1.6; text-align: center;">
-      Please arrive 10 minutes before your scheduled time. See you there!
+    <p style="margin: 0 0 24px; color: #94a3b8; font-size: 15px; line-height: 1.6; text-align: center;">
+      Hi${name ? ` <strong style="color: #ffffff;">${name}</strong>` : ''}, your booking has been confirmed.<br>Here are your booking details:
     </p>
+
+    <!-- Booking Details Card -->
+    <table role="presentation" style="width: 100%; background-color: #0f172a; border-radius: 16px; margin-bottom: 24px; border: 1px solid #1e293b;">
+      <tr>
+        <td style="padding: 24px;">
+          <!-- Booking ID Badge -->
+          <table role="presentation" style="width: 100%; margin-bottom: 20px;">
+            <tr>
+              <td style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 8px; padding: 12px 16px; text-align: center;">
+                <p style="margin: 0; color: rgba(255,255,255,0.8); font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">Booking ID</p>
+                <p style="margin: 4px 0 0; color: #ffffff; font-size: 20px; font-weight: 700; letter-spacing: 2px;">#${bookingId.slice(0, 8).toUpperCase()}</p>
+              </td>
+            </tr>
+          </table>
+
+          <!-- Venue -->
+          <table role="presentation" style="width: 100%; margin-bottom: 20px; border-bottom: 1px solid #1e293b; padding-bottom: 20px;">
+            <tr>
+              <td>
+                <p style="margin: 0 0 4px; color: #64748b; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Venue</p>
+                <p style="margin: 0; color: #ffffff; font-size: 18px; font-weight: 600;">${cafeName}</p>
+                ${cafeAddress ? `<p style="margin: 6px 0 0; color: #94a3b8; font-size: 13px;">📍 ${cafeAddress}</p>` : ''}
+              </td>
+            </tr>
+          </table>
+
+          <!-- Date, Time, Duration -->
+          <table role="presentation" style="width: 100%;">
+            <tr>
+              <td style="width: 33%; padding-right: 8px;">
+                <p style="margin: 0 0 4px; color: #64748b; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">📅 Date</p>
+                <p style="margin: 0; color: #ffffff; font-size: 14px; font-weight: 500;">${bookingDate}</p>
+              </td>
+              <td style="width: 33%; padding: 0 8px;">
+                <p style="margin: 0 0 4px; color: #64748b; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">🕐 Time</p>
+                <p style="margin: 0; color: #ffffff; font-size: 14px; font-weight: 500;">${startTime}</p>
+              </td>
+              <td style="width: 33%; padding-left: 8px;">
+                <p style="margin: 0 0 4px; color: #64748b; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">⏱️ Duration</p>
+                <p style="margin: 0; color: #ffffff; font-size: 14px; font-weight: 500;">${duration} min</p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+
+    <!-- Tickets Section -->
+    <table role="presentation" style="width: 100%; background-color: #0f172a; border-radius: 16px; margin-bottom: 24px; border: 1px solid #1e293b;">
+      <tr>
+        <td style="padding: 20px 24px 12px;">
+          <p style="margin: 0; color: #ffffff; font-size: 16px; font-weight: 600;">🎮 Your Tickets</p>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding: 0 24px;">
+          <table role="presentation" style="width: 100%;">
+            ${ticketRows}
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding: 16px 24px 20px;">
+          <table role="presentation" style="width: 100%; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 12px;">
+            <tr>
+              <td style="padding: 16px 20px;">
+                <p style="margin: 0; color: rgba(255,255,255,0.9); font-size: 14px;">Total Amount</p>
+              </td>
+              <td style="padding: 16px 20px; text-align: right;">
+                <p style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">₹${totalAmount}</p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+
+    <!-- Footer Note -->
+    <table role="presentation" style="width: 100%; background-color: #0f172a; border-radius: 12px; border: 1px solid #1e293b;">
+      <tr>
+        <td style="padding: 16px 20px; text-align: center;">
+          <p style="margin: 0; color: #94a3b8; font-size: 14px; line-height: 1.6;">
+            ⚡ Please arrive <strong style="color: #ffffff;">10 minutes</strong> before your scheduled time.<br>
+            We look forward to seeing you!
+          </p>
+        </td>
+      </tr>
+    </table>
   `;
 
   return sendEmail({
