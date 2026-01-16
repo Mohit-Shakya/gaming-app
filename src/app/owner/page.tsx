@@ -3145,7 +3145,7 @@ export default function OwnerDashboardPage() {
           )}
 
           {/* Dashboard Tab - New Design */}
-          {activeTab === 'dashboard' && cafes.length > 0 && (
+          {activeTab === 'dashboard' && (
             <div>
               {/* Top Stats Cards */}
               <DashboardStats
