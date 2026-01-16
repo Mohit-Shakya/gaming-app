@@ -464,19 +464,6 @@ export default function OwnerDashboardPage() {
   // Check role
   useEffect(() => {
     async function checkRole() {
-      // TEMPORARY BYPASS FOR TESTING - Remove in production
-      setAllowed(true);
-      setCheckingRole(false);
-      setOwnerUsername("Test Owner");
-      // For testing, we need an owner ID - query the first cafe owner
-      const { data: cafe } = await supabase.from("cafes").select("user_id").limit(1).single();
-      if (cafe?.user_id) {
-        setOwnerId(cafe.user_id);
-      }
-      return;
-
-      // Original login check code (bypassed for testing)
-      /*
       const ownerSession = localStorage.getItem("owner_session");
       if (!ownerSession) {
         router.push("/owner/login");
@@ -525,7 +512,6 @@ export default function OwnerDashboardPage() {
       } finally {
         setCheckingRole(false);
       }
-      */
     }
 
     checkRole();
