@@ -10,7 +10,7 @@ import { ConsoleId } from "@/lib/constants";
 
 export interface CafeRow {
   id: string;
-  name: string;
+  name: string | null;
   slug: string;
   address: string;
   description: string | null;
