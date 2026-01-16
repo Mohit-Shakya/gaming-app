@@ -279,8 +279,8 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess }: BillingP
                     <h3 className="text-lg font-semibold text-white flex items-center gap-2">
                         <User className="text-blue-500" size={20} /> Customer Info
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 relative">
-                        <div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="relative">
                             <Input
                                 label="Name"
                                 value={customerName}
@@ -291,22 +291,28 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess }: BillingP
                                 placeholder="Enter customer name"
                             />
                             {showSuggestions && suggestions.length > 0 && (
-                                <div className="absolute top-[80px] left-0 right-0 z-50 md:right-auto md:w-[calc(50%-8px)] bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden max-h-48 overflow-y-auto">
-                                    {suggestions.map((s, idx) => (
-                                        <div
-                                            key={idx}
-                                            onClick={() => {
-                                                setCustomerName(s.name);
-                                                setCustomerPhone(s.phone);
-                                                setShowSuggestions(false);
-                                            }}
-                                            className="px-4 py-3 hover:bg-slate-700/50 cursor-pointer border-b border-slate-700/50 last:border-0"
-                                        >
-                                            <div className="font-medium text-white">{s.name}</div>
-                                            <div className="text-xs text-slate-400">{s.phone}</div>
-                                        </div>
-                                    ))}
-                                </div>
+                                <>
+                                    <div
+                                        className="fixed inset-0 z-40"
+                                        onClick={() => setShowSuggestions(false)}
+                                    />
+                                    <div className="absolute top-full mt-1 left-0 w-full z-50 bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden max-h-48 overflow-y-auto">
+                                        {suggestions.map((s, idx) => (
+                                            <div
+                                                key={idx}
+                                                onClick={() => {
+                                                    setCustomerName(s.name);
+                                                    setCustomerPhone(s.phone);
+                                                    setShowSuggestions(false);
+                                                }}
+                                                className="px-4 py-3 hover:bg-slate-700/50 cursor-pointer border-b border-slate-700/50 last:border-0"
+                                            >
+                                                <div className="font-medium text-white">{s.name}</div>
+                                                <div className="text-xs text-slate-400">{s.phone}</div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </>
                             )}
                         </div>
                         <Input
@@ -325,14 +331,16 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess }: BillingP
                         <h3 className="text-lg font-semibold text-white flex items-center gap-2">
                             <Smartphone className="text-purple-500" size={20} /> Stations
                         </h3>
-                        <Button size="sm" variant="secondary" onClick={addItem}>
-                            <Plus size={16} className="mr-1" /> Add Station
-                        </Button>
+                        {items.length > 0 && (
+                            <Button size="sm" variant="secondary" onClick={addItem}>
+                                <Plus size={16} className="mr-1" /> Add Station
+                            </Button>
+                        )}
                     </div>
 
                     {items.length === 0 ? (
                         <div className="py-8 text-center border-2 border-dashed border-slate-800 rounded-xl">
-                            <p className="text-slate-500 mb-2">No stations added yet</p>
+                            <p className="text-slate-500 mb-4">No stations added yet</p>
                             <Button size="sm" onClick={addItem}>Add First Station</Button>
                         </div>
                     ) : (
@@ -350,7 +358,7 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess }: BillingP
                                         <Select
                                             label="Console"
                                             value={item.console}
-                                            options={availableConsoles.map(c => ({ value: c, label: CONSOLE_LABELS[c] || c }))}
+                                            options={availableConsoles.map(c => ({ value: c, label: CONSOLE_LABELS[c as keyof typeof CONSOLE_LABELS] || c }))}
                                             onChange={(val) => updateItem(item.id, 'console', val)}
                                         />
                                         <Select
