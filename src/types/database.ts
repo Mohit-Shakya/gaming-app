@@ -10,49 +10,49 @@ import { ConsoleId } from "@/lib/constants";
 
 export interface CafeRow {
   id: string;
-  name: string | null;
-  slug: string;
-  address: string;
-  description: string | null;
-  hourly_price: number;
-  created_at: string;
-  updated_at: string;
-  user_id: string;
-  is_active: boolean;
+  name?: string | null;
+  slug?: string | null;
+  address?: string | null;
+  description?: string | null;
+  hourly_price?: number | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+  user_id?: string | null;
+  is_active?: boolean | null;
 
   // Contact information
-  phone: string | null;
-  email: string | null;
+  phone?: string | null;
+  email?: string | null;
 
   // URLs
-  google_maps_url: string | null;
-  instagram_url: string | null;
-  cover_url: string | null;
+  google_maps_url?: string | null;
+  instagram_url?: string | null;
+  cover_url?: string | null;
 
   // Pricing
-  price_starts_from: number | null;
+  price_starts_from?: number | null;
 
   // Console counts
-  ps5_count: number;
-  ps4_count: number;
-  xbox_count: number;
-  pc_count: number;
-  pool_count: number;
-  arcade_count: number;
-  snooker_count: number;
-  vr_count: number;
-  steering_wheel_count: number;
+  ps5_count?: number | null;
+  ps4_count?: number | null;
+  xbox_count?: number | null;
+  pc_count?: number | null;
+  pool_count?: number | null;
+  arcade_count?: number | null;
+  snooker_count?: number | null;
+  vr_count?: number | null;
+  steering_wheel_count?: number | null;
 
   // Additional details
-  opening_hours: string | null;
-  peak_hours: string | null;
-  popular_games: string | null;
-  offers: string | null;
-  monitor_details: string | null;
-  processor_details: string | null;
-  gpu_details: string | null;
-  ram_details: string | null;
-  accessories_details: string | null;
+  opening_hours?: string | null;
+  peak_hours?: string | null;
+  popular_games?: string | null;
+  offers?: string | null;
+  monitor_details?: string | null;
+  processor_details?: string | null;
+  gpu_details?: string | null;
+  ram_details?: string | null;
+  accessories_details?: string | null;
 
   // Optional fields for joined data
   gallery_images?: GalleryImage[];
