@@ -1,22 +1,38 @@
 // app/auth/callback/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createServerClient } from "@supabase/ssr";
 import { sendLoginAlert, sendWelcomeEmail } from "@/lib/email";
 
 export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get("code");
+  const redirectUrl = new URL("/auth/callback/finish", req.url);
 
   if (code) {
-    // Create a server-side Supabase client for the auth exchange
-    const supabase = createClient(
+    const response = NextResponse.redirect(redirectUrl);
+
+    // Create a server-side Supabase client with cookie handling
+    const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return req.cookies.getAll();
+          },
+          setAll(cookiesToSet: { name: string; value: string; options?: Record<string, unknown> }[]) {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              response.cookies.set(name, value, options as Record<string, unknown>);
+            });
+          },
+        },
+      }
     );
 
     const { data: sessionData, error: sessionError } = await supabase.auth.exchangeCodeForSession(code);
 
     if (sessionError) {
       console.error('Session exchange error:', sessionError);
+      return response;
     }
 
     // Send email notifications after successful login
@@ -42,29 +58,34 @@ export async function GET(req: NextRequest) {
         const userAgent = req.headers.get('user-agent') || '';
         const device = parseUserAgent(userAgent);
 
-        // Send emails - must await on serverless platforms
-        try {
-          console.log('Sending login alert to:', userEmail);
-          if (isNewUser) {
-            console.log('New user detected, sending welcome email');
-            await sendWelcomeEmail({ email: userEmail, name: userName });
-          }
-          const loginResult = await sendLoginAlert({
-            email: userEmail,
-            name: userName,
-            loginTime,
-            device,
-          });
-          console.log('Login alert result:', loginResult);
-        } catch (emailError) {
-          console.error('Failed to send email:', emailError);
-        }
+        // Send emails without blocking redirect
+        sendEmailsInBackground(userEmail, userName, isNewUser, loginTime, device);
       }
     }
+
+    return response;
   }
 
-  // Redirect to a client-side page that can read sessionStorage
-  return NextResponse.redirect(new URL("/auth/callback/finish", req.url));
+  // No code, redirect anyway
+  return NextResponse.redirect(redirectUrl);
+}
+
+// Send emails in background without blocking
+async function sendEmailsInBackground(
+  email: string,
+  name: string | undefined,
+  isNewUser: boolean,
+  loginTime: string,
+  device: string
+) {
+  try {
+    if (isNewUser) {
+      await sendWelcomeEmail({ email, name });
+    }
+    await sendLoginAlert({ email, name, loginTime, device });
+  } catch (error) {
+    console.error('Failed to send email:', error);
+  }
 }
 
 // Parse user agent to get device info
