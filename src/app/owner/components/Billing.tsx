@@ -73,7 +73,7 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess }: BillingP
             ];
 
             setAvailableConsoles(
-                consoleTypes.filter(c => c.count > 0).map(c => c.id)
+                consoleTypes.filter(c => (c.count ?? 0) > 0).map(c => c.id)
             );
         }
 
