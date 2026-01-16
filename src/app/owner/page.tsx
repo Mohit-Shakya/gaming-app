@@ -1436,7 +1436,7 @@ export default function OwnerDashboardPage() {
     setEditingBooking(actualBooking);
     setEditingBookingItemId(specificItemId);
     setEditAmount(actualBooking.total_amount?.toString() || "");
-    setEditAmountManuallyEdited(false); // Reset manual edit flag
+    setEditAmountManuallyEdited(true); // Keep original amount, user can manually change if needed
     setEditStatus(actualBooking.status || "confirmed");
     setEditPaymentMethod(actualBooking.payment_mode || "cash");
     setEditCustomerName(actualBooking.user_name || actualBooking.customer_name || "");
