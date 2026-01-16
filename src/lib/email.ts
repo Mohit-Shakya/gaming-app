@@ -3,7 +3,7 @@
  * Handles all email notifications for the gaming app
  */
 
-const ZEPTO_API_URL = 'https://api.zeptomail.in/v1.1/email';
+const ZEPTO_API_URL = 'https://api.zeptomail.com/v1.1/email';
 
 interface EmailAddress {
   email_address: {
@@ -58,8 +58,9 @@ export async function sendEmail({ to, toName, subject, html }: SendEmailParams):
     const response = await fetch(ZEPTO_API_URL, {
       method: 'POST',
       headers: {
+        'Accept': 'application/json',
         'Content-Type': 'application/json',
-        Authorization: token,
+        'Authorization': token,
       },
       body: JSON.stringify(payload),
     });
