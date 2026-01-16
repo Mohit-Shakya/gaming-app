@@ -15,6 +15,7 @@ interface BookingsTableProps {
     theme?: any;
     title?: string;
     onViewAll?: () => void;
+    showActions?: boolean;
 }
 
 export function BookingsTable({
@@ -25,7 +26,8 @@ export function BookingsTable({
     limit,
     loading = false,
     title = "Bookings",
-    onViewAll
+    onViewAll,
+    showActions = true
 }: BookingsTableProps) {
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
@@ -127,19 +129,19 @@ export function BookingsTable({
                             <th className="px-6 py-4 font-semibold">Date & Time</th>
                             <th className="px-6 py-4 font-semibold">Amount</th>
                             <th className="px-6 py-4 font-semibold">Status</th>
-                            <th className="px-6 py-4 font-semibold text-right">Actions</th>
+                            {showActions && <th className="px-6 py-4 font-semibold text-right">Actions</th>}
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
                         {loading ? (
                             <tr>
-                                <td colSpan={6} className="px-6 py-8 text-center text-slate-500">
+                                <td colSpan={showActions ? 6 : 5} className="px-6 py-8 text-center text-slate-500">
                                     Loading bookings...
                                 </td>
                             </tr>
                         ) : paginatedBookings.length === 0 ? (
                             <tr>
-                                <td colSpan={6} className="px-6 py-8 text-center text-slate-500">
+                                <td colSpan={showActions ? 6 : 5} className="px-6 py-8 text-center text-slate-500">
                                     No bookings found
                                 </td>
                             </tr>
@@ -183,17 +185,19 @@ export function BookingsTable({
                                     <td className="px-6 py-4">
                                         <StatusBadge status={booking.status || 'pending'} />
                                     </td>
-                                    <td className="px-6 py-4 text-right">
-                                        {onEdit && (
-                                            <Button
-                                                size="sm"
-                                                variant="ghost"
-                                                onClick={() => onEdit(booking)}
-                                            >
-                                                Edit
-                                            </Button>
-                                        )}
-                                    </td>
+                                    {showActions && (
+                                        <td className="px-6 py-4 text-right">
+                                            {onEdit && (
+                                                <Button
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    onClick={() => onEdit(booking)}
+                                                >
+                                                    Edit
+                                                </Button>
+                                            )}
+                                        </td>
+                                    )}
                                 </tr>
                             ))
                         )}

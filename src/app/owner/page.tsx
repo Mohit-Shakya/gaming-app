@@ -3199,6 +3199,7 @@ export default function OwnerDashboardPage() {
                       bookings={weeklyBookings}
                       loading={loadingData}
                       limit={10}
+                      showActions={false}
                       onViewAll={() => setActiveTab('bookings')}
                     />
                   );
