@@ -120,7 +120,7 @@ export function BookingsTable({
                 )}
             </div>
 
-            <div className="overflow-x-auto">
+            <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-sm text-left">
                     <thead className="text-xs text-slate-400 uppercase bg-slate-900/50 border-b border-white/5">
                         <tr>
@@ -242,6 +242,108 @@ export function BookingsTable({
                         )}
                     </tbody>
                 </table>
+            </div>
+
+            {/* Mobile View */}
+            <div className="md:hidden">
+                {loading ? (
+                    <div className="p-8 text-center text-slate-500">Loading bookings...</div>
+                ) : paginatedBookings.length === 0 ? (
+                    <div className="p-8 text-center text-slate-500">No bookings found</div>
+                ) : (
+                    <div className="divide-y divide-white/5 border-t border-white/5">
+                        {paginatedBookings.map((booking) => (
+                            <div key={booking.id} className="p-4 space-y-3">
+                                {/* Header */}
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <div className="font-medium text-white">
+                                            {booking.customer_name || booking.user_name || "Guest"}
+                                        </div>
+                                        <div className="text-xs text-slate-500">
+                                            {booking.customer_phone || booking.user_email || "-"}
+                                        </div>
+                                    </div>
+                                    <StatusBadge status={booking.status || 'pending'} />
+                                </div>
+
+                                {/* Info Row */}
+                                <div className="flex justify-between items-center py-2 text-sm text-slate-300 bg-white/5 rounded-lg px-3">
+                                    <div className="text-xs">
+                                        {booking.booking_items?.map((item: any, idx: number) => (
+                                            <span key={idx} className="block">
+                                                {item.quantity}x {item.console}
+                                            </span>
+                                        )) || "No items"}
+                                    </div>
+                                    <div className="font-semibold text-emerald-400">
+                                        ₹{booking.total_amount}
+                                    </div>
+                                </div>
+
+                                {/* Footer */}
+                                <div className="flex justify-between items-center text-xs text-slate-500">
+                                    <div>
+                                        {formatDate(booking.booking_date)} • {formatTime(booking.start_time)}
+                                    </div>
+                                    <div className="capitalize">
+                                        {booking.source?.replace('_', ' ') || 'Online'}
+                                    </div>
+                                </div>
+
+                                {/* Actions */}
+                                {showActions && (
+                                    <div className="flex justify-end gap-2 pt-2 border-t border-white/5 mt-2">
+                                        {onStatusChange && booking.status === 'pending' && (
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                className="text-emerald-500 bg-emerald-500/10 hover:bg-emerald-500/20 w-full justify-center"
+                                                onClick={(e) => { e.stopPropagation(); onStatusChange(booking.id, 'confirmed'); }}
+                                            >
+                                                <Check size={16} className="mr-1" /> Confirm
+                                            </Button>
+                                        )}
+
+                                        {onStatusChange && (booking.status === 'confirmed' || booking.status === 'in-progress') && (
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                className="text-blue-500 bg-blue-500/10 hover:bg-blue-500/20 w-full justify-center"
+                                                onClick={(e) => { e.stopPropagation(); onStatusChange(booking.id, 'completed'); }}
+                                            >
+                                                <CheckCircle size={16} className="mr-1" /> Complete
+                                            </Button>
+                                        )}
+
+                                        {onEdit && (
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                className="text-slate-400 hover:text-white border border-slate-700 w-full justify-center"
+                                                onClick={(e) => { e.stopPropagation(); onEdit(booking); }}
+                                            >
+                                                Edit
+                                            </Button>
+                                        )}
+
+                                        {onStatusChange && ['pending', 'confirmed', 'in-progress'].includes(booking.status) && (
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                className="text-red-500 hover:text-red-400 bg-red-500/5 hover:bg-red-500/10 px-3"
+                                                onClick={(e) => { e.stopPropagation(); onStatusChange(booking.id, 'cancelled'); }}
+                                                title="Cancel"
+                                            >
+                                                <X size={16} />
+                                            </Button>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
 
             {!limit && totalPages > 1 && (

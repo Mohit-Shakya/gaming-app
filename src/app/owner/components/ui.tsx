@@ -123,9 +123,9 @@ interface CardProps {
 export function Card({ children, className = '', padding = 'md' }: CardProps) {
     const paddingClasses = {
         none: '',
-        sm: 'p-4',
-        md: 'p-6',
-        lg: 'p-8',
+        sm: 'p-3 md:p-4',
+        md: 'p-4 md:p-6',
+        lg: 'p-6 md:p-8',
     };
 
     return (
@@ -233,7 +233,7 @@ export function Input({
                 className="
           w-full px-4 py-3 rounded-xl
           bg-slate-900/50 border border-slate-700
-          text-white placeholder-slate-500
+          text-base text-white placeholder-slate-500
           focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500
           disabled:opacity-50 disabled:cursor-not-allowed
           transition-colors
@@ -275,7 +275,7 @@ export function Select({
                 className="
           w-full px-4 py-3 rounded-xl
           bg-slate-900/50 border border-slate-700
-          text-white
+          text-base text-white
           focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500
           disabled:opacity-50 disabled:cursor-not-allowed
           transition-colors

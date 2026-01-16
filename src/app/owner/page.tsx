@@ -6531,18 +6531,15 @@ export default function OwnerDashboardPage() {
 
           {/* Billing Tab - Quick Booking Interface */}
           {activeTab === 'billing' && (
-            <div style={{ padding: isMobile ? 16 : 0 }}>
-              <Billing
-                cafeId={selectedCafeId || cafes[0]?.id}
-                cafes={cafes}
-                isMobile={isMobile}
-                onSuccess={() => {
-                  setRefreshTrigger(prev => prev + 1);
-                  setActiveTab('dashboard');
-                }}
-              />
-
-            </div>
+            <Billing
+              cafeId={selectedCafeId || cafes[0]?.id}
+              cafes={cafes}
+              isMobile={isMobile}
+              onSuccess={() => {
+                setRefreshTrigger(prev => prev + 1);
+                setActiveTab('dashboard');
+              }}
+            />
           )}
 
 
