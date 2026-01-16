@@ -143,15 +143,11 @@ export function Card({ children, className = '', padding = 'md' }: CardProps) {
 }
 
 // Button Component
-interface ButtonProps {
+interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
     children: ReactNode;
-    onClick?: () => void;
     variant?: 'primary' | 'secondary' | 'danger' | 'ghost';
     size?: 'sm' | 'md' | 'lg';
-    disabled?: boolean;
     loading?: boolean;
-    className?: string;
-    type?: 'button' | 'submit';
 }
 
 export function Button({
@@ -163,9 +159,10 @@ export function Button({
     loading = false,
     className = '',
     type = 'button',
+    ...props
 }: ButtonProps) {
     const variants = {
-        primary: 'bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-500/20',
+        primary: 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20',
         secondary: 'bg-slate-800 hover:bg-slate-700 text-white border border-slate-700',
         danger: 'bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/30',
         ghost: 'hover:bg-slate-800 text-slate-400 hover:text-white',
@@ -182,6 +179,7 @@ export function Button({
             type={type}
             onClick={onClick}
             disabled={disabled || loading}
+            {...props}
             className={`
         inline-flex items-center justify-center rounded-xl font-medium
         transition-all duration-200 

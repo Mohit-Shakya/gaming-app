@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Card, StatusBadge, Button, Select, Input } from './ui';
-import { Search, Filter, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { Search, Filter, ChevronLeft, ChevronRight, X, Check, CheckCircle } from 'lucide-react';
 import { BookingRow } from '@/types/database';
 
 interface BookingsTableProps {
@@ -187,15 +187,54 @@ export function BookingsTable({
                                     </td>
                                     {showActions && (
                                         <td className="px-6 py-4 text-right">
-                                            {onEdit && (
-                                                <Button
-                                                    size="sm"
-                                                    variant="ghost"
-                                                    onClick={() => onEdit(booking)}
-                                                >
-                                                    Edit
-                                                </Button>
-                                            )}
+                                            <div className="flex items-center justify-end gap-1">
+                                                {onStatusChange && booking.status === 'pending' && (
+                                                    <Button
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        className="text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10"
+                                                        onClick={(e) => { e.stopPropagation(); onStatusChange(booking.id, 'confirmed'); }}
+                                                        title="Confirm Booking"
+                                                    >
+                                                        <Check size={18} />
+                                                    </Button>
+                                                )}
+
+                                                {onStatusChange && (booking.status === 'confirmed' || booking.status === 'in-progress') && (
+                                                    <Button
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        className="text-blue-500 hover:text-blue-400 hover:bg-blue-500/10"
+                                                        onClick={(e) => { e.stopPropagation(); onStatusChange(booking.id, 'completed'); }}
+                                                        title="Complete Booking"
+                                                    >
+                                                        <CheckCircle size={18} />
+                                                    </Button>
+                                                )}
+
+                                                {onStatusChange && ['pending', 'confirmed', 'in-progress'].includes(booking.status) && (
+                                                    <Button
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        className="text-red-500 hover:text-red-400 hover:bg-red-500/10"
+                                                        onClick={(e) => { e.stopPropagation(); onStatusChange(booking.id, 'cancelled'); }}
+                                                        title="Cancel Booking"
+                                                    >
+                                                        <X size={18} />
+                                                    </Button>
+                                                )}
+
+                                                {onEdit && (
+                                                    <Button
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        className="text-slate-400 hover:text-white"
+                                                        onClick={(e) => { e.stopPropagation(); onEdit(booking); }}
+                                                    >
+                                                        Edit
+                                                    </Button>
+                                                )}
+                                            </div>
                                         </td>
                                     )}
                                 </tr>

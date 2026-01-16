@@ -6,6 +6,7 @@ export { BookingsTable } from './BookingsTable';
 export { ActiveSessions } from './ActiveSessions';
 export { LiveStatus } from './LiveStatus';
 export { Billing } from './Billing';
+export { BookingsManagement } from './BookingsManagement';
 export {
   StatCard,
   StatusBadge,
