@@ -38,19 +38,20 @@ export async function GET(req: NextRequest) {
         const userAgent = req.headers.get('user-agent') || '';
         const device = parseUserAgent(userAgent);
 
-        // Send emails (don't await to avoid blocking redirect)
-        if (isNewUser) {
-          // Send welcome email for new users
-          sendWelcomeEmail({ email: userEmail, name: userName }).catch(console.error);
+        // Send emails - must await on serverless platforms
+        try {
+          if (isNewUser) {
+            await sendWelcomeEmail({ email: userEmail, name: userName });
+          }
+          await sendLoginAlert({
+            email: userEmail,
+            name: userName,
+            loginTime,
+            device,
+          });
+        } catch (emailError) {
+          console.error('Failed to send email:', emailError);
         }
-
-        // Send login alert
-        sendLoginAlert({
-          email: userEmail,
-          name: userName,
-          loginTime,
-          device,
-        }).catch(console.error);
       }
     }
   }
