@@ -43,22 +43,25 @@ export function BookingsManagement({ bookings, loading, onUpdateStatus, onEdit, 
             let matchesDate = true;
             if (dateRange !== 'all') {
                 const bookingDate = new Date(b.booking_date);
+                bookingDate.setHours(0, 0, 0, 0);
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
 
                 if (dateRange === 'today') {
                     matchesDate = bookingDate.getTime() === today.getTime();
+                } else if (dateRange === 'tomorrow') {
+                    const tomorrow = new Date(today);
+                    tomorrow.setDate(today.getDate() + 1);
+                    matchesDate = bookingDate.getTime() === tomorrow.getTime();
                 } else if (dateRange === 'week') {
-                    const weekAgo = new Date(today);
-                    weekAgo.setDate(today.getDate() - 7);
-                    matchesDate = bookingDate >= weekAgo;
-                } else if (dateRange === 'month') {
-                    const monthAgo = new Date(today);
-                    monthAgo.setMonth(today.getMonth() - 1);
-                    matchesDate = bookingDate >= monthAgo;
+                    const weekEnd = new Date(today);
+                    weekEnd.setDate(today.getDate() + 7);
+                    matchesDate = bookingDate >= today && bookingDate <= weekEnd;
                 } else if (dateRange === 'custom' && customStart && customEnd) {
                     const start = new Date(customStart);
+                    start.setHours(0, 0, 0, 0);
                     const end = new Date(customEnd);
+                    end.setHours(23, 59, 59, 999);
                     matchesDate = bookingDate >= start && bookingDate <= end;
                 }
             }
@@ -178,8 +181,8 @@ export function BookingsManagement({ bookings, loading, onUpdateStatus, onEdit, 
                             options={[
                                 { value: 'all', label: 'All Time' },
                                 { value: 'today', label: 'Today' },
+                                { value: 'tomorrow', label: 'Tomorrow' },
                                 { value: 'week', label: 'This Week' },
-                                { value: 'month', label: 'This Month' },
                                 { value: 'custom', label: 'Custom' },
                             ]}
                         />
