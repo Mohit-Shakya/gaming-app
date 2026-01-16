@@ -1,9 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Card, StatusBadge, Button, Select, Input } from './ui';
-import { Search, Filter, ChevronLeft, ChevronRight, X, Check, CheckCircle } from 'lucide-react';
-import { BookingRow } from '@/types/database';
+import { Card, StatusBadge, Button } from './ui';
+import { Search, ChevronLeft, ChevronRight, X, Check, CheckCircle } from 'lucide-react';
 
 interface BookingsTableProps {
     bookings: any[];
@@ -87,7 +86,7 @@ export function BookingsTable({
 
     return (
         <Card className="w-full overflow-hidden" padding="none">
-            <div className="p-6 border-b border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="p-4 md:p-6 border-b border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <h2 className="text-lg font-semibold text-white flex items-center gap-2">
                     {title}
                 </h2>
@@ -121,15 +120,15 @@ export function BookingsTable({
             </div>
 
             <div className="hidden md:block overflow-x-auto">
-                <table className="w-full text-sm text-left">
+                <table className="w-full text-sm text-left table-fixed">
                     <thead className="text-xs text-slate-400 uppercase bg-slate-900/50 border-b border-white/5">
                         <tr>
-                            <th className="px-6 py-4 font-semibold">Customer</th>
-                            <th className="px-6 py-4 font-semibold">Details</th>
-                            <th className="px-6 py-4 font-semibold">Date & Time</th>
-                            <th className="px-6 py-4 font-semibold">Amount</th>
-                            <th className="px-6 py-4 font-semibold">Status</th>
-                            {showActions && <th className="px-6 py-4 font-semibold text-right">Actions</th>}
+                            <th className="px-4 py-3 font-semibold w-[18%]">Customer</th>
+                            <th className="px-4 py-3 font-semibold w-[18%]">Details</th>
+                            <th className="px-4 py-3 font-semibold w-[18%]">Date & Time</th>
+                            <th className="px-4 py-3 font-semibold w-[12%]">Amount</th>
+                            <th className="px-4 py-3 font-semibold w-[14%]">Status</th>
+                            {showActions && <th className="px-4 py-3 font-semibold text-right w-[20%]">Actions</th>}
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
@@ -148,7 +147,7 @@ export function BookingsTable({
                         ) : (
                             paginatedBookings.map((booking) => (
                                 <tr key={booking.id} className="hover:bg-white/5 transition-colors">
-                                    <td className="px-6 py-4">
+                                    <td className="px-4 py-1.5">
                                         <div className="font-medium text-white">
                                             {booking.customer_name || booking.user_name || "Guest"}
                                         </div>
@@ -156,7 +155,7 @@ export function BookingsTable({
                                             {booking.customer_phone || booking.user_email || "-"}
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4">
+                                    <td className="px-4 py-1.5">
                                         <div className="text-slate-300">
                                             {booking.booking_items?.map((item: any, idx: number) => (
                                                 <span key={idx} className="block">
@@ -168,13 +167,13 @@ export function BookingsTable({
                                             {booking.source?.replace('_', ' ') || 'Online'}
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4">
+                                    <td className="px-4 py-1.5">
                                         <div className="text-white">{formatDate(booking.booking_date)}</div>
                                         <div className="text-xs text-slate-500 mt-0.5">
                                             {formatTime(booking.start_time)} ({booking.duration}m)
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4">
+                                    <td className="px-4 py-1.5">
                                         <div className="font-semibold text-emerald-400">
                                             ₹{booking.total_amount}
                                         </div>
@@ -182,11 +181,11 @@ export function BookingsTable({
                                             {booking.payment_mode || 'Unpaid'}
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4">
+                                    <td className="px-4 py-1.5">
                                         <StatusBadge status={booking.status || 'pending'} />
                                     </td>
                                     {showActions && (
-                                        <td className="px-6 py-4 text-right">
+                                        <td className="px-4 py-1.5 text-right">
                                             <div className="flex items-center justify-end gap-1">
                                                 {onStatusChange && booking.status === 'pending' && (
                                                     <Button

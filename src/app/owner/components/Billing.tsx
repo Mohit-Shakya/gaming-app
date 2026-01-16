@@ -263,17 +263,6 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess }: BillingP
         <div className={`grid grid-cols-1 lg:grid-cols-3 gap-6 ${isMobile ? 'pb-20' : ''}`}>
             {/* Left Column: Form */}
             <div className="lg:col-span-2 space-y-6">
-                {/* Header */}
-                <div className="flex items-center gap-4 mb-6">
-                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/30">
-                        <span className="text-2xl">⚡</span>
-                    </div>
-                    <div>
-                        <h2 className="text-2xl font-bold text-white">Quick Booking</h2>
-                        <p className="text-slate-400">Create instant walk-in sessions</p>
-                    </div>
-                </div>
-
                 {/* Customer Details */}
                 <Card className="space-y-4 overflow-visible relative z-10">
                     <h3 className="text-lg font-semibold text-white flex items-center gap-2">
@@ -400,12 +389,12 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess }: BillingP
 
             {/* Right Column: Summary & Payment */}
             <div className="lg:col-span-1 space-y-6">
-                <Card className="sticky top-6">
-                    <h3 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
+                <Card className="sticky top-6 space-y-4">
+                    <h3 className="text-lg font-semibold text-white flex items-center gap-2">
                         <Clock className="text-orange-500" size={20} /> Summary
                     </h3>
 
-                    <div className="bg-slate-900/50 rounded-xl p-4 mb-6 space-y-4">
+                    <div className="bg-slate-900/50 rounded-xl p-4 space-y-4">
                         <div className="flex items-center justify-between text-sm">
                             <span className="text-slate-400">Date</span>
                             <input

@@ -85,7 +85,7 @@ export function BookingsManagement({ bookings, loading, onUpdateStatus, onEdit, 
     }, [filteredBookings]);
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-4">
             {/* Summary Stats */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <Card padding="md" className="relative overflow-hidden">

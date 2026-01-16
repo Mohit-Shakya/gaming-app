@@ -3163,7 +3163,7 @@ export default function OwnerDashboardPage() {
               />
 
               {/* Active Consoles Section - Only show occupied consoles */}
-              <div style={{ marginTop: 32 }}>
+              <div style={{ marginTop: isMobile ? 20 : 24 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
                   <h2
                     style={{
@@ -3188,12 +3188,14 @@ export default function OwnerDashboardPage() {
                 />
               </div>
 
-              <div style={{ marginTop: isMobile ? 24 : 40 }}>
+              <div style={{ marginTop: isMobile ? 20 : 24 }}>
                 <BookingsTable
                   title="Today's Bookings"
                   bookings={bookings.filter((b: any) => b.booking_date === new Date().toISOString().split('T')[0])}
                   loading={loadingData}
                   onViewAll={() => setActiveTab('bookings')}
+                  onStatusChange={handleBookingStatusChange}
+                  onEdit={handleEditBooking}
                 />
               </div>
 

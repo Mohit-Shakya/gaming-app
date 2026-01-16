@@ -231,7 +231,7 @@ export function Input({
                 placeholder={placeholder}
                 disabled={disabled}
                 className="
-          w-full px-4 py-3 rounded-xl
+          w-full px-3 py-2.5 md:px-4 md:py-3 rounded-xl
           bg-slate-900/50 border border-slate-700
           text-base text-white placeholder-slate-500
           focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500
@@ -273,7 +273,7 @@ export function Select({
                 onChange={(e) => onChange(e.target.value)}
                 disabled={disabled}
                 className="
-          w-full px-4 py-3 rounded-xl
+          w-full px-3 py-2.5 md:px-4 md:py-3 rounded-xl
           bg-slate-900/50 border border-slate-700
           text-base text-white
           focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500
