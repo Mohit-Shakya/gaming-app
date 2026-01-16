@@ -164,6 +164,15 @@ export function BookingsManagement({ bookings, loading, onUpdateStatus, onEdit, 
                             ]}
                         />
                         <Select
+                            value={sourceFilter}
+                            onChange={(val) => setSourceFilter(val)}
+                            options={[
+                                { value: 'all', label: 'All Sources' },
+                                { value: 'online', label: 'Online' },
+                                { value: 'walk-in', label: 'Walk-in' },
+                            ]}
+                        />
+                        <Select
                             value={dateRange}
                             onChange={(val) => setDateRange(val)}
                             options={[
