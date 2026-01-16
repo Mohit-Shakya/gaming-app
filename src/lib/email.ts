@@ -90,54 +90,86 @@ const formatCurrency = (amount: number) => {
 
 // Email template wrapper
 function emailTemplate(content: string, title: string = 'BookMyGame'): string {
+  // Website Red Theme
+  const colors = {
+    bg: '#000000',           // Pure Black
+    card: '#111111',         // Almost Black
+    border: '#222222',       // Dark Gray
+    primary: '#ef4444',      // Red 500
+    primaryDark: '#b91c1c',  // Red 700
+    textMain: '#ffffff',
+    textMuted: '#9ca3af'     // Gray 400
+  };
+
   return `
 <!DOCTYPE html>
-<html>
+<html lang="en" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${title}</title>
+  <!--[if mso]>
+  <xml>
+    <o:OfficeDocumentSettings>
+      <o:PixelsPerInch>96</o:PixelsPerInch>
+    </o:OfficeDocumentSettings>
+  </xml>
+  <![endif]-->
+  <style>
+    body { margin: 0; padding: 0; background-color: ${colors.bg}; }
+    table { border-collapse: collapse; mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+    td, th { padding: 0; }
+    .email-container { width: 100%; max-width: 600px; margin: 0 auto; background-color: ${colors.bg}; }
+    @media only screen and (max-width: 600px) {
+      .email-container { width: 100% !important; }
+      .mobile-center { text-align: center !important; }
+      .mobile-padding { padding: 20px !important; }
+    }
+  </style>
 </head>
-<body style="margin: 0; padding: 0; background-color: #0f172a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; -webkit-font-smoothing: antialiased;">
-  <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #0f172a;">
-    <tr>
-      <td style="padding: 40px 10px;">
-        <table role="presentation" style="max-width: 600px; margin: 0 auto; background-color: #1e293b; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3); border: 1px solid #334155;">
-          
-          <!-- Brand Header -->
-          <tr>
-            <td style="padding: 32px 0; text-align: center; background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
-              <h1 style="margin: 0; color: #ffffff; font-size: 32px; font-weight: 800; letter-spacing: -0.5px; text-transform: uppercase;">BookMyGame</h1>
-            </td>
-          </tr>
+<body style="background-color: ${colors.bg}; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; color: ${colors.textMain};">
+  
+  <center role="article" aria-roledescription="email" lang="en" style="width: 100%; background-color: ${colors.bg};">
+    
+    <!-- Main Container -->
+    <table align="center" role="presentation" class="email-container" style="margin: 0 auto; background-color: ${colors.bg};">
+      
+      <!-- Top Spacer -->
+      <tr><td style="height: 40px;">&nbsp;</td></tr>
 
-          <!-- Content Area -->
-          <tr>
-            <td style="padding: 40px 32px;">
-              ${content}
-            </td>
-          </tr>
+      <!-- Brand Logo -->
+      <tr>
+        <td style="padding-bottom: 30px; text-align: center;">
+           <span style="font-size: 24px; font-weight: 900; color: ${colors.textMain}; letter-spacing: 2px; text-transform: uppercase; font-style: italic;">
+              BOOK<span style="color: ${colors.primary};">MY</span>GAME
+           </span>
+        </td>
+      </tr>
 
-          <!-- Footer -->
-          <tr>
-            <td style="padding: 32px; background-color: #0f172a; text-align: center; border-top: 1px solid #334155;">
-              <p style="margin: 0 0 12px; color: #94a3b8; font-size: 14px;">
-                Need help? Contact us at <a href="mailto:support@bookmygame.in" style="color: #10b981; text-decoration: none;">support@bookmygame.in</a>
-              </p>
-              <div style="margin-bottom: 24px;">
-                <a href="#" style="color: #64748b; text-decoration: none; margin: 0 10px; font-size: 12px;">Terms</a>
-                <a href="#" style="color: #64748b; text-decoration: none; margin: 0 10px; font-size: 12px;">Privacy</a>
-                <a href="#" style="color: #64748b; text-decoration: none; margin: 0 10px; font-size: 12px;">Unsubscribe</a>
-              </div>
-              <p style="margin: 0; color: #64748b; font-size: 12px;">
-                &copy; ${new Date().getFullYear()} BookMyGame. All rights reserved.
-              </p>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
+      <!-- Content Card -->
+      <tr>
+        <td style="background-color: ${colors.card}; border: 1px solid ${colors.border}; border-top: 4px solid ${colors.primary}; border-radius: 4px; padding: 40px 30px;" class="mobile-padding">
+          ${content}
+        </td>
+      </tr>
+
+      <!-- Footer -->
+      <tr>
+        <td style="padding: 30px 20px; text-align: center;">
+          <p style="margin: 0 0 10px; color: ${colors.textMuted}; font-size: 13px;">
+            Questions? Contact <a href="mailto:support@bookmygame.in" style="color: ${colors.primary}; text-decoration: none;">support@bookmygame.in</a>
+          </p>
+          <p style="margin: 0; color: #52525b; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">
+            &copy; ${new Date().getFullYear()} BookMyGame
+          </p>
+        </td>
+      </tr>
+
+      <!-- Bottom Spacer -->
+      <tr><td style="height: 40px;">&nbsp;</td></tr>
+
+    </table>
+  </center>
 </body>
 </html>`;
 }
@@ -153,49 +185,56 @@ export interface LoginAlertParams {
 
 export async function sendLoginAlert({ email, name, loginTime, device, location }: LoginAlertParams) {
   const content = `
-    <h2 style="margin: 0 0 16px; color: #ffffff; font-size: 24px; font-weight: 700;">New Login Detected</h2>
-    <p style="margin: 0 0 32px; color: #cbd5e1; font-size: 16px; line-height: 1.6;">
-      Hi ${name || 'Gamer'},<br>
+    <!-- Centered Icon -->
+    <table role="presentation" width="100%" style="margin-bottom: 25px;">
+      <tr>
+        <td align="center">
+           <img src="https://img.icons8.com/ios-filled/100/ef4444/security-checked.png" alt="Security" width="50" height="50" style="display: block; width: 50px; border: 0;" />
+        </td>
+      </tr>
+    </table>
+
+    <h1 style="margin: 0 0 10px; font-size: 22px; font-weight: 700; text-align: center; color: #ffffff; text-transform: uppercase; letter-spacing: 1px;">New Login</h1>
+    <p style="margin: 0 0 30px; color: #9ca3af; font-size: 15px; line-height: 1.5; text-align: center;">
       We detected a new login to your BookMyGame account.
     </p>
 
-    <div style="background-color: #0f172a; border-radius: 12px; padding: 24px; margin-bottom: 32px; border: 1px solid #334155;">
-      <table role="presentation" style="width: 100%;">
-        <tr>
-          <td style="padding-bottom: 16px;">
-            <p style="margin: 0; color: #94a3b8; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Time</p>
-            <p style="margin: 0; color: #ffffff; font-size: 16px; font-weight: 500;">${loginTime}</p>
-          </td>
-        </tr>
-        ${device ? `
-        <tr>
-          <td style="padding-bottom: 16px;">
-            <p style="margin: 0; color: #94a3b8; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Device</p>
-            <p style="margin: 0; color: #ffffff; font-size: 16px; font-weight: 500;">${device}</p>
-          </td>
-        </tr>
-        ` : ''}
-        ${location ? `
-        <tr>
-          <td>
-            <p style="margin: 0; color: #94a3b8; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Location</p>
-            <p style="margin: 0; color: #ffffff; font-size: 16px; font-weight: 500;">${location}</p>
-          </td>
-        </tr>
-        ` : ''}
-      </table>
-    </div>
+    <!-- Info Table -->
+    <table role="presentation" width="100%" style="background-color: #000000; border: 1px solid #222222; border-radius: 4px;">
+      <tr>
+        <td style="padding: 20px;">
+          <table role="presentation" width="100%">
+            <tr>
+              <td style="padding-bottom: 12px; border-bottom: 1px solid #222222; font-size: 13px; color: #ef4444; font-weight: 600; text-transform: uppercase;">Time</td>
+              <td style="padding-bottom: 12px; border-bottom: 1px solid #222222; font-size: 14px; color: #ffffff; text-align: right;">${loginTime}</td>
+            </tr>
+            ${device ? `
+            <tr>
+              <td style="padding: 12px 0; border-bottom: 1px solid #222222; font-size: 13px; color: #ef4444; font-weight: 600; text-transform: uppercase;">Device</td>
+              <td style="padding: 12px 0; border-bottom: 1px solid #222222; font-size: 14px; color: #ffffff; text-align: right;">${device}</td>
+            </tr>
+            ` : ''}
+            ${location ? `
+            <tr>
+              <td style="padding-top: 12px; font-size: 13px; color: #ef4444; font-weight: 600; text-transform: uppercase;">Location</td>
+              <td style="padding-top: 12px; font-size: 14px; color: #ffffff; text-align: right;">${location}</td>
+            </tr>
+            ` : ''}
+          </table>
+        </td>
+      </tr>
+    </table>
 
-    <p style="margin: 0; color: #94a3b8; font-size: 14px; line-height: 1.6;">
-      If this wasn't you, please secure your account immediately by changing your password.
-    </p>
+    <div style="margin-top: 30px; text-align: center;">
+      <a href="#" style="color: #6b7280; font-size: 12px; text-decoration: underline;">Secure my account</a>
+    </div>
   `;
 
   return sendEmail({
     to: email,
     toName: name,
-    subject: 'Security Alert: New Login Detected',
-    html: emailTemplate(content, 'New Login Detected'),
+    subject: '⚠️ New Login Detected',
+    html: emailTemplate(content, 'Security Alert'),
   });
 }
 
@@ -232,91 +271,81 @@ export async function sendBookingConfirmation({
   
   const ticketRows = tickets.map(ticket => `
     <tr>
-      <td style="padding: 16px 0; border-bottom: 1px solid #334155;">
-        <p style="margin: 0; color: #ffffff; font-size: 16px; font-weight: 600;">${ticket.console}</p>
-        <p style="margin: 4px 0 0; color: #94a3b8; font-size: 14px;">${ticket.quantity} player(s)</p>
+      <td style="padding: 15px 0; border-bottom: 1px solid #222222;">
+        <span style="display: block; color: #ffffff; font-size: 14px; font-weight: 700;">${ticket.console}</span>
+        <span style="display: block; color: #9ca3af; font-size: 12px; margin-top: 4px;">Player(s): ${ticket.quantity}</span>
       </td>
-      <td style="padding: 16px 0; border-bottom: 1px solid #334155; text-align: right; vertical-align: top;">
-        <p style="margin: 0; color: #10b981; font-size: 16px; font-weight: 600;">${formatCurrency(ticket.price)}</p>
+      <td style="padding: 15px 0; border-bottom: 1px solid #222222; text-align: right; vertical-align: middle;">
+        <span style="color: #ef4444; font-size: 14px; font-weight: 700;">${formatCurrency(ticket.price)}</span>
       </td>
     </tr>
   `).join('');
 
   const content = `
-    <!-- Success Animation/Icon -->
-    <div style="text-align: center; margin-bottom: 32px;">
-      <div style="display: inline-block; width: 64px; height: 64px; background-color: #10b981; border-radius: 50%; margin-bottom: 16px; box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);">
-        <span style="display: block; color: #ffffff; font-size: 32px; line-height: 64px;">&#10003;</span>
-      </div>
-      <h2 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">Booking Confirmed!</h2>
-      <p style="margin: 8px 0 0; color: #cbd5e1; font-size: 16px;">
-        Hi ${name || 'Gamer'}, your session is locked in.
-      </p>
+    <!-- Icon -->
+    <table role="presentation" width="100%" style="margin-bottom: 25px;">
+      <tr>
+        <td align="center">
+           <img src="https://img.icons8.com/ios-filled/100/ef4444/checked-checkbox.png" alt="Success" width="50" height="50" style="display: block; width: 50px; border: 0;" />
+        </td>
+      </tr>
+    </table>
+
+    <h1 style="margin: 0 0 10px; font-size: 24px; font-weight: 800; text-align: center; color: #ffffff; text-transform: uppercase;">Booking Confirmed</h1>
+    <p style="margin: 0 0 30px; color: #9ca3af; font-size: 15px; text-align: center;">
+      Game on, ${name || 'Player'}. Your slot is locked.
+    </p>
+
+    <!-- Booking ID -->
+    <div style="background-color: #ef4444; color: #ffffff; font-weight: 700; text-align: center; padding: 12px; border-radius: 4px; margin-bottom: 30px; font-size: 16px; letter-spacing: 1px;">
+       ID: #${bookingId.slice(0, 8).toUpperCase()}
     </div>
 
-    <!-- Main Booking Card -->
-    <div style="background-color: #0f172a; border-radius: 16px; overflow: hidden; border: 1px solid #334155; margin-bottom: 32px;">
-      
-      <!-- Card Header: Booking ID -->
-      <div style="background-color: #1e293b; padding: 20px 24px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center;">
-        <div>
-          <p style="margin: 0; color: #94a3b8; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">Booking ID</p>
-          <p style="margin: 4px 0 0; color: #10b981; font-size: 18px; font-weight: 700; letter-spacing: 1px;">#${bookingId.slice(0, 8).toUpperCase()}</p>
-        </div>
-      </div>
-
-      <!-- Venue Details -->
-      <div style="padding: 24px;">
-        <p style="margin: 0 0 8px; color: #94a3b8; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Venue</p>
-        <h3 style="margin: 0 0 8px; color: #ffffff; font-size: 20px; font-weight: 700;">${cafeName}</h3>
-        ${cafeAddress ? `<p style="margin: 0; color: #cbd5e1; font-size: 14px; line-height: 1.5;">📍 ${cafeAddress}</p>` : ''}
-        
-        <div style="margin-top: 24px; padding-top: 24px; border-top: 1px solid #334155; display: flex;">
-          <div style="flex: 1;">
-            <p style="margin: 0 0 8px; color: #94a3b8; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Date</p>
-            <p style="margin: 0; color: #ffffff; font-size: 15px; font-weight: 600;">${bookingDate}</p>
-          </div>
-          <div style="flex: 1;">
-            <p style="margin: 0 0 8px; color: #94a3b8; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Time</p>
-            <p style="margin: 0; color: #ffffff; font-size: 15px; font-weight: 600;">${startTime}</p>
-          </div>
-          <div style="flex: 1;">
-            <p style="margin: 0 0 8px; color: #94a3b8; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Duration</p>
-            <p style="margin: 0; color: #ffffff; font-size: 15px; font-weight: 600;">${duration} min</p>
-          </div>
-        </div>
-      </div>
+    <!-- Venue Info -->
+    <div style="margin-bottom: 30px;">
+       <h3 style="margin: 0 0 5px; color: #ffffff; font-size: 18px;">${cafeName}</h3>
+       ${cafeAddress ? `<p style="margin: 0; color: #9ca3af; font-size: 13px;">${cafeAddress}</p>` : ''}
     </div>
 
-    <!-- Tickets Section -->
-    <div style="margin-bottom: 32px;">
-      <h3 style="margin: 0 0 16px; color: #ffffff; font-size: 18px; font-weight: 700;">Your Tickets</h3>
-      <table role="presentation" style="width: 100%; border-collapse: collapse;">
+    <!-- Date/Time Grid -->
+    <table role="presentation" width="100%" style="margin-bottom: 30px; border-top: 1px solid #222222; border-bottom: 1px solid #222222;">
+      <tr>
+        <td style="padding: 15px 0; width: 33%; text-align: left; border-right: 1px solid #222222;">
+          <span style="display: block; color: #ef4444; font-size: 11px; text-transform: uppercase; font-weight: 700;">Date</span>
+          <span style="display: block; color: #ffffff; font-size: 14px; margin-top: 4px;">${bookingDate}</span>
+        </td>
+        <td style="padding: 15px 15px; width: 33%; text-align: left; border-right: 1px solid #222222;">
+          <span style="display: block; color: #ef4444; font-size: 11px; text-transform: uppercase; font-weight: 700;">Time</span>
+          <span style="display: block; color: #ffffff; font-size: 14px; margin-top: 4px;">${startTime}</span>
+        </td>
+        <td style="padding: 15px 0; width: 33%; text-align: right;">
+          <span style="display: block; color: #ef4444; font-size: 11px; text-transform: uppercase; font-weight: 700;">Duration</span>
+          <span style="display: block; color: #ffffff; font-size: 14px; margin-top: 4px;">${duration} min</span>
+        </td>
+      </tr>
+    </table>
+
+    <!-- Tickets -->
+    <div>
+      <h4 style="margin: 0 0 10px; color: #ffffff; font-size: 14px; text-transform: uppercase; letter-spacing: 1px;">Order Summary</h4>
+      <table role="presentation" width="100%" style="border-collapse: collapse;">
         ${ticketRows}
-        <!-- Total -->
         <tr>
-          <td style="padding: 20px 0 0; border-top: 1px solid #334155;">
-            <p style="margin: 0; color: #ffffff; font-size: 18px; font-weight: 700;">Total Paid</p>
+          <td style="padding-top: 15px;">
+            <span style="color: #ffffff; font-size: 16px; font-weight: 700;">Total</span>
           </td>
-          <td style="padding: 20px 0 0; border-top: 1px solid #334155; text-align: right;">
-            <p style="margin: 0; color: #10b981; font-size: 24px; font-weight: 800;">${formatCurrency(totalAmount)}</p>
+          <td style="padding-top: 15px; text-align: right;">
+            <span style="color: #ef4444; font-size: 20px; font-weight: 800;">${formatCurrency(totalAmount)}</span>
           </td>
         </tr>
       </table>
-    </div>
-
-    <!-- Arrival Info -->
-    <div style="background-color: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 12px; padding: 16px; text-align: center;">
-      <p style="margin: 0; color: #d1fae5; font-size: 14px; line-height: 1.6;">
-        ⚡ <strong>Pro Tip:</strong> Please arrive 10 minutes before your scheduled start time to get set up on your console.
-      </p>
     </div>
   `;
 
   return sendEmail({
     to: email,
     toName: name,
-    subject: `Booking Confirmed: #${bookingId.slice(0, 8).toUpperCase()} at ${cafeName}`,
+    subject: `Booking Confirmed: ${cafeName}`,
     html: emailTemplate(content, 'Booking Confirmed'),
   });
 }
@@ -342,53 +371,47 @@ export async function sendBookingCancellation({
   totalAmount,
 }: BookingCancellationParams) {
   const content = `
-    <div style="text-align: center; margin-bottom: 32px;">
-      <div style="display: inline-block; width: 64px; height: 64px; background-color: #ef4444; border-radius: 50%; margin-bottom: 16px; box-shadow: 0 0 20px rgba(239, 68, 68, 0.4);">
-        <span style="display: block; color: #ffffff; font-size: 40px; line-height: 64px; font-weight: 300;">&times;</span>
-      </div>
-      <h2 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">Booking Cancelled</h2>
-      <p style="margin: 8px 0 0; color: #cbd5e1; font-size: 16px;">
-        Hi ${name || 'Gamer'}, your booking has been cancelled.
-      </p>
-    </div>
+     <!-- Icon -->
+    <table role="presentation" width="100%" style="margin-bottom: 25px;">
+      <tr>
+        <td align="center">
+           <img src="https://img.icons8.com/ios-filled/100/ef4444/cancel.png" alt="Cancelled" width="50" height="50" style="display: block; width: 50px; border: 0;" />
+        </td>
+      </tr>
+    </table>
 
-    <div style="background-color: #0f172a; border-radius: 16px; overflow: hidden; border: 1px solid #334155; margin-bottom: 32px; padding: 24px;">
-      <div style="margin-bottom: 24px;">
-        <p style="margin: 0 0 8px; color: #94a3b8; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Booking ID</p>
-        <p style="margin: 0; color: #ef4444; font-size: 18px; font-weight: 700; letter-spacing: 1px;">#${bookingId.slice(0, 8).toUpperCase()}</p>
-      </div>
+    <h1 style="margin: 0 0 10px; font-size: 24px; font-weight: 800; text-align: center; color: #ffffff; text-transform: uppercase;">Order Cancelled</h1>
+    <p style="margin: 0 0 30px; color: #9ca3af; font-size: 15px; text-align: center;">
+      Booking <span style="color: #ffffff; font-weight: 600;">#${bookingId.slice(0, 8).toUpperCase()}</span> has been cancelled.
+    </p>
 
-      <div style="margin-bottom: 24px;">
-        <p style="margin: 0 0 8px; color: #94a3b8; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Venue</p>
-        <h3 style="margin: 0; color: #ffffff; font-size: 18px; font-weight: 600;">${cafeName}</h3>
-      </div>
-
-      <div style="display: flex; gap: 24px; margin-bottom: 24px;">
-        <div style="flex: 1;">
-          <p style="margin: 0 0 8px; color: #94a3b8; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Date</p>
-          <p style="margin: 0; color: #ffffff; font-size: 15px; font-weight: 600;">${bookingDate}</p>
-        </div>
-        <div style="flex: 1;">
-          <p style="margin: 0 0 8px; color: #94a3b8; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Time</p>
-          <p style="margin: 0; color: #ffffff; font-size: 15px; font-weight: 600;">${startTime}</p>
-        </div>
+    <!-- Info Box -->
+    <div style="background-color: #000000; border: 1px solid #222222; padding: 20px; border-radius: 4px;">
+      <div style="border-bottom: 1px solid #222222; padding-bottom: 15px; margin-bottom: 15px;">
+        <span style="display: block; color: #ef4444; font-size: 11px; text-transform: uppercase; font-weight: 700; margin-bottom: 5px;">Venue</span>
+        <span style="display: block; color: #ffffff; font-size: 16px;">${cafeName}</span>
       </div>
 
-      <div style="padding-top: 20px; border-top: 1px solid #334155;">
-        <p style="margin: 0 0 8px; color: #94a3b8; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Refund Amount</p>
-        <p style="margin: 0; color: #ffffff; font-size: 20px; font-weight: 700;">${formatCurrency(totalAmount)}</p>
+       <div style="border-bottom: 1px solid #222222; padding-bottom: 15px; margin-bottom: 15px;">
+        <span style="display: block; color: #ef4444; font-size: 11px; text-transform: uppercase; font-weight: 700; margin-bottom: 5px;">Original Time</span>
+        <span style="display: block; color: #ffffff; font-size: 16px;">${bookingDate} @ ${startTime}</span>
+      </div>
+
+       <div>
+        <span style="display: block; color: #ef4444; font-size: 11px; text-transform: uppercase; font-weight: 700; margin-bottom: 5px;">Refund Amount</span>
+        <span style="display: block; color: #ffffff; font-size: 20px; font-weight: 700;">${formatCurrency(totalAmount)}</span>
       </div>
     </div>
 
-    <p style="margin: 0; color: #94a3b8; font-size: 14px; line-height: 1.6; text-align: center;">
-      If you did not request this cancellation, please contact the venue immediately.
+    <p style="margin: 25px 0 0; color: #6b7280; font-size: 13px; text-align: center;">
+      If you strongly believe this is a mistake, please reach out to support.
     </p>
   `;
 
   return sendEmail({
     to: email,
     toName: name,
-    subject: `Booking Cancelled: #${bookingId.slice(0, 8).toUpperCase()}`,
+    subject: `Cancelled: #${bookingId.slice(0, 8).toUpperCase()}`,
     html: emailTemplate(content, 'Booking Cancelled'),
   });
 }
@@ -397,41 +420,78 @@ export async function sendBookingCancellation({
 export interface WelcomeEmailParams {
   email: string;
   name?: string;
+  bookingId?: string;
 }
 
 export async function sendWelcomeEmail({ email, name }: WelcomeEmailParams) {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://bookmygame.in';
 
   const content = `
-    <div style="text-align: center; margin-bottom: 32px;">
-      <h2 style="margin: 0 0 16px; color: #ffffff; font-size: 28px; font-weight: 800;">Welcome to BookMyGame!</h2>
-      <p style="margin: 0; color: #cbd5e1; font-size: 16px; line-height: 1.6;">
-        Hi ${name || 'Gamer'},<br>
-        Ready to level up your gaming experience? You're in!
-      </p>
-    </div>
+    <!-- Icon -->
+    <table role="presentation" width="100%" style="margin-bottom: 25px;">
+      <tr>
+        <td align="center">
+           <img src="https://img.icons8.com/ios-filled/100/ef4444/controller.png" alt="Controller" width="60" height="60" style="display: block; width: 60px; border: 0;" />
+        </td>
+      </tr>
+    </table>
 
-    <div style="background-color: #0f172a; border-radius: 16px; padding: 32px; margin-bottom: 32px; border: 1px solid #334155;">
-      <h3 style="margin: 0 0 20px; color: #10b981; font-size: 18px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Get Started</h3>
-      <ul style="margin: 0; padding: 0 0 0 20px; color: #e2e8f0; font-size: 15px; line-height: 2;">
-        <li>🎮 Browse top-tier gaming cafes near you</li>
-        <li>🕹️ Book PS5, Xbox, PC, and Racing Sims instantly</li>
-        <li>🏆 Join community tournaments & events</li>
-        <li>💎 Earn rewards on every booking</li>
-      </ul>
-    </div>
+    <h1 style="margin: 0 0 10px; font-size: 28px; font-weight: 900; text-align: center; color: #ffffff; text-transform: uppercase; font-style: italic;">WELCOME</h1>
+    <p style="margin: 0 0 30px; color: #9ca3af; font-size: 16px; line-height: 1.6; text-align: center;">
+      Hi ${name || 'Gamer'},<br>
+      You're now ready to book the best setups in town.
+    </p>
 
+    <!-- Features -->
+    <table role="presentation" width="100%" style="margin-bottom: 30px;">
+      <tr>
+        <td style="padding: 15px; border-bottom: 1px solid #222222;">
+          <table role="presentation" width="100%">
+            <tr>
+              <td width="30" style="vertical-align: middle;">🔴</td>
+              <td style="padding-left: 15px;">
+                <span style="display: block; color: #ffffff; font-weight: 700; font-size: 14px;">High-End PCs & Consoles</span>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding: 15px; border-bottom: 1px solid #222222;">
+          <table role="presentation" width="100%">
+            <tr>
+              <td width="30" style="vertical-align: middle;">🔴</td>
+              <td style="padding-left: 15px;">
+                <span style="display: block; color: #ffffff; font-weight: 700; font-size: 14px;">Exclusive Tournaments</span>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding: 15px;">
+          <table role="presentation" width="100%">
+            <tr>
+              <td width="30" style="vertical-align: middle;">🔴</td>
+              <td style="padding-left: 15px;">
+                <span style="display: block; color: #ffffff; font-weight: 700; font-size: 14px;">Instant Bookings</span>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+
+    <!-- CTA -->
     <div style="text-align: center;">
-      <a href="${siteUrl}" style="display: inline-block; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #ffffff; text-decoration: none; padding: 16px 40px; border-radius: 12px; font-weight: 700; font-size: 16px; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4); transition: transform 0.2s;">
-        Explore Cafes Now
-      </a>
+      <a href="${siteUrl}" style="display: inline-block; padding: 16px 40px; background-color: #ef4444; color: #ffffff; text-decoration: none; border-radius: 4px; font-weight: 800; font-size: 16px; text-transform: uppercase; letter-spacing: 1px;">Start Now</a>
     </div>
   `;
 
   return sendEmail({
     to: email,
     toName: name,
-    subject: 'Welcome to BookMyGame!',
+    subject: 'Welcome to BookMyGame',
     html: emailTemplate(content, 'Welcome'),
   });
 }
