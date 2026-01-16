@@ -1,7 +1,7 @@
 // src/app/checkout/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import useUser from "@/hooks/useUser";
@@ -21,7 +21,12 @@ import {
   ExternalLink,
   Loader2,
   AlertCircle,
-  IndianRupee
+  IndianRupee,
+  QrCode,
+  Smartphone,
+  RefreshCw,
+  Copy,
+  Check
 } from "lucide-react";
 
 type CheckoutTicket = {
@@ -54,6 +59,16 @@ export default function CheckoutPage() {
   const [isOwner, setIsOwner] = useState(false);
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [successBookingId, setSuccessBookingId] = useState<string | null>(null);
+
+  // UROPAY Payment States
+  const [paymentStep, setPaymentStep] = useState<'checkout' | 'payment' | 'verifying'>('checkout');
+  const [uroPayOrderId, setUroPayOrderId] = useState<string | null>(null);
+  const [qrCode, setQrCode] = useState<string | null>(null);
+  const [upiString, setUpiString] = useState<string | null>(null);
+  const [referenceNumber, setReferenceNumber] = useState('');
+  const [verifying, setVerifying] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [pollCount, setPollCount] = useState(0);
 
   const removeTicket = (ticketId: string) => {
     if (!draft) return;
@@ -125,6 +140,143 @@ export default function CheckoutPage() {
     }
   }, []);
 
+  // Poll for payment status
+  const pollPaymentStatus = useCallback(async (bookingId: string) => {
+    if (pollCount >= 60) {
+      // Stop polling after 5 minutes (60 * 5 seconds)
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/uropay/status?bookingId=${bookingId}`);
+      const data = await response.json();
+
+      if (data.success && data.orderStatus === 'COMPLETED') {
+        // Payment successful!
+        if (typeof window !== "undefined") {
+          window.sessionStorage.removeItem("checkoutDraft");
+        }
+
+        // Send booking confirmation email
+        if (user?.email && draft) {
+          fetch('/api/email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: 'booking_confirmation',
+              data: {
+                email: user.email,
+                name: user.user_metadata?.full_name || user.user_metadata?.name,
+                bookingId,
+                cafeName: draft.cafeName,
+                bookingDate: new Date(draft.bookingDate).toLocaleDateString('en-IN', { dateStyle: 'long' }),
+                startTime: draft.timeSlot,
+                duration: draft.durationMinutes,
+                tickets: draft.tickets.map(t => ({
+                  console: CONSOLE_LABELS[t.console] || t.console,
+                  quantity: t.quantity,
+                  price: t.price,
+                })),
+                totalAmount: draft.totalAmount,
+              },
+            }),
+          }).catch(console.error);
+        }
+
+        setSuccessBookingId(bookingId);
+        setBookingSuccess(true);
+        setPaymentStep('checkout');
+        setDraft(null);
+        return;
+      }
+
+      // Continue polling
+      setPollCount(prev => prev + 1);
+      setTimeout(() => pollPaymentStatus(bookingId), 5000);
+    } catch (error) {
+      console.error('Poll status error:', error);
+      setPollCount(prev => prev + 1);
+      setTimeout(() => pollPaymentStatus(bookingId), 5000);
+    }
+  }, [pollCount, user, draft]);
+
+  // Manual verification with UPI reference number
+  const handleManualVerify = async () => {
+    if (!referenceNumber.trim() || !successBookingId) return;
+
+    setVerifying(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/uropay/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bookingId: successBookingId,
+          referenceNumber: referenceNumber.trim(),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        if (typeof window !== "undefined") {
+          window.sessionStorage.removeItem("checkoutDraft");
+        }
+
+        // Send booking confirmation email
+        if (user?.email && draft) {
+          fetch('/api/email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: 'booking_confirmation',
+              data: {
+                email: user.email,
+                name: user.user_metadata?.full_name || user.user_metadata?.name,
+                bookingId: successBookingId,
+                cafeName: draft.cafeName,
+                bookingDate: new Date(draft.bookingDate).toLocaleDateString('en-IN', { dateStyle: 'long' }),
+                startTime: draft.timeSlot,
+                duration: draft.durationMinutes,
+                tickets: draft.tickets.map(t => ({
+                  console: CONSOLE_LABELS[t.console] || t.console,
+                  quantity: t.quantity,
+                  price: t.price,
+                })),
+                totalAmount: draft.totalAmount,
+              },
+            }),
+          }).catch(console.error);
+        }
+
+        setBookingSuccess(true);
+        setPaymentStep('checkout');
+        setDraft(null);
+      } else {
+        setError(data.error || 'Failed to verify payment. Please check the reference number.');
+      }
+    } catch (err) {
+      console.error('Manual verify error:', err);
+      setError('Failed to verify payment. Please try again.');
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  // Copy UPI string to clipboard
+  const handleCopyUPI = async () => {
+    if (!upiString) return;
+
+    try {
+      await navigator.clipboard.writeText(upiString);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Copy failed:', err);
+    }
+  };
+
   async function handlePlaceOrder() {
     if (!draft) return;
     if (!user) {
@@ -139,6 +291,7 @@ export default function CheckoutPage() {
     try {
       const { cafeId, bookingDate, timeSlot, totalAmount, tickets } = draft;
 
+      // Create booking with pending status
       const { data: bookingData, error: bookingError } = await supabase
         .from("bookings")
         .insert({
@@ -147,7 +300,7 @@ export default function CheckoutPage() {
           booking_date: bookingDate,
           start_time: timeSlot,
           total_amount: totalAmount,
-          status: "confirmed",
+          status: "pending", // Pending until payment confirmed
           source: "online",
         })
         .select("id")
@@ -182,40 +335,79 @@ export default function CheckoutPage() {
         return;
       }
 
-      if (typeof window !== "undefined") {
-        window.sessionStorage.removeItem("checkoutDraft");
+      // Create UROPAY payment order
+      const paymentResponse = await fetch('/api/uropay/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bookingId,
+          amount: totalAmount,
+          customerName: user.user_metadata?.full_name || user.user_metadata?.name || 'Guest',
+          customerEmail: user.email || 'guest@example.com',
+          cafeName: draft.cafeName,
+        }),
+      });
+
+      const paymentData = await paymentResponse.json();
+
+      if (!paymentData.success) {
+        // If UROPAY fails, still confirm booking (pay at venue)
+        console.error('UROPAY order creation failed:', paymentData.error);
+
+        await supabase
+          .from("bookings")
+          .update({ status: "confirmed" })
+          .eq("id", bookingId);
+
+        if (typeof window !== "undefined") {
+          window.sessionStorage.removeItem("checkoutDraft");
+        }
+
+        // Send booking confirmation email
+        if (user.email) {
+          fetch('/api/email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              type: 'booking_confirmation',
+              data: {
+                email: user.email,
+                name: user.user_metadata?.full_name || user.user_metadata?.name,
+                bookingId,
+                cafeName: draft.cafeName,
+                bookingDate: new Date(bookingDate).toLocaleDateString('en-IN', { dateStyle: 'long' }),
+                startTime: timeSlot,
+                duration: draft.durationMinutes,
+                tickets: tickets.map(t => ({
+                  console: CONSOLE_LABELS[t.console] || t.console,
+                  quantity: t.quantity,
+                  price: t.price,
+                })),
+                totalAmount,
+              },
+            }),
+          }).catch(console.error);
+        }
+
+        setSuccessBookingId(bookingId);
+        setBookingSuccess(true);
+        setPlacing(false);
+        setDraft(null);
+        return;
       }
 
-      // Send booking confirmation email
-      if (user.email) {
-        fetch('/api/email', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type: 'booking_confirmation',
-            data: {
-              email: user.email,
-              name: user.user_metadata?.full_name || user.user_metadata?.name,
-              bookingId,
-              cafeName: draft.cafeName,
-              bookingDate: new Date(bookingDate).toLocaleDateString('en-IN', { dateStyle: 'long' }),
-              startTime: timeSlot,
-              duration: draft.durationMinutes,
-              tickets: tickets.map(t => ({
-                console: CONSOLE_LABELS[t.console] || t.console,
-                quantity: t.quantity,
-                price: t.price,
-              })),
-              totalAmount,
-            },
-          }),
-        }).catch(console.error);
-      }
-
+      // Payment order created successfully - show QR code
+      setUroPayOrderId(paymentData.uroPayOrderId);
+      setQrCode(paymentData.qrCode);
+      setUpiString(paymentData.upiString);
       setSuccessBookingId(bookingId);
-      setBookingSuccess(true);
+      setPaymentStep('payment');
       setPlacing(false);
-      setDraft(null);
+
+      // Start polling for payment status
+      setPollCount(0);
+      pollPaymentStatus(bookingId);
+
     } catch (err) {
       console.error("Place order error", err);
       setError("Something went wrong. Please try again.");
@@ -241,6 +433,331 @@ export default function CheckoutPage() {
       >
         <Loader2 size={32} className="animate-spin" color={colors.cyan} />
         <p style={{ fontSize: "14px" }}>Loading checkout...</p>
+      </div>
+    );
+  }
+
+  // Payment Screen - Show QR Code
+  if (paymentStep === 'payment' && qrCode && draft) {
+    return (
+      <div
+        style={{
+          minHeight: "100vh",
+          background: `linear-gradient(180deg, ${colors.dark} 0%, #0a0a10 100%)`,
+          fontFamily: fonts.body,
+          padding: "20px",
+        }}
+      >
+        <div
+          style={{
+            maxWidth: "500px",
+            margin: "0 auto",
+          }}
+        >
+          {/* Header */}
+          <header
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: "24px",
+              paddingTop: "8px",
+            }}
+          >
+            <button
+              onClick={() => {
+                setPaymentStep('checkout');
+                setQrCode(null);
+                setUpiString(null);
+              }}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                background: "transparent",
+                border: "none",
+                color: colors.textSecondary,
+                fontSize: "14px",
+                cursor: "pointer",
+                padding: "8px 0",
+              }}
+            >
+              <ArrowLeft size={18} />
+              <span>Back</span>
+            </button>
+          </header>
+
+          {/* Payment Card */}
+          <div
+            style={{
+              background: colors.darkCard,
+              border: `1px solid ${colors.border}`,
+              borderRadius: "24px",
+              padding: "24px",
+              textAlign: "center",
+            }}
+          >
+            {/* Amount */}
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "4px",
+                padding: "8px 16px",
+                borderRadius: "20px",
+                background: "rgba(34, 197, 94, 0.1)",
+                border: `1px solid rgba(34, 197, 94, 0.3)`,
+                marginBottom: "20px",
+              }}
+            >
+              <span style={{ fontSize: "14px", color: colors.textSecondary }}>Pay</span>
+              <span
+                style={{
+                  fontFamily: fonts.heading,
+                  fontSize: "24px",
+                  fontWeight: 700,
+                  color: colors.green,
+                  display: "flex",
+                  alignItems: "center",
+                }}
+              >
+                <IndianRupee size={18} />
+                {draft.totalAmount}
+              </span>
+            </div>
+
+            <h2
+              style={{
+                fontFamily: fonts.heading,
+                fontSize: "20px",
+                fontWeight: 600,
+                color: colors.textPrimary,
+                marginBottom: "8px",
+              }}
+            >
+              Scan QR to Pay
+            </h2>
+
+            <p
+              style={{
+                fontSize: "13px",
+                color: colors.textMuted,
+                marginBottom: "24px",
+              }}
+            >
+              Use any UPI app to scan and pay
+            </p>
+
+            {/* QR Code */}
+            <div
+              style={{
+                background: "white",
+                borderRadius: "16px",
+                padding: "16px",
+                display: "inline-block",
+                marginBottom: "24px",
+              }}
+            >
+              <img
+                src={`data:image/png;base64,${qrCode}`}
+                alt="UPI QR Code"
+                style={{
+                  width: "200px",
+                  height: "200px",
+                  display: "block",
+                }}
+              />
+            </div>
+
+            {/* Status Indicator */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "8px",
+                padding: "12px",
+                borderRadius: "12px",
+                background: "rgba(59, 130, 246, 0.1)",
+                border: `1px solid rgba(59, 130, 246, 0.3)`,
+                marginBottom: "24px",
+              }}
+            >
+              <RefreshCw size={16} color={colors.cyan} className="animate-spin" />
+              <span style={{ fontSize: "13px", color: colors.cyan }}>
+                Waiting for payment...
+              </span>
+            </div>
+
+            {/* UPI Apps */}
+            <div style={{ marginBottom: "24px" }}>
+              <p
+                style={{
+                  fontSize: "12px",
+                  color: colors.textMuted,
+                  marginBottom: "12px",
+                }}
+              >
+                Or pay using UPI apps
+              </p>
+
+              <div style={{ display: "flex", justifyContent: "center", gap: "12px", flexWrap: "wrap" }}>
+                {upiString && (
+                  <>
+                    <a
+                      href={upiString}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        padding: "10px 16px",
+                        borderRadius: "10px",
+                        background: "rgba(255, 255, 255, 0.05)",
+                        border: `1px solid ${colors.border}`,
+                        color: colors.textSecondary,
+                        textDecoration: "none",
+                        fontSize: "13px",
+                        fontWeight: 500,
+                      }}
+                    >
+                      <Smartphone size={16} />
+                      Open UPI App
+                    </a>
+                    <button
+                      onClick={handleCopyUPI}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        padding: "10px 16px",
+                        borderRadius: "10px",
+                        background: "rgba(255, 255, 255, 0.05)",
+                        border: `1px solid ${colors.border}`,
+                        color: colors.textSecondary,
+                        cursor: "pointer",
+                        fontSize: "13px",
+                        fontWeight: 500,
+                      }}
+                    >
+                      {copied ? <Check size={16} color={colors.green} /> : <Copy size={16} />}
+                      {copied ? "Copied!" : "Copy UPI"}
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Manual Verification */}
+            <div
+              style={{
+                borderTop: `1px solid ${colors.border}`,
+                paddingTop: "24px",
+              }}
+            >
+              <p
+                style={{
+                  fontSize: "13px",
+                  color: colors.textSecondary,
+                  marginBottom: "12px",
+                }}
+              >
+                Already paid? Enter UPI Reference Number
+              </p>
+
+              <div style={{ display: "flex", gap: "8px" }}>
+                <input
+                  type="text"
+                  placeholder="12-digit UPI Ref No."
+                  value={referenceNumber}
+                  onChange={(e) => setReferenceNumber(e.target.value)}
+                  style={{
+                    flex: 1,
+                    padding: "12px 16px",
+                    borderRadius: "10px",
+                    background: "rgba(15, 23, 42, 0.5)",
+                    border: `1px solid ${colors.border}`,
+                    color: colors.textPrimary,
+                    fontSize: "14px",
+                    outline: "none",
+                  }}
+                />
+                <button
+                  onClick={handleManualVerify}
+                  disabled={verifying || !referenceNumber.trim()}
+                  style={{
+                    padding: "12px 20px",
+                    borderRadius: "10px",
+                    background: verifying || !referenceNumber.trim()
+                      ? "rgba(148, 163, 184, 0.3)"
+                      : `linear-gradient(135deg, ${colors.green} 0%, #16a34a 100%)`,
+                    border: "none",
+                    color: "white",
+                    fontSize: "14px",
+                    fontWeight: 600,
+                    cursor: verifying || !referenceNumber.trim() ? "not-allowed" : "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                  }}
+                >
+                  {verifying ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : (
+                    "Verify"
+                  )}
+                </button>
+              </div>
+
+              {error && (
+                <p
+                  style={{
+                    fontSize: "12px",
+                    color: "#ef4444",
+                    marginTop: "8px",
+                    textAlign: "left",
+                  }}
+                >
+                  {error}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Booking Summary */}
+          <div
+            style={{
+              marginTop: "20px",
+              padding: "16px",
+              borderRadius: "12px",
+              background: "rgba(255, 255, 255, 0.02)",
+              border: `1px solid ${colors.border}`,
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
+              <span style={{ fontSize: "13px", color: colors.textMuted }}>Cafe</span>
+              <span style={{ fontSize: "13px", color: colors.textSecondary }}>{draft.cafeName}</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
+              <span style={{ fontSize: "13px", color: colors.textMuted }}>Date</span>
+              <span style={{ fontSize: "13px", color: colors.textSecondary }}>
+                {new Date(draft.bookingDate).toLocaleDateString("en-IN", { dateStyle: "medium" })}
+              </span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span style={{ fontSize: "13px", color: colors.textMuted }}>Time</span>
+              <span style={{ fontSize: "13px", color: colors.textSecondary }}>{draft.timeSlot}</span>
+            </div>
+          </div>
+        </div>
+
+        <style>{`
+          @keyframes spin {
+            to { transform: rotate(360deg); }
+          }
+          .animate-spin {
+            animation: spin 1s linear infinite;
+          }
+        `}</style>
       </div>
     );
   }
@@ -318,7 +835,7 @@ export default function CheckoutPage() {
               lineHeight: 1.6,
             }}
           >
-            The booking has been confirmed. You can now create another booking.
+            Your payment has been received and booking is confirmed. You will receive a confirmation email shortly.
           </p>
 
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
