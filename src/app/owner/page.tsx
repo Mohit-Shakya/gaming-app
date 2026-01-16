@@ -3176,6 +3176,34 @@ export default function OwnerDashboardPage() {
                   onViewAll={() => setActiveTab('bookings')}
                 />
               </div>
+
+              {/* Weekly Bookings Section */}
+              <div style={{ marginTop: isMobile ? 24 : 40 }}>
+                {(() => {
+                  const today = new Date();
+                  const lastWeek = new Date(today);
+                  lastWeek.setDate(today.getDate() - 7);
+                  const lastWeekStr = lastWeek.toISOString().split('T')[0];
+                  const todayStr = today.toISOString().split('T')[0];
+
+                  const weeklyBookings = bookings.filter((b: any) => {
+                    const bDate = b.booking_date;
+                    return bDate >= lastWeekStr && bDate <= todayStr;
+                  });
+
+                  const weeklyRevenue = weeklyBookings.reduce((sum: number, b: any) => sum + (b.total_amount || 0), 0);
+
+                  return (
+                    <BookingsTable
+                      title={`Last 7 Days (₹${weeklyRevenue})`}
+                      bookings={weeklyBookings}
+                      loading={loadingData}
+                      limit={10}
+                      onViewAll={() => setActiveTab('bookings')}
+                    />
+                  );
+                })()}
+              </div>
             </div>
           )}
 
