@@ -8,6 +8,15 @@ export async function GET() {
   // Check if env vars are set (don't expose full token)
   const tokenPreview = token ? `${token.substring(0, 20)}...` : 'NOT SET';
 
+  // Debug: Check token format
+  const tokenDebug = token ? {
+    length: token.length,
+    startsWithZoho: token.startsWith('Zoho-enczapikey '),
+    hasNewline: token.includes('\n'),
+    hasCarriageReturn: token.includes('\r'),
+    firstChars: token.substring(0, 30),
+  } : null;
+
   // Test API call
   const testPayload = {
     from: {
@@ -58,6 +67,7 @@ export async function GET() {
       ZEPTO_MAIL_FROM_EMAIL: fromEmail || 'NOT SET',
       ZEPTO_MAIL_FROM_NAME: fromName || 'NOT SET',
     },
+    tokenDebug,
     apiResponse,
     apiError,
   });
