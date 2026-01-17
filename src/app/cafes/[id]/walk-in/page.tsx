@@ -570,8 +570,8 @@ export default function WalkInBookingPage() {
                     </span>
                   </div>
                   <div className="flex justify-between items-center py-4 border-b border-gray-800">
-                    <span className="text-gray-400 text-sm sm:text-base">Players</span>
-                    <span className="font-semibold text-sm sm:text-base">{quantity} person(s)</span>
+                    <span className="text-gray-400 text-sm sm:text-base">Controllers</span>
+                    <span className="font-semibold text-sm sm:text-base">{quantity} Controller(s)</span>
                   </div>
                   <div className="flex justify-between items-center py-4 border-b border-gray-800">
                     <span className="text-gray-400 text-sm sm:text-base">Duration</span>
@@ -762,8 +762,8 @@ export default function WalkInBookingPage() {
                         <Users className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400" />
                       </div>
                       <div>
-                        <h4 className="font-bold text-base sm:text-lg">No. of Players</h4>
-                        <p className="text-gray-400 text-xs sm:text-sm">Select number of players</p>
+                        <h4 className="font-bold text-base sm:text-lg">No. of Controllers</h4>
+                        <p className="text-gray-400 text-xs sm:text-sm">Select number of controllers</p>
                       </div>
                     </div>
 
@@ -787,7 +787,7 @@ export default function WalkInBookingPage() {
                                 {num}
                               </div>
                               <div className={`text-xs sm:text-start ${isSelected ? 'text-cyan-400 font-semibold' : 'text-gray-500'}`}>
-                                {num === 1 ? 'Player' : 'Players'}
+                                {num === 1 ? 'Controller' : 'Controllers'}
                               </div>
                             </div>
                           </button>
@@ -874,7 +874,7 @@ export default function WalkInBookingPage() {
                         </p>
                       </div>
                       <div className="text-center">
-                        <p className="text-xs sm:text-sm text-gray-400 mb-1 sm:mb-2">Players</p>
+                        <p className="text-xs sm:text-sm text-gray-400 mb-1 sm:mb-2">Controllers</p>
                         <p className="font-semibold text-sm sm:text-lg">{quantity}</p>
                       </div>
                       <div className="text-center">
