@@ -2,8 +2,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import useUser from "@/hooks/useUser";
 import {
   Gamepad2,
   Monitor,
@@ -78,6 +79,8 @@ type ConsolePricingTier = {
 
 export default function WalkInBookingPage() {
   const params = useParams();
+  const router = useRouter();
+  const { user, loading: userLoading } = useUser();
   const cafeIdOrSlug = typeof params?.id === "string" ? params.id : null;
 
   // Cafe data
@@ -88,9 +91,11 @@ export default function WalkInBookingPage() {
   const [availableConsoles, setAvailableConsoles] = useState<ConsoleId[]>([]);
   const [consolePricing, setConsolePricing] = useState<Partial<Record<ConsoleId, ConsolePricingTier>>>({});
 
-  // Form data
-  const [customerName, setCustomerName] = useState("");
-  const [customerPhone, setCustomerPhone] = useState("");
+  // User profile data (fetched after auth)
+  const [profileData, setProfileData] = useState<{ fullName: string; phone: string } | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+
+  // Form data (no more customerName/Phone - using profile)
   const [selectedConsole, setSelectedConsole] = useState<ConsoleId | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [duration, setDuration] = useState<30 | 60>(60);
@@ -100,6 +105,56 @@ export default function WalkInBookingPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [bookingId, setBookingId] = useState<string>("");
+
+  // Auth check - redirect to login if not authenticated
+  useEffect(() => {
+    if (userLoading) return;
+
+    if (!user) {
+      // Store current URL for redirect after login
+      sessionStorage.setItem("redirectAfterLogin", window.location.pathname);
+      router.push("/login");
+      return;
+    }
+
+    // User is logged in, fetch profile
+    async function fetchProfile() {
+      try {
+        setProfileLoading(true);
+        const { data: profile, error: profileError } = await supabase
+          .from("profiles")
+          .select("full_name, phone, onboarding_complete")
+          .eq("id", user!.id)
+          .maybeSingle();
+
+        if (profileError) {
+          console.error("Profile fetch error:", profileError);
+          setError("Could not load your profile");
+          setProfileLoading(false);
+          return;
+        }
+
+        if (!profile?.onboarding_complete) {
+          // Profile incomplete, redirect to onboarding
+          sessionStorage.setItem("redirectAfterOnboarding", window.location.pathname);
+          router.push("/onboarding");
+          return;
+        }
+
+        setProfileData({
+          fullName: profile.full_name || user!.email?.split("@")[0] || "Guest",
+          phone: profile.phone || "",
+        });
+        setProfileLoading(false);
+      } catch (err) {
+        console.error("Error:", err);
+        setError("Could not load profile");
+        setProfileLoading(false);
+      }
+    }
+
+    fetchProfile();
+  }, [user, userLoading, router]);
 
   // Load cafe data
   useEffect(() => {
@@ -299,18 +354,8 @@ export default function WalkInBookingPage() {
     setError(null);
 
     // Validation
-    if (!customerName.trim()) {
-      setError("Please enter your name");
-      return;
-    }
-
-    if (!customerPhone.trim()) {
-      setError("Please enter your phone number");
-      return;
-    }
-
-    if (customerPhone.length < 10) {
-      setError("Please enter a valid 10-digit phone number");
+    if (!profileData) {
+      setError("Profile not loaded. Please refresh the page.");
       return;
     }
 
@@ -321,6 +366,11 @@ export default function WalkInBookingPage() {
 
     if (!cafeId) {
       setError("Café information not loaded");
+      return;
+    }
+
+    if (!user) {
+      setError("You must be logged in to book");
       return;
     }
 
@@ -335,20 +385,20 @@ export default function WalkInBookingPage() {
       const displayHours = hours % 12 || 12;
       const startTime = `${displayHours}:${minutes.toString().padStart(2, "0")} ${ampm}`;
 
-      // Create booking
+      // Create booking with user_id (linked to user's account)
       const { data: booking, error: bookingError } = await supabase
         .from("bookings")
         .insert({
           cafe_id: cafeId,
-          user_id: null,
+          user_id: user.id,
           booking_date: bookingDate,
           start_time: startTime,
           duration: duration,
           total_amount: totalAmount,
           status: "in-progress",
           source: "walk-in",
-          customer_name: customerName.trim(),
-          customer_phone: customerPhone.trim(),
+          customer_name: profileData.fullName,
+          customer_phone: profileData.phone,
         })
         .select()
         .single();
@@ -386,8 +436,6 @@ export default function WalkInBookingPage() {
 
       // Reset form after 5 seconds
       setTimeout(() => {
-        setCustomerName("");
-        setCustomerPhone("");
         setQuantity(1);
         setDuration(60);
         if (availableConsoles.length > 0) {
@@ -593,47 +641,28 @@ export default function WalkInBookingPage() {
                   </div>
                 )}
 
-                {/* Personal Details Section */}
+                {/* Personal Details Section - Auto-filled from profile */}
                 <div className="mb-8 sm:mb-10">
                   <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
                     <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-gradient-to-r from-red-500/20 to-cyan-500/20 flex items-center justify-center">
                       <UserCheck className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400" />
                     </div>
-                    <h3 className="text-lg sm:text-xl font-bold">Personal Details</h3>
+                    <div>
+                      <h3 className="text-lg sm:text-xl font-bold">Booking As</h3>
+                      <p className="text-gray-400 text-xs sm:text-sm">Using your profile details</p>
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-                    <div className="space-y-1.5 sm:space-y-2">
-                      <label className="text-xs sm:text-sm font-semibold text-gray-400 flex items-center gap-1.5 sm:gap-2 mb-2 sm:mb-3">
-                        <User className="w-3 h-3 sm:w-4 sm:h-4" />
-                        Your Name *
-                      </label>
-                      <input
-                        type="text"
-                        value={customerName}
-                        onChange={(e) => setCustomerName(e.target.value)}
-                        placeholder="Enter your full name"
-                        disabled={submitting}
-                        autoComplete="name"
-                        className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-900/50 border border-gray-800 rounded-xl focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition text-center text-sm sm:text-base"
-                      />
-                    </div>
-
-                    <div className="space-y-1.5 sm:space-y-2">
-                      <label className="text-xs sm:text-sm font-semibold text-gray-400 flex items-center gap-1.5 sm:gap-2 mb-2 sm:mb-3">
-                        <Smartphone className="w-3 h-3 sm:w-4 sm:h-4" />
-                        Phone Number *
-                      </label>
-                      <input
-                        type="tel"
-                        value={customerPhone}
-                        onChange={(e) => setCustomerPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
-                        placeholder="10-digit mobile number"
-                        disabled={submitting}
-                        autoComplete="tel"
-                        inputMode="numeric"
-                        className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-900/50 border border-gray-800 rounded-xl focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 transition text-center text-sm sm:text-base"
-                      />
+                  <div className="bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-500/20 rounded-xl p-4 sm:p-6">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 flex items-center justify-center text-white font-bold text-lg sm:text-xl">
+                        {profileData?.fullName?.charAt(0)?.toUpperCase() || "?"}
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-semibold text-white text-base sm:text-lg">{profileData?.fullName || "Loading..."}</p>
+                        <p className="text-gray-400 text-sm">{profileData?.phone || "No phone"}</p>
+                      </div>
+                      <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6 text-green-400" />
                     </div>
                   </div>
                 </div>
@@ -660,11 +689,10 @@ export default function WalkInBookingPage() {
                           type="button"
                           onClick={() => setSelectedConsole(console.id)}
                           disabled={submitting}
-                          className={`relative p-3 sm:p-4 rounded-xl sm:rounded-2xl border-2 transition-all duration-300 flex flex-col items-center justify-center min-h-[110px] sm:min-h-[140px] w-full ${
-                            isSelected 
-                              ? 'border-cyan-500 scale-105 shadow-xl sm:shadow-2xl' 
-                              : 'border-gray-800 hover:border-gray-700 hover:scale-102'
-                          }`}
+                          className={`relative p-3 sm:p-4 rounded-xl sm:rounded-2xl border-2 transition-all duration-300 flex flex-col items-center justify-center min-h-[110px] sm:min-h-[140px] w-full ${isSelected
+                            ? 'border-cyan-500 scale-105 shadow-xl sm:shadow-2xl'
+                            : 'border-gray-800 hover:border-gray-700 hover:scale-102'
+                            }`}
                         >
                           {/* Background Gradient */}
                           {isSelected && (
@@ -672,20 +700,19 @@ export default function WalkInBookingPage() {
                           )}
 
                           <div className="relative flex flex-col items-center justify-center w-full h-full space-y-2 sm:space-y-3">
-                            <div className={`p-2 sm:p-3 rounded-lg sm:rounded-xl ${
-                              isSelected 
-                                ? `bg-gradient-to-br ${console.gradient}` 
-                                : 'bg-gray-900'
-                            }`}>
+                            <div className={`p-2 sm:p-3 rounded-lg sm:rounded-xl ${isSelected
+                              ? `bg-gradient-to-br ${console.gradient}`
+                              : 'bg-gray-900'
+                              }`}>
                               <div className={`${isSelected ? 'text-white' : 'text-gray-400'}`}>
                                 {console.icon}
                               </div>
                             </div>
-                            
+
                             <div className="font-semibold text-center text-sm sm:text-lg px-1 break-words">
                               {console.label}
                             </div>
-                            
+
                             {isSelected && (
                               <div className="absolute -top-1.5 -right-1.5 sm:-top-2 sm:-right-2 w-6 h-6 sm:w-8 sm:h-8 bg-cyan-500 rounded-full flex items-center justify-center">
                                 <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
@@ -711,7 +738,7 @@ export default function WalkInBookingPage() {
                         <p className="text-gray-400 text-xs sm:text-sm">Select number of players</p>
                       </div>
                     </div>
-                    
+
                     <div className="grid grid-cols-4 gap-2 sm:gap-3">
                       {[1, 2, 3, 4].map((num) => {
                         const isSelected = quantity === num;
@@ -722,11 +749,10 @@ export default function WalkInBookingPage() {
                             type="button"
                             onClick={() => setQuantity(num)}
                             disabled={submitting}
-                            className={`relative p-3 sm:p-4 rounded-lg sm:rounded-xl border-2 transition-all duration-300 flex flex-col items-center justify-center min-h-[80px] sm:min-h-[100px] w-full ${
-                              isSelected 
-                                ? 'border-cyan-500 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 scale-105' 
-                                : 'border-gray-800 hover:border-gray-700'
-                            }`}
+                            className={`relative p-3 sm:p-4 rounded-lg sm:rounded-xl border-2 transition-all duration-300 flex flex-col items-center justify-center min-h-[80px] sm:min-h-[100px] w-full ${isSelected
+                              ? 'border-cyan-500 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 scale-105'
+                              : 'border-gray-800 hover:border-gray-700'
+                              }`}
                           >
                             <div className="text-center space-y-1 sm:space-y-2">
                               <div className={`text-2xl sm:text-3xl font-bold ${isSelected ? 'text-cyan-400' : 'text-gray-400'}`}>
@@ -753,17 +779,16 @@ export default function WalkInBookingPage() {
                         <p className="text-gray-400 text-xs sm:text-sm">Select gaming session length</p>
                       </div>
                     </div>
-                    
+
                     <div className="grid grid-cols-2 gap-2 sm:gap-3">
                       <button
                         type="button"
                         onClick={() => setDuration(30)}
                         disabled={submitting}
-                        className={`relative p-4 sm:p-6 rounded-lg sm:rounded-xl border-2 transition-all duration-300 flex flex-col items-center justify-center min-h-[100px] sm:min-h-[120px] w-full ${
-                          duration === 30 
-                            ? 'border-cyan-500 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 scale-105' 
-                            : 'border-gray-800 hover:border-gray-700'
-                        }`}
+                        className={`relative p-4 sm:p-6 rounded-lg sm:rounded-xl border-2 transition-all duration-300 flex flex-col items-center justify-center min-h-[100px] sm:min-h-[120px] w-full ${duration === 30
+                          ? 'border-cyan-500 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 scale-105'
+                          : 'border-gray-800 hover:border-gray-700'
+                          }`}
                       >
                         <div className="text-center space-y-1.5 sm:space-y-3">
                           <div className={`text-3xl sm:text-4xl font-bold ${duration === 30 ? 'text-cyan-400' : 'text-gray-400'}`}>
@@ -779,11 +804,10 @@ export default function WalkInBookingPage() {
                         type="button"
                         onClick={() => setDuration(60)}
                         disabled={submitting}
-                        className={`relative p-4 sm:p-6 rounded-lg sm:rounded-xl border-2 transition-all duration-300 flex flex-col items-center justify-center min-h-[100px] sm:min-h-[120px] w-full ${
-                          duration === 60 
-                            ? 'border-red-500 bg-gradient-to-br from-red-500/20 to-pink-500/20 scale-105' 
-                            : 'border-gray-800 hover:border-gray-700'
-                        }`}
+                        className={`relative p-4 sm:p-6 rounded-lg sm:rounded-xl border-2 transition-all duration-300 flex flex-col items-center justify-center min-h-[100px] sm:min-h-[120px] w-full ${duration === 60
+                          ? 'border-red-500 bg-gradient-to-br from-red-500/20 to-pink-500/20 scale-105'
+                          : 'border-gray-800 hover:border-gray-700'
+                          }`}
                       >
                         <div className="absolute top-2 right-2 sm:top-3 sm:right-3">
                           <Crown className={`w-3 h-3 sm:w-4 sm:h-4 ${duration === 60 ? 'text-yellow-400' : 'text-gray-600'}`} />
@@ -861,11 +885,10 @@ export default function WalkInBookingPage() {
                 <button
                   type="submit"
                   disabled={submitting || !selectedConsole}
-                  className={`w-full py-3 sm:py-4 md:py-5 rounded-xl sm:rounded-2xl font-bold text-base sm:text-lg transition-all duration-300 flex items-center justify-center gap-2 sm:gap-3 ${
-                    submitting || !selectedConsole
-                      ? 'bg-gray-900 text-gray-500 cursor-not-allowed'
-                      : 'bg-gradient-to-r from-red-600 via-red-500 to-cyan-500 hover:from-red-700 hover:via-red-600 hover:to-cyan-600 hover:scale-[1.02] active:scale-100 shadow-xl hover:shadow-2xl'
-                  }`}
+                  className={`w-full py-3 sm:py-4 md:py-5 rounded-xl sm:rounded-2xl font-bold text-base sm:text-lg transition-all duration-300 flex items-center justify-center gap-2 sm:gap-3 ${submitting || !selectedConsole
+                    ? 'bg-gray-900 text-gray-500 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-red-600 via-red-500 to-cyan-500 hover:from-red-700 hover:via-red-600 hover:to-cyan-600 hover:scale-[1.02] active:scale-100 shadow-xl hover:shadow-2xl'
+                    }`}
                 >
                   {submitting ? (
                     <>
