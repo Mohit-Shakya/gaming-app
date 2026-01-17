@@ -27,6 +27,7 @@ import {
   Sparkles,
   Crown
 } from "lucide-react";
+import ActiveSessionTimer from "@/components/ActiveSessionTimer";
 
 type BookingRow = {
   id: string;
@@ -39,6 +40,7 @@ type BookingRow = {
   status?: string | null;
   created_at?: string | null;
   hours?: number | null;
+  duration?: number | null;
 };
 
 type CafeRow = {
@@ -211,9 +213,80 @@ export default function DashboardPage() {
     return timeStr;
   }
 
-  function getStatusInfo(status?: string | null) {
+  // Helper to parse time strings like "3:45 pm" or "15:45"
+  function parseTimeString(timeStr: string): { hours: number; minutes: number } | null {
+    if (!timeStr) return null;
+    const str = timeStr.toLowerCase().trim();
+
+    // Check for am/pm format
+    const ampmMatch = str.match(/^(\d{1,2}):(\d{2})\s*(am|pm)$/i);
+    if (ampmMatch) {
+      let hours = parseInt(ampmMatch[1], 10);
+      const minutes = parseInt(ampmMatch[2], 10);
+      const period = ampmMatch[3].toLowerCase();
+      if (period === 'pm' && hours !== 12) hours += 12;
+      else if (period === 'am' && hours === 12) hours = 0;
+      return { hours, minutes };
+    }
+
+    // Check for 24-hour format
+    const h24Match = str.match(/^(\d{1,2}):(\d{2})$/);
+    if (h24Match) {
+      return { hours: parseInt(h24Match[1], 10), minutes: parseInt(h24Match[2], 10) };
+    }
+    return null;
+  }
+
+  // Check if booking is currently active (on-going)
+  function isBookingOngoing(booking: BookingWithCafe): boolean {
+    const status = (booking.status || '').toLowerCase();
+    if (status === 'cancelled' || status === 'completed') return false;
+    if (!booking.booking_date || !booking.start_time) return false;
+
+    const now = new Date();
+    const todayStr = now.toISOString().slice(0, 10);
+
+    // Only check today's bookings
+    if (booking.booking_date !== todayStr) return false;
+
+    const parsedStart = parseTimeString(booking.start_time);
+    if (!parsedStart) return false;
+
+    const sessionStart = new Date();
+    sessionStart.setHours(parsedStart.hours, parsedStart.minutes, 0, 0);
+
+    let sessionEnd: Date;
+    if (booking.end_time) {
+      const parsedEnd = parseTimeString(booking.end_time);
+      if (!parsedEnd) return false;
+      sessionEnd = new Date();
+      sessionEnd.setHours(parsedEnd.hours, parsedEnd.minutes, 0, 0);
+      if (sessionEnd.getTime() < sessionStart.getTime()) {
+        sessionEnd.setDate(sessionEnd.getDate() + 1);
+      }
+    } else if ((booking as any).duration) {
+      sessionEnd = new Date(sessionStart.getTime() + (booking as any).duration * 60 * 1000);
+    } else {
+      return false;
+    }
+
+    const currentTime = now.getTime();
+    return currentTime >= sessionStart.getTime() && currentTime < sessionEnd.getTime();
+  }
+
+  function getStatusInfo(status?: string | null, isOngoing?: boolean) {
+    if (isOngoing) {
+      return {
+        label: "On-going",
+        bg: "bg-gradient-to-r from-cyan-500/10 to-cyan-500/5",
+        border: "border-cyan-500/20",
+        color: "text-cyan-400",
+        icon: <Zap className="w-4 h-4" />,
+      };
+    }
+
     const value = (status || "confirmed").toLowerCase();
-    
+
     if (value === "cancelled") {
       return {
         label: "Cancelled",
@@ -508,6 +581,9 @@ export default function DashboardPage() {
               Book New Gaming Session
             </button>
 
+            {/* Active Session Timer - Shows when user has an active session */}
+            <ActiveSessionTimer />
+
             {/* Stats Grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
               <div className="stat-card rounded-2xl p-5">
@@ -540,7 +616,7 @@ export default function DashboardPage() {
                 <div className="text-2xl font-bold mb-1" style={{ fontFamily: 'Orbitron, sans-serif' }}>
                   {stats.totalHours}
                 </div>
-                <div className="text-sm text-zinc-400">Gaming Time</div>
+                <div className="text-sm text-zinc-400">Played</div>
               </div>
 
               <div className="stat-card rounded-2xl p-5">
@@ -613,7 +689,8 @@ export default function DashboardPage() {
               ) : (
                 <div className="space-y-4">
                   {upcoming.map((booking) => {
-                    const statusInfo = getStatusInfo(booking.status);
+                    const ongoing = isBookingOngoing(booking);
+                    const statusInfo = getStatusInfo(booking.status, ongoing);
                     const canCancel = canCancelBooking(booking);
                     
                     return (
@@ -731,8 +808,8 @@ export default function DashboardPage() {
               ) : (
                 <div className="space-y-4">
                   {past.map((booking) => {
-                    const statusInfo = getStatusInfo(booking.status);
-                    
+                    const statusInfo = getStatusInfo(booking.status, false);
+
                     return (
                       <div
                         key={booking.id}

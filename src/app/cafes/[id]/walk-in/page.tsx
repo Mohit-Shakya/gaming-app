@@ -86,6 +86,7 @@ export default function WalkInBookingPage() {
   // Cafe data
   const [cafeId, setCafeId] = useState<string | null>(null);
   const [cafeName, setCafeName] = useState<string>("Gaming Café");
+  const [cafeAddress, setCafeAddress] = useState<string>("");
   const [cafePrice, setCafePrice] = useState<number>(150);
   const [loading, setLoading] = useState(true);
   const [availableConsoles, setAvailableConsoles] = useState<ConsoleId[]>([]);
@@ -207,6 +208,7 @@ export default function WalkInBookingPage() {
 
         setCafeId(data.id);
         setCafeName(data.name || "Gaming Café");
+        setCafeAddress(data.address ? `${data.address}, ${data.city || ''}` : "");
         setCafePrice(data.hourly_price || 150);
 
         // Get available consoles
@@ -489,6 +491,48 @@ export default function WalkInBookingPage() {
         return;
       }
 
+      // Send confirmation email to user
+      if (user?.email) {
+        const consoleLabel = CONSOLES.find(c => c.id === selectedConsole)?.label || selectedConsole;
+
+        // Format date for email
+        const formattedDate = new Date(bookingDate).toLocaleDateString('en-IN', {
+          weekday: 'long',
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric'
+        });
+
+        // Call the API route
+        fetch('/api/email', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            type: 'booking_confirmation',
+            data: {
+              email: user.email,
+              name: profileData.fullName || user.user_metadata?.full_name,
+              bookingId: booking.id,
+              cafeName: cafeName || "Gaming Café",
+              cafeAddress: cafeAddress,
+              bookingDate: formattedDate,
+              startTime: startTime,
+              duration: duration,
+              tickets: [{
+                console: consoleLabel,
+                quantity: quantity,
+                price: totalAmount
+              }],
+              totalAmount: totalAmount
+            }
+          }),
+        }).catch(err => {
+          console.error("Failed to call email API:", err);
+        });
+      }
+
       // Success!
       setBookingId(booking.id.slice(0, 8).toUpperCase());
       setFullBookingId(booking.id);
@@ -604,7 +648,7 @@ export default function WalkInBookingPage() {
               <div className="flex flex-col sm:flex-row gap-3">
                 <button
                   onClick={() => router.push(`/bookings/${fullBookingId}`)}
-                  className="flex-1 py-3 px-4 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:opacity-90 transition"
+                  className="flex-1 py-3 px-4 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-[#00f0ff]/10 hover:bg-[#00f0ff]/20 border border-[#00f0ff]/30 transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_0_20px_rgba(0,240,255,0.2)]"
                 >
                   <Receipt className="w-5 h-5" />
                   View Booking
