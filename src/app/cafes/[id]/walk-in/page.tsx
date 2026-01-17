@@ -121,20 +121,40 @@ export default function WalkInBookingPage() {
     async function fetchProfile() {
       try {
         setProfileLoading(true);
+
+        // Try to fetch profile - may fail if no profile exists yet
         const { data: profile, error: profileError } = await supabase
           .from("profiles")
           .select("full_name, phone, onboarding_complete")
           .eq("id", user!.id)
           .maybeSingle();
 
+        // If profile doesn't exist or there's an error, use user metadata as fallback
         if (profileError) {
-          console.error("Profile fetch error:", profileError);
-          setError("Could not load your profile");
+          console.warn("Profile fetch warning:", profileError);
+          // Use user metadata from auth as fallback
+          const userName = user!.user_metadata?.full_name || user!.email?.split("@")[0] || "Guest";
+          setProfileData({
+            fullName: userName,
+            phone: user!.user_metadata?.phone || "",
+          });
           setProfileLoading(false);
           return;
         }
 
+        // If profile exists but onboarding not complete
         if (!profile?.onboarding_complete) {
+          // Check if we have basic data - if so, continue; if not, redirect
+          const userName = profile?.full_name || user!.user_metadata?.full_name || user!.email?.split("@")[0];
+          if (userName) {
+            // Profile has enough data to proceed
+            setProfileData({
+              fullName: userName,
+              phone: profile?.phone || "",
+            });
+            setProfileLoading(false);
+            return;
+          }
           // Profile incomplete, redirect to onboarding
           sessionStorage.setItem("redirectAfterOnboarding", window.location.pathname);
           router.push("/onboarding");
@@ -142,13 +162,17 @@ export default function WalkInBookingPage() {
         }
 
         setProfileData({
-          fullName: profile.full_name || user!.email?.split("@")[0] || "Guest",
+          fullName: profile.full_name || user!.user_metadata?.full_name || user!.email?.split("@")[0] || "Guest",
           phone: profile.phone || "",
         });
         setProfileLoading(false);
       } catch (err) {
-        console.error("Error:", err);
-        setError("Could not load profile");
+        console.error("Profile fetch error:", err);
+        // Fallback to user metadata
+        setProfileData({
+          fullName: user!.user_metadata?.full_name || user!.email?.split("@")[0] || "Guest",
+          phone: "",
+        });
         setProfileLoading(false);
       }
     }
