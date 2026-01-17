@@ -27,7 +27,8 @@ import {
   BookingsManagement,
   Card,
   Memberships,
-  Coupons
+  Coupons,
+  Reports
 } from './components';
 
 type OwnerStats = {
@@ -5744,6 +5745,14 @@ export default function OwnerDashboardPage() {
               isMobile={isMobile}
               cafeId={selectedCafeId || cafes[0]?.id || ''}
               onRefresh={() => setRefreshTrigger(prev => prev + 1)}
+            />
+          )}
+
+          {/* Reports Tab */}
+          {activeTab === 'reports' && (
+            <Reports
+              cafeId={selectedCafeId || cafes[0]?.id || ''}
+              isMobile={isMobile}
             />
           )}
 

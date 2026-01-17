@@ -19,3 +19,4 @@ export {
 } from './ui';
 export { Memberships } from './Memberships';
 export { Coupons } from './Coupons';
+export { Reports } from './Reports';
