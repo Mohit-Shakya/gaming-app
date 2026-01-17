@@ -319,15 +319,23 @@ export default function WalkInBookingPage() {
               }
               // Other consoles (PC, VR, Pool, etc.) use simple hourly pricing
               else {
-                tier.qty1_30min = sp.half_hour_rate || null;
-                tier.qty1_60min = sp.hourly_rate || null;
-                // For these, quantity doesn't multiply the price per person
-                tier.qty2_30min = sp.half_hour_rate || null;
-                tier.qty2_60min = sp.hourly_rate || null;
-                tier.qty3_30min = sp.half_hour_rate || null;
-                tier.qty3_60min = sp.hourly_rate || null;
-                tier.qty4_30min = sp.half_hour_rate || null;
-                tier.qty4_60min = sp.hourly_rate || null;
+                // For PC, VR, Arcade, Steering Wheel: Price scales with quantity (per station)
+                // For Pool, Snooker: Price is per table (fixed regardless of players)
+                const isPerStation = ["pc", "vr", "steering_wheel", "arcade"].includes(consoleId);
+
+                const calculatePrice = (rate: number | null, qty: number) => {
+                  if (rate === null || rate === undefined) return null;
+                  return isPerStation ? rate * qty : rate;
+                };
+
+                tier.qty1_30min = calculatePrice(sp.half_hour_rate, 1);
+                tier.qty1_60min = calculatePrice(sp.hourly_rate, 1);
+                tier.qty2_30min = calculatePrice(sp.half_hour_rate, 2);
+                tier.qty2_60min = calculatePrice(sp.hourly_rate, 2);
+                tier.qty3_30min = calculatePrice(sp.half_hour_rate, 3);
+                tier.qty3_60min = calculatePrice(sp.hourly_rate, 3);
+                tier.qty4_30min = calculatePrice(sp.half_hour_rate, 4);
+                tier.qty4_60min = calculatePrice(sp.hourly_rate, 4);
               }
 
               pricing[consoleId] = tier;
