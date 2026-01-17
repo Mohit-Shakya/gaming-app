@@ -105,6 +105,7 @@ export default function WalkInBookingPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [bookingId, setBookingId] = useState<string>("");
+  const [fullBookingId, setFullBookingId] = useState<string>("");
 
   // Auth check - redirect to login if not authenticated
   useEffect(() => {
@@ -454,7 +455,7 @@ export default function WalkInBookingPage() {
           duration: duration,
           total_amount: totalAmount,
           status: "in-progress",
-          source: "walk-in",
+          source: "walk_in",
           customer_name: profileData.fullName,
           customer_phone: profileData.phone,
         })
@@ -490,18 +491,8 @@ export default function WalkInBookingPage() {
 
       // Success!
       setBookingId(booking.id.slice(0, 8).toUpperCase());
+      setFullBookingId(booking.id);
       setSuccess(true);
-
-      // Reset form after 5 seconds
-      setTimeout(() => {
-        setQuantity(1);
-        setDuration(60);
-        if (availableConsoles.length > 0) {
-          setSelectedConsole(availableConsoles[0]);
-        }
-        setSuccess(false);
-        setBookingId("");
-      }, 5000);
 
     } catch (err) {
       console.error("Unexpected error:", err);
@@ -601,12 +592,39 @@ export default function WalkInBookingPage() {
                 </div>
               </div>
 
-              <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-2xl p-4 flex items-start gap-3">
+              <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-2xl p-4 flex items-start gap-3 mb-6">
                 <Receipt className="w-5 h-5 text-yellow-500 mt-0.5 flex-shrink-0" />
                 <div>
                   <p className="font-bold text-yellow-500 text-sm">Action Required</p>
                   <p className="text-yellow-200/80 text-sm mt-1">Please show this screen at the counter to complete payment and get your station.</p>
                 </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  onClick={() => router.push(`/bookings/${fullBookingId}`)}
+                  className="flex-1 py-3 px-4 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:opacity-90 transition"
+                >
+                  <Receipt className="w-5 h-5" />
+                  View Booking
+                </button>
+                <button
+                  onClick={() => {
+                    setSuccess(false);
+                    setBookingId("");
+                    setFullBookingId("");
+                    setQuantity(1);
+                    setDuration(60);
+                    if (availableConsoles.length > 0) {
+                      setSelectedConsole(availableConsoles[0]);
+                    }
+                  }}
+                  className="flex-1 py-3 px-4 bg-gray-800 border border-gray-700 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-gray-700 transition"
+                >
+                  <Gamepad2 className="w-5 h-5" />
+                  New Booking
+                </button>
               </div>
             </div>
           </div>

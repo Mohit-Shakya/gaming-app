@@ -184,8 +184,12 @@ export default function BookingDetailsPage() {
 
   const bookingSource = useMemo(() => {
     if (!data?.source) return "Online";
-    if (data.source === "walk_in") return "Walk-in";
+    if (data.source === "walk_in" || data.source === "walk-in") return "Walk-in";
     return "Online";
+  }, [data?.source]);
+
+  const isWalkIn = useMemo(() => {
+    return data?.source === "walk_in" || data?.source === "walk-in";
   }, [data?.source]);
 
   // Status info - BLACK/RED THEME
@@ -330,9 +334,16 @@ export default function BookingDetailsPage() {
 
         {/* Booking ID */}
         <div className="mb-8">
-          <p className="text-red-400 text-sm font-semibold uppercase tracking-wider mb-2">
-            Booking Details
-          </p>
+          <div className="flex items-center gap-3 mb-2">
+            <p className="text-red-400 text-sm font-semibold uppercase tracking-wider">
+              Booking Details
+            </p>
+            {isWalkIn && (
+              <span className="px-3 py-1 bg-gradient-to-r from-purple-500/20 to-cyan-500/20 border border-purple-500/30 text-purple-400 text-xs font-bold rounded-full uppercase tracking-wider">
+                Walk-in
+              </span>
+            )}
+          </div>
           <h1 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-red-400 to-red-600 bg-clip-text text-transparent">
             #{data.id.slice(0, 8).toUpperCase()}
           </h1>
@@ -412,12 +423,14 @@ export default function BookingDetailsPage() {
                 </p>
               </div>
 
-              <div className="bg-gray-900/70 p-5 rounded-2xl border border-gray-800">
+              <div className={`p-5 rounded-2xl border ${isWalkIn ? 'bg-gradient-to-br from-purple-500/10 to-cyan-500/10 border-purple-500/20' : 'bg-gray-900/70 border-gray-800'}`}>
                 <div className="flex items-center gap-3 text-gray-400 mb-2">
                   <Hash className="w-4 h-4" />
                   <span className="text-xs font-semibold uppercase tracking-wider">Source</span>
                 </div>
-                <p className="text-xl font-bold">{bookingSource}</p>
+                <p className={`text-xl font-bold ${isWalkIn ? 'text-purple-400' : 'text-white'}`}>
+                  {bookingSource}
+                </p>
               </div>
 
               <div className="bg-gray-900/70 p-5 rounded-2xl border border-gray-800">
