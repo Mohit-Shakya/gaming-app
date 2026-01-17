@@ -532,7 +532,7 @@ export default function WalkInBookingPage() {
         <div className="absolute top-[20%] right-[20%] w-[30vw] h-[30vw] bg-blue-600/5 rounded-full blur-[100px]"></div>
       </div>
 
-      <div className="relative z-10 p-4 sm:p-6 lg:p-10 max-w-[1600px] mx-auto">
+      <div className="relative z-10 p-4 sm:p-6 lg:p-10 pb-32 sm:pb-10 max-w-[1600px] mx-auto">
         {success ? (
           <div className="flex flex-col items-center justify-center min-h-[80vh] max-w-lg mx-auto animate-in fade-in zoom-in duration-500">
             <div className="relative mb-8">
@@ -611,7 +611,7 @@ export default function WalkInBookingPage() {
               )}
             </header>
 
-            <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
+            <form id="booking-form" onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-12">
 
               {/* LEFT COLUMN: Console Selection */}
               <div className="lg:col-span-8">
@@ -632,8 +632,8 @@ export default function WalkInBookingPage() {
                         onClick={() => setSelectedConsole(console.id)}
                         disabled={submitting}
                         className={`group relative aspect-[4/3] flex flex-col items-center justify-center rounded-3xl border-2 transition-all duration-300 overflow-hidden ${isSelected
-                            ? 'border-cyan-500 shadow-[0_0_30px_-10px_rgba(6,182,212,0.6)]'
-                            : 'border-gray-800 hover:border-gray-700 bg-gray-900/40 hover:bg-gray-900/60'
+                          ? 'border-cyan-500 shadow-[0_0_30px_-10px_rgba(6,182,212,0.6)]'
+                          : 'border-gray-800 hover:border-gray-700 bg-gray-900/40 hover:bg-gray-900/60'
                           }`}
                       >
                         {/* Console Background Gradient */}
@@ -642,8 +642,8 @@ export default function WalkInBookingPage() {
                         )}
 
                         <div className={`relative w-14 h-14 rounded-2xl flex items-center justify-center mb-3 transition-transform duration-300 group-hover:scale-110 ${isSelected
-                            ? `bg-gradient-to-br ${console.gradient} text-white shadow-lg`
-                            : 'bg-gray-800 text-gray-400 group-hover:bg-gray-700 group-hover:text-white'
+                          ? `bg-gradient-to-br ${console.gradient} text-white shadow-lg`
+                          : 'bg-gray-800 text-gray-400 group-hover:bg-gray-700 group-hover:text-white'
                           }`}>
                           {console.icon}
                         </div>
@@ -689,8 +689,8 @@ export default function WalkInBookingPage() {
                           type="button"
                           onClick={() => setQuantity(num)}
                           className={`h-12 rounded-xl flex items-center justify-center font-bold text-lg transition-all duration-300 ${quantity === num
-                              ? 'bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-lg'
-                              : 'text-gray-500 hover:text-white hover:bg-gray-800'
+                            ? 'bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-lg'
+                            : 'text-gray-500 hover:text-white hover:bg-gray-800'
                             }`}
                         >
                           {num}
@@ -707,8 +707,8 @@ export default function WalkInBookingPage() {
                         type="button"
                         onClick={() => setDuration(30)}
                         className={`h-14 rounded-2xl border-2 flex items-center justify-center gap-2 transition-all ${duration === 30
-                            ? 'border-cyan-500 bg-cyan-500/10 text-cyan-400'
-                            : 'border-gray-800 bg-gray-900/20 text-gray-500 hover:border-gray-700'
+                          ? 'border-cyan-500 bg-cyan-500/10 text-cyan-400'
+                          : 'border-gray-800 bg-gray-900/20 text-gray-500 hover:border-gray-700'
                           }`}
                       >
                         <Clock className="w-5 h-5" />
@@ -718,8 +718,8 @@ export default function WalkInBookingPage() {
                         type="button"
                         onClick={() => setDuration(60)}
                         className={`h-14 rounded-2xl border-2 flex items-center justify-center gap-2 transition-all ${duration === 60
-                            ? 'border-purple-500 bg-purple-500/10 text-purple-400'
-                            : 'border-gray-800 bg-gray-900/20 text-gray-500 hover:border-gray-700'
+                          ? 'border-purple-500 bg-purple-500/10 text-purple-400'
+                          : 'border-gray-800 bg-gray-900/20 text-gray-500 hover:border-gray-700'
                           }`}
                       >
                         <Crown className="w-5 h-5" />
@@ -758,9 +758,9 @@ export default function WalkInBookingPage() {
                   <button
                     type="submit"
                     disabled={submitting || !selectedConsole}
-                    className={`w-full py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-3 shadow-xl transition-all ${submitting || !selectedConsole
-                        ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
-                        : 'bg-white text-black hover:scale-[1.02] active:scale-[0.98]'
+                    className={`hidden lg:flex w-full py-4 rounded-2xl font-bold text-lg items-center justify-center gap-3 shadow-xl transition-all ${submitting || !selectedConsole
+                      ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
+                      : 'bg-white text-black hover:scale-[1.02] active:scale-[0.98]'
                       }`}
                   >
                     {submitting ? (
@@ -783,6 +783,36 @@ export default function WalkInBookingPage() {
 
               </div>
             </form>
+            {/* Mobile Sticky Action Bar */}
+            <div className="fixed bottom-0 left-0 right-0 p-4 bg-gray-900/90 backdrop-blur-xl border-t border-gray-800 lg:hidden z-50">
+              <div className="flex items-center gap-4 max-w-md mx-auto">
+                <div className="flex-1">
+                  <p className="text-xs text-gray-400">Total Amount</p>
+                  <div className="flex items-baseline gap-1">
+                    <p className="text-2xl font-bold text-white">₹{totalAmount}</p>
+                    <span className="text-xs text-gray-500">/ {duration}m</span>
+                  </div>
+                </div>
+                <button
+                  type="submit"
+                  form="booking-form"
+                  disabled={submitting || !selectedConsole}
+                  className={`flex-1 py-3 rounded-xl font-bold text-base flex items-center justify-center gap-2 shadow-lg ${submitting || !selectedConsole
+                    ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white'
+                    }`}
+                >
+                  {submitting ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <>
+                      <span>Confirm</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
           </>
         )}
       </div>
