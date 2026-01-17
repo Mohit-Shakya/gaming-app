@@ -4,6 +4,7 @@
 import { useMemo, useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import CafeList from "@/components/CafeList";
+import ActiveSessionTimer from "@/components/ActiveSessionTimer";
 import type { Cafe } from "../types/cafe";
 import {
   Search,
@@ -674,6 +675,11 @@ export default function HomeClient({ cafes }: Props) {
         <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#08080c] via-transparent to-transparent z-20"></div>
 
         <div className="hero-content">
+          {/* Active Session Timer (Prototype) */}
+          <div className="pt-24 lg:pt-28">
+            <ActiveSessionTimer />
+          </div>
+
           <div className="mx-auto max-w-7xl px-4 pb-12 lg:px-8 relative z-30">
 
             {/* ===== HERO SECTION ===== */}
