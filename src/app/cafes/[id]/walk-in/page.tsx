@@ -524,89 +524,58 @@ export default function WalkInBookingPage() {
   const availableConsoleOptions = CONSOLES.filter(c => availableConsoles.includes(c.id));
 
   return (
-    <div className="min-h-screen bg-black text-white">
-      {/* Background Effects */}
-      <div className="fixed inset-0 overflow-hidden">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-red-500/10 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl"></div>
-        <div className="absolute inset-0 bg-gradient-to-br from-black via-gray-900 to-black"></div>
+    <div className="min-h-screen bg-black text-white relative overflow-hidden font-sans selection:bg-cyan-500/30">
+      {/* Dynamic Background */}
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] bg-purple-600/10 rounded-full blur-[120px] animate-pulse"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[50vw] h-[50vw] bg-cyan-600/10 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: '2s' }}></div>
+        <div className="absolute top-[20%] right-[20%] w-[30vw] h-[30vw] bg-blue-600/5 rounded-full blur-[100px]"></div>
       </div>
 
-      <div className="relative max-w-2xl mx-auto px-3 sm:px-4 py-6 sm:py-8">
-        {/* Success State */}
+      <div className="relative z-10 p-4 sm:p-6 lg:p-10 max-w-[1600px] mx-auto">
         {success ? (
-          <div className="text-center space-y-8">
-            <div className="relative">
-              <div className="w-32 h-32 rounded-full bg-gradient-to-r from-green-500/20 to-emerald-600/20 flex items-center justify-center mx-auto animate-pulse">
-                <CheckCircle className="w-20 h-20 text-green-400" />
+          <div className="flex flex-col items-center justify-center min-h-[80vh] max-w-lg mx-auto animate-in fade-in zoom-in duration-500">
+            <div className="relative mb-8">
+              <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-gradient-to-r from-green-500/20 to-emerald-500/20 flex items-center justify-center animate-pulse">
+                <CheckCircle className="w-12 h-12 sm:w-16 sm:h-16 text-green-400" />
               </div>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-40 h-40 rounded-full border-2 border-green-400/30 animate-ping"></div>
-              </div>
+              <div className="absolute inset-0 border-4 border-green-500/30 rounded-full animate-[spin_3s_linear_infinite]"></div>
             </div>
 
-            <div className="space-y-4">
-              <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-green-400 to-emerald-500 bg-clip-text text-transparent">
-                BOOKING CONFIRMED!
-              </h1>
-              <div className="inline-flex items-center gap-3 px-4 sm:px-6 py-3 bg-gradient-to-r from-gray-900 to-black border border-gray-800 rounded-full">
-                <Hash className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400" />
-                <span className="font-mono text-lg sm:text-xl font-bold">#{bookingId}</span>
+            <h1 className="text-3xl sm:text-5xl font-bold bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400 bg-clip-text text-transparent mb-4 text-center">
+              Booking Confirmed!
+            </h1>
+
+            <div className="bg-gray-900/60 backdrop-blur-xl border border-gray-800 rounded-3xl p-6 sm:p-8 w-full shadow-2xl">
+              <div className="flex justify-between items-center mb-6 pb-6 border-b border-gray-800">
+                <span className="text-gray-400">Booking ID</span>
+                <span className="font-mono text-xl sm:text-2xl font-bold text-cyan-400">#{bookingId}</span>
               </div>
-            </div>
 
-            <div className="bg-gradient-to-br from-gray-900/90 to-black/90 backdrop-blur-xl rounded-3xl border border-gray-800 p-6 sm:p-8">
-              <div className="space-y-6">
-                <div className="flex items-center justify-center gap-3 sm:gap-4">
-                  <Receipt className="w-6 h-6 sm:w-8 sm:h-8 text-cyan-400" />
-                  <span className="text-xl sm:text-2xl font-bold">Payment Summary</span>
+              <div className="space-y-4 mb-8">
+                <div className="flex justify-between text-base sm:text-lg">
+                  <span className="text-gray-300">Console</span>
+                  <span className="font-semibold">{CONSOLES.find(c => c.id === selectedConsole)?.label}</span>
                 </div>
-
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center py-4 border-b border-gray-800">
-                    <span className="text-gray-400 text-sm sm:text-base">Console</span>
-                    <span className="font-semibold text-sm sm:text-base">
-                      {CONSOLES.find(c => c.id === selectedConsole)?.label}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center py-4 border-b border-gray-800">
-                    <span className="text-gray-400 text-sm sm:text-base">Controllers</span>
-                    <span className="font-semibold text-sm sm:text-base">{quantity} Controller(s)</span>
-                  </div>
-                  <div className="flex justify-between items-center py-4 border-b border-gray-800">
-                    <span className="text-gray-400 text-sm sm:text-base">Duration</span>
-                    <span className="font-semibold text-sm sm:text-base">{duration} minutes</span>
-                  </div>
+                <div className="flex justify-between text-base sm:text-lg">
+                  <span className="text-gray-300">Controllers</span>
+                  <span className="font-semibold">{quantity}</span>
                 </div>
-
-                <div className="bg-gradient-to-r from-red-500/10 to-red-900/10 border border-red-500/20 rounded-2xl p-4 sm:p-6">
-                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-                    <div>
-                      <p className="text-gray-400 text-sm mb-2">Total Amount</p>
-                      <p className="text-2xl sm:text-3xl font-bold text-white">
-                        ₹{totalAmount}
-                      </p>
-                    </div>
-                    <div className="text-left sm:text-right">
-                      <p className="text-gray-400 text-sm mb-2">Status</p>
-                      <div className="inline-flex items-center gap-2 px-3 sm:px-4 py-2 bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-full border border-green-500/30">
-                        <ShieldCheck className="w-3 h-3 sm:w-4 sm:h-4 text-green-400" />
-                        <span className="font-semibold text-xs sm:text-sm text-green-400">PENDING PAYMENT</span>
-                      </div>
-                    </div>
-                  </div>
+                <div className="flex justify-between text-base sm:text-lg">
+                  <span className="text-gray-300">Duration</span>
+                  <span className="font-semibold">{duration} min</span>
                 </div>
+                <div className="flex justify-between text-xl sm:text-2xl font-bold pt-4 border-t border-gray-800">
+                  <span className="text-white">Amount</span>
+                  <span className="text-green-400">₹{totalAmount}</span>
+                </div>
+              </div>
 
-                <div className="bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-500/20 rounded-xl p-4">
-                  <div className="flex items-start gap-3">
-                    <CheckSquare className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400 mt-1" />
-                    <div>
-                      <p className="font-semibold text-cyan-400 text-sm sm:text-base">Proceed to Counter</p>
-                      <p className="text-gray-400 text-xs sm:text-sm mt-1">
-                        Show this booking ID at the counter for payment and seat allocation
-                      </p>
-                    </div>
-                  </div>
+              <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-2xl p-4 flex items-start gap-3">
+                <Receipt className="w-5 h-5 text-yellow-500 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="font-bold text-yellow-500 text-sm">Action Required</p>
+                  <p className="text-yellow-200/80 text-sm mt-1">Please show this screen at the counter to complete payment and get your station.</p>
                 </div>
               </div>
             </div>
@@ -614,351 +583,206 @@ export default function WalkInBookingPage() {
         ) : (
           <>
             {/* Header */}
-            <div className="text-center mb-6 sm:mb-10">
-              <div className="inline-flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
-                <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-red-600 via-cyan-500 to-blue-600 flex items-center justify-center">
-                  <Gamepad2 className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
+            <header className="flex flex-col md:flex-row items-center justify-between mb-8 sm:mb-12 gap-6">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-cyan-500 rounded-2xl flex items-center justify-center shadow-lg shadow-cyan-500/20">
+                  <Gamepad2 className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-2xl sm:text-4xl font-bold bg-gradient-to-r from-red-400 via-cyan-400 to-blue-400 bg-clip-text text-transparent">
-                    {cafeName}
-                  </h1>
-                  <p className="text-gray-400 text-xs sm:text-sm mt-1 sm:mt-2">Premium Gaming Experience</p>
-                </div>
-              </div>
-
-              <div className="inline-flex items-center gap-2 px-4 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-red-500/10 to-cyan-500/10 border border-red-500/20 rounded-full max-w-[90vw] mx-auto overflow-hidden">
-                <CalendarClock className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400 flex-shrink-0" />
-                <span className="font-semibold text-xs sm:text-sm truncate">WALK-IN BOOKING</span>
-                <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-cyan-400 rounded-full animate-pulse flex-shrink-0"></div>
-              </div>
-            </div>
-
-            {/* Main Card */}
-            <div className="bg-gradient-to-br from-gray-900/90 to-black/90 backdrop-blur-xl rounded-3xl border border-gray-800 overflow-hidden mb-6 sm:mb-8 shadow-2xl">
-              {/* Card Header */}
-              <div className="p-4 sm:p-8 border-b border-gray-800">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4 sm:mb-6">
-                  <div className="flex items-center gap-3 sm:gap-4">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-r from-red-500 to-cyan-500 flex items-center justify-center">
-                      <Bolt className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
-                    </div>
-                    <div>
-                      <h2 className="text-lg sm:text-2xl font-bold">Quick Booking</h2>
-                      <p className="text-gray-400 text-xs sm:text-sm">Fill details & start gaming instantly!</p>
-                    </div>
-                  </div>
-                  <div className="text-left sm:text-right">
-                    <div className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-red-500/20 to-cyan-500/20 rounded-full border border-red-500/30 max-w-full overflow-hidden">
-                      <Zap className="w-3 h-3 sm:w-4 sm:h-4 text-cyan-400 flex-shrink-0" />
-                      <span className="font-semibold text-xs truncate">INSTANT CONFIRMATION</span>
-                    </div>
+                  <h1 className="text-3xl font-bold tracking-tight text-white">{cafeName}</h1>
+                  <div className="flex items-center gap-2 text-gray-400 text-sm font-medium">
+                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                    Walk-in Booking
                   </div>
                 </div>
               </div>
 
-              {/* Form */}
-              <form onSubmit={handleSubmit} className="p-4 sm:p-8">
-                {/* Error Message */}
-                {error && (
-                  <div className="mb-6 sm:mb-8 p-3 sm:p-4 bg-gradient-to-r from-red-500/10 to-red-900/10 border border-red-500/30 rounded-2xl">
-                    <div className="flex items-center gap-2 sm:gap-3">
-                      <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-400 flex-shrink-0" />
-                      <p className="font-semibold text-red-400 text-sm sm:text-base">{error}</p>
-                    </div>
+              {/* User Profile Card */}
+              {profileData && (
+                <div className="bg-gray-900/50 backdrop-blur-md border border-gray-800 rounded-full pl-2 pr-6 py-2 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-r from-pink-500 to-purple-500 flex items-center justify-center text-sm font-bold">
+                    {profileData.fullName.charAt(0).toUpperCase()}
                   </div>
-                )}
-
-                {/* Personal Details Section - Auto-filled from profile */}
-                <div className="mb-8 sm:mb-10">
-                  <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-gradient-to-r from-red-500/20 to-cyan-500/20 flex items-center justify-center">
-                      <UserCheck className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg sm:text-xl font-bold">Booking As</h3>
-                      <p className="text-gray-400 text-xs sm:text-sm">Using your profile details</p>
-                    </div>
-                  </div>
-
-                  <div className="bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-500/20 rounded-xl p-4 sm:p-6">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 flex items-center justify-center text-white font-bold text-lg sm:text-xl">
-                        {profileData?.fullName?.charAt(0)?.toUpperCase() || "?"}
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-semibold text-white text-base sm:text-lg">{profileData?.fullName || "Loading..."}</p>
-                        <p className="text-gray-400 text-sm">{profileData?.phone || "No phone"}</p>
-                      </div>
-                      <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6 text-green-400" />
-                    </div>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-bold text-white leading-none">{profileData.fullName}</span>
+                    <span className="text-xs text-gray-400 leading-none mt-1">{profileData.phone || "No phone"}</span>
                   </div>
                 </div>
+              )}
+            </header>
 
-                {/* Console Selection */}
-                <div className="mb-8 sm:mb-10">
-                  <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-gradient-to-r from-red-500/20 to-cyan-500/20 flex items-center justify-center">
-                      <Cpu className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400" />
+            <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
+
+              {/* LEFT COLUMN: Console Selection */}
+              <div className="lg:col-span-8">
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-bold flex items-center gap-2">
+                    <Cpu className="w-5 h-5 text-cyan-400" />
+                    Select Console
+                  </h2>
+                </div>
+
+                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {availableConsoleOptions.map((console) => {
+                    const isSelected = selectedConsole === console.id;
+                    return (
+                      <button
+                        key={console.id}
+                        type="button"
+                        onClick={() => setSelectedConsole(console.id)}
+                        disabled={submitting}
+                        className={`group relative aspect-[4/3] flex flex-col items-center justify-center rounded-3xl border-2 transition-all duration-300 overflow-hidden ${isSelected
+                            ? 'border-cyan-500 shadow-[0_0_30px_-10px_rgba(6,182,212,0.6)]'
+                            : 'border-gray-800 hover:border-gray-700 bg-gray-900/40 hover:bg-gray-900/60'
+                          }`}
+                      >
+                        {/* Console Background Gradient */}
+                        {isSelected && (
+                          <div className={`absolute inset-0 bg-gradient-to-br ${console.gradient} opacity-20 transition-opacity`}></div>
+                        )}
+
+                        <div className={`relative w-14 h-14 rounded-2xl flex items-center justify-center mb-3 transition-transform duration-300 group-hover:scale-110 ${isSelected
+                            ? `bg-gradient-to-br ${console.gradient} text-white shadow-lg`
+                            : 'bg-gray-800 text-gray-400 group-hover:bg-gray-700 group-hover:text-white'
+                          }`}>
+                          {console.icon}
+                        </div>
+
+                        <span className={`relative font-bold text-lg ${isSelected ? 'text-white' : 'text-gray-400 group-hover:text-gray-200'}`}>
+                          {console.label}
+                        </span>
+
+                        {isSelected && (
+                          <div className="absolute top-3 right-3">
+                            <CheckCircle className="w-6 h-6 text-cyan-400" />
+                          </div>
+                        )}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* RIGHT COLUMN: Configuration & Summary */}
+              <div className="lg:col-span-4 space-y-6">
+
+                {/* Session Setup Card */}
+                <div className="bg-gray-900/60 backdrop-blur-xl border border-gray-800 rounded-3xl p-6 shadow-xl relative overflow-hidden">
+                  {/* Gradient Border Overlay */}
+                  <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent"></div>
+
+                  <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
+                    <Target className="w-5 h-5 text-purple-400" />
+                    Session Configuration
+                  </h3>
+
+                  {/* Controllers Selector */}
+                  <div className="mb-6">
+                    <div className="flex justify-between items-center mb-3">
+                      <label className="text-sm text-gray-400 font-medium">Controllers</label>
+                      <span className="text-xs bg-gray-800 text-gray-300 px-2 py-1 rounded-md">{quantity} selected</span>
                     </div>
-                    <div>
-                      <h3 className="text-lg sm:text-xl font-bold mb-0.5 sm:mb-1">Select Gaming Console</h3>
-                      <p className="text-gray-400 text-xs sm:text-sm">Choose your preferred gaming setup</p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4">
-                    {availableConsoleOptions.map((console) => {
-                      const isSelected = selectedConsole === console.id;
-
-                      return (
+                    <div className="grid grid-cols-4 gap-2 bg-black/40 p-1.5 rounded-2xl border border-gray-800">
+                      {[1, 2, 3, 4].map(num => (
                         <button
-                          key={console.id}
+                          key={num}
                           type="button"
-                          onClick={() => setSelectedConsole(console.id)}
-                          disabled={submitting}
-                          className={`relative p-3 sm:p-4 rounded-xl sm:rounded-2xl border-2 transition-all duration-300 flex flex-col items-center justify-center min-h-[110px] sm:min-h-[140px] w-full ${isSelected
-                            ? 'border-cyan-500 scale-105 shadow-xl sm:shadow-2xl'
-                            : 'border-gray-800 hover:border-gray-700 hover:scale-102'
+                          onClick={() => setQuantity(num)}
+                          className={`h-12 rounded-xl flex items-center justify-center font-bold text-lg transition-all duration-300 ${quantity === num
+                              ? 'bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-lg'
+                              : 'text-gray-500 hover:text-white hover:bg-gray-800'
                             }`}
                         >
-                          {/* Background Gradient */}
-                          {isSelected && (
-                            <div className={`absolute inset-0 bg-gradient-to-br ${console.gradient} opacity-10 rounded-xl sm:rounded-2xl`}></div>
-                          )}
-
-                          <div className="relative flex flex-col items-center justify-center w-full h-full space-y-2 sm:space-y-3">
-                            <div className={`p-2 sm:p-3 rounded-lg sm:rounded-xl ${isSelected
-                              ? `bg-gradient-to-br ${console.gradient}`
-                              : 'bg-gray-900'
-                              }`}>
-                              <div className={`${isSelected ? 'text-white' : 'text-gray-400'}`}>
-                                {console.icon}
-                              </div>
-                            </div>
-
-                            <div className="font-semibold text-center text-sm sm:text-lg px-1 break-words">
-                              {console.label}
-                            </div>
-
-                            {isSelected && (
-                              <div className="absolute -top-1.5 -right-1.5 sm:-top-2 sm:-right-2 w-6 h-6 sm:w-8 sm:h-8 bg-cyan-500 rounded-full flex items-center justify-center">
-                                <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
-                              </div>
-                            )}
-                          </div>
+                          {num}
                         </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Players & Duration */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-8 mb-8 sm:mb-10">
-                  {/* Players Selection */}
-                  <div className="bg-gradient-to-br from-gray-900 to-black border border-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6">
-                    <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-gradient-to-r from-red-500/20 to-cyan-500/20 flex items-center justify-center">
-                        <Users className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400" />
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-base sm:text-lg">No. of Controllers</h4>
-                        <p className="text-gray-400 text-xs sm:text-sm">Select number of controllers</p>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-4 gap-2 sm:gap-3">
-                      {[1, 2, 3, 4].map((num) => {
-                        const isSelected = quantity === num;
-
-                        return (
-                          <button
-                            key={num}
-                            type="button"
-                            onClick={() => setQuantity(num)}
-                            disabled={submitting}
-                            className={`relative p-3 sm:p-4 rounded-lg sm:rounded-xl border-2 transition-all duration-300 flex flex-col items-center justify-center min-h-[80px] sm:min-h-[100px] w-full ${isSelected
-                              ? 'border-cyan-500 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 scale-105'
-                              : 'border-gray-800 hover:border-gray-700'
-                              }`}
-                          >
-                            <div className="text-center space-y-1 sm:space-y-2">
-                              <div className={`text-2xl sm:text-3xl font-bold ${isSelected ? 'text-cyan-400' : 'text-gray-400'}`}>
-                                {num}
-                              </div>
-                              <div className={`text-xs sm:text-start ${isSelected ? 'text-cyan-400 font-semibold' : 'text-gray-500'}`}>
-                                {num === 1 ? 'Controller' : 'Controllers'}
-                              </div>
-                            </div>
-                          </button>
-                        );
-                      })}
+                      ))}
                     </div>
                   </div>
 
-                  {/* Duration Selection */}
-                  <div className="bg-gradient-to-br from-gray-900 to-black border border-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6">
-                    <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-gradient-to-r from-red-500/20 to-cyan-500/20 flex items-center justify-center">
-                        <Timer className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400" />
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-base sm:text-lg">Duration</h4>
-                        <p className="text-gray-400 text-xs sm:text-sm">Select gaming session length</p>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                  {/* Duration Selector */}
+                  <div>
+                    <label className="text-sm text-gray-400 font-medium block mb-3">Duration</label>
+                    <div className="grid grid-cols-2 gap-3">
                       <button
                         type="button"
                         onClick={() => setDuration(30)}
-                        disabled={submitting}
-                        className={`relative p-4 sm:p-6 rounded-lg sm:rounded-xl border-2 transition-all duration-300 flex flex-col items-center justify-center min-h-[100px] sm:min-h-[120px] w-full ${duration === 30
-                          ? 'border-cyan-500 bg-gradient-to-br from-cyan-500/20 to-blue-500/20 scale-105'
-                          : 'border-gray-800 hover:border-gray-700'
+                        className={`h-14 rounded-2xl border-2 flex items-center justify-center gap-2 transition-all ${duration === 30
+                            ? 'border-cyan-500 bg-cyan-500/10 text-cyan-400'
+                            : 'border-gray-800 bg-gray-900/20 text-gray-500 hover:border-gray-700'
                           }`}
                       >
-                        <div className="text-center space-y-1.5 sm:space-y-3">
-                          <div className={`text-3xl sm:text-4xl font-bold ${duration === 30 ? 'text-cyan-400' : 'text-gray-400'}`}>
-                            30
-                          </div>
-                          <div className={`text-xs sm:text-sm ${duration === 30 ? 'text-cyan-400 font-semibold' : 'text-gray-500'}`}>
-                            Minutes
-                          </div>
-                        </div>
+                        <Clock className="w-5 h-5" />
+                        <span className="font-bold">30 mins</span>
                       </button>
-
                       <button
                         type="button"
                         onClick={() => setDuration(60)}
-                        disabled={submitting}
-                        className={`relative p-4 sm:p-6 rounded-lg sm:rounded-xl border-2 transition-all duration-300 flex flex-col items-center justify-center min-h-[100px] sm:min-h-[120px] w-full ${duration === 60
-                          ? 'border-red-500 bg-gradient-to-br from-red-500/20 to-pink-500/20 scale-105'
-                          : 'border-gray-800 hover:border-gray-700'
+                        className={`h-14 rounded-2xl border-2 flex items-center justify-center gap-2 transition-all ${duration === 60
+                            ? 'border-purple-500 bg-purple-500/10 text-purple-400'
+                            : 'border-gray-800 bg-gray-900/20 text-gray-500 hover:border-gray-700'
                           }`}
                       >
-                        <div className="absolute top-2 right-2 sm:top-3 sm:right-3">
-                          <Crown className={`w-3 h-3 sm:w-4 sm:h-4 ${duration === 60 ? 'text-yellow-400' : 'text-gray-600'}`} />
-                        </div>
-                        <div className="text-center space-y-1.5 sm:space-y-3">
-                          <div className={`text-3xl sm:text-4xl font-bold ${duration === 60 ? 'text-red-400' : 'text-gray-400'}`}>
-                            60
-                          </div>
-                          <div className={`text-xs sm:text-sm ${duration === 60 ? 'text-red-400 font-semibold' : 'text-gray-500'}`}>
-                            Minutes
-                          </div>
-                          <div className={`mt-1 sm:mt-2 text-xs px-2 sm:px-3 py-0.5 sm:py-1 rounded-full ${duration === 60 ? 'bg-red-500/20 text-red-400' : 'bg-gray-800 text-gray-600'}`}>
-                            Popular
-                          </div>
-                        </div>
+                        <Crown className="w-5 h-5" />
+                        <span className="font-bold">1 Hour</span>
                       </button>
                     </div>
                   </div>
                 </div>
 
-                {/* Amount Summary */}
-                <div className="mb-6 sm:mb-8">
-                  <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-gradient-to-r from-red-500/20 to-cyan-500/20 flex items-center justify-center">
-                      <Wallet className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400" />
-                    </div>
-                    <h3 className="text-lg sm:text-xl font-bold">Payment Summary</h3>
-                  </div>
-
-                  <div className="bg-gradient-to-br from-gray-900 to-black border border-gray-800 rounded-xl sm:rounded-2xl p-4 sm:p-6">
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6 mb-4 sm:mb-6">
-                      <div className="text-center">
-                        <p className="text-xs sm:text-sm text-gray-400 mb-1 sm:mb-2">Console</p>
-                        <p className="font-semibold text-sm sm:text-lg">
-                          {selectedConsole ? CONSOLES.find(c => c.id === selectedConsole)?.label : '--'}
-                        </p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-xs sm:text-sm text-gray-400 mb-1 sm:mb-2">Controllers</p>
-                        <p className="font-semibold text-sm sm:text-lg">{quantity}</p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-xs sm:text-sm text-gray-400 mb-1 sm:mb-2">Duration</p>
-                        <p className="font-semibold text-sm sm:text-lg">{duration} min</p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-xs sm:text-sm text-gray-400 mb-1 sm:mb-2">Total</p>
-                        <p className="text-2xl sm:text-3xl font-bold text-cyan-400">
-                          ₹{totalAmount}
-                        </p>
+                {/* Pricing Summary & Action */}
+                <div className="bg-gradient-to-b from-gray-900 to-black border border-gray-800 rounded-3xl p-6 shadow-2xl">
+                  <div className="flex items-end justify-between mb-6">
+                    <div>
+                      <p className="text-sm text-gray-400 mb-1">Total Amount</p>
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-3xl font-bold text-white">₹{totalAmount}</span>
+                        <span className="text-sm text-gray-500">
+                          / {duration}m
+                        </span>
                       </div>
                     </div>
-
-                    <div className="bg-gradient-to-r from-red-500/10 to-cyan-500/10 border border-red-500/20 rounded-lg sm:rounded-xl p-3 sm:p-4">
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
-                        <div className="flex items-center gap-2 sm:gap-3">
-                          <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400 flex-shrink-0" />
-                          <div>
-                            <p className="font-semibold text-cyan-400 text-sm sm:text-base">Pay at Counter</p>
-                            <p className="text-gray-400 text-xs sm:text-sm">Complete payment at reception</p>
-                          </div>
-                        </div>
-                        <div className="text-left sm:text-right">
-                          <div className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-full border border-green-500/30">
-                            <Shield className="w-3 h-3 sm:w-4 sm:h-4 text-green-400" />
-                            <span className="font-semibold text-xs sm:text-sm text-green-400">SECURE</span>
-                          </div>
-                        </div>
-                      </div>
+                    {/* Pay Tag */}
+                    <div className="px-3 py-1 rounded-full bg-green-500/20 border border-green-500/30 text-green-400 text-xs font-bold flex items-center gap-1">
+                      <ShieldCheck className="w-3 h-3" />
+                      PAY AT COUNTER
                     </div>
                   </div>
-                </div>
 
-                {/* Submit Button */}
-                <button
-                  type="submit"
-                  disabled={submitting || !selectedConsole}
-                  className={`w-full py-3 sm:py-4 md:py-5 rounded-xl sm:rounded-2xl font-bold text-base sm:text-lg transition-all duration-300 flex items-center justify-center gap-2 sm:gap-3 ${submitting || !selectedConsole
-                    ? 'bg-gray-900 text-gray-500 cursor-not-allowed'
-                    : 'bg-gradient-to-r from-red-600 via-red-500 to-cyan-500 hover:from-red-700 hover:via-red-600 hover:to-cyan-600 hover:scale-[1.02] active:scale-100 shadow-xl hover:shadow-2xl'
-                    }`}
-                >
-                  {submitting ? (
-                    <>
-                      <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 animate-spin" />
-                      <span className="text-sm sm:text-base">CREATING BOOKING...</span>
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle className="w-5 h-5 sm:w-6 sm:h-6" />
-                      <span className="text-sm sm:text-base">CONFIRM WALK-IN BOOKING</span>
-                      <ArrowRight className="w-5 h-5 sm:w-6 sm:h-6" />
-                    </>
+                  {error && (
+                    <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center gap-3">
+                      <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+                      <p className="text-sm text-red-400 font-medium">{error}</p>
+                    </div>
                   )}
-                </button>
-              </form>
-            </div>
 
-            {/* Info Banner */}
-            <div className="bg-gradient-to-r from-cyan-500/10 to-blue-500/10 backdrop-blur-xl rounded-xl sm:rounded-2xl border border-cyan-500/20 p-4 sm:p-6">
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-6">
-                <div className="flex items-center gap-3 sm:gap-4">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg sm:rounded-xl bg-gradient-to-r from-cyan-500/20 to-blue-500/20 flex items-center justify-center">
-                    <Zap className="w-5 h-5 sm:w-6 sm:h-6 text-cyan-400" />
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-sm sm:text-lg">Instant Gaming Access</h4>
-                    <p className="text-gray-400 text-xs sm:text-sm">Your seat will be allocated immediately after booking</p>
-                  </div>
+                  <button
+                    type="submit"
+                    disabled={submitting || !selectedConsole}
+                    className={`w-full py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-3 shadow-xl transition-all ${submitting || !selectedConsole
+                        ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
+                        : 'bg-white text-black hover:scale-[1.02] active:scale-[0.98]'
+                      }`}
+                  >
+                    {submitting ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      <>
+                        <span>Confirm Booking</span>
+                        <ArrowRight className="w-5 h-5" />
+                      </>
+                    )}
+                  </button>
+
+                  <p className="text-center text-xs text-gray-500 mt-4">
+                    By confirming, you agree to the updated terms of service.
+                  </p>
                 </div>
-                <div className="flex items-center gap-4 sm:gap-6">
-                  <div className="text-center">
-                    <div className="text-xl sm:text-2xl font-bold text-cyan-400">24/7</div>
-                    <div className="text-gray-400 text-xs sm:text-sm">Support</div>
-                  </div>
-                  <div className="w-px h-6 sm:h-8 bg-gray-800"></div>
-                  <div className="text-center">
-                    <div className="text-xl sm:text-2xl font-bold text-green-400">100%</div>
-                    <div className="text-gray-400 text-xs sm:text-sm">Success Rate</div>
-                  </div>
-                </div>
+
               </div>
-            </div>
+            </form>
           </>
         )}
       </div>
