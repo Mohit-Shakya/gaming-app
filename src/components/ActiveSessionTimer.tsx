@@ -45,7 +45,7 @@ function parseTimeString(timeStr: string): { hours: number; minutes: number } | 
 
 export default function ActiveSessionTimer() {
     const router = useRouter();
-    const { user } = useUser();
+    const { user, loading: userLoading } = useUser();
     const [activeBooking, setActiveBooking] = useState<any>(null);
     const [endTime, setEndTime] = useState<Date | null>(null);
     const [startTime, setStartTime] = useState<Date | null>(null);
@@ -55,7 +55,12 @@ export default function ActiveSessionTimer() {
 
     useEffect(() => {
         async function fetchActiveSession() {
+            // Wait for auth to resolve and require logged-in user
+            if (userLoading) {
+                return; // Still loading auth, wait
+            }
             if (!user) {
+                setActiveBooking(null);
                 setLoading(false);
                 return;
             }
@@ -151,7 +156,7 @@ export default function ActiveSessionTimer() {
         // Refresh every minute
         const interval = setInterval(fetchActiveSession, 60000);
         return () => clearInterval(interval);
-    }, [user]);
+    }, [user, userLoading]);
 
     // Timer Logic
     useEffect(() => {
@@ -194,7 +199,8 @@ export default function ActiveSessionTimer() {
         return () => clearInterval(interval);
     }, [activeBooking, startTime, endTime]);
 
-    if (loading || !activeBooking) return null;
+    // Don't render if: still loading auth, no user logged in, or no active booking
+    if (userLoading || loading || !user || !activeBooking) return null;
 
     return (
         <div className="w-full max-w-7xl mx-auto px-4 mb-6 relative z-40 animate-slide-up">
