@@ -122,10 +122,10 @@ export default function WalkInBookingPage() {
       try {
         setProfileLoading(true);
 
-        // Try to fetch profile - may fail if no profile exists yet
+        // Try to fetch profile - use first_name, last_name (not full_name)
         const { data: profile, error: profileError } = await supabase
           .from("profiles")
-          .select("full_name, phone, onboarding_complete")
+          .select("first_name, last_name, phone, onboarding_complete")
           .eq("id", user!.id)
           .maybeSingle();
 
@@ -145,7 +145,8 @@ export default function WalkInBookingPage() {
         // If profile exists but onboarding not complete
         if (!profile?.onboarding_complete) {
           // Check if we have basic data - if so, continue; if not, redirect
-          const userName = profile?.full_name || user!.user_metadata?.full_name || user!.email?.split("@")[0];
+          const profileName = profile?.first_name ? `${profile.first_name} ${profile.last_name || ""}`.trim() : null;
+          const userName = profileName || user!.user_metadata?.full_name || user!.email?.split("@")[0];
           if (userName) {
             // Profile has enough data to proceed
             setProfileData({
@@ -161,8 +162,11 @@ export default function WalkInBookingPage() {
           return;
         }
 
+        const displayName = profile.first_name
+          ? `${profile.first_name} ${profile.last_name || ""}`.trim()
+          : (user!.user_metadata?.full_name || user!.email?.split("@")[0] || "Guest");
         setProfileData({
-          fullName: profile.full_name || user!.user_metadata?.full_name || user!.email?.split("@")[0] || "Guest",
+          fullName: displayName,
           phone: profile.phone || "",
         });
         setProfileLoading(false);
