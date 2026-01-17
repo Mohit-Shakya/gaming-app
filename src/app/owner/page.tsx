@@ -440,7 +440,7 @@ export default function OwnerDashboardPage() {
   // Handle window resize for mobile detection
   useEffect(() => {
     const handleResize = () => {
-      setIsMobile(window.innerWidth < 768);
+      setIsMobile(window.innerWidth < 1024);
     };
 
     // Set initial value

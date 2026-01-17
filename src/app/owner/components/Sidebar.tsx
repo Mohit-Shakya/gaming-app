@@ -160,7 +160,7 @@ export function MobileMenuButton({ onClick }: MobileMenuButtonProps) {
     return (
         <button
             onClick={onClick}
-            className="md:hidden flex items-center justify-center w-10 h-10 rounded-lg border border-slate-700 text-white hover:bg-slate-800 transition-colors"
+            className="flex items-center justify-center w-10 h-10 rounded-lg border border-slate-700 text-white hover:bg-slate-800 transition-colors"
         >
             <Menu size={20} />
         </button>
