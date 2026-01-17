@@ -26,7 +26,8 @@ import {
   Billing,
   BookingsManagement,
   Card,
-  Memberships
+  Memberships,
+  Coupons
 } from './components';
 
 type OwnerStats = {
@@ -5724,7 +5725,6 @@ export default function OwnerDashboardPage() {
           )}
 
           {/* Memberships Tab */}
-          {/* Memberships Tab */}
           {activeTab === 'memberships' && (
             <Memberships
               isMobile={isMobile}
@@ -5738,7 +5738,17 @@ export default function OwnerDashboardPage() {
             />
           )}
 
+          {/* Coupons Tab */}
+          {activeTab === 'coupons' && (
+            <Coupons
+              isMobile={isMobile}
+              cafeId={selectedCafeId || cafes[0]?.id || ''}
+              onRefresh={() => setRefreshTrigger(prev => prev + 1)}
+            />
+          )}
+
           {/* Billing Tab - Quick Booking Interface */}
+
           {activeTab === 'billing' && (
             <Billing
               cafeId={selectedCafeId || cafes[0]?.id}

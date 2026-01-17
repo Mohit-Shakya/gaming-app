@@ -18,3 +18,4 @@ export {
   LoadingSpinner,
 } from './ui';
 export { Memberships } from './Memberships';
+export { Coupons } from './Coupons';

@@ -22,7 +22,9 @@ import {
   Loader2,
   AlertCircle,
   IndianRupee,
-  MapPin
+  MapPin,
+  Check,
+  XCircle
 } from "lucide-react";
 
 type CheckoutTicket = {
@@ -128,6 +130,79 @@ export default function CheckoutPage() {
 
 
 
+  // Coupon state
+  const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupon, setAppliedCoupon] = useState<{
+    id: string;
+    code: string;
+    discountType: 'percentage' | 'flat';
+    discountValue: number;
+    maxDiscountAmount: number | null;
+    bonusMinutes: number;
+    discountAmount: number;
+  } | null>(null);
+  const [applyingCoupon, setApplyingCoupon] = useState(false);
+  const [couponError, setCouponError] = useState<string | null>(null);
+
+  async function handleApplyCoupon() {
+    if (!couponCode.trim() || !draft || !user) return;
+    setApplyingCoupon(true);
+    setCouponError(null);
+
+    try {
+      const { data, error } = await supabase.rpc('validate_coupon', {
+        p_code: couponCode.trim(),
+        p_cafe_id: draft.cafeId,
+        p_order_amount: draft.totalAmount,
+        p_user_phone: user.phone || undefined
+      });
+
+      if (error) throw error;
+
+      if (!data[0].is_valid) { // RPC returns array
+        setCouponError(data[0].error_message);
+        setApplyingCoupon(false);
+        return;
+      }
+
+      const couponData = data[0];
+      let discountAmount = 0;
+
+      if (couponData.discount_type === 'percentage') {
+        discountAmount = (draft.totalAmount * couponData.discount_value) / 100;
+        if (couponData.max_discount_amount) {
+          discountAmount = Math.min(discountAmount, couponData.max_discount_amount);
+        }
+      } else {
+        discountAmount = couponData.discount_value;
+      }
+
+      // Ensure discount doesn't exceed total
+      discountAmount = Math.min(discountAmount, draft.totalAmount);
+
+      setAppliedCoupon({
+        id: couponData.coupon_id,
+        code: couponCode.toUpperCase(),
+        discountType: couponData.discount_type,
+        discountValue: couponData.discount_value,
+        maxDiscountAmount: couponData.max_discount_amount,
+        bonusMinutes: couponData.bonus_minutes,
+        discountAmount: discountAmount
+      });
+      setCouponCode(""); // Clear input on success
+    } catch (err: any) {
+      console.error('Coupon error:', err);
+      setCouponError(err.message || "Failed to apply coupon");
+    } finally {
+      setApplyingCoupon(false);
+    }
+  }
+
+  function handleRemoveCoupon() {
+    setAppliedCoupon(null);
+    setCouponError(null);
+  }
+
   async function handlePlaceOrder() {
     if (!draft) return;
     if (!user) {
@@ -140,7 +215,12 @@ export default function CheckoutPage() {
     setError(null);
 
     try {
-      const { cafeId, bookingDate, timeSlot, totalAmount, tickets } = draft;
+      const { cafeId, bookingDate, timeSlot, totalAmount: originalTotal, tickets } = draft;
+
+      // Calculate final amount with discount
+      const discount = appliedCoupon ? appliedCoupon.discountAmount : 0;
+      const finalAmount = Math.max(0, originalTotal - discount);
+      const extraMinutes = appliedCoupon ? appliedCoupon.bonusMinutes : 0;
 
       // Create booking with confirmed status (Pay at Venue)
       const { data: bookingData, error: bookingError } = await supabase
@@ -150,10 +230,13 @@ export default function CheckoutPage() {
           user_id: user.id,
           booking_date: bookingDate,
           start_time: timeSlot,
-          total_amount: totalAmount,
+          total_amount: finalAmount,
           status: "confirmed", // Auto-confirm for pay at venue
           source: "online",
           payment_mode: "cash", // Default to cash/pay at venue
+          coupon_id: appliedCoupon?.id || null,
+          coupon_discount: discount,
+          coupon_extra_minutes: extraMinutes
         })
         .select("id")
         .maybeSingle();
@@ -166,6 +249,18 @@ export default function CheckoutPage() {
       }
 
       const bookingId = bookingData.id;
+
+      // Record coupon usage if applied
+      if (appliedCoupon) {
+        await supabase.rpc('use_coupon', {
+          p_coupon_id: appliedCoupon.id,
+          p_booking_id: bookingId,
+          p_user_phone: user.phone || null,
+          p_user_email: user.email || null,
+          p_discount_applied: discount,
+          p_extra_minutes: extraMinutes
+        });
+      }
 
       const itemsPayload = tickets.map((t) => ({
         booking_id: bookingId,
@@ -205,13 +300,15 @@ export default function CheckoutPage() {
               cafeName: draft.cafeName,
               bookingDate: new Date(bookingDate).toLocaleDateString('en-IN', { dateStyle: 'long' }),
               startTime: timeSlot,
-              duration: draft.durationMinutes,
+              duration: draft.durationMinutes + extraMinutes, // Include bonus time in email
               tickets: tickets.map(t => ({
                 console: CONSOLE_LABELS[t.console] || t.console,
                 quantity: t.quantity,
                 price: t.price,
               })),
-              totalAmount,
+              totalAmount: finalAmount,
+              discountApplied: discount > 0 ? discount : undefined,
+              extraMinutes: extraMinutes > 0 ? extraMinutes : undefined
             },
           }),
         }).catch(console.error);
@@ -779,10 +876,87 @@ export default function CheckoutPage() {
             })}
           </div>
 
+          {/* Coupon Section */}
+          <div style={{ padding: "0 16px 16px", borderBottom: `1px solid ${colors.border}`, background: colors.darkCard }}>
+            {!appliedCoupon ? (
+              <div style={{ display: "flex", gap: "8px" }}>
+                <div style={{ position: "relative", flex: 1 }}>
+                  <input
+                    type="text"
+                    placeholder="Have a coupon code?"
+                    value={couponCode}
+                    onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                    style={{
+                      width: "100%",
+                      padding: "10px 12px 10px 36px",
+                      background: "rgba(15, 23, 42, 0.5)",
+                      border: `1px solid ${couponError ? colors.red : colors.border}`,
+                      borderRadius: "8px",
+                      color: "white",
+                      fontSize: "14px",
+                      outline: "none"
+                    }}
+                  />
+                  <Ticket size={16} color={colors.textMuted} style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)" }} />
+                </div>
+                <button
+                  onClick={handleApplyCoupon}
+                  disabled={applyingCoupon || !couponCode}
+                  style={{
+                    padding: "0 16px",
+                    borderRadius: "8px",
+                    background: applyingCoupon || !couponCode ? "rgba(255,255,255,0.1)" : colors.cyan,
+                    color: applyingCoupon || !couponCode ? colors.textMuted : "white",
+                    border: "none",
+                    cursor: applyingCoupon || !couponCode ? "not-allowed" : "pointer",
+                    fontSize: "13px",
+                    fontWeight: 500
+                  }}
+                >
+                  {applyingCoupon ? <Loader2 size={14} className="animate-spin" /> : "Apply"}
+                </button>
+              </div>
+            ) : (
+              <div style={{
+                padding: "12px",
+                background: "rgba(22, 163, 74, 0.1)",
+                border: `1px solid rgba(22, 163, 74, 0.2)`,
+                borderRadius: "8px",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center"
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <div style={{ padding: "4px", background: colors.green, borderRadius: "50%" }}>
+                    <Check size={10} color="white" />
+                  </div>
+                  <div>
+                    <div style={{ color: colors.green, fontWeight: 600, fontSize: "13px" }}>
+                      '{appliedCoupon.code}' Applied
+                    </div>
+                    <div style={{ color: colors.textSecondary, fontSize: "11px" }}>
+                      You saved ₹{appliedCoupon.discountAmount}
+                      {appliedCoupon.bonusMinutes > 0 && ` + ${appliedCoupon.bonusMinutes}m free time`}
+                    </div>
+                  </div>
+                </div>
+                <button onClick={handleRemoveCoupon} style={{ background: "none", border: "none", cursor: "pointer", color: colors.textMuted }}>
+                  <XCircle size={16} />
+                </button>
+              </div>
+            )}
+            {couponError && (
+              <div style={{ marginTop: "8px", fontSize: "12px", color: colors.red, display: "flex", alignItems: "center", gap: "4px" }}>
+                <AlertCircle size={12} />
+                {couponError}
+              </div>
+            )}
+          </div>
+
           {/* Price Summary */}
           <div
             style={{
-              borderTop: `1px solid ${colors.border}`,
+              // borderTop: `1px solid ${colors.border}`, // Removed duplicate border
               padding: "16px",
               background: "rgba(15, 23, 42, 0.5)",
             }}
@@ -802,6 +976,24 @@ export default function CheckoutPage() {
                 ₹{draft.totalAmount}
               </span>
             </div>
+
+            {appliedCoupon && (
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: "8px",
+                }}
+              >
+                <span style={{ fontSize: "14px", color: colors.green }}>
+                  Discount ({appliedCoupon.code})
+                </span>
+                <span style={{ fontSize: "14px", fontWeight: 500, color: colors.green }}>
+                  -₹{appliedCoupon.discountAmount}
+                </span>
+              </div>
+            )}
 
             <div
               style={{
@@ -843,7 +1035,7 @@ export default function CheckoutPage() {
                 }}
               >
                 <IndianRupee size={16} />
-                {draft.totalAmount}
+                {Math.max(0, draft.totalAmount - (appliedCoupon?.discountAmount || 0))}
               </span>
             </div>
           </div>
@@ -945,7 +1137,7 @@ export default function CheckoutPage() {
               }}
             >
               <IndianRupee size={16} />
-              {draft.totalAmount}
+              {Math.max(0, draft.totalAmount - (appliedCoupon?.discountAmount || 0))}
             </div>
           </div>
 
@@ -981,7 +1173,7 @@ export default function CheckoutPage() {
             ) : (
               <>
                 <IndianRupee size={16} />
-                Pay {draft.totalAmount}
+                Pay {Math.max(0, draft.totalAmount - (appliedCoupon?.discountAmount || 0))}
               </>
             )}
           </button>
