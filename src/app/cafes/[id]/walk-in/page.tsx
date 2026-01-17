@@ -319,23 +319,33 @@ export default function WalkInBookingPage() {
               }
               // Other consoles (PC, VR, Pool, etc.) use simple hourly pricing
               else {
-                // For PC, VR, Arcade, Steering Wheel: Price scales with quantity (per station)
-                // For Pool, Snooker: Price is per table (fixed regardless of players)
+                // PC, VR, Steering Wheel, Arcade: "Quantity" means number of stations (each station has its own price)
+                // So qty 2 = 2 separate PC/VR stations = 2 x base price
+                // Pool, Snooker: Price is per table (fixed regardless of players at that table)
                 const isPerStation = ["pc", "vr", "steering_wheel", "arcade"].includes(consoleId);
 
-                const calculatePrice = (rate: number | null, qty: number) => {
-                  if (rate === null || rate === undefined) return null;
-                  return isPerStation ? rate * qty : rate;
-                };
+                // For per-station consoles, multiply rate by quantity
+                // For table games, keep fixed price regardless of quantity
+                tier.qty1_30min = sp.half_hour_rate || null;
+                tier.qty1_60min = sp.hourly_rate || null;
 
-                tier.qty1_30min = calculatePrice(sp.half_hour_rate, 1);
-                tier.qty1_60min = calculatePrice(sp.hourly_rate, 1);
-                tier.qty2_30min = calculatePrice(sp.half_hour_rate, 2);
-                tier.qty2_60min = calculatePrice(sp.hourly_rate, 2);
-                tier.qty3_30min = calculatePrice(sp.half_hour_rate, 3);
-                tier.qty3_60min = calculatePrice(sp.hourly_rate, 3);
-                tier.qty4_30min = calculatePrice(sp.half_hour_rate, 4);
-                tier.qty4_60min = calculatePrice(sp.hourly_rate, 4);
+                if (isPerStation) {
+                  // Each additional "controller" means another station
+                  tier.qty2_30min = sp.half_hour_rate ? sp.half_hour_rate * 2 : null;
+                  tier.qty2_60min = sp.hourly_rate ? sp.hourly_rate * 2 : null;
+                  tier.qty3_30min = sp.half_hour_rate ? sp.half_hour_rate * 3 : null;
+                  tier.qty3_60min = sp.hourly_rate ? sp.hourly_rate * 3 : null;
+                  tier.qty4_30min = sp.half_hour_rate ? sp.half_hour_rate * 4 : null;
+                  tier.qty4_60min = sp.hourly_rate ? sp.hourly_rate * 4 : null;
+                } else {
+                  // Table games: same price regardless of players
+                  tier.qty2_30min = sp.half_hour_rate || null;
+                  tier.qty2_60min = sp.hourly_rate || null;
+                  tier.qty3_30min = sp.half_hour_rate || null;
+                  tier.qty3_60min = sp.hourly_rate || null;
+                  tier.qty4_30min = sp.half_hour_rate || null;
+                  tier.qty4_60min = sp.hourly_rate || null;
+                }
               }
 
               pricing[consoleId] = tier;
@@ -373,6 +383,18 @@ export default function WalkInBookingPage() {
 
       if (tierPrice !== null && tierPrice !== undefined) {
         return tierPrice;
+      }
+
+      // Smart Fallback for Linear Pricing Consoles (PC, VR, Racing, Arcade)
+      // If explicit price for Qty N is missing, but Qty 1 exists, calculate it: Price = Qty 1 Price * Qty
+      const isPerStation = ["pc", "vr", "steering_wheel", "arcade"].includes(selectedConsole);
+      if (isPerStation && quantity > 1) {
+        const baseKey = `qty1_${duration}min` as keyof ConsolePricingTier;
+        const baseTierPrice = tier[baseKey];
+
+        if (baseTierPrice !== null && baseTierPrice !== undefined) {
+          return baseTierPrice * quantity;
+        }
       }
     }
 
