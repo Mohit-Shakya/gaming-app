@@ -74,7 +74,7 @@ type BookingRow = {
   user_name?: string;
 };
 
-type NavTab = 'overview' | 'cafes' | 'users' | 'bookings' | 'revenue' | 'reports' | 'settings' | 'announcements' | 'audit-logs';
+type NavTab = 'overview' | 'cafes' | 'users' | 'bookings' | 'revenue' | 'reports' | 'settings' | 'announcements' | 'audit-logs' | 'coupons';
 
 type AnnouncementRow = {
   id: string;
@@ -97,6 +97,22 @@ type AuditLogRow = {
   created_at: string;
 };
 
+type CouponRow = {
+  id: string;
+  cafe_id: string;
+  code: string;
+  discount_type: string;
+  discount_value: number;
+  bonus_minutes: number;
+  max_uses: number | null;
+  uses_count: number;
+  is_active: boolean;
+  valid_from: string;
+  valid_until: string | null;
+  created_at: string;
+  cafe_name?: string;
+};
+
 export default function AdminDashboardPage() {
   const router = useRouter();
   const { user, loading: userLoading } = useUser();
@@ -112,6 +128,7 @@ export default function AdminDashboardPage() {
   const [bookings, setBookings] = useState<BookingRow[]>([]);
   const [announcements, setAnnouncements] = useState<AnnouncementRow[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLogRow[]>([]);
+  const [coupons, setCoupons] = useState<CouponRow[]>([]);
 
   const [loadingData, setLoadingData] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -172,12 +189,12 @@ export default function AdminDashboardPage() {
     activeNavText: "#a855f7",
   };
 
-  // Navigation items
   const navItems: { id: NavTab; label: string; icon: string }[] = [
     { id: 'overview', label: 'Overview', icon: '📊' },
     { id: 'cafes', label: 'Cafés', icon: '🏪' },
     { id: 'users', label: 'Users', icon: '👥' },
     { id: 'bookings', label: 'Bookings', icon: '📅' },
+    { id: 'coupons', label: 'Coupons', icon: '🎟️' },
     { id: 'revenue', label: 'Revenue', icon: '💰' },
     { id: 'announcements', label: 'Announcements', icon: '📢' },
     { id: 'audit-logs', label: 'Audit Logs', icon: '📋' },
@@ -622,6 +639,50 @@ export default function AdminDashboardPage() {
     }
 
     loadAuditLogs();
+  }, [isAdmin, activeTab]);
+
+  // Load coupons data
+  useEffect(() => {
+    if (!isAdmin || activeTab !== 'coupons') return;
+
+    async function loadCoupons() {
+      try {
+        setLoadingData(true);
+        setError(null);
+
+        const { data, error } = await supabase
+          .from("coupons")
+          .select("*")
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+
+        // Enrich with cafe names
+        const enrichedCoupons = await Promise.all(
+          (data || []).map(async (coupon) => {
+            const { data: cafe } = await supabase
+              .from("cafes")
+              .select("name")
+              .eq("id", coupon.cafe_id)
+              .maybeSingle();
+
+            return {
+              ...coupon,
+              cafe_name: cafe?.name || "Unknown Café",
+            };
+          })
+        );
+
+        setCoupons(enrichedCoupons);
+      } catch (err) {
+        console.error("Error loading coupons:", err);
+        setError("Failed to load coupons data");
+      } finally {
+        setLoadingData(false);
+      }
+    }
+
+    loadCoupons();
   }, [isAdmin, activeTab]);
 
   // Toggle cafe active status
@@ -1095,7 +1156,7 @@ export default function AdminDashboardPage() {
       if (cafeFilter === "active" && !cafe.is_active) return false;
       if (cafeFilter === "inactive" && cafe.is_active) return false;
       if (cafeSearch && !cafe.name.toLowerCase().includes(cafeSearch.toLowerCase()) &&
-          !cafe.address.toLowerCase().includes(cafeSearch.toLowerCase())) return false;
+        !cafe.address.toLowerCase().includes(cafeSearch.toLowerCase())) return false;
       return true;
     }),
     cafeSort.field,
@@ -1106,7 +1167,7 @@ export default function AdminDashboardPage() {
     users.filter(user => {
       if (userRoleFilter !== "all" && user.role !== userRoleFilter) return false;
       if (userSearch && !user.name.toLowerCase().includes(userSearch.toLowerCase()) &&
-          !(user.email || "").toLowerCase().includes(userSearch.toLowerCase())) return false;
+        !(user.email || "").toLowerCase().includes(userSearch.toLowerCase())) return false;
       return true;
     }),
     userSort.field,
@@ -1118,7 +1179,7 @@ export default function AdminDashboardPage() {
       if (bookingStatusFilter !== "all" && booking.status !== bookingStatusFilter) return false;
       if (bookingDateFilter && booking.booking_date !== bookingDateFilter) return false;
       if (bookingSearch && !booking.user_name?.toLowerCase().includes(bookingSearch.toLowerCase()) &&
-          !booking.cafe_name?.toLowerCase().includes(bookingSearch.toLowerCase())) return false;
+        !booking.cafe_name?.toLowerCase().includes(bookingSearch.toLowerCase())) return false;
       return true;
     }),
     bookingSort.field,
@@ -1370,6 +1431,7 @@ export default function AdminDashboardPage() {
                 {activeTab === 'revenue' && 'Revenue Analytics'}
                 {activeTab === 'announcements' && 'Platform Announcements'}
                 {activeTab === 'audit-logs' && 'Audit Logs'}
+                {activeTab === 'coupons' && 'Coupon Management'}
                 {activeTab === 'reports' && 'Reports & Analytics'}
                 {activeTab === 'settings' && 'Platform Settings'}
               </h1>
@@ -2229,18 +2291,18 @@ export default function AdminDashboardPage() {
                                     booking.status === "confirmed"
                                       ? "rgba(16, 185, 129, 0.2)"
                                       : booking.status === "pending"
-                                      ? "rgba(251, 191, 36, 0.2)"
-                                      : booking.status === "completed"
-                                      ? "rgba(59, 130, 246, 0.2)"
-                                      : "rgba(248, 113, 113, 0.2)",
+                                        ? "rgba(251, 191, 36, 0.2)"
+                                        : booking.status === "completed"
+                                          ? "rgba(59, 130, 246, 0.2)"
+                                          : "rgba(248, 113, 113, 0.2)",
                                   color:
                                     booking.status === "confirmed"
                                       ? "#10b981"
                                       : booking.status === "pending"
-                                      ? "#fbbf24"
-                                      : booking.status === "completed"
-                                      ? "#3b82f6"
-                                      : "#f87171",
+                                        ? "#fbbf24"
+                                        : booking.status === "completed"
+                                          ? "#3b82f6"
+                                          : "#f87171",
                                 }}
                               >
                                 {booking.status}
@@ -2272,63 +2334,122 @@ export default function AdminDashboardPage() {
 
           {/* REVENUE TAB */}
           {activeTab === 'revenue' && (
-            <div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+              {/* Time-based Revenue Cards */}
               <div
                 style={{
-                  padding: "40px",
-                  borderRadius: 16,
-                  background: theme.cardBackground,
-                  border: `1px solid ${theme.border}`,
-                  textAlign: "center",
+                  display: "grid",
+                  gridTemplateColumns: "repeat(4, 1fr)",
+                  gap: 16,
                 }}
               >
-                <div style={{ fontSize: 64, marginBottom: 16 }}>💰</div>
-                <h2 style={{ fontFamily: fonts.heading, fontSize: 24, marginBottom: 12, color: theme.textPrimary }}>
-                  Revenue Analytics
-                </h2>
-                <p style={{ fontSize: 14, color: theme.textSecondary, marginBottom: 32 }}>
-                  Platform-wide revenue tracking and insights
-                </p>
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-                    gap: 16,
-                    marginTop: 32,
-                  }}
-                >
-                  <div style={{ padding: "20px", background: "rgba(16, 185, 129, 0.1)", borderRadius: 12, border: "1px solid rgba(16, 185, 129, 0.2)" }}>
-                    <p style={{ fontSize: 11, color: theme.textMuted, marginBottom: 8, textTransform: "uppercase", letterSpacing: 1.5 }}>
-                      Today
-                    </p>
-                    <p style={{ fontFamily: fonts.heading, fontSize: 28, color: "#10b981", margin: 0 }}>
-                      {formatCurrency(stats?.todayRevenue || 0)}
-                    </p>
-                  </div>
-                  <div style={{ padding: "20px", background: "rgba(59, 130, 246, 0.1)", borderRadius: 12, border: "1px solid rgba(59, 130, 246, 0.2)" }}>
-                    <p style={{ fontSize: 11, color: theme.textMuted, marginBottom: 8, textTransform: "uppercase", letterSpacing: 1.5 }}>
-                      This Week
-                    </p>
-                    <p style={{ fontFamily: fonts.heading, fontSize: 28, color: "#3b82f6", margin: 0 }}>
-                      {formatCurrency(stats?.weekRevenue || 0)}
-                    </p>
-                  </div>
-                  <div style={{ padding: "20px", background: "rgba(139, 92, 246, 0.1)", borderRadius: 12, border: "1px solid rgba(139, 92, 246, 0.2)" }}>
-                    <p style={{ fontSize: 11, color: theme.textMuted, marginBottom: 8, textTransform: "uppercase", letterSpacing: 1.5 }}>
-                      This Month
-                    </p>
-                    <p style={{ fontFamily: fonts.heading, fontSize: 28, color: "#8b5cf6", margin: 0 }}>
-                      {formatCurrency(stats?.monthRevenue || 0)}
-                    </p>
-                  </div>
-                  <div style={{ padding: "20px", background: "rgba(168, 85, 247, 0.1)", borderRadius: 12, border: "1px solid rgba(168, 85, 247, 0.2)" }}>
-                    <p style={{ fontSize: 11, color: theme.textMuted, marginBottom: 8, textTransform: "uppercase", letterSpacing: 1.5 }}>
-                      All Time
-                    </p>
-                    <p style={{ fontFamily: fonts.heading, fontSize: 28, color: "#a855f7", margin: 0 }}>
-                      {formatCurrency(stats?.totalRevenue || 0)}
-                    </p>
-                  </div>
+                <div style={{ padding: "24px", background: "rgba(16, 185, 129, 0.1)", borderRadius: 16, border: "1px solid rgba(16, 185, 129, 0.2)" }}>
+                  <p style={{ fontSize: 11, color: theme.textMuted, marginBottom: 8, textTransform: "uppercase", letterSpacing: 1.5 }}>
+                    Today
+                  </p>
+                  <p style={{ fontFamily: fonts.heading, fontSize: 32, color: "#10b981", margin: 0, fontWeight: 700 }}>
+                    {formatCurrency(stats?.todayRevenue || 0)}
+                  </p>
+                  <p style={{ fontSize: 12, color: theme.textMuted, marginTop: 8 }}>{stats?.todayBookings || 0} bookings</p>
+                </div>
+                <div style={{ padding: "24px", background: "rgba(59, 130, 246, 0.1)", borderRadius: 16, border: "1px solid rgba(59, 130, 246, 0.2)" }}>
+                  <p style={{ fontSize: 11, color: theme.textMuted, marginBottom: 8, textTransform: "uppercase", letterSpacing: 1.5 }}>
+                    This Week
+                  </p>
+                  <p style={{ fontFamily: fonts.heading, fontSize: 32, color: "#3b82f6", margin: 0, fontWeight: 700 }}>
+                    {formatCurrency(stats?.weekRevenue || 0)}
+                  </p>
+                </div>
+                <div style={{ padding: "24px", background: "rgba(139, 92, 246, 0.1)", borderRadius: 16, border: "1px solid rgba(139, 92, 246, 0.2)" }}>
+                  <p style={{ fontSize: 11, color: theme.textMuted, marginBottom: 8, textTransform: "uppercase", letterSpacing: 1.5 }}>
+                    This Month
+                  </p>
+                  <p style={{ fontFamily: fonts.heading, fontSize: 32, color: "#8b5cf6", margin: 0, fontWeight: 700 }}>
+                    {formatCurrency(stats?.monthRevenue || 0)}
+                  </p>
+                </div>
+                <div style={{ padding: "24px", background: "rgba(168, 85, 247, 0.1)", borderRadius: 16, border: "1px solid rgba(168, 85, 247, 0.2)" }}>
+                  <p style={{ fontSize: 11, color: theme.textMuted, marginBottom: 8, textTransform: "uppercase", letterSpacing: 1.5 }}>
+                    All Time
+                  </p>
+                  <p style={{ fontFamily: fonts.heading, fontSize: 32, color: "#a855f7", margin: 0, fontWeight: 700 }}>
+                    {formatCurrency(stats?.totalRevenue || 0)}
+                  </p>
+                  <p style={{ fontSize: 12, color: theme.textMuted, marginTop: 8 }}>{stats?.totalBookings || 0} total bookings</p>
+                </div>
+              </div>
+
+              {/* Revenue by Café Table */}
+              <div
+                style={{
+                  background: theme.cardBackground,
+                  borderRadius: 16,
+                  border: `1px solid ${theme.border}`,
+                  overflow: "hidden",
+                }}
+              >
+                <div style={{ padding: "20px 24px", borderBottom: `1px solid ${theme.border}` }}>
+                  <h3 style={{ fontSize: 18, color: theme.textPrimary, margin: 0, display: "flex", alignItems: "center", gap: 10 }}>
+                    📊 Revenue by Café
+                  </h3>
+                </div>
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <thead>
+                      <tr style={{ background: "rgba(168, 85, 247, 0.08)", borderBottom: `1px solid ${theme.border}` }}>
+                        <th style={{ padding: "14px 20px", textAlign: "left", fontSize: 12, fontWeight: 600, color: theme.textSecondary, textTransform: "uppercase", letterSpacing: 1 }}>Café</th>
+                        <th style={{ padding: "14px 20px", textAlign: "left", fontSize: 12, fontWeight: 600, color: theme.textSecondary, textTransform: "uppercase", letterSpacing: 1 }}>Owner</th>
+                        <th style={{ padding: "14px 20px", textAlign: "right", fontSize: 12, fontWeight: 600, color: theme.textSecondary, textTransform: "uppercase", letterSpacing: 1 }}>Bookings</th>
+                        <th style={{ padding: "14px 20px", textAlign: "right", fontSize: 12, fontWeight: 600, color: theme.textSecondary, textTransform: "uppercase", letterSpacing: 1 }}>Revenue</th>
+                        <th style={{ padding: "14px 20px", textAlign: "right", fontSize: 12, fontWeight: 600, color: theme.textSecondary, textTransform: "uppercase", letterSpacing: 1 }}>Share</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {cafes.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} style={{ padding: "40px", textAlign: "center", color: theme.textMuted }}>
+                            No café data available
+                          </td>
+                        </tr>
+                      ) : (
+                        [...cafes]
+                          .sort((a, b) => (b.total_revenue || 0) - (a.total_revenue || 0))
+                          .map((cafe) => {
+                            const sharePercent = stats?.totalRevenue ? ((cafe.total_revenue || 0) / stats.totalRevenue * 100).toFixed(1) : '0';
+                            return (
+                              <tr
+                                key={cafe.id}
+                                style={{
+                                  borderBottom: `1px solid ${theme.border}`,
+                                  transition: "background 0.2s",
+                                }}
+                                onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(168, 85, 247, 0.05)"; }}
+                                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                              >
+                                <td style={{ padding: "16px 20px" }}>
+                                  <div style={{ fontSize: 14, fontWeight: 600, color: theme.textPrimary }}>{cafe.name}</div>
+                                  <div style={{ fontSize: 12, color: theme.textMuted, marginTop: 2 }}>{cafe.address?.substring(0, 40)}...</div>
+                                </td>
+                                <td style={{ padding: "16px 20px", fontSize: 14, color: theme.textSecondary }}>
+                                  {cafe.owner_name || 'Unknown'}
+                                </td>
+                                <td style={{ padding: "16px 20px", textAlign: "right", fontSize: 14, color: theme.textSecondary }}>
+                                  {cafe.total_bookings || 0}
+                                </td>
+                                <td style={{ padding: "16px 20px", textAlign: "right", fontSize: 14, fontWeight: 600, color: "#10b981" }}>
+                                  {formatCurrency(cafe.total_revenue || 0)}
+                                </td>
+                                <td style={{ padding: "16px 20px", textAlign: "right" }}>
+                                  <span style={{ padding: "4px 8px", borderRadius: 6, fontSize: 12, background: "rgba(168, 85, 247, 0.15)", color: "#a855f7" }}>
+                                    {sharePercent}%
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>
@@ -2336,25 +2457,134 @@ export default function AdminDashboardPage() {
 
           {/* REPORTS TAB */}
           {activeTab === 'reports' && (
-            <div
-              style={{
-                padding: "60px 40px",
-                borderRadius: 16,
-                background: theme.cardBackground,
-                border: `1px solid ${theme.border}`,
-                textAlign: "center",
-              }}
-            >
-              <div style={{ fontSize: 64, marginBottom: 16 }}>📈</div>
-              <h2 style={{ fontFamily: fonts.heading, fontSize: 24, marginBottom: 12, color: theme.textPrimary }}>
-                Advanced Reports
-              </h2>
-              <p style={{ fontSize: 14, color: theme.textSecondary }}>
-                Generate detailed platform reports and analytics
-              </p>
-              <p style={{ fontSize: 13, color: theme.textMuted, marginTop: 8 }}>
-                Coming soon: Export reports, custom date ranges, performance metrics, and more
-              </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+              {/* Top Cafés by Revenue */}
+              <div
+                style={{
+                  padding: "24px",
+                  borderRadius: 16,
+                  background: theme.cardBackground,
+                  border: `1px solid ${theme.border}`,
+                }}
+              >
+                <h3 style={{ fontSize: 18, marginBottom: 20, color: theme.textPrimary, display: "flex", alignItems: "center", gap: 10 }}>
+                  🏆 Top Cafés by Revenue
+                </h3>
+                {cafes.length === 0 ? (
+                  <p style={{ color: theme.textMuted }}>No café data available</p>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    {[...cafes]
+                      .sort((a, b) => (b.total_revenue || 0) - (a.total_revenue || 0))
+                      .slice(0, 5)
+                      .map((cafe, index) => {
+                        const maxRevenue = Math.max(...cafes.map(c => c.total_revenue || 0), 1);
+                        const widthPercent = ((cafe.total_revenue || 0) / maxRevenue) * 100;
+                        return (
+                          <div key={cafe.id} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                            <span style={{ width: 24, fontSize: 14, fontWeight: 600, color: index === 0 ? "#fbbf24" : theme.textSecondary }}>
+                              #{index + 1}
+                            </span>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                                <span style={{ fontSize: 14, color: theme.textPrimary }}>{cafe.name}</span>
+                                <span style={{ fontSize: 14, fontWeight: 600, color: "#10b981" }}>{formatCurrency(cafe.total_revenue || 0)}</span>
+                              </div>
+                              <div style={{ height: 8, background: "rgba(16, 185, 129, 0.1)", borderRadius: 4, overflow: "hidden" }}>
+                                <div style={{ height: "100%", width: `${widthPercent}%`, background: "linear-gradient(90deg, #10b981, #34d399)", borderRadius: 4, transition: "width 0.5s" }} />
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                )}
+              </div>
+
+              {/* Platform Stats Grid */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
+                <div style={{ padding: "20px", borderRadius: 12, background: theme.cardBackground, border: `1px solid ${theme.border}`, textAlign: "center" }}>
+                  <div style={{ fontSize: 28, fontWeight: 700, color: "#10b981" }}>{formatCurrency(stats?.totalRevenue || 0)}</div>
+                  <div style={{ fontSize: 12, color: theme.textMuted, marginTop: 4 }}>Total Revenue</div>
+                </div>
+                <div style={{ padding: "20px", borderRadius: 12, background: theme.cardBackground, border: `1px solid ${theme.border}`, textAlign: "center" }}>
+                  <div style={{ fontSize: 28, fontWeight: 700, color: "#3b82f6" }}>{stats?.totalBookings || 0}</div>
+                  <div style={{ fontSize: 12, color: theme.textMuted, marginTop: 4 }}>Total Bookings</div>
+                </div>
+                <div style={{ padding: "20px", borderRadius: 12, background: theme.cardBackground, border: `1px solid ${theme.border}`, textAlign: "center" }}>
+                  <div style={{ fontSize: 28, fontWeight: 700, color: "#a855f7" }}>{stats?.totalCafes || 0}</div>
+                  <div style={{ fontSize: 12, color: theme.textMuted, marginTop: 4 }}>Active Cafés</div>
+                </div>
+                <div style={{ padding: "20px", borderRadius: 12, background: theme.cardBackground, border: `1px solid ${theme.border}`, textAlign: "center" }}>
+                  <div style={{ fontSize: 28, fontWeight: 700, color: "#f59e0b" }}>{stats?.totalUsers || 0}</div>
+                  <div style={{ fontSize: 12, color: theme.textMuted, marginTop: 4 }}>Registered Users</div>
+                </div>
+              </div>
+
+              {/* Revenue Breakdown */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                <div
+                  style={{
+                    padding: "24px",
+                    borderRadius: 16,
+                    background: theme.cardBackground,
+                    border: `1px solid ${theme.border}`,
+                  }}
+                >
+                  <h3 style={{ fontSize: 18, marginBottom: 20, color: theme.textPrimary, display: "flex", alignItems: "center", gap: 10 }}>
+                    💰 Revenue Breakdown
+                  </h3>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", padding: "12px 0", borderBottom: `1px solid ${theme.border}` }}>
+                      <span style={{ color: theme.textSecondary }}>Today</span>
+                      <span style={{ fontWeight: 600, color: "#10b981" }}>{formatCurrency(stats?.todayRevenue || 0)}</span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", padding: "12px 0", borderBottom: `1px solid ${theme.border}` }}>
+                      <span style={{ color: theme.textSecondary }}>This Week</span>
+                      <span style={{ fontWeight: 600, color: "#3b82f6" }}>{formatCurrency(stats?.weekRevenue || 0)}</span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", padding: "12px 0", borderBottom: `1px solid ${theme.border}` }}>
+                      <span style={{ color: theme.textSecondary }}>This Month</span>
+                      <span style={{ fontWeight: 600, color: "#a855f7" }}>{formatCurrency(stats?.monthRevenue || 0)}</span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", padding: "12px 0" }}>
+                      <span style={{ color: theme.textSecondary }}>All Time</span>
+                      <span style={{ fontWeight: 600, color: "#f59e0b" }}>{formatCurrency(stats?.totalRevenue || 0)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    padding: "24px",
+                    borderRadius: 16,
+                    background: theme.cardBackground,
+                    border: `1px solid ${theme.border}`,
+                  }}
+                >
+                  <h3 style={{ fontSize: 18, marginBottom: 20, color: theme.textPrimary, display: "flex", alignItems: "center", gap: 10 }}>
+                    📊 Café Performance
+                  </h3>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", padding: "12px 0", borderBottom: `1px solid ${theme.border}` }}>
+                      <span style={{ color: theme.textSecondary }}>Active Cafés</span>
+                      <span style={{ fontWeight: 600, color: "#10b981" }}>{stats?.activeCafes || 0}</span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", padding: "12px 0", borderBottom: `1px solid ${theme.border}` }}>
+                      <span style={{ color: theme.textSecondary }}>Pending Cafés</span>
+                      <span style={{ fontWeight: 600, color: "#f59e0b" }}>{stats?.pendingCafes || 0}</span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", padding: "12px 0", borderBottom: `1px solid ${theme.border}` }}>
+                      <span style={{ color: theme.textSecondary }}>Café Owners</span>
+                      <span style={{ fontWeight: 600, color: "#3b82f6" }}>{stats?.totalOwners || 0}</span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", padding: "12px 0" }}>
+                      <span style={{ color: theme.textSecondary }}>Avg. Revenue/Café</span>
+                      <span style={{ fontWeight: 600, color: "#a855f7" }}>{formatCurrency(stats?.totalCafes ? Math.round((stats?.totalRevenue || 0) / stats.totalCafes) : 0)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
@@ -2663,6 +2893,116 @@ export default function AdminDashboardPage() {
                             </td>
                           </tr>
                         ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* COUPONS TAB */}
+          {activeTab === 'coupons' && (
+            <div>
+              <div
+                style={{
+                  background: theme.cardBackground,
+                  borderRadius: 12,
+                  border: `1px solid ${theme.border}`,
+                  overflow: "hidden",
+                }}
+              >
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <thead>
+                      <tr style={{ background: "rgba(168, 85, 247, 0.1)", borderBottom: `1px solid ${theme.border}` }}>
+                        <th style={{ padding: "16px", textAlign: "left", fontSize: 12, fontWeight: 600, color: theme.textSecondary, textTransform: "uppercase", letterSpacing: 1 }}>Code</th>
+                        <th style={{ padding: "16px", textAlign: "left", fontSize: 12, fontWeight: 600, color: theme.textSecondary, textTransform: "uppercase", letterSpacing: 1 }}>Café</th>
+                        <th style={{ padding: "16px", textAlign: "left", fontSize: 12, fontWeight: 600, color: theme.textSecondary, textTransform: "uppercase", letterSpacing: 1 }}>Discount</th>
+                        <th style={{ padding: "16px", textAlign: "left", fontSize: 12, fontWeight: 600, color: theme.textSecondary, textTransform: "uppercase", letterSpacing: 1 }}>Usage</th>
+                        <th style={{ padding: "16px", textAlign: "left", fontSize: 12, fontWeight: 600, color: theme.textSecondary, textTransform: "uppercase", letterSpacing: 1 }}>Valid Until</th>
+                        <th style={{ padding: "16px", textAlign: "left", fontSize: 12, fontWeight: 600, color: theme.textSecondary, textTransform: "uppercase", letterSpacing: 1 }}>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {loadingData ? (
+                        <tr>
+                          <td colSpan={6} style={{ padding: "40px", textAlign: "center", color: theme.textMuted }}>
+                            Loading coupons...
+                          </td>
+                        </tr>
+                      ) : coupons.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} style={{ padding: "40px", textAlign: "center", color: theme.textMuted }}>
+                            No coupons found across any café
+                          </td>
+                        </tr>
+                      ) : (
+                        coupons.map((coupon) => {
+                          const isExpired = coupon.valid_until && new Date(coupon.valid_until) < new Date();
+                          const discountDisplay = coupon.discount_type === 'percentage'
+                            ? `${coupon.discount_value}% OFF`
+                            : coupon.bonus_minutes > 0
+                              ? `${coupon.bonus_minutes} mins FREE`
+                              : `₹${coupon.discount_value} OFF`;
+
+                          return (
+                            <tr
+                              key={coupon.id}
+                              style={{
+                                borderBottom: `1px solid ${theme.border}`,
+                                transition: "background 0.2s",
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background = "rgba(168, 85, 247, 0.05)";
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = "transparent";
+                              }}
+                            >
+                              <td style={{ padding: "16px", fontFamily: "monospace", fontSize: 14, color: theme.textPrimary, fontWeight: 600 }}>
+                                {coupon.code}
+                              </td>
+                              <td style={{ padding: "16px", fontSize: 14, color: theme.textSecondary }}>
+                                {coupon.cafe_name}
+                              </td>
+                              <td style={{ padding: "16px" }}>
+                                <span
+                                  style={{
+                                    padding: "6px 12px",
+                                    borderRadius: 8,
+                                    fontSize: 12,
+                                    fontWeight: 600,
+                                    background: coupon.discount_type === 'percentage' ? "rgba(16, 185, 129, 0.2)" : "rgba(59, 130, 246, 0.2)",
+                                    color: coupon.discount_type === 'percentage' ? "#10b981" : "#3b82f6",
+                                  }}
+                                >
+                                  {discountDisplay}
+                                </span>
+                              </td>
+                              <td style={{ padding: "16px", fontSize: 14, color: theme.textSecondary }}>
+                                {coupon.uses_count} / {coupon.max_uses || '∞'}
+                              </td>
+                              <td style={{ padding: "16px", fontSize: 13, color: theme.textMuted }}>
+                                {coupon.valid_until ? formatDate(coupon.valid_until) : 'No expiry'}
+                              </td>
+                              <td style={{ padding: "16px" }}>
+                                <span
+                                  style={{
+                                    padding: "6px 12px",
+                                    borderRadius: 8,
+                                    fontSize: 12,
+                                    fontWeight: 600,
+                                    background: !coupon.is_active || isExpired ? "rgba(248, 113, 113, 0.2)" : "rgba(16, 185, 129, 0.2)",
+                                    color: !coupon.is_active || isExpired ? "#f87171" : "#10b981",
+                                  }}
+                                >
+                                  {isExpired ? 'Expired' : coupon.is_active ? 'Active' : 'Inactive'}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })
                       )}
                     </tbody>
                   </table>

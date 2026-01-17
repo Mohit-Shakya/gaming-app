@@ -136,17 +136,37 @@ export function Reports({ cafeId, isMobile }: ReportsProps) {
         try {
             const { startDate, endDate, prevStartDate, prevEndDate } = getDateRange(dateRange);
 
-            // Fetch current period
+            console.log('[Reports] Fetching data:', { cafeId, startDate, endDate });
+
+            // Fetch current period - booking_items is a relation, use proper syntax
             const { data: currentData, error: currentError } = await supabase
                 .from('bookings')
-                .select('id, total_amount, created_at, booking_date, status, payment_mode, start_time, booking_items, customer_name')
+                .select(`
+                    id, 
+                    total_amount, 
+                    created_at, 
+                    booking_date, 
+                    status, 
+                    payment_mode, 
+                    start_time, 
+                    customer_name,
+                    booking_items (
+                        console,
+                        quantity
+                    )
+                `)
                 .eq('cafe_id', cafeId)
                 .neq('status', 'cancelled')
                 .gte('booking_date', startDate)
                 .lte('booking_date', endDate)
                 .order('booking_date', { ascending: true });
 
-            if (currentError) throw currentError;
+            if (currentError) {
+                console.error('[Reports] Query error:', currentError);
+                throw currentError;
+            }
+
+            console.log('[Reports] Fetched', currentData?.length || 0, 'bookings');
             setBookings(currentData || []);
 
             // Fetch previous period for comparison
@@ -779,11 +799,10 @@ export function Reports({ cafeId, isMobile }: ReportsProps) {
                                         {booking.payment_mode || 'Cash'}
                                     </td>
                                     <td className="px-6 py-4">
-                                        <span className={`px-2 py-1 rounded-full text-xs font-medium border ${
-                                            booking.status === 'confirmed' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
-                                            booking.status === 'completed' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
-                                            'bg-slate-500/10 text-slate-400 border-slate-500/20'
-                                        }`}>
+                                        <span className={`px-2 py-1 rounded-full text-xs font-medium border ${booking.status === 'confirmed' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
+                                                booking.status === 'completed' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
+                                                    'bg-slate-500/10 text-slate-400 border-slate-500/20'
+                                            }`}>
                                             {booking.status}
                                         </span>
                                     </td>

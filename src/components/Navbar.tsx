@@ -371,9 +371,8 @@ export default function Navbar() {
       `}</style>
 
       <header
-        className={`sticky top-0 z-50 transition-all duration-300 ${
-          scrolled ? "nav-glass-scrolled" : "nav-glass"
-        }`}
+        className={`sticky top-0 z-50 transition-all duration-300 ${scrolled ? "nav-glass-scrolled" : "nav-glass"
+          }`}
       >
         {/* Top accent line */}
         <div className="h-[1px] sm:h-[2px] bg-gradient-to-r from-transparent via-[#ff073a] to-transparent opacity-70" />
@@ -429,9 +428,8 @@ export default function Navbar() {
 
                     {/* Dropdown arrow - hidden on mobile */}
                     <svg
-                      className={`hidden sm:block w-4 h-4 text-gray-400 transition-transform duration-200 ${
-                        menuOpen ? "rotate-180" : ""
-                      }`}
+                      className={`hidden sm:block w-4 h-4 text-gray-400 transition-transform duration-200 ${menuOpen ? "rotate-180" : ""
+                        }`}
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -549,93 +547,7 @@ export default function Navbar() {
                           </div>
                         </button>
 
-                        {/* Owner Dashboard */}
-                        {(userRole === "owner" || userRole === "admin" || userRole === "super_admin") && (
-                          <button
-                            onClick={() => {
-                              setMenuOpen(false);
-                              router.push("/owner");
-                            }}
-                            onTouchStart={() => setPressedItem("owner")}
-                            onTouchEnd={() => setPressedItem(null)}
-                            onTouchCancel={() => setPressedItem(null)}
-                            className={`menu-item menu-item-purple flex w-full items-center gap-3 px-3 py-3 rounded-xl ${pressedItem === "owner" ? "menu-item-pressed" : ""}`}
-                          >
-                            <div className="icon-container flex h-10 w-10 items-center justify-center rounded-xl bg-purple-500/10 border border-purple-500/20 transition-all duration-200">
-                              <svg
-                                className="w-5 h-5 text-purple-400"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={1.5}
-                                  d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-                                />
-                              </svg>
-                            </div>
-                            <div className="flex-1 text-left">
-                              <div
-                                className="menu-text text-sm font-medium text-white transition-colors"
-                                style={{ fontFamily: "Inter, sans-serif" }}
-                              >
-                                Owner Dashboard
-                              </div>
-                              <div className="menu-subtext text-xs text-gray-400 transition-colors">
-                                Manage your cafés
-                              </div>
-                            </div>
-                          </button>
-                        )}
 
-                        {/* Admin Dashboard */}
-                        {(userRole === "admin" || userRole === "super_admin") && (
-                          <button
-                            onClick={() => {
-                              setMenuOpen(false);
-                              router.push("/admin");
-                            }}
-                            onTouchStart={() => setPressedItem("admin")}
-                            onTouchEnd={() => setPressedItem(null)}
-                            onTouchCancel={() => setPressedItem(null)}
-                            className={`menu-item menu-item-amber flex w-full items-center gap-3 px-3 py-3 rounded-xl ${pressedItem === "admin" ? "menu-item-pressed" : ""}`}
-                          >
-                            <div className="icon-container flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/10 border border-amber-500/20 transition-all duration-200">
-                              <svg
-                                className="w-5 h-5 text-amber-400"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={1.5}
-                                  d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-                                />
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={1.5}
-                                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                                />
-                              </svg>
-                            </div>
-                            <div className="flex-1 text-left">
-                              <div
-                                className="menu-text text-sm font-medium text-white transition-colors"
-                                style={{ fontFamily: "Inter, sans-serif" }}
-                              >
-                                Admin Dashboard
-                              </div>
-                              <div className="menu-subtext text-xs text-gray-400 transition-colors">
-                                System management
-                              </div>
-                            </div>
-                          </button>
-                        )}
                       </div>
 
                       <div className="divider h-px my-2" />

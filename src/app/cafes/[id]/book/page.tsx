@@ -5,19 +5,19 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import useUser from "@/hooks/useUser";
-import { 
-  colors, 
-  fonts, 
-  CONSOLE_LABELS, 
-  CONSOLE_DB_KEYS, 
-  CONSOLE_COLORS, 
-  OPEN_HOUR, 
-  CLOSE_HOUR, 
-  PEAK_START, 
-  PEAK_END, 
-  TIME_INTERVAL, 
-  BOOKING_DURATION_MINUTES, 
-  type ConsoleId 
+import {
+  colors,
+  fonts,
+  CONSOLE_LABELS,
+  CONSOLE_DB_KEYS,
+  CONSOLE_COLORS,
+  OPEN_HOUR,
+  CLOSE_HOUR,
+  PEAK_START,
+  PEAK_END,
+  TIME_INTERVAL,
+  BOOKING_DURATION_MINUTES,
+  type ConsoleId
 } from "@/lib/constants";
 
 // Lucide Icons
@@ -102,68 +102,68 @@ type ConsoleAvailability = {
 
 // ============ CONSTANTS ============
 const CONSOLES: ConsoleOption[] = [
-  { 
-    id: "ps5", 
-    label: CONSOLE_LABELS.ps5, 
-    icon: <GamepadDirectional className="w-5 h-5" />, 
-    color: CONSOLE_COLORS.ps5, 
-    dbKey: CONSOLE_DB_KEYS.ps5 
+  {
+    id: "ps5",
+    label: CONSOLE_LABELS.ps5,
+    icon: <GamepadDirectional className="w-5 h-5" />,
+    color: CONSOLE_COLORS.ps5,
+    dbKey: CONSOLE_DB_KEYS.ps5
   },
-  { 
-    id: "ps4", 
-    label: CONSOLE_LABELS.ps4, 
-    icon: <Gamepad2 className="w-5 h-5" />, 
-    color: CONSOLE_COLORS.ps4, 
-    dbKey: CONSOLE_DB_KEYS.ps4 
+  {
+    id: "ps4",
+    label: CONSOLE_LABELS.ps4,
+    icon: <Gamepad2 className="w-5 h-5" />,
+    color: CONSOLE_COLORS.ps4,
+    dbKey: CONSOLE_DB_KEYS.ps4
   },
-  { 
-    id: "xbox", 
-    label: CONSOLE_LABELS.xbox, 
-    icon: <Gamepad2 className="w-5 h-5" />, 
-    color: CONSOLE_COLORS.xbox, 
-    dbKey: CONSOLE_DB_KEYS.xbox 
+  {
+    id: "xbox",
+    label: CONSOLE_LABELS.xbox,
+    icon: <Gamepad2 className="w-5 h-5" />,
+    color: CONSOLE_COLORS.xbox,
+    dbKey: CONSOLE_DB_KEYS.xbox
   },
-  { 
-    id: "pc", 
-    label: CONSOLE_LABELS.pc, 
-    icon: <Monitor className="w-5 h-5" />, 
-    color: CONSOLE_COLORS.pc, 
-    dbKey: CONSOLE_DB_KEYS.pc 
+  {
+    id: "pc",
+    label: CONSOLE_LABELS.pc,
+    icon: <Monitor className="w-5 h-5" />,
+    color: CONSOLE_COLORS.pc,
+    dbKey: CONSOLE_DB_KEYS.pc
   },
-  { 
-    id: "pool", 
-    label: CONSOLE_LABELS.pool, 
-    icon: <Target className="w-5 h-5" />, 
-    color: CONSOLE_COLORS.pool, 
-    dbKey: CONSOLE_DB_KEYS.pool 
+  {
+    id: "pool",
+    label: CONSOLE_LABELS.pool,
+    icon: <Target className="w-5 h-5" />,
+    color: CONSOLE_COLORS.pool,
+    dbKey: CONSOLE_DB_KEYS.pool
   },
-  { 
-    id: "arcade", 
-    label: CONSOLE_LABELS.arcade, 
-    icon: <Gamepad2 className="w-5 h-5" />, 
-    color: CONSOLE_COLORS.arcade, 
-    dbKey: CONSOLE_DB_KEYS.arcade 
+  {
+    id: "arcade",
+    label: CONSOLE_LABELS.arcade,
+    icon: <Gamepad2 className="w-5 h-5" />,
+    color: CONSOLE_COLORS.arcade,
+    dbKey: CONSOLE_DB_KEYS.arcade
   },
-  { 
-    id: "snooker", 
-    label: CONSOLE_LABELS.snooker, 
-    icon: <Target className="w-5 h-5" />, 
-    color: CONSOLE_COLORS.snooker, 
-    dbKey: CONSOLE_DB_KEYS.snooker 
+  {
+    id: "snooker",
+    label: CONSOLE_LABELS.snooker,
+    icon: <Target className="w-5 h-5" />,
+    color: CONSOLE_COLORS.snooker,
+    dbKey: CONSOLE_DB_KEYS.snooker
   },
-  { 
-    id: "vr", 
-    label: CONSOLE_LABELS.vr, 
-    icon: <RectangleGoggles className="w-5 h-5" />, 
-    color: CONSOLE_COLORS.vr, 
-    dbKey: CONSOLE_DB_KEYS.vr 
+  {
+    id: "vr",
+    label: CONSOLE_LABELS.vr,
+    icon: <RectangleGoggles className="w-5 h-5" />,
+    color: CONSOLE_COLORS.vr,
+    dbKey: CONSOLE_DB_KEYS.vr
   },
-  { 
-    id: "steering", 
-    label: CONSOLE_LABELS.steering, 
-    icon: <Car className="w-5 h-5" />, 
-    color: CONSOLE_COLORS.steering, 
-    dbKey: CONSOLE_DB_KEYS.steering 
+  {
+    id: "steering",
+    label: CONSOLE_LABELS.steering,
+    icon: <Car className="w-5 h-5" />,
+    color: CONSOLE_COLORS.steering,
+    dbKey: CONSOLE_DB_KEYS.steering
   },
 ];
 
@@ -265,8 +265,8 @@ function generateTickets(
   const maxConsoles = ["pool", "snooker"].includes(consoleId)
     ? 2
     : ["pc", "vr", "steering"].includes(consoleId)
-    ? 1
-    : 4;
+      ? 1
+      : 4;
 
   for (let qty = 1; qty <= maxConsoles; qty++) {
     let price: number;
@@ -400,12 +400,17 @@ export default function BookingPage() {
           setSelectedConsole(available[0]);
         }
 
+        // Use data.id (actual UUID) for pricing, not cafeId (which could be slug)
         const { data: pricingData, error: pricingError } = await supabase
           .from("console_pricing")
           .select("console_type, quantity, duration_minutes, price")
-          .eq("cafe_id", cafeId);
+          .eq("cafe_id", data.id);
 
-        if (!pricingError && pricingData) {
+        console.log("[Book] Pricing query for cafe UUID:", data.id);
+        console.log("[Book] Pricing data:", pricingData);
+        console.log("[Book] Pricing error:", pricingError);
+
+        if (!pricingError && pricingData && pricingData.length > 0) {
           const pricing: Partial<Record<ConsoleId, ConsolePricingTier>> = {};
 
           pricingData.forEach((item: any) => {
@@ -431,7 +436,10 @@ export default function BookingPage() {
             }
           });
 
+          console.log("[Book] Parsed pricing:", pricing);
           setConsolePricing(pricing);
+        } else {
+          console.log("[Book] No pricing data found, falling back to hourly_price:", data.hourly_price);
         }
       } catch (err) {
         console.error("Error:", err);
@@ -809,7 +817,7 @@ export default function BookingPage() {
               <ArrowLeft className="w-5 h-5" />
               {step === 2 ? "Change Date & Time" : "Back"}
             </button>
-            
+
             <div className="social-links">
               {googleMapsUrl && (
                 <a
@@ -966,7 +974,7 @@ export default function BookingPage() {
                   Change
                 </button>
               </div>
-              
+
               <div className="duration-tag">
                 <Clock className="w-4 h-4" />
                 <span>{selectedDuration === 30 ? "30 min" : selectedDuration === 60 ? "1 hour" : "1.5 hours"}</span>
@@ -979,7 +987,7 @@ export default function BookingPage() {
                 <Clock className="w-5 h-5" />
                 <h3>Select Duration</h3>
               </div>
-              
+
               <div className="duration-grid">
                 <button
                   onClick={() => { setSelectedDuration(30); setQuantities({}); }}
@@ -987,24 +995,16 @@ export default function BookingPage() {
                 >
                   <div className="duration-number">30</div>
                   <div className="duration-label">MINUTES</div>
-                  <div className="duration-price">
-                    <IndianRupee className="w-3 h-3" />
-                    {Math.round(cafePrice * 0.5)}
-                  </div>
                 </button>
-                
+
                 <button
                   onClick={() => { setSelectedDuration(60); setQuantities({}); }}
                   className={`duration-card ${selectedDuration === 60 ? 'active' : ''}`}
                 >
                   <div className="duration-number">60</div>
                   <div className="duration-label">MINUTES</div>
-                  <div className="duration-price">
-                    <IndianRupee className="w-3 h-3" />
-                    {cafePrice}
-                  </div>
                 </button>
-                
+
                 <button
                   onClick={() => { setSelectedDuration(90); setQuantities({}); }}
                   className={`duration-card premium ${selectedDuration === 90 ? 'active' : ''}`}
@@ -1012,10 +1012,6 @@ export default function BookingPage() {
                   <Crown className="w-4 h-4 absolute top-3 right-3 text-yellow-400" />
                   <div className="duration-number">90</div>
                   <div className="duration-label">MINUTES</div>
-                  <div className="duration-price">
-                    <IndianRupee className="w-3 h-3" />
-                    {Math.round(cafePrice * 1.5)}
-                  </div>
                   <div className="premium-badge">Popular</div>
                 </button>
               </div>
@@ -1077,9 +1073,9 @@ export default function BookingPage() {
                           </div>
                         )}
                       </div>
-                      
+
                       <div className="console-name">{console.label}</div>
-                      
+
                       <div className="console-price">
                         <IndianRupee className="w-3 h-3" />
                         {selectedDuration === 90
@@ -1087,7 +1083,7 @@ export default function BookingPage() {
                           : Math.round(consolePricing[consoleId]?.[`qty1_${selectedDuration}min` as keyof ConsolePricingTier] ?? (selectedDuration === 30 ? cafePrice * 0.5 : cafePrice))
                         }
                       </div>
-                      
+
                       <div className={`availability-status ${isSoldOut ? 'sold-out' : isLowStock ? 'low-stock' : 'available'}`}>
                         {isSoldOut ? (
                           <span className="status-text">SOLD OUT</span>
@@ -1151,12 +1147,12 @@ export default function BookingPage() {
                             {ticket.players} PLAYER{ticket.players > 1 ? "S" : ""}
                           </div>
                         </div>
-                        
+
                         <div className="ticket-body">
                           <h4 className="ticket-title">{ticket.title}</h4>
                           <p className="ticket-desc">{ticket.description}</p>
                         </div>
-                        
+
                         <div className="ticket-footer">
                           <div className="ticket-price">
                             <span className="price-amount">
@@ -1165,7 +1161,7 @@ export default function BookingPage() {
                             </span>
                             <span className="price-unit">total</span>
                           </div>
-                          
+
                           {!hasQty ? (
                             <button
                               disabled={!canAdd}
@@ -1258,8 +1254,8 @@ export default function BookingPage() {
                 {isSubmitting
                   ? "PROCESSING..."
                   : summary.totalTickets > 0
-                  ? `PAY ₹${summary.totalAmount}`
-                  : "SELECT TICKETS"}
+                    ? `PAY ₹${summary.totalAmount}`
+                    : "SELECT TICKETS"}
               </button>
             </>
           )}
