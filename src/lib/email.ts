@@ -157,7 +157,7 @@ function emailTemplate(content: string, title: string = 'BookMyGame'): string {
       <tr>
         <td style="padding: 30px 20px; text-align: center;">
           <p style="margin: 0 0 10px; color: ${colors.textMuted}; font-size: 13px;">
-            Questions? Contact <a href="mailto:support@bookmygame.in" style="color: ${colors.primary}; text-decoration: none;">support@bookmygame.in</a>
+            Questions? Contact <a href="mailto:bookmygame169@gmail.com" style="color: ${colors.primary}; text-decoration: none;">bookmygame169@gmail.com</a>
           </p>
           <p style="margin: 0; color: #52525b; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">
             &copy; ${new Date().getFullYear()} BookMyGame
