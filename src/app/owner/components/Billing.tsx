@@ -38,6 +38,7 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess }: BillingP
     const [startTime, setStartTime] = useState('');
     const [items, setItems] = useState<BillingItem[]>([]);
     const [paymentMode, setPaymentMode] = useState<'cash' | 'upi'>('cash');
+    const [manualAmount, setManualAmount] = useState<number | null>(null);
     const [submitting, setSubmitting] = useState(false);
 
     // Data State
@@ -212,7 +213,11 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess }: BillingP
         setItems(items.filter(i => i.id !== id));
     };
 
-    const totalAmount = items.reduce((sum, i) => sum + i.price, 0);
+    const calculatedTotal = items.reduce((sum, i) => sum + i.price, 0);
+    const totalAmount = manualAmount !== null ? manualAmount : calculatedTotal;
+
+    // Reset manual amount when items change (recalculate)
+    const resetManualAmount = () => setManualAmount(null);
 
     const handleSubmit = async () => {
         if (!customerName || !startTime || items.length === 0) {
@@ -432,9 +437,38 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess }: BillingP
                             />
                         </div>
                         <div className="border-t border-slate-800 my-2"></div>
-                        <div className="flex items-center justify-between">
-                            <span className="text-slate-400">Total Amount</span>
-                            <span className="text-2xl font-bold text-white">₹{totalAmount}</span>
+                        <div className="flex flex-col gap-2">
+                            <div className="flex items-center justify-between">
+                                <span className="text-slate-400">Calculated</span>
+                                <span className="text-sm text-slate-500">₹{calculatedTotal}</span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <span className="text-slate-400">Final Amount</span>
+                                <div className="flex items-center gap-1">
+                                    <span className="text-white">₹</span>
+                                    <input
+                                        type="number"
+                                        className="w-24 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xl font-bold text-white text-right outline-none focus:border-emerald-500 transition-colors"
+                                        value={manualAmount !== null ? manualAmount : calculatedTotal}
+                                        onChange={(e) => {
+                                            const val = parseInt(e.target.value) || 0;
+                                            setManualAmount(val === calculatedTotal ? null : val);
+                                        }}
+                                        min={0}
+                                    />
+                                </div>
+                            </div>
+                            {manualAmount !== null && manualAmount !== calculatedTotal && (
+                                <div className="flex items-center justify-between text-xs">
+                                    <span className="text-amber-400">Manual override applied</span>
+                                    <button
+                                        onClick={resetManualAmount}
+                                        className="text-slate-400 hover:text-white underline"
+                                    >
+                                        Reset
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </div>
 
