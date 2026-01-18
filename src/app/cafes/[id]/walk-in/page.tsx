@@ -541,7 +541,7 @@ export default function WalkInBookingPage() {
       setFullBookingId(booking.id);
       setSuccess(true);
 
-      // If UPI payment, open UPI deep link
+      // If UPI payment, auto-open UPI payment link after a short delay
       if (paymentMode === "paytm") {
         const upiId = "mshakya@kotak";
         const payeeName = encodeURIComponent(cafeName || "BookMyGame");
@@ -550,8 +550,14 @@ export default function WalkInBookingPage() {
 
         // Small delay to show success state before opening UPI
         setTimeout(() => {
-          window.location.href = upiLink;
-        }, 500);
+          // Create a temporary anchor and click it for better mobile support
+          const link = document.createElement('a');
+          link.href = upiLink;
+          link.style.display = 'none';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }, 800);
       }
 
     } catch (err) {
@@ -679,23 +685,39 @@ export default function WalkInBookingPage() {
                     </div>
                   </div>
 
-                  {/* Pay Now Button */}
-                  <button
-                    onClick={() => {
-                      const upiId = "mshakya@kotak";
-                      const payeeName = encodeURIComponent(cafeName || "BookMyGame");
-                      const txnNote = encodeURIComponent(`Booking-${bookingId}`);
-                      const upiLink = `upi://pay?pa=${upiId}&pn=${payeeName}&am=${totalAmount}&cu=INR&tn=${txnNote}`;
-                      window.location.href = upiLink;
-                    }}
+                  {/* Pay Now Button - Using anchor tag for better mobile UPI app support */}
+                  <a
+                    href={`upi://pay?pa=mshakya@kotak&pn=${encodeURIComponent(cafeName || "BookMyGame")}&am=${totalAmount}&cu=INR&tn=${encodeURIComponent(`Booking-${bookingId}`)}`}
                     className="w-full py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:opacity-90 transition mb-3"
                   >
                     <Wallet className="w-5 h-5" />
-                    Open UPI App & Pay ₹{totalAmount}
-                  </button>
+                    Pay ₹{totalAmount} via UPI
+                  </a>
+
+                  {/* Alternative payment apps */}
+                  <div className="grid grid-cols-3 gap-2 mb-3">
+                    <a
+                      href={`phonepe://pay?pa=mshakya@kotak&pn=${encodeURIComponent(cafeName || "BookMyGame")}&am=${totalAmount}&cu=INR&tn=${encodeURIComponent(`Booking-${bookingId}`)}`}
+                      className="py-2 bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 rounded-lg text-xs font-semibold flex items-center justify-center transition"
+                    >
+                      PhonePe
+                    </a>
+                    <a
+                      href={`paytmmp://pay?pa=mshakya@kotak&pn=${encodeURIComponent(cafeName || "BookMyGame")}&am=${totalAmount}&cu=INR&tn=${encodeURIComponent(`Booking-${bookingId}`)}`}
+                      className="py-2 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 rounded-lg text-xs font-semibold flex items-center justify-center transition"
+                    >
+                      Paytm
+                    </a>
+                    <a
+                      href={`gpay://upi/pay?pa=mshakya@kotak&pn=${encodeURIComponent(cafeName || "BookMyGame")}&am=${totalAmount}&cu=INR&tn=${encodeURIComponent(`Booking-${bookingId}`)}`}
+                      className="py-2 bg-green-600/20 hover:bg-green-600/30 text-green-400 rounded-lg text-xs font-semibold flex items-center justify-center transition"
+                    >
+                      GPay
+                    </a>
+                  </div>
 
                   <p className="text-blue-200/60 text-xs text-center">
-                    If UPI app doesn&apos;t open, manually pay to the UPI ID above and show payment confirmation at counter.
+                    Tap any button above to open payment app. Amount will be pre-filled, just enter your PIN.
                   </p>
                 </div>
               ) : (
