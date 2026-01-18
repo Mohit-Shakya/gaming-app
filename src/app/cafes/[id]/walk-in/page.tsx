@@ -691,13 +691,13 @@ export default function WalkInBookingPage() {
                     </a>
                   </div>
 
-                  {/* FamePay UPI */}
+                  {/* FamApp / Other UPI - uses standard upi:// scheme which opens app chooser */}
                   <a
-                    href={`famepay://pay?pa=mshakya@kotak&pn=${encodeURIComponent(cafeName || "BookMyGame")}&am=${totalAmount}&cu=INR&tn=${encodeURIComponent(`Booking-${bookingId}`)}&mc=5816`}
-                    className="w-full py-3 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:opacity-90 transition mb-3"
+                    href={`upi://pay?pa=mshakya@kotak&pn=${encodeURIComponent(cafeName || "BookMyGame")}&am=${totalAmount}&cu=INR&tn=${encodeURIComponent(`Booking-${bookingId}`)}&mc=5816`}
+                    className="w-full py-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:opacity-90 transition mb-3"
                   >
                     <Wallet className="w-5 h-5" />
-                    FamePay
+                    FamApp / Other UPI
                   </a>
 
                   <p className="text-blue-200/60 text-xs text-center">
