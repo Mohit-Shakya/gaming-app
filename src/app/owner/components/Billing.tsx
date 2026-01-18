@@ -137,25 +137,43 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess }: BillingP
         if (!pricing) return 0;
 
         // Map app console types to DB types if needed (e.g. steering -> steering_wheel)
-        // Check how it's stored in DB vs App. Previous code handled "steering" -> "steering_wheel".
-        // Let's assume standard IDs for now, handle exception if needed.
         const dbType = type === 'steering' ? 'steering_wheel' : type;
         const tier = pricing[dbType];
 
         if (!tier) return 0;
 
-        // Pricing logic from page.tsx
+        // Per-station console types (pricing is per station, not per controller group)
+        const perStationTypes = ['pc', 'vr', 'steering_wheel', 'steering', 'arcade'];
+        const isPerStation = perStationTypes.includes(type.toLowerCase()) || perStationTypes.includes(dbType.toLowerCase());
+
+        // Handle 90 minute duration (60 + 30)
         if (duration === 90) {
-            const p60 = tier[`qty${qty}_60min`] || 0;
-            const p30 = tier[`qty${qty}_30min`] || 0;
+            const p60 = tier[`qty${qty}_60min`] || (isPerStation ? (tier['qty1_60min'] || 0) * qty : 0);
+            const p30 = tier[`qty${qty}_30min`] || (isPerStation ? (tier['qty1_30min'] || 0) * qty : 0);
             return p60 + p30;
         }
+
+        // Try exact tier first
         const exactKey = `qty${qty}_${duration}min`;
         if (tier[exactKey]) return tier[exactKey];
 
-        // Fallback multipliers
-        if (duration === 120) return (tier[`qty${qty}_60min`] || 0) * 2;
-        if (duration === 180) return (tier[`qty${qty}_60min`] || 0) * 3;
+        // Fallback for per-station types: multiply qty1 price by quantity
+        if (isPerStation && qty > 1) {
+            const baseKey = `qty1_${duration}min`;
+            if (tier[baseKey]) {
+                return tier[baseKey] * qty;
+            }
+        }
+
+        // Fallback multipliers for longer durations
+        if (duration === 120) {
+            const base = tier[`qty${qty}_60min`] || (isPerStation ? (tier['qty1_60min'] || 0) * qty : 0);
+            return base * 2;
+        }
+        if (duration === 180) {
+            const base = tier[`qty${qty}_60min`] || (isPerStation ? (tier['qty1_60min'] || 0) * qty : 0);
+            return base * 3;
+        }
 
         return 0;
     };
