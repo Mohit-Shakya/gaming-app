@@ -520,7 +520,7 @@ export function Reports({ cafeId, isMobile }: ReportsProps) {
                         </div>
                     </div>
 
-                    <div className="flex-1 w-full h-full relative flex items-end justify-between gap-2 px-2 pb-2">
+                    <div className="flex-1 w-full min-h-[180px] relative flex items-end justify-between gap-2 px-2 pb-2">
                         {loading ? (
                             <div className="absolute inset-0 flex items-center justify-center text-slate-500">Loading chart...</div>
                         ) : revenueTrendData.length === 0 ? (
@@ -529,13 +529,15 @@ export function Reports({ cafeId, isMobile }: ReportsProps) {
                             revenueTrendData.map((d, i) => {
                                 const heightPercent = (d.amount / maxRevenue) * 100;
                                 return (
-                                    <div key={i} className="flex flex-col items-center gap-2 group flex-1">
-                                        <div
-                                            className="w-full bg-emerald-500/20 border-t-2 border-emerald-500 rounded-t-sm hover:bg-emerald-500/40 transition-all relative"
-                                            style={{ height: `${Math.max(heightPercent, 2)}%` }}
-                                        >
-                                            <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap border border-slate-700 pointer-events-none z-10">
-                                                ₹{d.amount.toLocaleString()}
+                                    <div key={i} className="flex flex-col items-center gap-2 group flex-1 h-full">
+                                        <div className="flex-1 w-full flex items-end">
+                                            <div
+                                                className="w-full bg-emerald-500/20 border-t-2 border-emerald-500 rounded-t-sm hover:bg-emerald-500/40 transition-all relative"
+                                                style={{ height: `${Math.max(heightPercent, 5)}%` }}
+                                            >
+                                                <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap border border-slate-700 pointer-events-none z-10">
+                                                    ₹{d.amount.toLocaleString()}
+                                                </div>
                                             </div>
                                         </div>
                                         <span className="text-[10px] text-slate-500 rotate-0 truncate w-full text-center">{d.date}</span>
