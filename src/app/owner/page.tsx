@@ -30,6 +30,9 @@ import {
   Coupons,
   Reports
 } from './components';
+import Inventory from './components/Inventory';
+import AddItemsModal from './components/AddItemsModal';
+import ViewOrdersModal from './components/ViewOrdersModal';
 
 type OwnerStats = {
   cafesCount: number;
@@ -111,7 +114,7 @@ type BookingRow = {
   cafe_name?: string | null;
 };
 
-type NavTab = 'dashboard' | 'sessions' | 'customers' | 'stations' | 'subscriptions' | 'memberships' | 'coupons' | 'reports' | 'settings' | 'overview' | 'live-status' | 'bookings' | 'cafe-details' | 'analytics' | 'billing';
+type NavTab = 'dashboard' | 'sessions' | 'customers' | 'stations' | 'subscriptions' | 'memberships' | 'coupons' | 'reports' | 'settings' | 'overview' | 'live-status' | 'bookings' | 'cafe-details' | 'analytics' | 'billing' | 'inventory';
 
 // Helper functions for time conversion
 function convertTo24Hour(timeStr: string): string {
@@ -403,6 +406,16 @@ export default function OwnerDashboardPage() {
 
   // Refresh trigger for bookings
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  // Add Items Modal state (for F&B items)
+  const [addItemsModalOpen, setAddItemsModalOpen] = useState(false);
+  const [addItemsBookingId, setAddItemsBookingId] = useState<string>("");
+  const [addItemsCustomerName, setAddItemsCustomerName] = useState<string>("");
+
+  // View Orders Modal state (for viewing/removing F&B items)
+  const [viewOrdersModalOpen, setViewOrdersModalOpen] = useState(false);
+  const [viewOrdersBookingId, setViewOrdersBookingId] = useState<string>("");
+  const [viewOrdersCustomerName, setViewOrdersCustomerName] = useState<string>("");
 
   // Time update trigger for active sessions (updates every second)
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -3100,6 +3113,7 @@ export default function OwnerDashboardPage() {
     { id: 'stations', label: 'Stations', icon: '🖥️' },
     { id: 'memberships', label: 'Memberships', icon: '🎫' },
     { id: 'coupons', label: 'Coupons', icon: '🎟️' },
+    { id: 'inventory', label: 'Inventory', icon: '🍿' },
     { id: 'reports', label: 'Reports', icon: '📊' },
     { id: 'settings', label: 'Settings', icon: '⚙️' },
   ];
@@ -3167,6 +3181,11 @@ export default function OwnerDashboardPage() {
                   timerElapsed={timerElapsed}
                   currentTime={currentTime}
                   isMobile={isMobile}
+                  onAddItems={(bookingId, customerName) => {
+                    setAddItemsBookingId(bookingId);
+                    setAddItemsCustomerName(customerName);
+                    setAddItemsModalOpen(true);
+                  }}
                 />
               </div>
 
@@ -3178,6 +3197,11 @@ export default function OwnerDashboardPage() {
                   onViewAll={() => setActiveTab('bookings')}
                   onStatusChange={handleBookingStatusChange}
                   onEdit={handleEditBooking}
+                  onViewOrders={(bookingId, customerName) => {
+                    setViewOrdersBookingId(bookingId);
+                    setViewOrdersCustomerName(customerName);
+                    setViewOrdersModalOpen(true);
+                  }}
                 />
               </div>
 
@@ -3953,6 +3977,11 @@ export default function OwnerDashboardPage() {
               onEdit={handleEditBooking}
               onRefresh={() => setRefreshTrigger(prev => prev + 1)}
               isMobile={isMobile}
+              onViewOrders={(bookingId, customerName) => {
+                setViewOrdersBookingId(bookingId);
+                setViewOrdersCustomerName(customerName);
+                setViewOrdersModalOpen(true);
+              }}
             />
           )}
 
@@ -5756,6 +5785,13 @@ export default function OwnerDashboardPage() {
             />
           )}
 
+          {/* Inventory Tab */}
+          {activeTab === 'inventory' && (
+            <Inventory
+              cafeId={selectedCafeId || cafes[0]?.id || ''}
+            />
+          )}
+
           {/* Billing Tab - Quick Booking Interface */}
 
           {activeTab === 'billing' && (
@@ -6950,7 +6986,28 @@ export default function OwnerDashboardPage() {
         </div>
       </DashboardLayout>
 
+      {/* Add Items Modal (F&B) */}
+      <AddItemsModal
+        isOpen={addItemsModalOpen}
+        onClose={() => setAddItemsModalOpen(false)}
+        bookingId={addItemsBookingId}
+        cafeId={selectedCafeId || cafes[0]?.id || ''}
+        customerName={addItemsCustomerName}
+        onItemsAdded={() => {
+          setRefreshTrigger(prev => prev + 1);
+        }}
+      />
 
+      {/* View Orders Modal (F&B) */}
+      <ViewOrdersModal
+        isOpen={viewOrdersModalOpen}
+        onClose={() => setViewOrdersModalOpen(false)}
+        bookingId={viewOrdersBookingId}
+        customerName={viewOrdersCustomerName}
+        onOrdersUpdated={() => {
+          setRefreshTrigger(prev => prev + 1);
+        }}
+      />
 
       {/* Edit Booking Modal */}
       {

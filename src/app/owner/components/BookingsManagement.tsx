@@ -11,9 +11,10 @@ interface BookingsManagementProps {
     onEdit?: (booking: any) => void;
     onRefresh?: () => void;
     isMobile?: boolean;
+    onViewOrders?: (bookingId: string, customerName: string) => void;
 }
 
-export function BookingsManagement({ bookings, loading, onUpdateStatus, onEdit, onRefresh, isMobile }: BookingsManagementProps) {
+export function BookingsManagement({ bookings, loading, onUpdateStatus, onEdit, onRefresh, isMobile, onViewOrders }: BookingsManagementProps) {
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
     const [sourceFilter, setSourceFilter] = useState('all');
@@ -224,6 +225,7 @@ export function BookingsManagement({ bookings, loading, onUpdateStatus, onEdit, 
                 showFilters={false}
                 onStatusChange={onUpdateStatus}
                 onEdit={onEdit}
+                onViewOrders={onViewOrders}
                 loading={loading}
                 title={`Booking List (${filteredBookings.length})`}
                 showActions={true}

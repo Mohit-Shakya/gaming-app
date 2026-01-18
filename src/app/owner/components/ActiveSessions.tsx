@@ -2,6 +2,7 @@
 
 import { ConsoleId, CONSOLE_ICONS } from '@/lib/constants';
 import { Button } from './ui';
+import { Plus } from 'lucide-react';
 
 interface ActiveSessionsProps {
     bookings: any[];
@@ -10,6 +11,7 @@ interface ActiveSessionsProps {
     timerElapsed: Map<string, number>;
     currentTime: Date;
     isMobile: boolean;
+    onAddItems?: (bookingId: string, customerName: string) => void;
 }
 
 export function ActiveSessions({
@@ -19,6 +21,7 @@ export function ActiveSessions({
     timerElapsed,
     currentTime,
     isMobile,
+    onAddItems,
 }: ActiveSessionsProps) {
 
     // 1. Filter and Flatten Bookings
@@ -236,11 +239,28 @@ export function ActiveSessions({
                                     {Math.floor(timeRemaining / 60)}h {timeRemaining % 60}m
                                 </p>
                             </div>
-                            <div className="text-right">
-                                <p className="text-xs text-[#6b7280] mb-0.5">Ends At</p>
-                                <p className="text-sm font-semibold text-white">
-                                    {endTime}
-                                </p>
+                            <div className="flex items-end gap-3">
+                                {onAddItems && (
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            const originalId = booking.originalBookingId || booking.id;
+                                            const customerName = isWalkIn ? booking.customer_name : (booking.user_name || 'Guest');
+                                            onAddItems(originalId, customerName);
+                                        }}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 rounded-lg text-xs font-semibold transition-colors"
+                                        title="Add F&B items"
+                                    >
+                                        <Plus className="w-3.5 h-3.5" />
+                                        Add Items
+                                    </button>
+                                )}
+                                <div className="text-right">
+                                    <p className="text-xs text-[#6b7280] mb-0.5">Ends At</p>
+                                    <p className="text-sm font-semibold text-white">
+                                        {endTime}
+                                    </p>
+                                </div>
                             </div>
                         </div>
 

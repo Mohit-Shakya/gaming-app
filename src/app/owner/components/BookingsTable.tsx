@@ -2,12 +2,13 @@
 
 import { useState } from 'react';
 import { Card, StatusBadge, Button } from './ui';
-import { Search, ChevronLeft, ChevronRight, X, Check, CheckCircle } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, X, Check, CheckCircle, ShoppingBag } from 'lucide-react';
 
 interface BookingsTableProps {
     bookings: any[];
     onStatusChange?: (id: string, status: string) => void;
     onEdit?: (booking: any) => void;
+    onViewOrders?: (bookingId: string, customerName: string) => void;
     showFilters?: boolean;
     limit?: number;
     loading?: boolean;
@@ -21,6 +22,7 @@ export function BookingsTable({
     bookings,
     onStatusChange,
     onEdit,
+    onViewOrders,
     showFilters = false,
     limit,
     loading = false,
@@ -223,6 +225,18 @@ export function BookingsTable({
                                                     </Button>
                                                 )}
 
+                                                {onViewOrders && (
+                                                    <Button
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        className="text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10"
+                                                        onClick={(e) => { e.stopPropagation(); onViewOrders(booking.id, booking.customer_name || booking.user_name || 'Guest'); }}
+                                                        title="View F&B Orders"
+                                                    >
+                                                        <ShoppingBag size={16} />
+                                                    </Button>
+                                                )}
+
                                                 {onEdit && (
                                                     <Button
                                                         size="sm"
@@ -312,6 +326,18 @@ export function BookingsTable({
                                                 onClick={(e) => { e.stopPropagation(); onStatusChange(booking.id, 'completed'); }}
                                             >
                                                 <CheckCircle size={16} className="mr-1" /> Complete
+                                            </Button>
+                                        )}
+
+                                        {onViewOrders && (
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                className="text-cyan-400 bg-cyan-500/10 hover:bg-cyan-500/20 px-3"
+                                                onClick={(e) => { e.stopPropagation(); onViewOrders(booking.id, booking.customer_name || booking.user_name || 'Guest'); }}
+                                                title="View F&B Orders"
+                                            >
+                                                <ShoppingBag size={16} />
                                             </Button>
                                         )}
 
