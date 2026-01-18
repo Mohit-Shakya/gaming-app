@@ -541,24 +541,8 @@ export default function WalkInBookingPage() {
       setFullBookingId(booking.id);
       setSuccess(true);
 
-      // If UPI payment, auto-open UPI payment link after a short delay
-      if (paymentMode === "paytm") {
-        const upiId = "mshakya@kotak";
-        const payeeName = encodeURIComponent(cafeName || "BookMyGame");
-        const txnNote = encodeURIComponent(`Booking-${booking.id.slice(0, 8).toUpperCase()}`);
-        const upiLink = `upi://pay?pa=${upiId}&pn=${payeeName}&am=${totalAmount}&cu=INR&tn=${txnNote}`;
-
-        // Small delay to show success state before opening UPI
-        setTimeout(() => {
-          // Create a temporary anchor and click it for better mobile support
-          const link = document.createElement('a');
-          link.href = upiLink;
-          link.style.display = 'none';
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-        }, 800);
-      }
+      // UPI payment - don't auto-redirect, let user choose app manually
+      // Auto-redirect was causing issues with wrong apps opening
 
     } catch (err) {
       console.error("Unexpected error:", err);
@@ -685,36 +669,36 @@ export default function WalkInBookingPage() {
                     </div>
                   </div>
 
-                  {/* Pay Now Button - Using anchor tag for better mobile UPI app support */}
-                  <a
-                    href={`upi://pay?pa=mshakya@kotak&pn=${encodeURIComponent(cafeName || "BookMyGame")}&am=${totalAmount}&cu=INR&tn=${encodeURIComponent(`Booking-${bookingId}`)}`}
-                    className="w-full py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:opacity-90 transition mb-3"
-                  >
-                    <Wallet className="w-5 h-5" />
-                    Pay ₹{totalAmount} via UPI
-                  </a>
-
-                  {/* Alternative payment apps */}
+                  {/* Pay Now Buttons - Direct app links */}
                   <div className="grid grid-cols-3 gap-2 mb-3">
                     <a
-                      href={`phonepe://pay?pa=mshakya@kotak&pn=${encodeURIComponent(cafeName || "BookMyGame")}&am=${totalAmount}&cu=INR&tn=${encodeURIComponent(`Booking-${bookingId}`)}`}
-                      className="py-2 bg-purple-600/20 hover:bg-purple-600/30 text-purple-400 rounded-lg text-xs font-semibold flex items-center justify-center transition"
+                      href={`phonepe://pay?pa=mshakya@kotak&pn=${encodeURIComponent(cafeName || "BookMyGame")}&am=${totalAmount}&cu=INR&tn=${encodeURIComponent(`Booking-${bookingId}`)}&mc=5816`}
+                      className="py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-sm font-bold flex items-center justify-center transition"
                     >
                       PhonePe
                     </a>
                     <a
-                      href={`paytmmp://pay?pa=mshakya@kotak&pn=${encodeURIComponent(cafeName || "BookMyGame")}&am=${totalAmount}&cu=INR&tn=${encodeURIComponent(`Booking-${bookingId}`)}`}
-                      className="py-2 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 rounded-lg text-xs font-semibold flex items-center justify-center transition"
+                      href={`paytmmp://pay?pa=mshakya@kotak&pn=${encodeURIComponent(cafeName || "BookMyGame")}&am=${totalAmount}&cu=INR&tn=${encodeURIComponent(`Booking-${bookingId}`)}&mc=5816`}
+                      className="py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold flex items-center justify-center transition"
                     >
                       Paytm
                     </a>
                     <a
-                      href={`gpay://upi/pay?pa=mshakya@kotak&pn=${encodeURIComponent(cafeName || "BookMyGame")}&am=${totalAmount}&cu=INR&tn=${encodeURIComponent(`Booking-${bookingId}`)}`}
-                      className="py-2 bg-green-600/20 hover:bg-green-600/30 text-green-400 rounded-lg text-xs font-semibold flex items-center justify-center transition"
+                      href={`tez://upi/pay?pa=mshakya@kotak&pn=${encodeURIComponent(cafeName || "BookMyGame")}&am=${totalAmount}&cu=INR&tn=${encodeURIComponent(`Booking-${bookingId}`)}&mc=5816`}
+                      className="py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl text-sm font-bold flex items-center justify-center transition"
                     >
                       GPay
                     </a>
                   </div>
+
+                  {/* Fallback UPI Intent - shows app chooser */}
+                  <a
+                    href={`intent://pay?pa=mshakya@kotak&pn=${encodeURIComponent(cafeName || "BookMyGame")}&am=${totalAmount}&cu=INR&tn=${encodeURIComponent(`Booking-${bookingId}`)}&mc=5816#Intent;scheme=upi;package=;end`}
+                    className="w-full py-3 bg-gradient-to-r from-gray-700 to-gray-800 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:opacity-90 transition mb-3 border border-gray-600"
+                  >
+                    <Wallet className="w-5 h-5" />
+                    Other UPI Apps
+                  </a>
 
                   <p className="text-blue-200/60 text-xs text-center">
                     Tap any button above to open payment app. Amount will be pre-filled, just enter your PIN.
