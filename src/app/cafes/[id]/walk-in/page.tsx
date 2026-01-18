@@ -458,7 +458,7 @@ export default function WalkInBookingPage() {
           start_time: startTime,
           duration: duration,
           total_amount: totalAmount,
-          status: "in-progress",
+          status: paymentMode === "paytm" ? "pending_payment" : "in-progress",
           source: "walk_in",
           customer_name: profileData.fullName,
           customer_phone: profileData.phone,
@@ -541,6 +541,19 @@ export default function WalkInBookingPage() {
       setFullBookingId(booking.id);
       setSuccess(true);
 
+      // If UPI payment, open UPI deep link
+      if (paymentMode === "paytm") {
+        const upiId = "mshakya@kotak";
+        const payeeName = encodeURIComponent(cafeName || "BookMyGame");
+        const txnNote = encodeURIComponent(`Booking-${booking.id.slice(0, 8).toUpperCase()}`);
+        const upiLink = `upi://pay?pa=${upiId}&pn=${payeeName}&am=${totalAmount}&cu=INR&tn=${txnNote}`;
+
+        // Small delay to show success state before opening UPI
+        setTimeout(() => {
+          window.location.href = upiLink;
+        }, 500);
+      }
+
     } catch (err) {
       console.error("Unexpected error:", err);
       setError("An unexpected error occurred. Please try again.");
@@ -611,7 +624,7 @@ export default function WalkInBookingPage() {
             </div>
 
             <h1 className="text-3xl sm:text-5xl font-bold bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400 bg-clip-text text-transparent mb-4 text-center">
-              Booking Confirmed!
+              {paymentMode === "paytm" ? "Complete Payment" : "Booking Confirmed!"}
             </h1>
 
             <div className="bg-gray-900/60 backdrop-blur-xl border border-gray-800 rounded-3xl p-6 sm:p-8 w-full shadow-2xl">
@@ -639,13 +652,24 @@ export default function WalkInBookingPage() {
                 </div>
               </div>
 
-              <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-2xl p-4 flex items-start gap-3 mb-6">
-                <Receipt className="w-5 h-5 text-yellow-500 mt-0.5 flex-shrink-0" />
-                <div>
-                  <p className="font-bold text-yellow-500 text-sm">Action Required</p>
-                  <p className="text-yellow-200/80 text-sm mt-1">Please show this screen at the counter to complete payment and get your station.</p>
+              {paymentMode === "paytm" ? (
+                <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-4 flex items-start gap-3 mb-6">
+                  <Smartphone className="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="font-bold text-blue-400 text-sm">UPI Payment</p>
+                    <p className="text-blue-200/80 text-sm mt-1">Your UPI app should open shortly. Complete the payment to UPI ID: <span className="font-mono font-bold">mshakya@kotak</span></p>
+                    <p className="text-blue-200/60 text-xs mt-2">Booking will be confirmed after payment verification.</p>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-2xl p-4 flex items-start gap-3 mb-6">
+                  <Receipt className="w-5 h-5 text-yellow-500 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="font-bold text-yellow-500 text-sm">Action Required</p>
+                    <p className="text-yellow-200/80 text-sm mt-1">Please show this screen at the counter to complete payment and get your station.</p>
+                  </div>
+                </div>
+              )}
 
               {/* Action Buttons */}
               <div className="flex flex-col sm:flex-row gap-3">
