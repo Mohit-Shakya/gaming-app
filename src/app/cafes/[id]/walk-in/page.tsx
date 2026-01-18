@@ -37,7 +37,8 @@ import {
   Cpu,
   Joystick,
   SquareActivity,
-  Bolt
+  Bolt,
+  Banknote,
 } from "lucide-react";
 
 type ConsoleId = "ps5" | "ps4" | "xbox" | "pc" | "pool" | "arcade" | "snooker" | "vr" | "steering_wheel";
@@ -100,6 +101,7 @@ export default function WalkInBookingPage() {
   const [selectedConsole, setSelectedConsole] = useState<ConsoleId | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [duration, setDuration] = useState<30 | 60>(60);
+  const [paymentMode, setPaymentMode] = useState<"cash" | "paytm">("cash");
 
   // UI state
   const [submitting, setSubmitting] = useState(false);
@@ -460,6 +462,7 @@ export default function WalkInBookingPage() {
           source: "walk_in",
           customer_name: profileData.fullName,
           customer_phone: profileData.phone,
+          payment_mode: paymentMode,
         })
         .select()
         .single();
@@ -816,6 +819,35 @@ export default function WalkInBookingPage() {
                       >
                         <Crown className="w-5 h-5" />
                         <span className="font-bold">1 Hour</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Payment Method Selector */}
+                  <div>
+                    <label className="text-sm text-gray-400 font-medium block mb-3">Payment Method</label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMode("cash")}
+                        className={`h-14 rounded-2xl border-2 flex items-center justify-center gap-2 transition-all ${paymentMode === "cash"
+                          ? 'border-green-500 bg-green-500/10 text-green-400'
+                          : 'border-gray-800 bg-gray-900/20 text-gray-500 hover:border-gray-700'
+                          }`}
+                      >
+                        <Banknote className="w-5 h-5" />
+                        <span className="font-bold">Cash</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMode("paytm")}
+                        className={`h-14 rounded-2xl border-2 flex items-center justify-center gap-2 transition-all ${paymentMode === "paytm"
+                          ? 'border-blue-500 bg-blue-500/10 text-blue-400'
+                          : 'border-gray-800 bg-gray-900/20 text-gray-500 hover:border-gray-700'
+                          }`}
+                      >
+                        <Smartphone className="w-5 h-5" />
+                        <span className="font-bold">Paytm/UPI</span>
                       </button>
                     </div>
                   </div>
