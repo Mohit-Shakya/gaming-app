@@ -653,13 +653,50 @@ export default function WalkInBookingPage() {
               </div>
 
               {paymentMode === "paytm" ? (
-                <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-4 flex items-start gap-3 mb-6">
-                  <Smartphone className="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="font-bold text-blue-400 text-sm">UPI Payment</p>
-                    <p className="text-blue-200/80 text-sm mt-1">Your UPI app should open shortly. Complete the payment to UPI ID: <span className="font-mono font-bold">mshakya@kotak</span></p>
-                    <p className="text-blue-200/60 text-xs mt-2">Booking will be confirmed after payment verification.</p>
+                <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-4 mb-6">
+                  <div className="flex items-start gap-3 mb-4">
+                    <Smartphone className="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="font-bold text-blue-400 text-sm">UPI Payment</p>
+                      <p className="text-blue-200/80 text-sm mt-1">Complete payment to confirm your booking</p>
+                    </div>
                   </div>
+
+                  {/* UPI ID Display */}
+                  <div className="bg-gray-900/50 rounded-xl p-3 mb-3">
+                    <p className="text-xs text-gray-400 mb-1">UPI ID</p>
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono font-bold text-white text-lg">mshakya@kotak</span>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText("mshakya@kotak");
+                          alert("UPI ID copied to clipboard!");
+                        }}
+                        className="text-xs bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 px-3 py-1 rounded-lg transition"
+                      >
+                        Copy
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Pay Now Button */}
+                  <button
+                    onClick={() => {
+                      const upiId = "mshakya@kotak";
+                      const payeeName = encodeURIComponent(cafeName || "BookMyGame");
+                      const txnNote = encodeURIComponent(`Booking-${bookingId}`);
+                      const upiLink = `upi://pay?pa=${upiId}&pn=${payeeName}&am=${totalAmount}&cu=INR&tn=${txnNote}`;
+                      window.location.href = upiLink;
+                    }}
+                    className="w-full py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:opacity-90 transition mb-3"
+                  >
+                    <Wallet className="w-5 h-5" />
+                    Open UPI App & Pay ₹{totalAmount}
+                  </button>
+
+                  <p className="text-blue-200/60 text-xs text-center">
+                    If UPI app doesn&apos;t open, manually pay to the UPI ID above and show payment confirmation at counter.
+                  </p>
                 </div>
               ) : (
                 <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-2xl p-4 flex items-start gap-3 mb-6">
