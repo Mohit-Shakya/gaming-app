@@ -1,6 +1,9 @@
 // src/app/owner/layout.tsx
 import type { Metadata } from 'next';
 
+// Force dynamic rendering for owner pages
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: "Owner Dashboard | BookMyGame",
   description: "Manage your gaming cafe business",

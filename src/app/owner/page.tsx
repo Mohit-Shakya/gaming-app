@@ -33,6 +33,7 @@ import {
 import Inventory from './components/Inventory';
 import AddItemsModal from './components/AddItemsModal';
 import ViewOrdersModal from './components/ViewOrdersModal';
+import OwnerPWAInstaller from './components/OwnerPWAInstaller';
 
 type OwnerStats = {
   cafesCount: number;
@@ -9927,6 +9928,9 @@ export default function OwnerDashboardPage() {
           );
         })()
       }
+
+      {/* PWA Install Prompt for Owner Dashboard */}
+      <OwnerPWAInstaller />
     </>
   );
 }

@@ -29,6 +29,7 @@ import {
   TrendingDown
 
 } from "lucide-react";
+import PWAInstaller from "@/components/PWAInstaller";
 
 type Props = {
   cafes: Cafe[];
@@ -1423,6 +1424,7 @@ export default function HomeClient({ cafes }: Props) {
           </div>
         </div>
       </main>
+      <PWAInstaller />
     </>
   );
 }
