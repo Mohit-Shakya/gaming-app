@@ -1,0 +1,49 @@
+{
+    "name": "BookMyGame",
+    "short_name": "BookMyGame",
+    "description": "Book your favorite gaming console at top cafes near you.",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#000000",
+    "theme_color": "#000000",
+    "orientation": "portrait",
+    "scope": "/",
+    "icons": [
+        {
+            "src": "/icons/icon-192x192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "/icons/icon-512x512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ],
+    "shortcuts": [
+        {
+            "name": "Live Status",
+            "short_name": "Status",
+            "description": "Check live console availability",
+            "url": "/#live-status",
+            "icons": [
+                {
+                    "src": "/icons/shortcut-status.png",
+                    "sizes": "96x96"
+                }
+            ]
+        },
+        {
+            "name": "Book Now",
+            "short_name": "Book",
+            "description": "Book a gaming session",
+            "url": "/cafes",
+            "icons": [
+                {
+                    "src": "/icons/shortcut-book.png",
+                    "sizes": "96x96"
+                }
+            ]
+        }
+    ]
+}

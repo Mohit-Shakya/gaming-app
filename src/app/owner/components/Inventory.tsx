@@ -181,16 +181,48 @@ export default function Inventory({ cafeId }: InventoryProps) {
     if (!confirm(`Delete "${item.name}"? This cannot be undone.`)) return;
 
     try {
-      const { error } = await supabase
+      // First check if item has any associated orders
+      const { data: orders, error: checkError } = await supabase
+        .from("booking_orders")
+        .select("id")
+        .eq("inventory_item_id", item.id)
+        .limit(1);
+
+      if (checkError) {
+        console.error("Error checking orders:", checkError);
+      }
+
+      if (orders && orders.length > 0) {
+        // Item has orders, just mark as unavailable instead of deleting
+        const { error: updateError } = await supabase
+          .from("inventory_items")
+          .update({ is_available: false, stock_quantity: 0 })
+          .eq("id", item.id);
+
+        if (updateError) throw updateError;
+        alert("Item has been marked as unavailable (it has associated orders).");
+        loadItems();
+        return;
+      }
+
+      // No orders, safe to delete
+      const { error, data } = await supabase
         .from("inventory_items")
         .delete()
-        .eq("id", item.id);
+        .eq("id", item.id)
+        .select();
 
-      if (error) throw error;
+      console.log("Delete result:", { error, data, itemId: item.id });
+
+      if (error) {
+        console.error("Delete error details:", JSON.stringify(error, null, 2));
+        throw error;
+      }
+
       loadItems();
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error deleting item:", err);
-      alert("Failed to delete item");
+      alert(`Failed to delete item: ${err?.message || 'Unknown error'}`);
     }
   }
 

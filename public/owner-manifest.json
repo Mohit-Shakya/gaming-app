@@ -1,0 +1,23 @@
+{
+    "name": "BookMyGame Owner",
+    "short_name": "BMG Owner",
+    "description": "Manage your gaming cafe business, bookings, and inventory.",
+    "start_url": "/owner",
+    "display": "standalone",
+    "background_color": "#0f172a",
+    "theme_color": "#0f172a",
+    "orientation": "portrait",
+    "scope": "/owner",
+    "icons": [
+        {
+            "src": "/icons/owner-icon-192x192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "/icons/owner-icon-512x512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ]
+}

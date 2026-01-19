@@ -7003,6 +7003,7 @@ export default function OwnerDashboardPage() {
         isOpen={viewOrdersModalOpen}
         onClose={() => setViewOrdersModalOpen(false)}
         bookingId={viewOrdersBookingId}
+        cafeId={selectedCafeId || cafes[0]?.id || ''}
         customerName={viewOrdersCustomerName}
         onOrdersUpdated={() => {
           setRefreshTrigger(prev => prev + 1);
