@@ -823,15 +823,10 @@ export default function WalkInBookingPage() {
                   {/* Gradient Border Overlay */}
                   <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent"></div>
 
-                  <h3 className="text-base sm:text-lg font-bold mb-4 sm:mb-6 flex items-center gap-2">
-                    <Target className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
-                    Session Configuration
-                  </h3>
-
                   {/* Controllers Selector */}
                   <div className="mb-4 sm:mb-6">
                     <div className="flex justify-between items-center mb-2 sm:mb-3">
-                      <label className="text-xs sm:text-sm text-gray-400 font-medium">Controllers</label>
+                      <label className="text-xs sm:text-sm text-gray-400 font-medium">No of Controllers</label>
                       <span className="text-[10px] sm:text-xs bg-gray-800 text-gray-300 px-2 py-0.5 sm:py-1 rounded-md">{quantity ? `${quantity} selected` : "Select"}</span>
                     </div>
                     <div className="grid grid-cols-4 gap-1.5 sm:gap-2 bg-black/40 p-1 sm:p-1.5 rounded-xl sm:rounded-2xl border border-gray-800">
