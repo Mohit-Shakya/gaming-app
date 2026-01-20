@@ -99,9 +99,9 @@ export default function WalkInBookingPage() {
 
   // Form data (no more customerName/Phone - using profile)
   const [selectedConsole, setSelectedConsole] = useState<ConsoleId | null>(null);
-  const [quantity, setQuantity] = useState(1);
-  const [duration, setDuration] = useState<30 | 60>(60);
-  const [paymentMode, setPaymentMode] = useState<"cash" | "paytm">("cash");
+  const [quantity, setQuantity] = useState<number | null>(null);
+  const [duration, setDuration] = useState<30 | 60 | null>(null);
+  const [paymentMode, setPaymentMode] = useState<"cash" | "paytm" | null>(null);
 
   // UI state
   const [submitting, setSubmitting] = useState(false);
@@ -377,7 +377,7 @@ export default function WalkInBookingPage() {
 
   // Calculate amount based on tier pricing
   const calculateAmount = () => {
-    if (!selectedConsole) return 0;
+    if (!selectedConsole || !duration || !quantity) return 0;
 
     const tier = consolePricing[selectedConsole];
     const basePrice = cafePrice;
@@ -424,6 +424,21 @@ export default function WalkInBookingPage() {
 
     if (!selectedConsole) {
       setError("Please select a console");
+      return;
+    }
+
+    if (!quantity) {
+      setError("Please select the number of controllers");
+      return;
+    }
+
+    if (!duration) {
+      setError("Please select a duration");
+      return;
+    }
+
+    if (!paymentMode) {
+      setError("Please select a payment method");
       return;
     }
 
@@ -603,7 +618,7 @@ export default function WalkInBookingPage() {
         <div className="absolute top-[20%] right-[20%] w-[30vw] h-[30vw] bg-blue-600/5 rounded-full blur-[100px]"></div>
       </div>
 
-      <div className="relative z-10 p-4 sm:p-6 lg:p-10 pb-32 sm:pb-10 max-w-[1600px] mx-auto">
+      <div className="relative z-10 p-3 sm:p-6 lg:p-10 pb-36 sm:pb-10 max-w-[1600px] mx-auto">
         {success ? (
           <div className="flex flex-col items-center justify-center min-h-[80vh] max-w-lg mx-auto animate-in fade-in zoom-in duration-500">
             <div className="relative mb-8">
@@ -643,66 +658,64 @@ export default function WalkInBookingPage() {
               </div>
 
               {paymentMode === "paytm" ? (
-                <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-4 mb-6">
-                  <div className="flex items-start gap-3 mb-4">
-                    <Smartphone className="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" />
+                <div className="bg-gradient-to-b from-blue-500/20 to-blue-900/20 border border-blue-500/30 rounded-2xl p-5 mb-6">
+                  <div className="flex items-center justify-center gap-2 mb-4">
+                    <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
+                      <Smartphone className="w-5 h-5 text-blue-400" />
+                    </div>
                     <div>
-                      <p className="font-bold text-blue-400 text-sm">UPI Payment</p>
-                      <p className="text-blue-200/80 text-sm mt-1">Complete payment to confirm your booking</p>
+                      <p className="font-bold text-white text-lg">Pay ₹{totalAmount}</p>
+                      <p className="text-blue-300/80 text-xs">Select your UPI app below</p>
                     </div>
                   </div>
 
-                  {/* UPI ID Display */}
-                  <div className="bg-gray-900/50 rounded-xl p-3 mb-3">
-                    <p className="text-xs text-gray-400 mb-1">UPI ID</p>
+                  {/* Pay Now Buttons - Direct app links - Made larger and more prominent */}
+                  <div className="grid grid-cols-3 gap-3 mb-4">
+                    <a
+                      href={`phonepe://pay?pa=mshakya@kotak&pn=${encodeURIComponent(cafeName || "BookMyGame")}&am=${totalAmount}&cu=INR&tn=${encodeURIComponent(`Booking-${bookingId}`)}&mc=5816`}
+                      className="py-4 bg-gradient-to-b from-purple-500 to-purple-700 hover:from-purple-400 hover:to-purple-600 text-white rounded-xl text-base font-bold flex flex-col items-center justify-center gap-1 transition shadow-lg shadow-purple-500/20"
+                    >
+                      <span>PhonePe</span>
+                    </a>
+                    <a
+                      href={`paytmmp://pay?pa=mshakya@kotak&pn=${encodeURIComponent(cafeName || "BookMyGame")}&am=${totalAmount}&cu=INR&tn=${encodeURIComponent(`Booking-${bookingId}`)}&mc=5816`}
+                      className="py-4 bg-gradient-to-b from-blue-500 to-blue-700 hover:from-blue-400 hover:to-blue-600 text-white rounded-xl text-base font-bold flex flex-col items-center justify-center gap-1 transition shadow-lg shadow-blue-500/20"
+                    >
+                      <span>Paytm</span>
+                    </a>
+                    <a
+                      href={`tez://upi/pay?pa=mshakya@kotak&pn=${encodeURIComponent(cafeName || "BookMyGame")}&am=${totalAmount}&cu=INR&tn=${encodeURIComponent(`Booking-${bookingId}`)}&mc=5816`}
+                      className="py-4 bg-gradient-to-b from-green-500 to-green-700 hover:from-green-400 hover:to-green-600 text-white rounded-xl text-base font-bold flex flex-col items-center justify-center gap-1 transition shadow-lg shadow-green-500/20"
+                    >
+                      <span>GPay</span>
+                    </a>
+                  </div>
+
+                  {/* Other UPI Apps - uses standard upi:// scheme which opens app chooser */}
+                  <a
+                    href={`upi://pay?pa=mshakya@kotak&pn=${encodeURIComponent(cafeName || "BookMyGame")}&am=${totalAmount}&cu=INR&tn=${encodeURIComponent(`Booking-${bookingId}`)}&mc=5816`}
+                    className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white rounded-xl font-bold flex items-center justify-center gap-2 transition shadow-lg shadow-orange-500/20 mb-4"
+                  >
+                    <Wallet className="w-5 h-5" />
+                    Other UPI Apps
+                  </a>
+
+                  {/* UPI ID for manual payment */}
+                  <div className="bg-gray-900/60 rounded-xl p-3">
+                    <p className="text-xs text-gray-400 mb-1.5">Or pay manually to UPI ID:</p>
                     <div className="flex items-center justify-between">
-                      <span className="font-mono font-bold text-white text-lg">mshakya@kotak</span>
+                      <span className="font-mono font-bold text-white">mshakya@kotak</span>
                       <button
                         onClick={() => {
                           navigator.clipboard.writeText("mshakya@kotak");
-                          alert("UPI ID copied to clipboard!");
+                          alert("UPI ID copied!");
                         }}
-                        className="text-xs bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 px-3 py-1 rounded-lg transition"
+                        className="text-xs bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 px-3 py-1.5 rounded-lg transition"
                       >
                         Copy
                       </button>
                     </div>
                   </div>
-
-                  {/* Pay Now Buttons - Direct app links */}
-                  <div className="grid grid-cols-3 gap-2 mb-3">
-                    <a
-                      href={`phonepe://pay?pa=mshakya@kotak&pn=${encodeURIComponent(cafeName || "BookMyGame")}&am=${totalAmount}&cu=INR&tn=${encodeURIComponent(`Booking-${bookingId}`)}&mc=5816`}
-                      className="py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-sm font-bold flex items-center justify-center transition"
-                    >
-                      PhonePe
-                    </a>
-                    <a
-                      href={`paytmmp://pay?pa=mshakya@kotak&pn=${encodeURIComponent(cafeName || "BookMyGame")}&am=${totalAmount}&cu=INR&tn=${encodeURIComponent(`Booking-${bookingId}`)}&mc=5816`}
-                      className="py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-bold flex items-center justify-center transition"
-                    >
-                      Paytm
-                    </a>
-                    <a
-                      href={`tez://upi/pay?pa=mshakya@kotak&pn=${encodeURIComponent(cafeName || "BookMyGame")}&am=${totalAmount}&cu=INR&tn=${encodeURIComponent(`Booking-${bookingId}`)}&mc=5816`}
-                      className="py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl text-sm font-bold flex items-center justify-center transition"
-                    >
-                      GPay
-                    </a>
-                  </div>
-
-                  {/* FamApp / Other UPI - uses standard upi:// scheme which opens app chooser */}
-                  <a
-                    href={`upi://pay?pa=mshakya@kotak&pn=${encodeURIComponent(cafeName || "BookMyGame")}&am=${totalAmount}&cu=INR&tn=${encodeURIComponent(`Booking-${bookingId}`)}&mc=5816`}
-                    className="w-full py-3 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:opacity-90 transition mb-3"
-                  >
-                    <Wallet className="w-5 h-5" />
-                    FamApp / Other UPI
-                  </a>
-
-                  <p className="text-blue-200/60 text-xs text-center">
-                    Tap any button above to open payment app. Amount will be pre-filled, just enter your PIN.
-                  </p>
                 </div>
               ) : (
                 <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-2xl p-4 flex items-start gap-3 mb-6">
@@ -728,8 +741,9 @@ export default function WalkInBookingPage() {
                     setSuccess(false);
                     setBookingId("");
                     setFullBookingId("");
-                    setQuantity(1);
-                    setDuration(60);
+                    setQuantity(null);
+                    setDuration(null);
+                    setPaymentMode(null);
                     if (availableConsoles.length > 0) {
                       setSelectedConsole(availableConsoles[0]);
                     }
@@ -744,47 +758,23 @@ export default function WalkInBookingPage() {
           </div>
         ) : (
           <>
-            {/* Header */}
-            <header className="flex flex-col md:flex-row items-center justify-between mb-8 sm:mb-12 gap-6">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-cyan-500 rounded-2xl flex items-center justify-center shadow-lg shadow-cyan-500/20">
-                  <Gamepad2 className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-3xl font-bold tracking-tight text-white">{cafeName}</h1>
-                  <div className="flex items-center gap-2 text-gray-400 text-sm font-medium">
-                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                    Walk-in Booking
-                  </div>
-                </div>
-              </div>
-
-              {/* User Profile Card */}
-              {profileData && (
-                <div className="bg-gray-900/50 backdrop-blur-md border border-gray-800 rounded-full pl-2 pr-6 py-2 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-r from-pink-500 to-purple-500 flex items-center justify-center text-sm font-bold">
-                    {profileData.fullName.charAt(0).toUpperCase()}
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-sm font-bold text-white leading-none">{profileData.fullName}</span>
-                    <span className="text-xs text-gray-400 leading-none mt-1">{profileData.phone || "No phone"}</span>
-                  </div>
-                </div>
-              )}
+            {/* Header - Centered cafe name */}
+            <header className="mb-4 sm:mb-6 text-center">
+              <h1 className="text-lg sm:text-2xl font-bold tracking-tight text-white">{cafeName}</h1>
             </header>
 
-            <form id="booking-form" onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-12">
+            <form id="booking-form" onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 lg:gap-12">
 
               {/* LEFT COLUMN: Console Selection */}
               <div className="lg:col-span-8">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-bold flex items-center gap-2">
-                    <Cpu className="w-5 h-5 text-cyan-400" />
+                <div className="flex items-center justify-between mb-3 sm:mb-5">
+                  <h2 className="text-sm sm:text-xl font-bold flex items-center gap-1.5 sm:gap-2">
+                    <Cpu className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400" />
                     Select Console
                   </h2>
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4">
+                <div className="grid grid-cols-3 sm:grid-cols-3 xl:grid-cols-4 gap-2 sm:gap-3">
                   {availableConsoleOptions.map((console) => {
                     const isSelected = selectedConsole === console.id;
                     return (
@@ -793,30 +783,30 @@ export default function WalkInBookingPage() {
                         type="button"
                         onClick={() => setSelectedConsole(console.id)}
                         disabled={submitting}
-                        className={`group relative aspect-[4/3] flex flex-col items-center justify-center rounded-3xl border-2 transition-all duration-300 overflow-hidden ${isSelected
-                          ? 'border-cyan-500 shadow-[0_0_30px_-10px_rgba(6,182,212,0.6)]'
-                          : 'border-gray-800 hover:border-gray-700 bg-gray-900/40 hover:bg-gray-900/60'
+                        className={`group relative p-2.5 sm:p-4 flex flex-col items-center justify-center rounded-xl sm:rounded-2xl border transition-all duration-200 overflow-hidden ${isSelected
+                          ? 'border-cyan-500 bg-cyan-500/10 shadow-[0_0_15px_-5px_rgba(6,182,212,0.5)]'
+                          : 'border-gray-800 bg-gray-900/40 hover:border-gray-700 hover:bg-gray-900/60'
                           }`}
                       >
                         {/* Console Background Gradient */}
                         {isSelected && (
-                          <div className={`absolute inset-0 bg-gradient-to-br ${console.gradient} opacity-20 transition-opacity`}></div>
+                          <div className={`absolute inset-0 bg-gradient-to-br ${console.gradient} opacity-15`}></div>
                         )}
 
-                        <div className={`relative w-14 h-14 rounded-2xl flex items-center justify-center mb-3 transition-transform duration-300 group-hover:scale-110 ${isSelected
-                          ? `bg-gradient-to-br ${console.gradient} text-white shadow-lg`
-                          : 'bg-gray-800 text-gray-400 group-hover:bg-gray-700 group-hover:text-white'
+                        <div className={`relative w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center mb-1.5 sm:mb-2 ${isSelected
+                          ? `bg-gradient-to-br ${console.gradient} text-white shadow-md`
+                          : 'bg-gray-800 text-gray-400'
                           }`}>
-                          {console.icon}
+                          <div className="scale-90 sm:scale-100">{console.icon}</div>
                         </div>
 
-                        <span className={`relative font-bold text-lg ${isSelected ? 'text-white' : 'text-gray-400 group-hover:text-gray-200'}`}>
+                        <span className={`relative font-semibold text-xs sm:text-sm leading-tight text-center ${isSelected ? 'text-white' : 'text-gray-300'}`}>
                           {console.label}
                         </span>
 
                         {isSelected && (
-                          <div className="absolute top-3 right-3">
-                            <CheckCircle className="w-6 h-6 text-cyan-400" />
+                          <div className="absolute top-1 right-1 sm:top-2 sm:right-2">
+                            <CheckCircle className="w-3.5 h-3.5 sm:w-5 sm:h-5 text-cyan-400" />
                           </div>
                         )}
                       </button>
@@ -826,31 +816,31 @@ export default function WalkInBookingPage() {
               </div>
 
               {/* RIGHT COLUMN: Configuration & Summary */}
-              <div className="lg:col-span-4 space-y-6">
+              <div className="lg:col-span-4 space-y-4 sm:space-y-6">
 
                 {/* Session Setup Card */}
-                <div className="bg-gray-900/60 backdrop-blur-xl border border-gray-800 rounded-3xl p-6 shadow-xl relative overflow-hidden">
+                <div className="bg-gray-900/60 backdrop-blur-xl border border-gray-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-xl relative overflow-hidden">
                   {/* Gradient Border Overlay */}
                   <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent"></div>
 
-                  <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
-                    <Target className="w-5 h-5 text-purple-400" />
+                  <h3 className="text-base sm:text-lg font-bold mb-4 sm:mb-6 flex items-center gap-2">
+                    <Target className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
                     Session Configuration
                   </h3>
 
                   {/* Controllers Selector */}
-                  <div className="mb-6">
-                    <div className="flex justify-between items-center mb-3">
-                      <label className="text-sm text-gray-400 font-medium">Controllers</label>
-                      <span className="text-xs bg-gray-800 text-gray-300 px-2 py-1 rounded-md">{quantity} selected</span>
+                  <div className="mb-4 sm:mb-6">
+                    <div className="flex justify-between items-center mb-2 sm:mb-3">
+                      <label className="text-xs sm:text-sm text-gray-400 font-medium">Controllers</label>
+                      <span className="text-[10px] sm:text-xs bg-gray-800 text-gray-300 px-2 py-0.5 sm:py-1 rounded-md">{quantity ? `${quantity} selected` : "Select"}</span>
                     </div>
-                    <div className="grid grid-cols-4 gap-2 bg-black/40 p-1.5 rounded-2xl border border-gray-800">
+                    <div className="grid grid-cols-4 gap-1.5 sm:gap-2 bg-black/40 p-1 sm:p-1.5 rounded-xl sm:rounded-2xl border border-gray-800">
                       {[1, 2, 3, 4].map(num => (
                         <button
                           key={num}
                           type="button"
                           onClick={() => setQuantity(num)}
-                          className={`h-12 rounded-xl flex items-center justify-center font-bold text-lg transition-all duration-300 ${quantity === num
+                          className={`h-10 sm:h-12 rounded-xl flex items-center justify-center font-bold text-base sm:text-lg transition-all duration-300 ${quantity === num
                             ? 'bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-lg'
                             : 'text-gray-500 hover:text-white hover:bg-gray-800'
                             }`}
@@ -861,75 +851,131 @@ export default function WalkInBookingPage() {
                     </div>
                   </div>
 
-                  {/* Duration Selector */}
-                  <div>
-                    <label className="text-sm text-gray-400 font-medium block mb-3">Duration</label>
-                    <div className="grid grid-cols-2 gap-3">
-                      <button
-                        type="button"
-                        onClick={() => setDuration(30)}
-                        className={`h-14 rounded-2xl border-2 flex items-center justify-center gap-2 transition-all ${duration === 30
-                          ? 'border-cyan-500 bg-cyan-500/10 text-cyan-400'
-                          : 'border-gray-800 bg-gray-900/20 text-gray-500 hover:border-gray-700'
-                          }`}
-                      >
-                        <Clock className="w-5 h-5" />
-                        <span className="font-bold">30 mins</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setDuration(60)}
-                        className={`h-14 rounded-2xl border-2 flex items-center justify-center gap-2 transition-all ${duration === 60
-                          ? 'border-purple-500 bg-purple-500/10 text-purple-400'
-                          : 'border-gray-800 bg-gray-900/20 text-gray-500 hover:border-gray-700'
-                          }`}
-                      >
-                        <Crown className="w-5 h-5" />
-                        <span className="font-bold">1 Hour</span>
-                      </button>
+                  {/* Duration Selector with Prices */}
+                  <div className="mb-4 sm:mb-0">
+                    <label className="text-xs sm:text-sm text-gray-400 font-medium block mb-2 sm:mb-3">Duration</label>
+                    <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                      {(() => {
+                        // Calculate prices for both durations to show in buttons
+                        const getPrice = (dur: 30 | 60) => {
+                          if (!selectedConsole || !quantity) return null;
+                          const tier = consolePricing[selectedConsole];
+                          if (tier) {
+                            const key = `qty${quantity}_${dur}min` as keyof ConsolePricingTier;
+                            const tierPrice = tier[key];
+                            if (tierPrice !== null && tierPrice !== undefined) return tierPrice;
+                            // Fallback for per-station consoles
+                            const isPerStation = ["pc", "vr", "steering_wheel", "arcade"].includes(selectedConsole);
+                            if (isPerStation && quantity > 1) {
+                              const baseKey = `qty1_${dur}min` as keyof ConsolePricingTier;
+                              const baseTierPrice = tier[baseKey];
+                              if (baseTierPrice !== null && baseTierPrice !== undefined) return baseTierPrice * quantity;
+                            }
+                          }
+                          return Math.round(cafePrice * quantity * (dur / 60));
+                        };
+                        const price30 = getPrice(30);
+                        const price60 = getPrice(60);
+                        return (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => setDuration(30)}
+                              className={`h-12 sm:h-16 rounded-xl sm:rounded-2xl border-2 flex flex-col items-center justify-center gap-0.5 transition-all ${duration === 30
+                                ? 'border-cyan-500 bg-cyan-500/10 text-cyan-400'
+                                : 'border-gray-800 bg-gray-900/20 text-gray-500 hover:border-gray-700'
+                                }`}
+                            >
+                              <div className="flex items-center gap-1.5">
+                                <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                <span className="font-bold text-sm sm:text-base">30 mins</span>
+                              </div>
+                              {price30 !== null && (
+                                <span className={`text-[10px] sm:text-xs ${duration === 30 ? 'text-cyan-300' : 'text-gray-600'}`}>₹{price30}</span>
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setDuration(60)}
+                              className={`h-12 sm:h-16 rounded-xl sm:rounded-2xl border-2 flex flex-col items-center justify-center gap-0.5 transition-all ${duration === 60
+                                ? 'border-purple-500 bg-purple-500/10 text-purple-400'
+                                : 'border-gray-800 bg-gray-900/20 text-gray-500 hover:border-gray-700'
+                                }`}
+                            >
+                              <div className="flex items-center gap-1.5">
+                                <Crown className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                <span className="font-bold text-sm sm:text-base">1 Hour</span>
+                              </div>
+                              {price60 !== null && (
+                                <span className={`text-[10px] sm:text-xs ${duration === 60 ? 'text-purple-300' : 'text-gray-600'}`}>₹{price60}</span>
+                              )}
+                            </button>
+                          </>
+                        );
+                      })()}
                     </div>
                   </div>
 
                   {/* Payment Method Selector */}
                   <div>
-                    <label className="text-sm text-gray-400 font-medium block mb-3">Payment Method</label>
-                    <div className="grid grid-cols-2 gap-3">
+                    <label className="text-xs sm:text-sm text-gray-400 font-medium block mb-2 sm:mb-3">Payment Method</label>
+                    <div className="grid grid-cols-2 gap-2 sm:gap-3">
                       <button
                         type="button"
                         onClick={() => setPaymentMode("cash")}
-                        className={`h-14 rounded-2xl border-2 flex items-center justify-center gap-2 transition-all ${paymentMode === "cash"
+                        className={`h-12 sm:h-14 rounded-xl sm:rounded-2xl border-2 flex items-center justify-center gap-2 transition-all ${paymentMode === "cash"
                           ? 'border-green-500 bg-green-500/10 text-green-400'
                           : 'border-gray-800 bg-gray-900/20 text-gray-500 hover:border-gray-700'
                           }`}
                       >
-                        <Banknote className="w-5 h-5" />
-                        <span className="font-bold">Cash</span>
+                        <Banknote className="w-4 h-4 sm:w-5 sm:h-5" />
+                        <span className="font-bold text-sm sm:text-base">Cash</span>
                       </button>
                       <button
                         type="button"
                         onClick={() => setPaymentMode("paytm")}
-                        className={`h-14 rounded-2xl border-2 flex items-center justify-center gap-2 transition-all ${paymentMode === "paytm"
+                        className={`h-12 sm:h-14 rounded-xl sm:rounded-2xl border-2 flex items-center justify-center gap-2 transition-all ${paymentMode === "paytm"
                           ? 'border-blue-500 bg-blue-500/10 text-blue-400'
                           : 'border-gray-800 bg-gray-900/20 text-gray-500 hover:border-gray-700'
                           }`}
                       >
-                        <Smartphone className="w-5 h-5" />
-                        <span className="font-bold">Paytm/UPI</span>
+                        <Smartphone className="w-4 h-4 sm:w-5 sm:h-5" />
+                        <span className="font-bold text-sm sm:text-base">Paytm/UPI</span>
                       </button>
                     </div>
                   </div>
                 </div>
 
-                {/* Pricing Summary & Action */}
-                <div className="bg-gradient-to-b from-gray-900 to-black border border-gray-800 rounded-3xl p-6 shadow-2xl">
+                {/* Pricing Summary & Action - Hidden on mobile since we have sticky bar */}
+                <div className="hidden sm:block bg-gradient-to-b from-gray-900 to-black border border-gray-800 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl">
+                  {/* Price Breakdown */}
+                  {selectedConsole && (
+                    <div className="mb-4 pb-4 border-b border-gray-800 space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-400">{CONSOLES.find(c => c.id === selectedConsole)?.label}</span>
+                        <span className="text-gray-300">{quantity ? `×${quantity} ${["pc", "vr", "steering_wheel", "arcade"].includes(selectedConsole) ? "station" : "controller"}${quantity > 1 ? "s" : ""}` : "Not selected"}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-400">Duration</span>
+                        <span className="text-gray-300">{duration ? `${duration} minutes` : "Not selected"}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-400">Payment</span>
+                        <span className="text-gray-300">{paymentMode === "cash" ? "Cash" : paymentMode === "paytm" ? "UPI" : "Not selected"}</span>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex items-end justify-between mb-6">
                     <div>
                       <p className="text-sm text-gray-400 mb-1">Total Amount</p>
                       <div className="flex items-baseline gap-1">
-                        <span className="text-3xl font-bold text-white">₹{totalAmount}</span>
-                        <span className="text-sm text-gray-500">
-                          / {duration}m
-                        </span>
+                        <span className="text-3xl font-bold text-white transition-all duration-300">₹{totalAmount}</span>
+                        {duration && (
+                          <span className="text-sm text-gray-500">
+                            / {duration}m
+                          </span>
+                        )}
                       </div>
                     </div>
                     {/* Pay Tag */}
@@ -948,8 +994,8 @@ export default function WalkInBookingPage() {
 
                   <button
                     type="submit"
-                    disabled={submitting || !selectedConsole}
-                    className={`hidden lg:flex w-full py-4 rounded-2xl font-bold text-lg items-center justify-center gap-3 shadow-xl transition-all ${submitting || !selectedConsole
+                    disabled={submitting || !selectedConsole || !quantity || !duration || !paymentMode}
+                    className={`hidden lg:flex w-full py-4 rounded-2xl font-bold text-lg items-center justify-center gap-3 shadow-xl transition-all ${submitting || !selectedConsole || !quantity || !duration || !paymentMode
                       ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
                       : 'bg-white text-black hover:scale-[1.02] active:scale-[0.98]'
                       }`}
@@ -975,20 +1021,20 @@ export default function WalkInBookingPage() {
               </div>
             </form>
             {/* Mobile Sticky Action Bar */}
-            <div className="fixed bottom-0 left-0 right-0 p-4 bg-gray-900/90 backdrop-blur-xl border-t border-gray-800 lg:hidden z-50">
+            <div className="fixed bottom-0 left-0 right-0 p-4 pb-6 bg-gray-900/95 backdrop-blur-xl border-t border-gray-800 lg:hidden z-50 safe-area-inset-bottom">
               <div className="flex items-center gap-4 max-w-md mx-auto">
                 <div className="flex-1">
                   <p className="text-xs text-gray-400">Total Amount</p>
                   <div className="flex items-baseline gap-1">
                     <p className="text-2xl font-bold text-white">₹{totalAmount}</p>
-                    <span className="text-xs text-gray-500">/ {duration}m</span>
+                    {duration && <span className="text-xs text-gray-500">/ {duration}m</span>}
                   </div>
                 </div>
                 <button
                   type="submit"
                   form="booking-form"
-                  disabled={submitting || !selectedConsole}
-                  className={`flex-1 py-3 rounded-xl font-bold text-base flex items-center justify-center gap-2 shadow-lg ${submitting || !selectedConsole
+                  disabled={submitting || !selectedConsole || !quantity || !duration || !paymentMode}
+                  className={`flex-1 py-3 rounded-xl font-bold text-base flex items-center justify-center gap-2 shadow-lg ${submitting || !selectedConsole || !quantity || !duration || !paymentMode
                     ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
                     : 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white'
                     }`}
