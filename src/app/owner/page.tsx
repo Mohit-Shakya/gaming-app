@@ -1482,7 +1482,7 @@ export default function OwnerDashboardPage() {
     fetchCustomerData();
   }, [viewingCustomer, selectedCafeId]);
 
-  const handleViewCustomer = (customer: { name: string; phone?: string; email?: string }) => {
+  const handleViewCustomer = (customer: { name: string; phone?: string | null; email?: string | null }) => {
     // Try to find active subscription
     const activeSub = customer.phone ? subscriptions.find(s =>
       (s.customer_phone === customer.phone || s.user?.phone === customer.phone) &&
