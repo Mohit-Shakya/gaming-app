@@ -72,7 +72,14 @@ export function Reports({ cafeId, isMobile }: ReportsProps) {
 
     const getDateRange = (range: string) => {
         const now = new Date();
-        const todayStr = now.toISOString().slice(0, 10);
+        const toLocalISODate = (date: Date) => {
+            const offset = date.getTimezoneOffset();
+            const localDate = new Date(date.getTime() - (offset * 60 * 1000));
+            return localDate.toISOString().slice(0, 10);
+        };
+
+        const todayStr = toLocalISODate(now);
+
         let startDate = todayStr;
         let endDate = todayStr;
         let prevStartDate = todayStr;
@@ -83,50 +90,49 @@ export function Reports({ cafeId, isMobile }: ReportsProps) {
             endDate = todayStr;
             const yesterday = new Date(now);
             yesterday.setDate(now.getDate() - 1);
-            prevStartDate = yesterday.toISOString().slice(0, 10);
+            prevStartDate = toLocalISODate(yesterday);
             prevEndDate = prevStartDate;
         } else if (range === 'yesterday') {
             const yesterday = new Date(now);
             yesterday.setDate(now.getDate() - 1);
-            startDate = yesterday.toISOString().slice(0, 10);
+            startDate = toLocalISODate(yesterday);
             endDate = startDate;
             const dayBefore = new Date(now);
             dayBefore.setDate(now.getDate() - 2);
-            prevStartDate = dayBefore.toISOString().slice(0, 10);
+            prevStartDate = toLocalISODate(dayBefore);
             prevEndDate = prevStartDate;
         } else if (range === '7d') {
             const sevenDaysAgo = new Date(now);
             sevenDaysAgo.setDate(now.getDate() - 6);
-            startDate = sevenDaysAgo.toISOString().slice(0, 10);
+            startDate = toLocalISODate(sevenDaysAgo);
             endDate = todayStr;
             const fourteenDaysAgo = new Date(now);
             fourteenDaysAgo.setDate(now.getDate() - 13);
-            prevStartDate = fourteenDaysAgo.toISOString().slice(0, 10);
+            prevStartDate = toLocalISODate(fourteenDaysAgo);
             const eightDaysAgo = new Date(now);
             eightDaysAgo.setDate(now.getDate() - 7);
-            prevEndDate = eightDaysAgo.toISOString().slice(0, 10);
+            prevEndDate = toLocalISODate(eightDaysAgo);
         } else if (range === '30d') {
             const thirtyDaysAgo = new Date(now);
             thirtyDaysAgo.setDate(now.getDate() - 29);
-            startDate = thirtyDaysAgo.toISOString().slice(0, 10);
+            startDate = toLocalISODate(thirtyDaysAgo);
             endDate = todayStr;
             const sixtyDaysAgo = new Date(now);
             sixtyDaysAgo.setDate(now.getDate() - 59);
-            prevStartDate = sixtyDaysAgo.toISOString().slice(0, 10);
+            prevStartDate = toLocalISODate(sixtyDaysAgo);
             const thirtyOneDaysAgo = new Date(now);
             thirtyOneDaysAgo.setDate(now.getDate() - 30);
-            prevEndDate = thirtyOneDaysAgo.toISOString().slice(0, 10);
+            prevEndDate = toLocalISODate(thirtyOneDaysAgo);
         } else if (range === 'month') {
             const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-            startDate = firstDay.toISOString().slice(0, 10);
+            startDate = toLocalISODate(firstDay);
             const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-            endDate = lastDay.toISOString().slice(0, 10);
+            endDate = toLocalISODate(lastDay);
             const prevFirstDay = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-            prevStartDate = prevFirstDay.toISOString().slice(0, 10);
+            prevStartDate = toLocalISODate(prevFirstDay);
             const prevLastDay = new Date(now.getFullYear(), now.getMonth(), 0);
-            prevEndDate = prevLastDay.toISOString().slice(0, 10);
+            prevEndDate = toLocalISODate(prevLastDay);
         } else if (range === 'all') {
-            // All time - use a very early start date
             startDate = '2020-01-01';
             endDate = todayStr;
             prevStartDate = '2019-01-01';
@@ -140,8 +146,8 @@ export function Reports({ cafeId, isMobile }: ReportsProps) {
             const duration = end.getTime() - start.getTime();
             const prevEnd = new Date(start.getTime() - 1);
             const prevStart = new Date(prevEnd.getTime() - duration);
-            prevStartDate = prevStart.toISOString().slice(0, 10);
-            prevEndDate = prevEnd.toISOString().slice(0, 10);
+            prevStartDate = toLocalISODate(prevStart);
+            prevEndDate = toLocalISODate(prevEnd);
         }
 
         return { startDate, endDate, prevStartDate, prevEndDate };
@@ -176,8 +182,8 @@ export function Reports({ cafeId, isMobile }: ReportsProps) {
                 `)
                 .eq('cafe_id', cafeId)
                 .neq('status', 'cancelled')
-                .gte('booking_date', startDate)
-                .lte('booking_date', endDate)
+                .gte('booking_date', `${startDate}T00:00:00`)
+                .lte('booking_date', `${endDate}T23:59:59`)
                 .order('booking_date', { ascending: true });
 
             if (currentError) {
@@ -194,8 +200,8 @@ export function Reports({ cafeId, isMobile }: ReportsProps) {
                 .select('id, total_amount, booking_date, status, payment_mode')
                 .eq('cafe_id', cafeId)
                 .neq('status', 'cancelled')
-                .gte('booking_date', prevStartDate)
-                .lte('booking_date', prevEndDate);
+                .gte('booking_date', `${prevStartDate}T00:00:00`)
+                .lte('booking_date', `${prevEndDate}T23:59:59`);
 
             setPreviousBookings(prevData || []);
 
