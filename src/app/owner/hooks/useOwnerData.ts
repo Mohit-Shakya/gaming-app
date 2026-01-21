@@ -216,8 +216,7 @@ export function useOwnerData(ownerId: string | null, allowed: boolean) {
         
         if (totalCount !== null) setTotalBookingsCount(totalCount);
 
-        // Fetch Bookings with items
-        const offset = (bookingPage - 1) * bookingsPerPage;
+        // Fetch All Bookings (Client-side pagination will be used)
         const { data: bookingRows, error: bookingsError } = await supabase
           .from("bookings")
           .select(`
@@ -226,8 +225,7 @@ export function useOwnerData(ownerId: string | null, allowed: boolean) {
             booking_items (id, console, quantity, price)
           `)
           .in("cafe_id", cafeIds)
-          .order("created_at", { ascending: false })
-          .range(offset, offset + bookingsPerPage - 1);
+          .order("created_at", { ascending: false });
 
         if (bookingsError) throw bookingsError;
 

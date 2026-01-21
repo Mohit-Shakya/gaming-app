@@ -9,6 +9,7 @@ interface BookingsTableProps {
     onStatusChange?: (id: string, status: string) => void;
     onEdit?: (booking: any) => void;
     onViewOrders?: (bookingId: string, customerName: string) => void;
+    onViewCustomer?: (customer: { name: string; phone?: string; email?: string }) => void;
     showFilters?: boolean;
     limit?: number;
     loading?: boolean;
@@ -23,6 +24,7 @@ export function BookingsTable({
     onStatusChange,
     onEdit,
     onViewOrders,
+    onViewCustomer,
     showFilters = false,
     limit,
     loading = false,
@@ -150,7 +152,19 @@ export function BookingsTable({
                             paginatedBookings.map((booking) => (
                                 <tr key={booking.id} className="hover:bg-white/5 transition-colors">
                                     <td className="px-4 py-1.5">
-                                        <div className="font-medium text-white">
+                                        <div
+                                            className={`font-medium text-white ${onViewCustomer ? 'cursor-pointer hover:text-blue-400 hover:underline' : ''}`}
+                                            onClick={(e) => {
+                                                if (onViewCustomer) {
+                                                    e.stopPropagation();
+                                                    onViewCustomer({
+                                                        name: booking.customer_name || booking.user_name || "Guest",
+                                                        phone: booking.customer_phone || booking.user_phone,
+                                                        email: booking.user_email
+                                                    });
+                                                }
+                                            }}
+                                        >
                                             {booking.customer_name || booking.user_name || "Guest"}
                                         </div>
                                         <div className="text-xs text-slate-500 mt-0.5">

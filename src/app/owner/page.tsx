@@ -1482,6 +1482,20 @@ export default function OwnerDashboardPage() {
     fetchCustomerData();
   }, [viewingCustomer, selectedCafeId]);
 
+  const handleViewCustomer = (customer: { name: string; phone?: string; email?: string }) => {
+    // Try to find active subscription
+    const activeSub = customer.phone ? subscriptions.find(s =>
+      (s.customer_phone === customer.phone || s.user?.phone === customer.phone) &&
+      s.status === 'active' &&
+      new Date(s.end_date) > new Date()
+    ) : null;
+
+    setViewingCustomer({
+      ...customer,
+      activeSubscription: activeSub
+    });
+  };
+
   // Walk-in booking handlers (for billing tab)
   const consoleOptions: { id: ConsoleId; label: string; icon: string }[] = [
     { id: "ps5", label: CONSOLE_LABELS.ps5, icon: CONSOLE_ICONS.ps5 },
@@ -2858,6 +2872,7 @@ export default function OwnerDashboardPage() {
                 setViewOrdersCustomerName(customerName);
                 setViewOrdersModalOpen(true);
               }}
+              onViewCustomer={handleViewCustomer}
             />
           )}
 
@@ -4023,6 +4038,7 @@ export default function OwnerDashboardPage() {
                           transition: 'all 0.2s ease',
                           cursor: 'pointer',
                         }}
+                        onClick={() => handleViewCustomer(customer)}
                         onMouseOver={(e) => {
                           e.currentTarget.style.background = 'rgba(99, 102, 241, 0.04)';
                           e.currentTarget.style.transform = 'translateX(4px)';

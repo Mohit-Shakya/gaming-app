@@ -2,6 +2,7 @@
 import React from 'react';
 import { theme } from '../utils/theme';
 import { convertTo12Hour } from '../utils';
+import { X, Phone, Mail, Calendar, Clock, CreditCard, ChevronRight, Play, Star, History, Award } from 'lucide-react';
 
 type CustomerDetailsModalProps = {
     customer: any;
@@ -39,263 +40,331 @@ export default function CustomerDetailsModal({
                 left: 0,
                 right: 0,
                 bottom: 0,
-                background: "rgba(0, 0, 0, 0.7)",
-                backdropFilter: "blur(4px)",
+                background: "rgba(0, 0, 0, 0.8)",
+                backdropFilter: "blur(8px)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 zIndex: 1000,
                 padding: isMobile ? "16px" : "20px",
-                overflowY: 'auto',
+                animation: 'fadeIn 0.2s ease-out'
             }}
             onClick={onClose}
         >
+            <style jsx global>{`
+                @keyframes fadeIn {
+                    from { opacity: 0; }
+                    to { opacity: 1; }
+                }
+                @keyframes slideUp {
+                    from { transform: translateY(20px); opacity: 0; }
+                    to { transform: translateY(0); opacity: 1; }
+                }
+            `}</style>
             <div
                 style={{
-                    background: theme.cardBackground,
-                    borderRadius: isMobile ? 16 : 24,
-                    border: `1px solid ${theme.border}`,
-                    maxWidth: 900,
+                    background: '#0f172a', // Slate 950
+                    borderRadius: isMobile ? 20 : 28,
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    maxWidth: 1000,
                     width: "100%",
                     maxHeight: '90vh',
                     overflowY: 'auto',
-                    boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
+                    boxShadow: "0 25px 100px -20px rgba(0,0,0,0.8)",
+                    position: 'relative',
+                    animation: 'slideUp 0.3s ease-out'
                 }}
                 onClick={(e) => e.stopPropagation()}
             >
-                {/* Header with Back Button (if came from subscription) */}
-                {customer.subscription && (
-                    <div style={{
-                        padding: isMobile ? "20px 24px" : "28px 32px",
-                        borderBottom: `1px solid ${theme.border}`,
-                        background: "rgba(59, 130, 246, 0.05)",
-                    }}>
-                        <button
-                            onClick={() => onBackToSubscription(customer.subscription)}
-                            style={{
-                                background: 'transparent',
-                                border: 'none',
-                                color: theme.textMuted,
-                                fontSize: isMobile ? 14 : 15,
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 8,
-                                marginBottom: 16,
-                                padding: 0,
-                            }}
-                        >
-                            ← Back to Subscription
-                        </button>
-                    </div>
-                )}
-
-                {/* Customer Profile Header */}
-                <div style={{ padding: isMobile ? "24px" : "32px" }}>
-                    <div style={{
+                {/* Close Button */}
+                <button
+                    onClick={onClose}
+                    style={{
+                        position: 'absolute',
+                        top: 20,
+                        right: 20,
+                        background: 'rgba(255,255,255,0.1)',
+                        border: 'none',
+                        borderRadius: '50%',
+                        width: 36,
+                        height: 36,
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 20,
-                        marginBottom: 32,
-                        borderBottom: `1px solid ${theme.border}`,
-                        paddingBottom: 32,
+                        justifyContent: 'center',
+                        color: theme.textMuted,
+                        cursor: 'pointer',
+                        zIndex: 10,
+                        transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.2)'; e.currentTarget.style.color = 'white'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = theme.textMuted; }}
+                >
+                    <X size={20} />
+                </button>
+
+                <div className="flex flex-col md:flex-row h-full">
+                    {/* Left Sidebar - Profile & Actions */}
+                    <div style={{
+                        width: isMobile ? '100%' : '320px',
+                        background: 'linear-gradient(180deg, rgba(30, 41, 59, 0.5) 0%, rgba(15, 23, 42, 0.5) 100%)',
+                        borderRight: isMobile ? 'none' : '1px solid rgba(255,255,255,0.05)',
+                        borderBottom: isMobile ? '1px solid rgba(255,255,255,0.05)' : 'none',
+                        padding: isMobile ? 24 : 32,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 24
                     }}>
-                        <div style={{
-                            width: isMobile ? 72 : 96,
-                            height: isMobile ? 72 : 96,
-                            borderRadius: '50%',
-                            background: 'linear-gradient(135deg, #3b82f6, #06b6d4)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: isMobile ? 28 : 36,
-                            fontWeight: 700,
-                            color: '#fff',
-                            boxShadow: '0 10px 30px rgba(59, 130, 246, 0.3)',
-                        }}>
-                            {initials}
-                        </div>
-                        <div>
-                            <h2 style={{ fontSize: isMobile ? 24 : 32, fontWeight: 700, color: theme.textPrimary, margin: 0, marginBottom: 4 }}>
+                        {/* Profile Info */}
+                        <div style={{ textAlign: 'center' }}>
+                            <div style={{
+                                width: 100,
+                                height: 100,
+                                margin: '0 auto 16px',
+                                borderRadius: '50%',
+                                background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: 36,
+                                fontWeight: 700,
+                                color: 'white',
+                                boxShadow: '0 0 40px rgba(139, 92, 246, 0.3)',
+                                border: '4px solid rgba(255,255,255,0.1)'
+                            }}>
+                                {initials}
+                            </div>
+                            <h2 style={{ fontSize: 24, fontWeight: 700, color: 'white', marginBottom: 6 }}>
                                 {customer.name}
                             </h2>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                <p style={{ fontSize: isMobile ? 14 : 16, color: theme.textSecondary, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-                                    <span>📞</span> {customer.phone || 'No phone'}
-                                </p>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'center' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#94a3b8', fontSize: 14 }}>
+                                    <Phone size={14} /> {customer.phone || 'No phone'}
+                                </div>
                                 {customer.email && (
-                                    <p style={{ fontSize: isMobile ? 14 : 16, color: theme.textSecondary, margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
-                                        <span>📧</span> {customer.email}
-                                    </p>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#94a3b8', fontSize: 14 }}>
+                                        <Mail size={14} /> {customer.email}
+                                    </div>
                                 )}
                             </div>
                         </div>
-                    </div>
 
-                    {/* Stats Grid */}
-                    <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)',
-                        gap: isMobile ? 16 : 24,
-                        marginBottom: 32,
-                    }}>
+                        {/* Quick Stats Rows */}
                         <div style={{
-                            background: 'rgba(255, 255, 255, 0.03)',
+                            background: 'rgba(255,255,255,0.03)',
                             borderRadius: 16,
-                            padding: isMobile ? 16 : 20,
-                            border: `1px solid ${theme.border}`,
-                        }}>
-                            <p style={{ fontSize: isMobile ? 11 : 12, color: theme.textMuted, margin: '0 0 6px 0', textTransform: 'uppercase' }}>
-                                Total Sessions
-                            </p>
-                            <p style={{ fontSize: isMobile ? 20 : 24, fontWeight: 700, color: theme.textPrimary, margin: 0 }}>
-                                {customerBookings.length}
-                            </p>
-                        </div>
-                        <div style={{
-                            background: 'rgba(255, 255, 255, 0.03)',
-                            borderRadius: 16,
-                            padding: isMobile ? 16 : 20,
-                            border: `1px solid ${theme.border}`,
-                        }}>
-                            <p style={{ fontSize: isMobile ? 11 : 12, color: theme.textMuted, margin: '0 0 6px 0', textTransform: 'uppercase' }}>
-                                Total Spent
-                            </p>
-                            <p style={{ fontSize: isMobile ? 20 : 24, fontWeight: 700, color: '#10b981', margin: 0 }}>
-                                ₹{totalSpent.toLocaleString()}
-                            </p>
-                        </div>
-                        <div style={{
-                            background: 'rgba(255, 255, 255, 0.03)',
-                            borderRadius: 16,
-                            padding: isMobile ? 16 : 20,
-                            border: `1px solid ${theme.border}`,
-                        }}>
-                            <p style={{ fontSize: isMobile ? 11 : 12, color: theme.textMuted, margin: '0 0 6px 0', textTransform: 'uppercase' }}>
-                                Hours Played
-                            </p>
-                            <p style={{ fontSize: isMobile ? 20 : 24, fontWeight: 700, color: '#3b82f6', margin: 0 }}>
-                                {Math.floor(totalHours)}h {Math.round((totalHours % 1) * 60)}m
-                            </p>
-                        </div>
-                        <div style={{
-                            background: 'rgba(255, 255, 255, 0.03)',
-                            borderRadius: 16,
-                            padding: isMobile ? 16 : 20,
-                            border: `1px solid ${theme.border}`,
-                        }}>
-                            <p style={{ fontSize: isMobile ? 11 : 12, color: theme.textMuted, margin: '0 0 6px 0', textTransform: 'uppercase' }}>
-                                Last Visit
-                            </p>
-                            <p style={{ fontSize: isMobile ? 16 : 18, fontWeight: 600, color: theme.textPrimary, margin: 0 }}>
-                                {customerBookings.length > 0
-                                    ? new Date(customerBookings[0].booking_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-                                    : 'N/A'}
-                            </p>
-                        </div>
-                    </div>
-
-                    {/* Sessions List */}
-                    <div style={{
-                        background: 'rgba(255, 255, 255, 0.02)',
-                        border: `1px solid ${theme.border}`,
-                        borderRadius: 16,
-                        padding: 0,
-                        overflow: 'hidden',
-                    }}>
-                        <div style={{
-                            padding: isMobile ? "16px 20px" : "20px 24px",
-                            borderBottom: `1px solid ${theme.border}`,
+                            padding: 16,
                             display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
+                            flexDirection: 'column',
+                            gap: 16
                         }}>
-                            <div>
-                                <h3 style={{ fontSize: isMobile ? 16 : 18, fontWeight: 700, color: theme.textPrimary, margin: 0 }}>
-                                    Recent Sessions
-                                </h3>
-                                <p style={{ fontSize: isMobile ? 13 : 14, color: theme.textMuted, margin: '2px 0 0 0' }}>
-                                    Last 10 gaming sessions
-                                </p>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#94a3b8', fontSize: 13 }}>
+                                    <History size={16} /> Sessions
+                                </div>
+                                <div style={{ color: 'white', fontWeight: 600 }}>{customerBookings.length}</div>
                             </div>
+                            <div style={{ width: '100%', height: 1, background: 'rgba(255,255,255,0.05)' }} />
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#94a3b8', fontSize: 13 }}>
+                                    <Clock size={16} /> Playtime
+                                </div>
+                                <div style={{ color: '#60a5fa', fontWeight: 600 }}>
+                                    {Math.floor(totalHours)}h {Math.round((totalHours % 1) * 60)}m
+                                </div>
+                            </div>
+                            <div style={{ width: '100%', height: 1, background: 'rgba(255,255,255,0.05)' }} />
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#94a3b8', fontSize: 13 }}>
+                                    <Award size={16} /> Total Spent
+                                </div>
+                                <div style={{ color: '#10b981', fontWeight: 600 }}>₹{totalSpent.toLocaleString()}</div>
+                            </div>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 'auto' }}>
                             <button style={{
-                                padding: '8px 16px',
-                                background: 'transparent',
-                                border: `2px solid ${theme.border}`,
-                                borderRadius: 8,
-                                color: theme.textPrimary,
-                                fontSize: 13,
+                                width: '100%',
+                                padding: '14px',
+                                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                                border: 'none',
+                                borderRadius: 14,
+                                color: 'white',
                                 fontWeight: 600,
+                                fontSize: 14,
                                 cursor: 'pointer',
-                            }}>
-                                View All
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 10,
+                                boxShadow: '0 4px 12px rgba(16, 185, 129, 0.2)',
+                                transition: 'transform 0.2s',
+                            }}
+                                onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+                                onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+                            >
+                                <Play size={18} fill="currentColor" /> Start Session
+                            </button>
+                            <button style={{
+                                width: '100%',
+                                padding: '14px',
+                                background: 'rgba(139, 92, 246, 0.1)',
+                                border: '1px solid rgba(139, 92, 246, 0.2)',
+                                borderRadius: 14,
+                                color: '#a78bfa',
+                                fontWeight: 600,
+                                fontSize: 14,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 10,
+                                transition: 'all 0.2s'
+                            }}
+                                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(139, 92, 246, 0.2)'; }}
+                                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(139, 92, 246, 0.1)'; }}
+                            >
+                                <Star size={18} /> New Membership
                             </button>
                         </div>
+                    </div>
 
-                        <div style={{ overflowX: 'auto' }}>
+                    {/* Right Content */}
+                    <div style={{ flex: 1, padding: isMobile ? 24 : 32, overflowY: 'auto' }}>
+
+                        {/* Active Subscription Banner */}
+                        {customer.activeSubscription ? (
+                            <div style={{
+                                background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.1) 0%, rgba(37, 99, 235, 0) 100%)',
+                                border: '1px solid rgba(59, 130, 246, 0.2)',
+                                borderRadius: 20,
+                                padding: 24,
+                                marginBottom: 32,
+                                position: 'relative',
+                                overflow: 'hidden'
+                            }}>
+                                <div style={{ position: 'absolute', top: 0, right: 0, padding: 16 }}>
+                                    <span style={{ fontSize: 12, fontWeight: 700, color: '#60a5fa', background: 'rgba(59, 130, 246, 0.1)', padding: '4px 12px', borderRadius: 20 }}>
+                                        ACTIVE
+                                    </span>
+                                </div>
+                                <div style={{ display: 'flex', gap: 16, marginBottom: 20 }}>
+                                    <div style={{
+                                        width: 48, height: 48, borderRadius: 12,
+                                        background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                        color: 'white', boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)'
+                                    }}>
+                                        <CreditCard size={24} />
+                                    </div>
+                                    <div>
+                                        <h3 style={{ fontSize: 18, fontWeight: 700, color: 'white', marginBottom: 4 }}>
+                                            {customer.activeSubscription.membership_plans?.name || 'Membership'}
+                                        </h3>
+                                        <p style={{ fontSize: 13, color: '#94a3b8' }}>
+                                            Expires {new Date(customer.activeSubscription.end_date).toLocaleDateString()}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* Progress */}
+                                <div style={{ marginBottom: 16 }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 8 }}>
+                                        <span style={{ color: '#e2e8f0' }}>Usage</span>
+                                        <span style={{ color: '#94a3b8' }}>
+                                            {Math.floor((customer.activeSubscription.minutes_used || 0) / 60)}h / {customer.activeSubscription.membership_plans?.hours_limit || 0}h
+                                        </span>
+                                    </div>
+                                    <div style={{ height: 6, background: 'rgba(255,255,255,0.1)', borderRadius: 10, overflow: 'hidden' }}>
+                                        <div style={{
+                                            width: `${Math.min(100, ((customer.activeSubscription.minutes_used || 0) / ((customer.activeSubscription.membership_plans?.hours_limit || 1) * 60)) * 100)}%`,
+                                            height: '100%',
+                                            background: '#3b82f6',
+                                            borderRadius: 10
+                                        }} />
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div style={{
+                                background: 'rgba(255,255,255,0.02)',
+                                border: '1px dashed rgba(255,255,255,0.1)',
+                                borderRadius: 20,
+                                padding: 24,
+                                marginBottom: 32,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between'
+                            }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                                    <div style={{ width: 48, height: 48, borderRadius: 12, background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>
+                                        <CreditCard size={24} />
+                                    </div>
+                                    <div>
+                                        <h3 style={{ fontSize: 16, fontWeight: 600, color: 'white', marginBottom: 4 }}>No active subscription</h3>
+                                        <p style={{ fontSize: 13, color: '#64748b' }}>Customer doesn't have an active plan</p>
+                                    </div>
+                                </div>
+                                <ChevronRight size={20} color="#64748b" />
+                            </div>
+                        )}
+
+                        {/* Recent Sessions */}
+                        <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <h3 style={{ fontSize: 18, fontWeight: 700, color: 'white' }}>Recent History</h3>
+                        </div>
+
+                        <div style={{
+                            background: 'rgba(255, 255, 255, 0.02)',
+                            border: '1px solid rgba(255,255,255,0.05)',
+                            borderRadius: 20,
+                            overflow: 'hidden'
+                        }}>
                             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                                 <thead>
-                                    <tr style={{ borderBottom: `1px solid ${theme.border}` }}>
-                                        <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: isMobile ? 11 : 12, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase' }}>DATE</th>
-                                        <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: isMobile ? 11 : 12, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase' }}>STATION</th>
-                                        <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: isMobile ? 11 : 12, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase' }}>DURATION</th>
-                                        <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: isMobile ? 11 : 12, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase' }}>AMOUNT</th>
-                                        <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: isMobile ? 11 : 12, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase' }}>STATUS</th>
+                                    <tr style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                                        <th style={{ padding: '16px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>Date</th>
+                                        <th style={{ padding: '16px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>Details</th>
+                                        <th style={{ padding: '16px', textAlign: 'right', fontSize: 12, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase' }}>Amount</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {loadingCustomerData ? (
-                                        <tr>
-                                            <td colSpan={5} style={{ padding: '40px 16px', textAlign: 'center', color: theme.textMuted }}>
-                                                Loading sessions...
-                                            </td>
-                                        </tr>
-                                    ) : customerBookings.length === 0 ? (
-                                        <tr>
-                                            <td colSpan={5} style={{ padding: '40px 16px', textAlign: 'center', color: theme.textMuted }}>
-                                                No sessions yet
-                                            </td>
-                                        </tr>
-                                    ) : (
-                                        customerBookings.map((booking) => {
-                                            const bookingDate = new Date(booking.booking_date);
-                                            const consoleInfo = booking.booking_items?.[0];
-                                            const stationName = consoleInfo?.console?.toUpperCase() || 'N/A';
-                                            const isSubscription = booking.source === 'subscription' || !booking.total_amount;
+                                    {customerBookings.slice(0, 5).map((booking) => {
+                                        const bookingDate = new Date(booking.booking_date);
+                                        const consoleInfo = booking.booking_items?.[0];
+                                        const stationName = consoleInfo?.console?.toUpperCase() || 'N/A';
 
-                                            return (
-                                                <tr key={booking.id} style={{ borderBottom: `1px solid ${theme.border}` }}>
-                                                    <td style={{ padding: '16px', fontSize: isMobile ? 13 : 14, color: theme.textPrimary }}>
-                                                        <div>{bookingDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
-                                                        <div style={{ fontSize: isMobile ? 11 : 12, color: theme.textMuted }}>
-                                                            {convertTo12Hour(booking.start_time)}
-                                                        </div>
-                                                    </td>
-                                                    <td style={{ padding: '16px', fontSize: isMobile ? 13 : 14, fontWeight: 600, color: theme.textPrimary }}>
-                                                        {stationName}-{consoleInfo?.quantity || 1}
-                                                    </td>
-                                                    <td style={{ padding: '16px', fontSize: isMobile ? 13 : 14, color: theme.textPrimary }}>
-                                                        {booking.duration ? `${Math.floor(booking.duration / 60)}h ${booking.duration % 60}m` : 'N/A'}
-                                                    </td>
-                                                    <td style={{ padding: '16px', fontSize: isMobile ? 13 : 14, fontWeight: 600, color: isSubscription ? '#3b82f6' : theme.textPrimary }}>
-                                                        {isSubscription ? 'Subscription' : `₹${booking.total_amount}`}
-                                                    </td>
-                                                    <td style={{ padding: '16px' }}>
+                                        return (
+                                            <tr key={booking.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                                                <td style={{ padding: '16px', color: 'white', fontSize: 14 }}>
+                                                    <div style={{ fontWeight: 500 }}>{bookingDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}</div>
+                                                    <div style={{ fontSize: 12, color: '#64748b' }}>{convertTo12Hour(booking.start_time)}</div>
+                                                </td>
+                                                <td style={{ padding: '16px', color: 'white', fontSize: 14 }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                                         <span style={{
-                                                            padding: '4px 12px',
-                                                            background: booking.status === 'completed' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(107, 114, 128, 0.2)',
-                                                            color: booking.status === 'completed' ? '#22c55e' : '#6b7280',
-                                                            borderRadius: 12,
-                                                            fontSize: isMobile ? 11 : 12,
-                                                            fontWeight: 600,
-                                                            textTransform: 'capitalize',
+                                                            padding: '2px 8px', borderRadius: 6, background: 'rgba(59, 130, 246, 0.1)',
+                                                            color: '#60a5fa', fontSize: 12, fontWeight: 600
                                                         }}>
-                                                            {booking.status || 'Completed'}
+                                                            {stationName}
                                                         </span>
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })
+                                                        <span style={{ color: '#94a3b8' }}>
+                                                            {booking.duration ? `${Math.floor(booking.duration / 60)}h ${booking.duration % 60}m` : 'N/A'}
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                                <td style={{ padding: '16px', textAlign: 'right', color: 'white', fontWeight: 600, fontSize: 14 }}>
+                                                    ₹{booking.total_amount}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                    {customerBookings.length === 0 && (
+                                        <tr>
+                                            <td colSpan={3} style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>
+                                                No sessions found
+                                            </td>
+                                        </tr>
                                     )}
                                 </tbody>
                             </table>
