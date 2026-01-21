@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { formatDate } from "@/lib/timeUtils";
 import {
   Calendar,
   Clock,
@@ -192,19 +193,7 @@ export default function DashboardPage() {
     return { total, confirmed, totalSpent, totalHours };
   }, [bookings]);
 
-  function formatDate(dateStr?: string | null) {
-    if (!dateStr) return "Date not set";
-    try {
-      const d = new Date(`${dateStr}T00:00:00`);
-      return d.toLocaleDateString("en-IN", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      });
-    } catch {
-      return dateStr;
-    }
-  }
+
 
   function formatTime(timeStr?: string | null) {
     if (!timeStr) return "Time not set";
@@ -213,7 +202,7 @@ export default function DashboardPage() {
 
   function getStatusInfo(status?: string | null) {
     const value = (status || "confirmed").toLowerCase();
-    
+
     if (value === "cancelled") {
       return {
         label: "Cancelled",
@@ -251,7 +240,7 @@ export default function DashboardPage() {
 
   async function handleCancelBooking(id: string, e: React.MouseEvent) {
     e.stopPropagation();
-    
+
     const booking = bookings.find((b) => b.id === id);
     if (!booking) return;
     if (!canCancelBooking(booking)) return;
@@ -590,7 +579,7 @@ export default function DashboardPage() {
                   Manage your gaming sessions and track your activity
                 </p>
               </div>
-              
+
               <button
                 onClick={() => router.push("/")}
                 className="primary-btn flex items-center justify-center gap-2 px-4 py-3 md:px-6 md:py-3 rounded-xl font-bold mobile-full-width md:w-auto"
@@ -709,7 +698,7 @@ export default function DashboardPage() {
                   {upcoming.map((booking) => {
                     const statusInfo = getStatusInfo(booking.status);
                     const canCancel = canCancelBooking(booking);
-                    
+
                     return (
                       <div
                         key={booking.id}
@@ -770,7 +759,7 @@ export default function DashboardPage() {
                                 for {booking.hours || 1} hour{booking.hours !== 1 ? 's' : ''}
                               </span>
                             </div>
-                            
+
                             <div className="booking-actions flex gap-2">
                               {canCancel && (
                                 <button
@@ -826,7 +815,7 @@ export default function DashboardPage() {
                 <div className="space-y-3 md:space-y-4">
                   {past.map((booking) => {
                     const statusInfo = getStatusInfo(booking.status);
-                    
+
                     return (
                       <div
                         key={booking.id}

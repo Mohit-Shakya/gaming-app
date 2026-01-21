@@ -33,9 +33,11 @@ export function DashboardStats({
 
     const activeNow = activeBookingsCount + activeSubscriptionsCount;
 
-    // Logic for Today's Revenue
+    // Logic for Today's Revenue - Exclude cancelled bookings
     const todayStr = new Date().toISOString().slice(0, 10);
-    const todayBookings = bookings.filter((b) => b.booking_date === todayStr);
+    const todayBookings = bookings.filter((b) =>
+        b.booking_date === todayStr && b.status !== 'cancelled'
+    );
     const todaySubscriptions = subscriptions.filter((sub) => {
         const purchaseDate = sub.purchase_date
             ? new Date(sub.purchase_date).toISOString().slice(0, 10)
@@ -61,8 +63,10 @@ export function DashboardStats({
 
     const totalRevenue = cashRevenue + onlineRevenue + membershipRevenue;
 
-    // Logic for Today's Sessions
-    const todaySessions = todayBookings.length;
+    // Logic for Today's Sessions - Count all including cancelled for reference
+    const todaySessions = bookings.filter((b) =>
+        b.booking_date === todayStr && b.status !== 'cancelled'
+    ).length;
 
     return (
         <div className={`grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-8`}>

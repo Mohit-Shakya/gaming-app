@@ -1,0 +1,16 @@
+export const theme = {
+  background: "#020617",
+  cardBackground: "rgba(15,23,42,0.6)",
+  sidebarBackground: "linear-gradient(180deg, #0f172a 0%, #020617 100%)",
+  border: "rgba(51,65,85,0.5)",
+  textPrimary: "#f8fafc",
+  textSecondary: "#cbd5e1",
+  textMuted: "#64748b",
+  headerBackground: "rgba(15,23,42,0.5)",
+  statCardBackground: "#ffffff",
+  statCardText: "#111827",
+  hoverBackground: "rgba(51,65,85,0.3)",
+  activeNavBackground: "linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(37, 99, 235, 0.15))",
+  activeNavText: "#3b82f6",
+  inputBackground: "rgba(15, 23, 42, 0.5)",
+};

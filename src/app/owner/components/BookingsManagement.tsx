@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { BookingsTable } from './BookingsTable';
 import { Card, Button, Input, Select, StatusBadge } from './ui';
-import { Download, Filter, RefreshCw, Calendar, Search, DollarSign, Hash, TrendingUp, CheckCircle } from 'lucide-react';
+import { Download, Filter, RefreshCw, Calendar, Search } from 'lucide-react';
 import { BookingRow } from '@/types/database';
 
 interface BookingsManagementProps {
@@ -37,8 +37,8 @@ export function BookingsManagement({ bookings, loading, onUpdateStatus, onEdit, 
 
             // Source
             const matchesSource = sourceFilter === 'all' ||
-                (sourceFilter === 'online' && (!b.source || b.source === 'online_booking')) ||
-                (sourceFilter === 'walk-in' && b.source === 'walk_in');
+                (sourceFilter === 'online' && (!b.source || b.source === 'online_booking' || b.source === 'online')) ||
+                (sourceFilter === 'walk-in' && (b.source === 'walk_in' || b.source === 'walk-in'));
 
             // Date Range
             let matchesDate = true;
@@ -71,72 +71,11 @@ export function BookingsManagement({ bookings, loading, onUpdateStatus, onEdit, 
         }).sort((a, b) => new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime());
     }, [bookings, searchTerm, statusFilter, sourceFilter, dateRange, customStart, customEnd]);
 
-    // Stats Calculation
-    const stats = useMemo(() => {
-        const totalRevenue = filteredBookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
-        const totalBookings = filteredBookings.length;
-        const avgRevenue = totalBookings > 0 ? Math.round(totalRevenue / totalBookings) : 0;
 
-        // Revenue by status
-        const completedRevenue = filteredBookings
-            .filter(b => b.status === 'completed')
-            .reduce((sum, b) => sum + (b.total_amount || 0), 0);
-
-        return { totalRevenue, totalBookings, avgRevenue, completedRevenue };
-    }, [filteredBookings]);
 
     return (
         <div className="space-y-4">
-            {/* Summary Stats */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <Card padding="md" className="relative overflow-hidden">
-                    <div className="flex items-start justify-between relative z-10">
-                        <div>
-                            <p className="text-xs uppercase tracking-wider text-slate-400 mb-1">Total Revenue</p>
-                            <h3 className="text-2xl font-bold text-emerald-400">₹{stats.totalRevenue.toLocaleString()}</h3>
-                        </div>
-                        <div className="p-2 bg-emerald-500/10 rounded-lg">
-                            <DollarSign className="text-emerald-500" size={20} />
-                        </div>
-                    </div>
-                </Card>
 
-                <Card padding="md" className="relative overflow-hidden">
-                    <div className="flex items-start justify-between relative z-10">
-                        <div>
-                            <p className="text-xs uppercase tracking-wider text-slate-400 mb-1">Bookings</p>
-                            <h3 className="text-2xl font-bold text-blue-400">{stats.totalBookings}</h3>
-                        </div>
-                        <div className="p-2 bg-blue-500/10 rounded-lg">
-                            <Hash className="text-blue-500" size={20} />
-                        </div>
-                    </div>
-                </Card>
-
-                <Card padding="md" className="relative overflow-hidden">
-                    <div className="flex items-start justify-between relative z-10">
-                        <div>
-                            <p className="text-xs uppercase tracking-wider text-slate-400 mb-1">Avg. Value</p>
-                            <h3 className="text-2xl font-bold text-amber-400">₹{stats.avgRevenue}</h3>
-                        </div>
-                        <div className="p-2 bg-amber-500/10 rounded-lg">
-                            <TrendingUp className="text-amber-500" size={20} />
-                        </div>
-                    </div>
-                </Card>
-
-                <Card padding="md" className="relative overflow-hidden">
-                    <div className="flex items-start justify-between relative z-10">
-                        <div>
-                            <p className="text-xs uppercase tracking-wider text-slate-400 mb-1">Realized Rev.</p>
-                            <h3 className="text-2xl font-bold text-purple-400">₹{stats.completedRevenue.toLocaleString()}</h3>
-                        </div>
-                        <div className="p-2 bg-purple-500/10 rounded-lg">
-                            <CheckCircle className="text-purple-500" size={20} />
-                        </div>
-                    </div>
-                </Card>
-            </div>
 
             {/* Filters Section */}
             <Card padding="md" className="space-y-4">

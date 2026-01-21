@@ -10,6 +10,16 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { fonts, CONSOLE_LABELS, CONSOLE_ICONS, type ConsoleId } from "@/lib/constants";
 import { getEndTime } from "@/lib/timeUtils";
+import {
+  OwnerStats,
+  CafeRow,
+  BookingRow,
+  NavTab,
+  PricingTier,
+  BillingItem
+} from "./types";
+import { convertTo24Hour, convertTo12Hour, getConsoleIcon } from "./utils";
+import { theme } from "./utils/theme";
 // ConsoleStatusDashboard removed
 
 // Types imported but not directly used in this file - used for type safety
@@ -34,206 +44,50 @@ import Inventory from './components/Inventory';
 import AddItemsModal from './components/AddItemsModal';
 import ViewOrdersModal from './components/ViewOrdersModal';
 import OwnerPWAInstaller from './components/OwnerPWAInstaller';
+import SubscriptionDetailsModal from './components/SubscriptionDetailsModal';
+import CustomerDetailsModal from './components/CustomerDetailsModal';
+import StatCard from './components/StatCard';
+import StatusBadge from './components/StatusBadge';
+import { useBilling } from "./hooks/useBilling";
+import { useOwnerAuth } from "./hooks/useOwnerAuth";
+import { useOwnerData } from "./hooks/useOwnerData";
 
-type OwnerStats = {
-  cafesCount: number;
-  bookingsToday: number;
-  recentBookings: number;
-  recentRevenue: number;
-  todayRevenue: number;
-  weekRevenue: number;
-  monthRevenue: number;
-  quarterRevenue: number;
-  totalRevenue: number;
-  totalBookings: number;
-  pendingBookings: number;
-};
 
-type CafeRow = {
-  id: string;
-  name: string | null;
-  slug?: string | null;
-  city?: string | null;
-  address?: string | null;
-  description?: string | null;
-  email?: string | null;
-  phone?: string | null;
-  website?: string | null;
-  opening_hours?: string | null;
-  status?: string | null;
-  hourly_price?: number | null;
-  price_starts_from?: number | null;
-  google_maps_url?: string | null;
-  instagram_url?: string | null;
-  cover_url?: string | null;
-  monitor_details?: string | null;
-  processor_details?: string | null;
-  gpu_details?: string | null;
-  ram_details?: string | null;
-  accessories_details?: string | null;
-  peak_hours?: string | null;
-  popular_games?: string | null;
-  offers?: string | null;
-  ps5_count?: number | null;
-  ps4_count?: number | null;
-  xbox_count?: number | null;
-  pc_count?: number | null;
-  pool_count?: number | null;
-  snooker_count?: number | null;
-  arcade_count?: number | null;
-  vr_count?: number | null;
-  steering_wheel_count?: number | null;
-  created_at?: string | null;
-  updated_at?: string | null;
-  user_id?: string | null;
-  is_active?: boolean | null;
-};
 
-type BookingRow = {
-  id: string;
-  cafe_id: string | null;
-  user_id: string | null;
-  booking_date: string | null;
-  start_time: string | null;
-  duration?: number | null;
-  total_amount: number | null;
-  status: string | null;
-  source: string | null;
-  payment_mode?: string | null;
-  created_at: string | null;
-  customer_name?: string | null; // For walk-in bookings only
-  customer_phone?: string | null; // For walk-in bookings only
-  booking_items?: Array<{
-    id: string;
-    console: string | null;
-    quantity: number | null;
-    price: number | null;
-  }>;
-  user_name?: string | null;
-  user_email?: string | null;
-  user_phone?: string | null;
-  cafe_name?: string | null;
-};
 
-type NavTab = 'dashboard' | 'sessions' | 'customers' | 'stations' | 'subscriptions' | 'memberships' | 'coupons' | 'reports' | 'settings' | 'overview' | 'live-status' | 'bookings' | 'cafe-details' | 'analytics' | 'billing' | 'inventory';
 
-// Helper functions for time conversion
-function convertTo24Hour(timeStr: string): string {
-  if (!timeStr) return "";
 
-  // Trim whitespace
-  const time = timeStr.trim();
-
-  console.log('[convertTo24Hour] Input:', JSON.stringify(time), 'Length:', time.length);
-
-  // Try 12-hour format with am/pm (e.g., "10:30 am", "2:00pm", "10:30 AM")
-  const match12h = time.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(am|pm)$/i);
-  if (match12h) {
-    let hours = parseInt(match12h[1]);
-    const minutes = match12h[2];
-    const period = match12h[3].toLowerCase();
-
-    if (period === "pm" && hours !== 12) {
-      hours += 12;
-    } else if (period === "am" && hours === 12) {
-      hours = 0;
-    }
-
-    const result = `${hours.toString().padStart(2, "0")}:${minutes}`;
-    console.log('[convertTo24Hour] Matched 12h format, result:', result);
-    return result;
-  }
-
-  // Try 24-hour format (e.g., "14:30", "14:30:00", "9:30")
-  const match24h = time.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
-  if (match24h) {
-    const hours = match24h[1].padStart(2, "0");
-    const minutes = match24h[2];
-    const result = `${hours}:${minutes}`;
-    console.log('[convertTo24Hour] Matched 24h format, result:', result);
-    return result;
-  }
-
-  // Try extracting numbers from any format (e.g., "10:30:00 am", with extra spaces)
-  const matchAny = time.match(/(\d{1,2}):(\d{2})(?::\d{2})?\s*(am|pm)?/i);
-  if (matchAny) {
-    let hours = parseInt(matchAny[1]);
-    const minutes = matchAny[2];
-    const period = matchAny[3]?.toLowerCase();
-
-    if (period === "pm" && hours !== 12) {
-      hours += 12;
-    } else if (period === "am" && hours === 12) {
-      hours = 0;
-    }
-
-    const result = `${hours.toString().padStart(2, "0")}:${minutes}`;
-    console.log('[convertTo24Hour] Matched relaxed format, result:', result);
-    return result;
-  }
-
-  // If nothing matches, return empty string
-  console.warn('[convertTo24Hour] Unrecognized time format:', JSON.stringify(timeStr));
-  return "";
-}
-
-function convertTo12Hour(timeStr?: string | null): string {
-  if (!timeStr) {
-    // If no time provided, use current time
-    const now = new Date();
-    const hours = now.getHours();
-    const minutes = now.getMinutes();
-    const period = hours >= 12 ? "PM" : "AM";
-    const displayHours = hours % 12 || 12;
-    return `${displayHours}:${minutes.toString().padStart(2, "0")} ${period}`;
-  }
-
-  // Check if already in 12-hour format (has am/pm)
-  const match12h = timeStr.match(/(\d{1,2}):(\d{2})(?::\d{2})?\s*(am|pm)/i);
-  if (match12h) {
-    const hours = parseInt(match12h[1]);
-    const minutes = match12h[2];
-    const period = match12h[3].toUpperCase();
-    return `${hours}:${minutes} ${period}`;
-  }
-
-  // Parse 24-hour format (e.g., "16:22", "14:30:00")
-  const match24h = timeStr.match(/(\d{1,2}):(\d{2})(?::\d{2})?/);
-  if (match24h) {
-    let hours = parseInt(match24h[1]);
-    const minutes = match24h[2];
-    const period = hours >= 12 ? "PM" : "AM";
-    hours = hours % 12 || 12;
-    return `${hours}:${minutes} ${period}`;
-  }
-
-  return timeStr; // Return original if can't parse
-}
-
-// Helper function to get console icon
-function getConsoleIcon(consoleType: string): string {
-  const type = consoleType?.toUpperCase() || '';
-  if (type.includes('PC')) return '🖥️';
-  if (type.includes('PS5')) return '🎮';
-  if (type.includes('PS4')) return '🎮';
-  if (type.includes('XBOX')) return '🎮';
-  if (type.includes('VR')) return '🥽';
-  if (type.includes('STEERING')) return '🏎️';
-  if (type.includes('POOL')) return '🎱';
-  if (type.includes('SNOOKER')) return '🎱';
-  if (type.includes('ARCADE')) return '🕹️';
-  if (type.includes('NINTENDO') || type.includes('SWITCH')) return '🎮';
-  return '🎮'; // Default
-}
 
 export default function OwnerDashboardPage() {
   const router = useRouter();
-  const [ownerId, setOwnerId] = useState<string | null>(null);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [ownerUsername, setOwnerUsername] = useState<string>("Owner");
 
-  const [checkingRole, setCheckingRole] = useState(true);
-  const [allowed, setAllowed] = useState(false);
+  const { ownerId, ownerUsername, allowed, checkingRole } = useOwnerAuth();
+
+  const {
+    stats,
+    cafes,
+    bookings,
+    loadingData,
+    error,
+    membershipPlans,
+    subscriptions,
+    cafeConsoles,
+    availableConsoleTypes,
+    consolePricing,
+    stationPricing,
+    totalBookingsCount,
+    setSubscriptions,
+    setBookings,
+    refreshData,
+    bookingPage,
+    setBookingPage,
+    setCafes,
+    setStationPricing,
+    setConsolePricing
+  } = useOwnerData(ownerId, allowed);
+
+  // Constants
+  const bookingsPerPage = 50;
   const [activeTab, setActiveTab] = useState<NavTab>(() => {
     // Restore active tab from localStorage
     if (typeof window !== 'undefined') {
@@ -248,17 +102,7 @@ export default function OwnerDashboardPage() {
   const [isMobile, setIsMobile] = useState(false);
 
 
-  const [stats, setStats] = useState<OwnerStats | null>(null);
-  const [cafes, setCafes] = useState<CafeRow[]>([]);
-  const [bookings, setBookings] = useState<BookingRow[]>([]);
-  const [loadingData, setLoadingData] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  // Membership plans state
-  const [membershipPlans, setMembershipPlans] = useState<any[]>([]);
-
-  // Subscriptions state
-  const [subscriptions, setSubscriptions] = useState<any[]>([]);
 
   const [viewingSubscription, setViewingSubscription] = useState<any>(null);
   const [subscriptionUsageHistory, setSubscriptionUsageHistory] = useState<any[]>([]);
@@ -272,9 +116,7 @@ export default function OwnerDashboardPage() {
   const [newSubPlanId, setNewSubPlanId] = useState('');
   const [newSubAmountPaid, setNewSubAmountPaid] = useState('');
 
-  // Cafe consoles state
-  const [cafeConsoles, setCafeConsoles] = useState<any[]>([]);
-  const [availableConsoleTypes, setAvailableConsoleTypes] = useState<string[]>([]);
+
 
   // Multi-café support
   const [selectedCafeId, setSelectedCafeId] = useState<string>('');
@@ -284,28 +126,7 @@ export default function OwnerDashboardPage() {
   const [timerElapsed, setTimerElapsed] = useState<Map<string, number>>(new Map());
 
   // Walk-in booking state (for billing tab)
-  const [billingCustomerName, setBillingCustomerName] = useState("");
-  const [billingCustomerPhone, setBillingCustomerPhone] = useState("");
-  const [billingBookingDate, setBillingBookingDate] = useState(new Date().toISOString().split("T")[0]);
-  const [billingStartTime, setBillingStartTime] = useState(() => {
-    const now = new Date();
-    return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-  }); // 24-hour format HH:MM
-  const [billingItems, setBillingItems] = useState<Array<{
-    id: string;
-    console: ConsoleId;
-    quantity: number;
-    duration: number;
-    price: number;
-  }>>([]);
-  const [billingPaymentMode, setBillingPaymentMode] = useState<string>("cash");
-  const [billingTotalAmount, setBillingTotalAmount] = useState<number>(0);
-  const [billingSubmitting, setBillingSubmitting] = useState(false);
-  const [billingAvailableConsoles, setBillingAvailableConsoles] = useState<ConsoleId[]>([]);
-  const [billingPreviousCustomers, setBillingPreviousCustomers] = useState<Array<{ name: string; phone: string }>>([]);
-  const [billingShowSuggestions, setBillingShowSuggestions] = useState(false);
-  const [billingFilteredSuggestions, setBillingFilteredSuggestions] = useState<Array<{ name: string; phone: string }>>([]);
-  const [billingActiveSuggestionField, setBillingActiveSuggestionField] = useState<'name' | 'phone' | null>(null);
+
 
   // Booking filters
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -316,10 +137,7 @@ export default function OwnerDashboardPage() {
   const [customEndDate, setCustomEndDate] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState<string>("");
 
-  // Booking pagination
-  const [bookingPage, setBookingPage] = useState(1);
-  const [bookingsPerPage] = useState(50);
-  const [totalBookingsCount, setTotalBookingsCount] = useState(0);
+
 
   // Revenue filter for overview
   const [revenueFilter, setRevenueFilter] = useState<string>("today"); // today, week, month, quarter, all
@@ -402,11 +220,7 @@ export default function OwnerDashboardPage() {
   const [deletingBooking, setDeletingBooking] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-  // Console pricing data
-  const [consolePricing, setConsolePricing] = useState<Record<string, any>>({});
 
-  // Refresh trigger for bookings
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Add Items Modal state (for F&B items)
   const [addItemsModalOpen, setAddItemsModalOpen] = useState(false);
@@ -427,8 +241,36 @@ export default function OwnerDashboardPage() {
   const [stationStatusFilter, setStationStatusFilter] = useState("all");
   const [editingStation, setEditingStation] = useState<any>(null);
   const [savingPricing, setSavingPricing] = useState(false);
-  const [stationPricing, setStationPricing] = useState<Record<string, any>>({});
   const [applyToAll, setApplyToAll] = useState(false);
+
+  // useBilling hook replacing old billing state
+  const {
+    customerName: billingCustomerName, setCustomerName: setBillingCustomerName,
+    customerPhone: billingCustomerPhone, setCustomerPhone: setBillingCustomerPhone,
+    bookingDate: billingBookingDate, setBookingDate: setBillingBookingDate,
+    startTime: billingStartTime, setStartTime: setBillingStartTime,
+    items: billingItems,
+    paymentMode: billingPaymentMode, setPaymentMode: setBillingPaymentMode,
+    totalAmount: billingTotalAmount,
+    isSubmitting: billingSubmitting,
+    availableConsoles: billingAvailableConsoles,
+    showSuggestions: billingShowSuggestions, setShowSuggestions: setBillingShowSuggestions,
+    filteredSuggestions: billingFilteredSuggestions,
+    activeSuggestionField: billingActiveSuggestionField,
+    addBillingItem,
+    removeItem: removeBillingItem,
+    updateItem: updateBillingItem,
+    handleSubmit: handleBillingSubmit,
+    handleNameChange: handleBillingNameChange,
+    handlePhoneChange: handleBillingPhoneChange,
+    handleSuggestionClick: handleBillingSuggestionClick,
+    getBillingPrice
+  } = useBilling({
+    selectedCafeId,
+    consolePricing,
+    stationPricing
+  });
+
 
   // Pricing form state
   const [singleHalfHour, setSingleHalfHour] = useState("");
@@ -467,61 +309,7 @@ export default function OwnerDashboardPage() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Check role
-  useEffect(() => {
-    async function checkRole() {
-      const ownerSession = localStorage.getItem("owner_session");
-      if (!ownerSession) {
-        router.push("/owner/login");
-        return;
-      }
 
-      let sessionUserId: string;
-      let sessionUsername: string;
-      try {
-        const session = JSON.parse(ownerSession);
-        if (Date.now() - session.timestamp > 24 * 60 * 60 * 1000) {
-          localStorage.removeItem("owner_session");
-          router.push("/owner/login");
-          return;
-        }
-        sessionUserId = session.userId;
-        sessionUsername = session.username || "Owner";
-        setOwnerUsername(sessionUsername);
-      } catch (err) {
-        localStorage.removeItem("owner_session");
-        router.push("/owner/login");
-        return;
-      }
-
-      try {
-        const { data: profile, error: profileError } = await supabase
-          .from("profiles")
-          .select("role")
-          .eq("id", sessionUserId)
-          .single();
-
-        if (profileError) throw profileError;
-
-        const role = profile?.role?.toLowerCase();
-        if (role === "owner" || role === "admin" || role === "super_admin") {
-          setAllowed(true);
-          setOwnerId(sessionUserId);
-        } else {
-          localStorage.removeItem("owner_session");
-          router.push("/owner/login");
-        }
-      } catch (err) {
-        console.error("Error checking role:", err);
-        localStorage.removeItem("owner_session");
-        router.push("/owner/login");
-      } finally {
-        setCheckingRole(false);
-      }
-    }
-
-    checkRole();
-  }, [router]);
 
   // Initialize pricing form when station is selected
   useEffect(() => {
@@ -593,471 +381,9 @@ export default function OwnerDashboardPage() {
 
   // Auto-refresh bookings data every 10 seconds to detect ended sessions
   // Real-time subscription handles most updates, this is just a fallback
-  useEffect(() => {
-    if (!allowed || !ownerId) return;
 
-    const refreshInterval = setInterval(() => {
-      setRefreshTrigger(prev => prev + 1);
-    }, 10000); // Refresh every 10 seconds for live updates
 
-    return () => clearInterval(refreshInterval);
-  }, [allowed, ownerId]);
 
-  // Load data
-  useEffect(() => {
-    if (!allowed || !ownerId) return;
-
-    async function loadData() {
-      try {
-        // Only show loading indicator on initial load (when refreshTrigger is 0)
-        if (refreshTrigger === 0) {
-          setLoadingData(true);
-        }
-        setError(null);
-
-        if (!ownerId) return;
-        const todayStr = new Date().toISOString().slice(0, 10);
-
-        // Fetch cafes with all console counts
-        const { data: cafeRows, error: cafesError } = await supabase
-          .from("cafes")
-          .select(`
-            id,
-            name,
-            slug,
-            address,
-            description,
-            phone,
-            email,
-            opening_hours,
-            hourly_price,
-            google_maps_url,
-            instagram_url,
-            cover_url,
-            price_starts_from,
-            monitor_details,
-            processor_details,
-            gpu_details,
-            ram_details,
-            accessories_details,
-            ps5_count,
-            ps4_count,
-            xbox_count,
-            pc_count,
-            pool_count,
-            snooker_count,
-            arcade_count,
-            vr_count,
-            steering_wheel_count,
-            created_at,
-            is_active,
-            peak_hours,
-            popular_games,
-            offers
-          `)
-          .eq("owner_id", ownerId)
-          .order("created_at", { ascending: false });
-
-        if (cafesError) throw cafesError;
-
-        const ownerCafes = (cafeRows as CafeRow[]) ?? [];
-        setCafes(ownerCafes);
-
-        if (!ownerCafes.length) {
-          setBookings([]);
-          setStats({
-            cafesCount: 0,
-            bookingsToday: 0,
-            recentBookings: 0,
-            recentRevenue: 0,
-            todayRevenue: 0,
-            weekRevenue: 0,
-            monthRevenue: 0,
-            quarterRevenue: 0,
-            totalRevenue: 0,
-            totalBookings: 0,
-            pendingBookings: 0,
-          });
-          return;
-        }
-
-        const cafeIds = ownerCafes.map((c) => c.id);
-
-        // Fetch station pricing for all cafes
-        const { data: stationPricingData, error: stationPricingError } = await supabase
-          .from("station_pricing")
-          .select("*")
-          .in("cafe_id", cafeIds);
-
-        if (!stationPricingError && stationPricingData) {
-          const pricingMap: Record<string, any> = {};
-          stationPricingData.forEach((pricing: any) => {
-            pricingMap[pricing.station_name] = pricing;
-          });
-          setStationPricing(pricingMap);
-        }
-
-        // Fetch console pricing for all cafes
-        const { data: pricingData, error: pricingError } = await supabase
-          .from("console_pricing")
-          .select("cafe_id, console_type, quantity, duration_minutes, price")
-          .in("cafe_id", cafeIds);
-
-        if (!pricingError && pricingData) {
-          // Organize pricing by cafe_id -> console_type -> tier
-          type PricingTier = {
-            qty1_30min: number | null;
-            qty1_60min: number | null;
-            qty2_30min: number | null;
-            qty2_60min: number | null;
-            qty3_30min: number | null;
-            qty3_60min: number | null;
-            qty4_30min: number | null;
-            qty4_60min: number | null;
-          };
-          const pricingMap: Record<string, Record<string, PricingTier>> = {};
-          pricingData.forEach((item) => {
-            if (!pricingMap[item.cafe_id]) {
-              pricingMap[item.cafe_id] = {};
-            }
-            if (!pricingMap[item.cafe_id][item.console_type]) {
-              pricingMap[item.cafe_id][item.console_type] = {
-                qty1_30min: null,
-                qty1_60min: null,
-                qty2_30min: null,
-                qty2_60min: null,
-                qty3_30min: null,
-                qty3_60min: null,
-                qty4_30min: null,
-                qty4_60min: null,
-              };
-            }
-            const key = `qty${item.quantity}_${item.duration_minutes}min` as keyof PricingTier;
-            pricingMap[item.cafe_id][item.console_type][key] = item.price;
-          });
-          setConsolePricing(pricingMap);
-        }
-
-        // Auto-complete ended bookings before fetching
-        // This ensures old bookings don't stay in wrong status forever
-
-        // 1. Update all past date bookings to completed (both in-progress and confirmed)
-        const { error: pastBookingsError } = await supabase
-          .from("bookings")
-          .update({ status: "completed" })
-          .in("cafe_id", cafeIds)
-          .in("status", ["in-progress", "confirmed"])
-          .lt("booking_date", todayStr);
-
-        if (pastBookingsError) {
-          console.error("Error updating past bookings:", pastBookingsError);
-        }
-
-        // 2. Fetch today's in-progress and confirmed bookings to check if they've ended
-        const { data: todayBookings, error: fetchTodayError } = await supabase
-          .from("bookings")
-          .select("id, start_time, duration, status")
-          .in("cafe_id", cafeIds)
-          .eq("booking_date", todayStr)
-          .in("status", ["in-progress", "confirmed"]);
-
-        if (fetchTodayError) {
-          console.error("Error fetching today's bookings:", fetchTodayError);
-        }
-
-        // 3. Complete today's bookings that have ended
-        if (todayBookings && todayBookings.length > 0) {
-          const now = new Date();
-          const currentMinutes = now.getHours() * 60 + now.getMinutes();
-          const endedBookingIds: string[] = [];
-
-          todayBookings.forEach((booking) => {
-            if (!booking.start_time || !booking.duration) return;
-
-            // Parse start time
-            const timeParts = booking.start_time.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
-            if (!timeParts) return;
-
-            let hours = parseInt(timeParts[1]);
-            const minutes = parseInt(timeParts[2]);
-            const period = timeParts[3]?.toLowerCase();
-
-            // Convert to 24-hour format
-            if (period) {
-              if (period === 'pm' && hours !== 12) hours += 12;
-              else if (period === 'am' && hours === 12) hours = 0;
-            }
-
-            // Calculate end time
-            const startMinutes = hours * 60 + minutes;
-            const endMinutes = startMinutes + booking.duration;
-
-            // Check if session has ended
-            if (currentMinutes > endMinutes) {
-              endedBookingIds.push(booking.id);
-            }
-          });
-
-          // Batch update ended bookings
-          if (endedBookingIds.length > 0) {
-            const { error: updateEndedError } = await supabase
-              .from("bookings")
-              .update({ status: "completed" })
-              .in("id", endedBookingIds);
-
-            if (updateEndedError) {
-              console.error("Error updating ended bookings:", updateEndedError);
-            }
-          }
-        }
-
-        // Fetch total bookings count for pagination
-        const { count: totalCount, error: countError } = await supabase
-          .from("bookings")
-          .select("*", { count: 'exact', head: true })
-          .in("cafe_id", cafeIds);
-
-        if (!countError && totalCount !== null) {
-          setTotalBookingsCount(totalCount);
-        }
-
-        // Fetch bookings with booking items (with pagination)
-        const offset = (bookingPage - 1) * bookingsPerPage;
-        const { data: bookingRows, error: bookingsError } = await supabase
-          .from("bookings")
-          .select(`
-            id,
-            cafe_id,
-            user_id,
-            booking_date,
-            start_time,
-            duration,
-            total_amount,
-            status,
-            source,
-            payment_mode,
-            created_at,
-            customer_name,
-            customer_phone,
-            booking_items (
-              id,
-              console,
-              quantity,
-              price
-            )
-          `)
-          .in("cafe_id", cafeIds)
-          .order("created_at", { ascending: false })
-          .range(offset, offset + bookingsPerPage - 1);
-
-        if (bookingsError) throw bookingsError;
-
-        const ownerBookings = (bookingRows as BookingRow[]) ?? [];
-
-        // Get all unique user IDs
-        const userIds = [...new Set(ownerBookings.map(b => b.user_id).filter(Boolean))];
-
-        // Fetch all user profiles at once
-        const userProfiles = new Map();
-        if (userIds.length > 0) {
-          try {
-            const { data: profiles } = await supabase
-              .from("profiles")
-              .select("id, first_name, last_name, phone")
-              .in("id", userIds);
-
-            if (profiles && profiles.length > 0) {
-              profiles.forEach((profile: { id: string; first_name: string | null; last_name: string | null; phone: string | null }) => {
-                const fullName = [profile.first_name, profile.last_name]
-                  .filter(Boolean)
-                  .join(" ") || null;
-
-                userProfiles.set(profile.id, {
-                  name: fullName,
-                  email: null,
-                  phone: profile.phone || null,
-                });
-              });
-            }
-          } catch (err) {
-            console.error("[Owner Dashboard] Error fetching profiles:", err);
-          }
-        }
-
-        // Enrich bookings with user and cafe data
-        const enrichedBookings = ownerBookings.map((booking: BookingRow) => {
-          const cafe = ownerCafes.find((c) => c.id === booking.cafe_id);
-          const cafe_name = cafe?.name || null;
-
-          // Get user data from profiles map
-          const userProfile = booking.user_id ? userProfiles.get(booking.user_id) : null;
-
-          // If no profile found, check customer_name/customer_phone (for walk-ins), otherwise show user ID as fallback
-          const user_name = userProfile?.name || booking.customer_name || (booking.user_id ? `User ${booking.user_id.slice(0, 8)}` : null);
-          const user_email = userProfile?.email || null;
-          const user_phone = userProfile?.phone || booking.customer_phone || null;
-
-          return {
-            ...booking,
-            user_name,
-            user_email,
-            user_phone,
-            cafe_name,
-          };
-        });
-
-        console.log('[Data Refresh] Loading', enrichedBookings.length, 'bookings from database');
-        if (enrichedBookings.length > 0) {
-          console.log('[Data Refresh] Sample booking:', {
-            id: enrichedBookings[0].id.slice(0, 8),
-            total_amount: enrichedBookings[0].total_amount,
-            duration: enrichedBookings[0].duration,
-            booking_items_price: enrichedBookings[0].booking_items?.[0]?.price
-          });
-        }
-        setBookings(enrichedBookings);
-
-        // Calculate stats
-        const now = new Date();
-        const startOfWeek = new Date(now);
-        startOfWeek.setDate(now.getDate() - now.getDay()); // Sunday
-        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-        const currentQuarter = Math.floor(now.getMonth() / 3);
-        const startOfQuarter = new Date(now.getFullYear(), currentQuarter * 3, 1);
-
-        const bookingsToday = enrichedBookings.filter(
-          (b) => b.booking_date === todayStr
-        ).length;
-
-        const pendingBookings = enrichedBookings.filter(
-          (b) => b.status?.toLowerCase() === "pending"
-        ).length;
-
-        const recentRevenue = enrichedBookings
-          .slice(0, 20)
-          .reduce((sum, b) => sum + (b.total_amount || 0), 0);
-
-        const todayRevenue = enrichedBookings
-          .filter((b) => b.booking_date === todayStr)
-          .reduce((sum, b) => sum + (b.total_amount || 0), 0);
-
-        const weekRevenue = enrichedBookings
-          .filter((b) => {
-            const bookingDate = new Date(b.booking_date || "");
-            return bookingDate >= startOfWeek;
-          })
-          .reduce((sum, b) => sum + (b.total_amount || 0), 0);
-
-        const monthRevenue = enrichedBookings
-          .filter((b) => {
-            const bookingDate = new Date(b.booking_date || "");
-            return bookingDate >= startOfMonth;
-          })
-          .reduce((sum, b) => sum + (b.total_amount || 0), 0);
-
-        const quarterRevenue = enrichedBookings
-          .filter((b) => {
-            const bookingDate = new Date(b.booking_date || "");
-            return bookingDate >= startOfQuarter;
-          })
-          .reduce((sum, b) => sum + (b.total_amount || 0), 0);
-
-        const totalRevenue = enrichedBookings
-          .reduce((sum, b) => sum + (b.total_amount || 0), 0);
-
-        setStats({
-          cafesCount: ownerCafes.length,
-          bookingsToday,
-          recentBookings: Math.min(enrichedBookings.length, 20),
-          recentRevenue,
-          todayRevenue,
-          weekRevenue,
-          monthRevenue,
-          quarterRevenue,
-          totalRevenue,
-          totalBookings: enrichedBookings.length,
-          pendingBookings,
-        });
-
-        // Fetch membership plans
-        const { data: plansData, error: plansError } = await supabase
-          .from("membership_plans")
-          .select("*")
-          .in("cafe_id", cafeIds)
-          .eq("is_active", true)
-          .order("created_at", { ascending: false });
-
-        if (!plansError && plansData) {
-          setMembershipPlans(plansData);
-        }
-
-        // Fetch subscriptions with membership plan details
-        const { data: subsData, error: subsError } = await supabase
-          .from("subscriptions")
-          .select(`
-            *,
-            membership_plans (
-              name,
-              plan_type,
-              console_type
-            )
-          `)
-          .in("cafe_id", cafeIds)
-          .order("created_at", { ascending: false });
-
-        if (!subsError && subsData) {
-          setSubscriptions(subsData);
-        }
-
-        // Fetch available console types from station_pricing
-        if (cafeIds.length > 0) {
-          const { data: stationsData, error: stationsError } = await supabase
-            .from("station_pricing")
-            .select("station_type")
-            .in("cafe_id", cafeIds)
-            .eq("is_active", true);
-
-          if (!stationsError && stationsData) {
-            // Get unique console types from stations
-            const uniqueTypes = [...new Set(stationsData.map(s => s.station_type))];
-            console.log('[OwnerDashboard] Available console types:', uniqueTypes);
-            setAvailableConsoleTypes(uniqueTypes);
-            // Set default console type to first available
-            // Set default console type to first available
-            // Legacy state update removed
-            console.log('[OwnerDashboard] Default console type (legacy unused):', uniqueTypes[0]);
-          } else if (stationsError) {
-            console.error('[OwnerDashboard] Error fetching stations:', stationsError);
-          }
-
-          // Fetch station pricing for billing (available stations)
-          const { data: stationsForBilling, error: stationsForBillingError } = await supabase
-            .from("station_pricing")
-            .select("*")
-            .in("cafe_id", cafeIds)
-            .eq("is_active", true)
-            .order("station_number", { ascending: true });
-
-          if (!stationsForBillingError && stationsForBilling) {
-            console.log('[OwnerDashboard] Stations for billing:', stationsForBilling);
-            setCafeConsoles(stationsForBilling);
-          } else if (stationsForBillingError) {
-            console.error('[OwnerDashboard] Error fetching stations:', stationsForBillingError);
-          }
-        }
-      } catch (err) {
-        console.error("[OwnerDashboard] loadData error:", err);
-        setError((err instanceof Error ? err.message : String(err)) || "Could not load café owner dashboard.");
-      } finally {
-        // Only set loading to false if this was the initial load
-        if (refreshTrigger === 0) {
-          setLoadingData(false);
-        }
-      }
-    }
-
-    loadData();
-  }, [allowed, ownerId, refreshTrigger, bookingPage, bookingsPerPage]);
 
   // Populate editedCafe when cafes data loads
   useEffect(() => {
@@ -1239,75 +565,7 @@ export default function OwnerDashboardPage() {
             }
           }
 
-          // Recalculate stats from updated bookings state
-          // Use timeout to ensure state has been updated
-          setTimeout(() => {
-            setBookings(currentBookings => {
-              const now = new Date();
-              const todayStr = now.toISOString().slice(0, 10);
-              const startOfWeek = new Date(now);
-              startOfWeek.setDate(now.getDate() - now.getDay());
-              const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-              const currentQuarter = Math.floor(now.getMonth() / 3);
-              const startOfQuarter = new Date(now.getFullYear(), currentQuarter * 3, 1);
 
-              const bookingsToday = currentBookings.filter(
-                (b) => b.booking_date === todayStr
-              ).length;
-
-              const pendingBookings = currentBookings.filter(
-                (b) => b.status?.toLowerCase() === "pending"
-              ).length;
-
-              const recentRevenue = currentBookings
-                .slice(0, 20)
-                .reduce((sum, b) => sum + (b.total_amount || 0), 0);
-
-              const todayRevenue = currentBookings
-                .filter((b) => b.booking_date === todayStr)
-                .reduce((sum, b) => sum + (b.total_amount || 0), 0);
-
-              const weekRevenue = currentBookings
-                .filter((b) => {
-                  const bookingDate = new Date(b.booking_date || "");
-                  return bookingDate >= startOfWeek;
-                })
-                .reduce((sum, b) => sum + (b.total_amount || 0), 0);
-
-              const monthRevenue = currentBookings
-                .filter((b) => {
-                  const bookingDate = new Date(b.booking_date || "");
-                  return bookingDate >= startOfMonth;
-                })
-                .reduce((sum, b) => sum + (b.total_amount || 0), 0);
-
-              const quarterRevenue = currentBookings
-                .filter((b) => {
-                  const bookingDate = new Date(b.booking_date || "");
-                  return bookingDate >= startOfQuarter;
-                })
-                .reduce((sum, b) => sum + (b.total_amount || 0), 0);
-
-              const totalRevenue = currentBookings
-                .reduce((sum, b) => sum + (b.total_amount || 0), 0);
-
-              setStats({
-                cafesCount: cafes.length,
-                bookingsToday,
-                recentBookings: Math.min(currentBookings.length, 20),
-                recentRevenue,
-                todayRevenue,
-                weekRevenue,
-                monthRevenue,
-                quarterRevenue,
-                totalRevenue,
-                totalBookings: currentBookings.length,
-                pendingBookings,
-              });
-
-              return currentBookings; // Return unchanged bookings
-            });
-          }, 100);
         }
       )
       .subscribe();
@@ -1341,7 +599,7 @@ export default function OwnerDashboardPage() {
       }
 
       // Refresh bookings list
-      setRefreshTrigger(prev => prev + 1);
+      refreshData();
       alert("Booking confirmed successfully!");
     } catch (err) {
       console.error("Error confirming booking:", err);
@@ -1383,7 +641,7 @@ export default function OwnerDashboardPage() {
       }
 
       // Refresh bookings list
-      setRefreshTrigger(prev => prev + 1);
+      refreshData();
       alert("Booking started successfully!");
     } catch (err) {
       console.error("Error starting booking:", err);
@@ -1403,7 +661,7 @@ export default function OwnerDashboardPage() {
         console.error('Error updating status:', error);
         alert('Failed to update booking status');
       } else {
-        setRefreshTrigger(prev => prev + 1);
+        refreshData();
       }
     } catch (err) {
       console.error('Error updating status:', err);
@@ -1753,7 +1011,7 @@ export default function OwnerDashboardPage() {
       // Force a refresh after 1 second to ensure UI shows updated data from database
       setTimeout(() => {
         console.log('[handleSaveBooking] Triggering delayed refresh to sync with database');
-        setRefreshTrigger(prev => prev + 1);
+        refreshData();
       }, 1000);
     } catch (err) {
       console.error("Error updating booking:", err);
@@ -2237,299 +1495,7 @@ export default function OwnerDashboardPage() {
     { id: "steering", label: CONSOLE_LABELS.steering, icon: CONSOLE_ICONS.steering },
   ];
 
-  const handleBillingNameChange = (value: string) => {
-    setBillingCustomerName(value);
-    console.log('[Autocomplete] Name changed:', value);
-    console.log('[Autocomplete] Available customers:', billingPreviousCustomers);
-    if (value.length > 0) {
-      const filtered = billingPreviousCustomers.filter(c =>
-        c.name.toLowerCase().includes(value.toLowerCase())
-      );
-      console.log('[Autocomplete] Filtered suggestions:', filtered);
-      setBillingFilteredSuggestions(filtered);
-      setBillingShowSuggestions(filtered.length > 0);
-      setBillingActiveSuggestionField('name');
-      console.log('[Autocomplete] Show suggestions:', filtered.length > 0);
-    } else {
-      setBillingShowSuggestions(false);
-      setBillingActiveSuggestionField(null);
-    }
-  };
 
-  const handleBillingPhoneChange = (value: string) => {
-    setBillingCustomerPhone(value);
-    if (value.length > 0) {
-      const filtered = billingPreviousCustomers.filter(c =>
-        c.phone.includes(value)
-      );
-      setBillingFilteredSuggestions(filtered);
-      setBillingShowSuggestions(filtered.length > 0);
-      setBillingActiveSuggestionField('phone');
-    } else {
-      setBillingShowSuggestions(false);
-      setBillingActiveSuggestionField(null);
-    }
-  };
-
-  const handleBillingSuggestionClick = (customer: { name: string; phone: string }) => {
-    setBillingCustomerName(customer.name);
-    setBillingCustomerPhone(customer.phone);
-    setBillingShowSuggestions(false);
-    setBillingActiveSuggestionField(null);
-  };
-
-  // Helper function to get price using console_pricing (same as walk-in page)
-  const getBillingPrice = (consoleType: string, quantity: number, duration: number): number => {
-    if (!selectedCafeId) return 100;
-
-    // Map console ID to database console_type (steering -> steering_wheel)
-    const dbConsoleType = consoleType === "steering" ? "steering_wheel" : consoleType;
-
-    // Get pricing tier for this cafe and console type
-    const pricingTier = consolePricing[selectedCafeId]?.[dbConsoleType] || null;
-
-    console.log('getBillingPrice:', { consoleType, dbConsoleType, quantity, duration, pricingTier, selectedCafeId });
-
-    // Use same logic as walk-in page (determinePriceForTier)
-    if (pricingTier) {
-      if (duration === 90) {
-        // 90min = 60min + 30min pricing
-        const price60 = pricingTier[`qty${quantity}_60min`] ?? 100;
-        const price30 = pricingTier[`qty${quantity}_30min`] ?? 50;
-        console.log('90min price:', { price60, price30, total: price60 + price30 });
-        return price60 + price30;
-      } else if (duration === 120) {
-        // 2 hours = 60min × 2
-        const price60 = pricingTier[`qty${quantity}_60min`] ?? 100;
-        return price60 * 2;
-      } else if (duration === 180) {
-        // 3 hours = 60min × 3
-        const price60 = pricingTier[`qty${quantity}_60min`] ?? 100;
-        return price60 * 3;
-      } else {
-        // 30min or 60min - direct lookup
-        const qtyKey = `qty${quantity}_${duration}min`;
-        const tierPrice = pricingTier[qtyKey];
-
-        console.log('Direct lookup:', { qtyKey, tierPrice });
-
-        if (tierPrice !== null && tierPrice !== undefined) {
-          return tierPrice;
-        }
-      }
-    } else {
-      console.log('No pricing tier found for:', consoleType, 'at cafe:', selectedCafeId);
-      console.log('Available console types:', consolePricing[selectedCafeId] ? Object.keys(consolePricing[selectedCafeId]) : 'none');
-    }
-
-    // Fallback: Try to get pricing from stationPricing
-    // Map console ID to station_type (Title Case)
-    const stationTypeMap: Record<string, string> = {
-      "ps5": "PS5",
-      "ps4": "PS4",
-      "xbox": "Xbox",
-      "pc": "PC",
-      "pool": "Pool",
-      "snooker": "Snooker",
-      "arcade": "Arcade",
-      "vr": "VR",
-      "steering": "Steering",
-      "steering_wheel": "Steering",
-    };
-    const stationType = stationTypeMap[consoleType] || consoleType;
-
-    // Find a station with matching type in stationPricing
-    const matchingStation = Object.values(stationPricing).find(
-      (sp: any) => sp.station_type === stationType
-    );
-
-    if (matchingStation) {
-      console.log('Using stationPricing fallback for:', stationType, matchingStation);
-
-      // PS5/Xbox use controller pricing
-      if (stationType === "PS5" || stationType === "Xbox") {
-        if (duration === 30) {
-          return matchingStation[`controller_${quantity}_half_hour`] || 100;
-        } else if (duration === 60) {
-          return matchingStation[`controller_${quantity}_full_hour`] || 100;
-        } else if (duration === 90) {
-          const half = matchingStation[`controller_${quantity}_half_hour`] || 50;
-          const full = matchingStation[`controller_${quantity}_full_hour`] || 100;
-          return half + full;
-        } else if (duration === 120) {
-          return (matchingStation[`controller_${quantity}_full_hour`] || 100) * 2;
-        } else if (duration === 180) {
-          return (matchingStation[`controller_${quantity}_full_hour`] || 100) * 3;
-        }
-      }
-      // PS4 uses single/multi player pricing
-      else if (stationType === "PS4") {
-        const isSingle = quantity === 1;
-        if (duration === 30) {
-          return isSingle
-            ? matchingStation.single_player_half_hour_rate || 75
-            : matchingStation.multi_player_half_hour_rate || 150;
-        } else if (duration === 60) {
-          return isSingle
-            ? matchingStation.single_player_rate || 150
-            : matchingStation.multi_player_rate || 300;
-        } else if (duration === 90) {
-          const half = isSingle
-            ? matchingStation.single_player_half_hour_rate || 75
-            : matchingStation.multi_player_half_hour_rate || 150;
-          const full = isSingle
-            ? matchingStation.single_player_rate || 150
-            : matchingStation.multi_player_rate || 300;
-          return half + full;
-        } else if (duration === 120) {
-          return (isSingle
-            ? matchingStation.single_player_rate || 150
-            : matchingStation.multi_player_rate || 300) * 2;
-        } else if (duration === 180) {
-          return (isSingle
-            ? matchingStation.single_player_rate || 150
-            : matchingStation.multi_player_rate || 300) * 3;
-        }
-      }
-      // Other consoles use simple hourly rate
-      else {
-        if (duration === 30) {
-          return matchingStation.half_hour_rate || 50;
-        } else if (duration === 60) {
-          return matchingStation.hourly_rate || 100;
-        } else if (duration === 90) {
-          return (matchingStation.half_hour_rate || 50) + (matchingStation.hourly_rate || 100);
-        } else if (duration === 120) {
-          return (matchingStation.hourly_rate || 100) * 2;
-        } else if (duration === 180) {
-          return (matchingStation.hourly_rate || 100) * 3;
-        }
-      }
-    }
-
-    // Final fallback to default pricing
-    console.log('No stationPricing found, using default 100');
-    return 100;
-  };
-
-  const addBillingItem = () => {
-    const consoleType = billingAvailableConsoles[0] || "ps5";
-    const quantity = 1;
-    const duration = 60;
-    const price = getBillingPrice(consoleType, quantity, duration);
-
-    setBillingItems([
-      ...billingItems,
-      {
-        id: Math.random().toString(36).substr(2, 9),
-        console: consoleType,
-        quantity: quantity,
-        duration: duration,
-        price: price,
-      },
-    ]);
-  };
-
-  const removeBillingItem = (id: string) => {
-    setBillingItems(billingItems.filter((item) => item.id !== id));
-  };
-
-  const updateBillingItem = (id: string, field: string, value: any) => {
-    setBillingItems(
-      billingItems.map((item) => {
-        if (item.id === id) {
-          const updatedItem = { ...item, [field]: value };
-
-          // Recalculate price if console, quantity, or duration changed
-          if (field === 'console' || field === 'quantity' || field === 'duration') {
-            updatedItem.price = getBillingPrice(
-              updatedItem.console,
-              updatedItem.quantity,
-              updatedItem.duration
-            );
-          }
-
-          return updatedItem;
-        }
-        return item;
-      })
-    );
-  };
-
-  const handleBillingSubmit = async () => {
-    if (!selectedCafeId || !billingCustomerName || !billingStartTime || billingItems.length === 0) {
-      alert("Please fill in all required fields and add at least one console");
-      return;
-    }
-
-    setBillingSubmitting(true);
-
-    // Convert 24-hour time (HH:MM) to 12-hour format for DB (e.g., "10:30 am")
-    const [hours, minutes] = billingStartTime.split(':').map(Number);
-    const period = hours >= 12 ? 'pm' : 'am';
-    const hours12 = hours % 12 || 12;
-    const startTime12h = `${hours12}:${minutes.toString().padStart(2, "0")} ${period}`;
-
-    try {
-      // Use the manually editable total amount
-      const { data: booking, error: bookingError } = await supabase
-        .from("bookings")
-        .insert({
-          cafe_id: selectedCafeId,
-          customer_name: billingCustomerName,
-          customer_phone: billingCustomerPhone || null,
-          booking_date: billingBookingDate,
-          start_time: startTime12h,
-          duration: billingItems[0].duration,
-          total_amount: billingTotalAmount,
-          status: "in-progress",
-          source: "walk-in",
-          payment_mode: billingPaymentMode,
-        })
-        .select()
-        .single();
-
-      if (bookingError) throw bookingError;
-
-      const itemsToInsert = billingItems.map((item) => ({
-        booking_id: booking.id,
-        console: item.console,
-        quantity: item.quantity,
-        price: item.price,
-      }));
-
-      const { error: itemsError } = await supabase
-        .from("booking_items")
-        .insert(itemsToInsert);
-
-      if (itemsError) {
-        console.error('[Quick Booking] Error inserting booking items:', itemsError);
-        throw itemsError;
-      }
-
-      alert("Bulk booking created successfully!");
-
-      // Reset form
-      setBillingCustomerName("");
-      setBillingCustomerPhone("");
-      setBillingBookingDate(new Date().toISOString().split("T")[0]);
-      const now = new Date();
-      setBillingStartTime(`${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`);
-      setBillingItems([]);
-      setBillingPaymentMode("cash");
-    } catch (error) {
-      console.error("Error creating booking:", error);
-      alert("Failed to create booking. Please try again.");
-    } finally {
-      setBillingSubmitting(false);
-    }
-  };
-
-  // Update total amount when billing items change
-  useEffect(() => {
-    const calculatedTotal = billingItems.reduce((sum, item) => sum + item.price, 0);
-    setBillingTotalAmount(calculatedTotal);
-  }, [billingItems]);
 
   // Auto-update billing time and date in real-time when billing tab is active
   useEffect(() => {
@@ -2548,83 +1514,7 @@ export default function OwnerDashboardPage() {
     const interval = setInterval(updateTime, 10000);
 
     return () => clearInterval(interval);
-  }, [activeTab]);
-
-  // Load available consoles for billing tab
-  useEffect(() => {
-    if (!selectedCafeId) return;
-
-    async function loadBillingConsoles() {
-      const { data, error } = await supabase
-        .from("cafes")
-        .select(`
-          ps5_count,
-          ps4_count,
-          xbox_count,
-          pc_count,
-          pool_count,
-          snooker_count,
-          arcade_count,
-          vr_count,
-          steering_wheel_count
-        `)
-        .eq("id", selectedCafeId)
-        .single();
-
-      if (!error && data) {
-        const available: ConsoleId[] = [];
-        if (data.ps5_count > 0) available.push("ps5");
-        if (data.ps4_count > 0) available.push("ps4");
-        if (data.xbox_count > 0) available.push("xbox");
-        if (data.pc_count > 0) available.push("pc");
-        if (data.pool_count > 0) available.push("pool");
-        if (data.snooker_count > 0) available.push("snooker");
-        if (data.arcade_count > 0) available.push("arcade");
-        if (data.vr_count > 0) available.push("vr");
-        if (data.steering_wheel_count > 0) available.push("steering");
-        setBillingAvailableConsoles(available);
-      }
-    }
-
-    loadBillingConsoles();
-  }, [selectedCafeId]);
-
-  // Load previous customers for billing tab
-  useEffect(() => {
-    console.log('[Billing] useEffect triggered, selectedCafeId:', selectedCafeId);
-    if (!selectedCafeId) {
-      console.log('[Billing] No cafe selected, skipping customer load');
-      return;
-    }
-
-    async function loadBillingCustomers() {
-      console.log('[Billing] Loading customers for cafe:', selectedCafeId);
-      const { data, error } = await supabase
-        .from("bookings")
-        .select("customer_name, customer_phone")
-        .eq("cafe_id", selectedCafeId)
-        .eq("source", "walk-in")
-        .not("customer_name", "is", null)
-        .order("created_at", { ascending: false })
-        .limit(100);
-
-      console.log('[Billing] Query result - data:', data, 'error:', error);
-
-      if (!error && data) {
-        const unique = data.reduce((acc: Array<{ name: string; phone: string }>, curr) => {
-          const phone = curr.customer_phone;
-          if (phone && !acc.find(c => c.phone === phone)) {
-            acc.push({ name: curr.customer_name!, phone: phone });
-          }
-          return acc;
-        }, []);
-        setBillingPreviousCustomers(unique);
-        console.log('[Billing] Loaded previous customers:', unique);
-      }
-    }
-
-    loadBillingCustomers();
-  }, [selectedCafeId]);
+  }, [activeTab, setBillingStartTime, setBillingBookingDate]);
 
   // Auto-calculate amount when duration, console, or controllers change in edit modal
   // Only auto-calculate if user hasn't manually edited the amount
@@ -2755,7 +1645,7 @@ export default function OwnerDashboardPage() {
       alert(`Successfully added ${newStationCount} ${newStationType.toUpperCase()} station(s)!`);
 
       // Trigger a refresh to update the stations list
-      setRefreshTrigger(prev => prev + 1);
+      refreshData();
     } catch (error) {
       console.error('Error adding station:', error);
       alert('Failed to add station. Please try again.');
@@ -2965,7 +1855,7 @@ export default function OwnerDashboardPage() {
       alert(`Successfully deleted ${stationToDelete.name}!`);
 
       // Trigger a refresh to update the stations list
-      setRefreshTrigger(prev => prev + 1);
+      refreshData();
     } catch (error) {
       console.error('Error deleting station:', error);
       alert('Failed to delete station. Please try again.');
@@ -3087,22 +1977,7 @@ export default function OwnerDashboardPage() {
   }
 
   // Dark theme colors
-  const theme = {
-    background: "#020617",
-    cardBackground: "rgba(15,23,42,0.6)",
-    sidebarBackground: "linear-gradient(180deg, #0f172a 0%, #020617 100%)",
-    border: "rgba(51,65,85,0.5)",
-    textPrimary: "#f8fafc",
-    textSecondary: "#cbd5e1",
-    textMuted: "#64748b",
-    headerBackground: "rgba(15,23,42,0.5)",
-    statCardBackground: "#ffffff",
-    statCardText: "#111827",
-    hoverBackground: "rgba(51,65,85,0.3)",
-    activeNavBackground: "linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(37, 99, 235, 0.15))",
-    activeNavText: "#3b82f6",
-    inputBackground: "rgba(15, 23, 42, 0.5)",
-  };
+
 
   // Navigation items
   const navItems: { id: NavTab; label: string; icon: string }[] = [
@@ -3976,7 +2851,7 @@ export default function OwnerDashboardPage() {
               loading={loadingData}
               onUpdateStatus={handleBookingStatusChange}
               onEdit={handleEditBooking}
-              onRefresh={() => setRefreshTrigger(prev => prev + 1)}
+              onRefresh={() => refreshData()}
               isMobile={isMobile}
               onViewOrders={(bookingId, customerName) => {
                 setViewOrdersBookingId(bookingId);
@@ -5765,7 +4640,7 @@ export default function OwnerDashboardPage() {
               timerElapsed={timerElapsed}
               onStartTimer={handleStartTimer}
               onStopTimer={handleStopTimer}
-              onRefresh={() => setRefreshTrigger(prev => prev + 1)}
+              onRefresh={() => refreshData()}
             />
           )}
 
@@ -5774,7 +4649,7 @@ export default function OwnerDashboardPage() {
             <Coupons
               isMobile={isMobile}
               cafeId={selectedCafeId || cafes[0]?.id || ''}
-              onRefresh={() => setRefreshTrigger(prev => prev + 1)}
+              onRefresh={() => refreshData()}
             />
           )}
 
@@ -5801,7 +4676,7 @@ export default function OwnerDashboardPage() {
               cafes={cafes}
               isMobile={isMobile}
               onSuccess={() => {
-                setRefreshTrigger(prev => prev + 1);
+                refreshData();
                 setActiveTab('dashboard');
               }}
             />
@@ -6995,7 +5870,7 @@ export default function OwnerDashboardPage() {
         cafeId={selectedCafeId || cafes[0]?.id || ''}
         customerName={addItemsCustomerName}
         onItemsAdded={() => {
-          setRefreshTrigger(prev => prev + 1);
+          refreshData();
         }}
       />
 
@@ -7007,7 +5882,7 @@ export default function OwnerDashboardPage() {
         cafeId={selectedCafeId || cafes[0]?.id || ''}
         customerName={viewOrdersCustomerName}
         onOrdersUpdated={() => {
-          setRefreshTrigger(prev => prev + 1);
+          refreshData();
         }}
       />
 
@@ -9043,991 +7918,53 @@ export default function OwnerDashboardPage() {
       {/* View Subscription Detail Modal */}
       {
         viewingSubscription && (
-          <div
-            style={{
-              position: "fixed",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              background: "rgba(0, 0, 0, 0.7)",
-              backdropFilter: "blur(4px)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 1000,
-              padding: isMobile ? "16px" : "20px",
-              overflowY: 'auto',
+          <SubscriptionDetailsModal
+            subscription={viewingSubscription}
+            usageHistory={subscriptionUsageHistory}
+            loadingUsageHistory={loadingUsageHistory}
+            isMobile={isMobile}
+            onClose={() => setViewingSubscription(null)}
+            onViewCustomer={(customer: any) => {
+              setViewingCustomer(customer);
+              setViewingSubscription(null);
             }}
-            onClick={() => setViewingSubscription(null)}
-          >
-            <div
-              style={{
-                background: theme.cardBackground,
-                borderRadius: isMobile ? 16 : 24,
-                border: `1px solid ${theme.border}`,
-                maxWidth: 900,
-                width: "100%",
-                maxHeight: '90vh',
-                overflowY: 'auto',
-                boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
-              }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              {(() => {
-                const sub = viewingSubscription;
-                const planDetails = sub.membership_plans || {};
-                const hoursRemaining = sub.hours_remaining || 0;
-                const hoursPurchased = sub.hours_purchased || 1;
-                const hoursUsed = hoursPurchased - hoursRemaining;
-                const progressPercent = (hoursRemaining / hoursPurchased) * 100;
-                const expiryDate = sub.expiry_date ? new Date(sub.expiry_date) : null;
-                const purchaseDate = sub.purchase_date ? new Date(sub.purchase_date) : null;
-                const daysRemaining = expiryDate ? Math.max(0, Math.ceil((expiryDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))) : 0;
-                const statusColor = sub.status === 'active' ? '#10b981' : sub.status === 'expired' ? '#ef4444' : '#6b7280';
+            onDelete={async (id: string) => {
+              const { error } = await supabase
+                .from('subscriptions')
+                .delete()
+                .eq('id', id);
 
-                // Get initials for avatar
-                const nameParts = sub.customer_name?.split(' ') || [];
-                const initials = nameParts.length >= 2
-                  ? `${nameParts[0][0]}${nameParts[nameParts.length - 1][0]}`.toUpperCase()
-                  : (sub.customer_name?.[0] || 'U').toUpperCase();
-
-                return (
-                  <>
-                    {/* Header with Back Button */}
-                    <div style={{
-                      padding: isMobile ? "20px 24px" : "28px 32px",
-                      borderBottom: `1px solid ${theme.border}`,
-                      background: "rgba(16, 185, 129, 0.05)",
-                    }}>
-                      <button
-                        onClick={() => setViewingSubscription(null)}
-                        style={{
-                          background: 'transparent',
-                          border: 'none',
-                          color: theme.textMuted,
-                          fontSize: isMobile ? 14 : 15,
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 8,
-                          marginBottom: 16,
-                          padding: 0,
-                        }}
-                      >
-                        ← Back to Subscriptions
-                      </button>
-                    </div>
-
-                    {/* Customer Info Card */}
-                    <div style={{ padding: isMobile ? "24px" : "32px" }}>
-                      <div style={{
-                        background: 'rgba(255, 255, 255, 0.02)',
-                        border: `1px solid ${theme.border}`,
-                        borderRadius: 16,
-                        padding: isMobile ? "20px" : "24px",
-                        marginBottom: 24,
-                      }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                            <div style={{
-                              width: isMobile ? 60 : 72,
-                              height: isMobile ? 60 : 72,
-                              borderRadius: '50%',
-                              background: 'linear-gradient(135deg, #8b5cf6, #ec4899)',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontSize: isMobile ? 24 : 32,
-                              fontWeight: 700,
-                              color: '#fff',
-                            }}>
-                              {initials}
-                            </div>
-                            <div>
-                              <h2 style={{ fontSize: isMobile ? 20 : 28, fontWeight: 700, color: theme.textPrimary, margin: 0, marginBottom: 4 }}>
-                                {sub.customer_name}
-                              </h2>
-                              <p style={{ fontSize: isMobile ? 14 : 16, color: theme.textSecondary, margin: 0 }}>
-                                {sub.customer_phone}
-                              </p>
-                            </div>
-                          </div>
-                          <span style={{
-                            padding: isMobile ? '8px 16px' : '10px 20px',
-                            background: `${statusColor}20`,
-                            color: statusColor,
-                            borderRadius: 20,
-                            fontSize: isMobile ? 13 : 15,
-                            fontWeight: 600,
-                            textTransform: 'capitalize',
-                          }}>
-                            {sub.status}
-                          </span>
-                        </div>
-
-                        {/* Plan Details Grid */}
-                        <div style={{
-                          display: 'grid',
-                          gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)',
-                          gap: isMobile ? 16 : 20,
-                          padding: isMobile ? '16px 0' : '20px 0',
-                          borderTop: `1px solid ${theme.border}`,
-                        }}>
-                          <div>
-                            <p style={{ fontSize: isMobile ? 11 : 12, color: theme.textMuted, margin: '0 0 6px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                              Plan
-                            </p>
-                            <p style={{ fontSize: isMobile ? 14 : 16, fontWeight: 600, color: theme.textPrimary, margin: 0 }}>
-                              {planDetails.name || 'N/A'}
-                            </p>
-                          </div>
-                          <div>
-                            <p style={{ fontSize: isMobile ? 11 : 12, color: theme.textMuted, margin: '0 0 6px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                              Purchased
-                            </p>
-                            <p style={{ fontSize: isMobile ? 14 : 16, fontWeight: 600, color: theme.textPrimary, margin: 0 }}>
-                              {purchaseDate ? purchaseDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}
-                            </p>
-                          </div>
-                          <div>
-                            <p style={{ fontSize: isMobile ? 11 : 12, color: theme.textMuted, margin: '0 0 6px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                              Expires
-                            </p>
-                            <p style={{ fontSize: isMobile ? 14 : 16, fontWeight: 600, color: theme.textPrimary, margin: 0 }}>
-                              {expiryDate ? expiryDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}
-                              {daysRemaining > 0 && (
-                                <span style={{ fontSize: isMobile ? 11 : 12, color: theme.textMuted, marginLeft: 4 }}>
-                                  ({daysRemaining} days)
-                                </span>
-                              )}
-                            </p>
-                          </div>
-                          <div>
-                            <p style={{ fontSize: isMobile ? 11 : 12, color: theme.textMuted, margin: '0 0 6px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                              Amount Paid
-                            </p>
-                            <p style={{ fontSize: isMobile ? 16 : 18, fontWeight: 700, color: '#10b981', margin: 0 }}>
-                              ₹{sub.amount_paid}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Time Balance Card */}
-                      <div style={{
-                        background: 'rgba(255, 255, 255, 0.02)',
-                        border: `1px solid ${theme.border}`,
-                        borderRadius: 16,
-                        padding: isMobile ? "20px" : "24px",
-                        marginBottom: 24,
-                      }}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-                          <h3 style={{ fontSize: isMobile ? 18 : 22, fontWeight: 700, color: theme.textPrimary, margin: 0 }}>
-                            Time Balance
-                          </h3>
-                          <button
-                            style={{
-                              padding: isMobile ? '8px 16px' : '10px 20px',
-                              background: '#10b981',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: 10,
-                              fontSize: isMobile ? 13 : 14,
-                              fontWeight: 600,
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 6,
-                            }}
-                          >
-                            + Add Time
-                          </button>
-                        </div>
-
-                        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 16 }}>
-                          <div>
-                            <p style={{ fontSize: isMobile ? 36 : 48, fontWeight: 700, color: theme.textPrimary, margin: 0, lineHeight: 1 }}>
-                              {Math.floor(hoursRemaining)}h {Math.round((hoursRemaining % 1) * 60)}m
-                            </p>
-                            <p style={{ fontSize: isMobile ? 13 : 14, color: theme.textMuted, margin: '8px 0 0 0' }}>
-                              remaining
-                            </p>
-                          </div>
-                          <div style={{ textAlign: 'right' }}>
-                            <p style={{ fontSize: isMobile ? 20 : 24, fontWeight: 600, color: theme.textSecondary, margin: 0, lineHeight: 1 }}>
-                              {hoursPurchased} Hours
-                            </p>
-                            <p style={{ fontSize: isMobile ? 13 : 14, color: theme.textMuted, margin: '8px 0 0 0' }}>
-                              total
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Progress Bar */}
-                        <div style={{
-                          width: '100%',
-                          height: 12,
-                          background: 'rgba(255, 255, 255, 0.05)',
-                          borderRadius: 6,
-                          overflow: 'hidden',
-                          marginBottom: 12,
-                        }}>
-                          <div style={{
-                            width: `${progressPercent}%`,
-                            height: '100%',
-                            background: progressPercent > 50 ? '#10b981' : progressPercent > 20 ? '#f59e0b' : '#ef4444',
-                            transition: 'width 0.3s',
-                          }} />
-                        </div>
-
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: isMobile ? 12 : 13, color: theme.textMuted }}>
-                          <span>Used: {Math.floor(hoursUsed)}h {Math.round((hoursUsed % 1) * 60)}m ({Math.round((hoursUsed / hoursPurchased) * 100)}%)</span>
-                          <span style={{ color: progressPercent > 50 ? '#10b981' : progressPercent > 20 ? '#f59e0b' : '#ef4444', fontWeight: 600 }}>
-                            {Math.round(progressPercent)}% remaining
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Usage History */}
-                      <div style={{
-                        background: 'rgba(255, 255, 255, 0.02)',
-                        border: `1px solid ${theme.border}`,
-                        borderRadius: 16,
-                        padding: isMobile ? "20px" : "24px",
-                        marginBottom: 24,
-                      }}>
-                        <h3 style={{ fontSize: isMobile ? 18 : 22, fontWeight: 700, color: theme.textPrimary, margin: '0 0 20px 0' }}>
-                          Usage History
-                        </h3>
-
-                        <div style={{ overflowX: 'auto' }}>
-                          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                            <thead>
-                              <tr style={{ borderBottom: `1px solid ${theme.border}` }}>
-                                <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: isMobile ? 11 : 12, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase' }}>DATE & TIME</th>
-                                <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: isMobile ? 11 : 12, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase' }}>SESSION</th>
-                                <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: isMobile ? 11 : 12, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase' }}>DURATION</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {loadingUsageHistory ? (
-                                <tr>
-                                  <td colSpan={3} style={{ padding: '40px 16px', textAlign: 'center', color: theme.textMuted, fontSize: isMobile ? 13 : 14 }}>
-                                    Loading usage history...
-                                  </td>
-                                </tr>
-                              ) : subscriptionUsageHistory.length === 0 ? (
-                                <tr>
-                                  <td colSpan={3} style={{ padding: '40px 16px', textAlign: 'center', color: theme.textMuted, fontSize: isMobile ? 13 : 14 }}>
-                                    No usage history yet
-                                  </td>
-                                </tr>
-                              ) : (
-                                subscriptionUsageHistory.map((history, index) => {
-                                  const startTime = new Date(history.start_time);
-                                  const endTime = new Date(history.end_time);
-                                  const durationHours = history.duration_hours;
-                                  const hours = Math.floor(durationHours);
-                                  const minutes = Math.round((durationHours % 1) * 60);
-
-                                  return (
-                                    <tr key={history.id} style={{ borderBottom: `1px solid ${theme.border}` }}>
-                                      <td style={{ padding: '16px', fontSize: isMobile ? 13 : 14, color: theme.textPrimary }}>
-                                        <div>{startTime.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
-                                        <div style={{ fontSize: isMobile ? 11 : 12, color: theme.textMuted, marginTop: 2 }}>
-                                          {startTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })} - {endTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
-                                        </div>
-                                      </td>
-                                      <td style={{ padding: '16px', fontSize: isMobile ? 13 : 14, color: '#3b82f6', fontWeight: 600 }}>
-                                        #{subscriptionUsageHistory.length - index}
-                                      </td>
-                                      <td style={{ padding: '16px', fontSize: isMobile ? 13 : 14, color: '#3b82f6', fontWeight: 600 }}>
-                                        {hours}h {minutes}m
-                                      </td>
-                                    </tr>
-                                  );
-                                })
-                              )}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-
-                      {/* Action Buttons */}
-                      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                        <button
-                          onClick={() => {
-                            setViewingCustomer({
-                              name: sub.customer_name,
-                              phone: sub.customer_phone,
-                              email: sub.customer_email,
-                              subscription: sub
-                            });
-                            setViewingSubscription(null);
-                          }}
-                          style={{
-                            flex: isMobile ? '1 1 100%' : '1',
-                            padding: isMobile ? "12px 20px" : "14px 24px",
-                            background: 'transparent',
-                            border: `2px solid ${theme.border}`,
-                            borderRadius: 10,
-                            color: theme.textPrimary,
-                            fontSize: isMobile ? 14 : 15,
-                            fontWeight: 600,
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: 8,
-                          }}
-                        >
-                          <span>👤</span> View Customer
-                        </button>
-                        <button
-                          style={{
-                            flex: isMobile ? '1 1 100%' : '1',
-                            padding: isMobile ? "12px 20px" : "14px 24px",
-                            background: 'transparent',
-                            border: `2px solid rgba(251, 191, 36, 0.4)`,
-                            borderRadius: 10,
-                            color: '#fbbf24',
-                            fontSize: isMobile ? 14 : 15,
-                            fontWeight: 600,
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: 8,
-                          }}
-                        >
-                          <span>⛔</span> Suspend
-                        </button>
-                        <button
-                          onClick={async () => {
-                            if (confirm('Are you sure you want to delete this subscription?')) {
-                              const { error } = await supabase
-                                .from('subscriptions')
-                                .delete()
-                                .eq('id', sub.id);
-
-                              if (!error) {
-                                setSubscriptions(subscriptions.filter(s => s.id !== sub.id));
-                                setViewingSubscription(null);
-                                alert('Subscription deleted successfully!');
-                              } else {
-                                alert('Failed to delete subscription: ' + error.message);
-                              }
-                            }
-                          }}
-                          style={{
-                            flex: isMobile ? '1 1 100%' : '1',
-                            padding: isMobile ? "12px 20px" : "14px 24px",
-                            background: 'rgba(239, 68, 68, 0.1)',
-                            border: `2px solid rgba(239, 68, 68, 0.4)`,
-                            borderRadius: 10,
-                            color: '#ef4444',
-                            fontSize: isMobile ? 14 : 15,
-                            fontWeight: 600,
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: 8,
-                          }}
-                        >
-                          <span>🗑️</span> Delete
-                        </button>
-                      </div>
-                    </div>
-                  </>
-                );
-              })()}
-            </div>
-          </div>
+              if (!error) {
+                setSubscriptions(subscriptions.filter(s => s.id !== id));
+                setViewingSubscription(null);
+                alert('Subscription deleted successfully!');
+              } else {
+                alert('Failed to delete subscription: ' + error.message);
+              }
+            }}
+          />
         )
       }
 
       {/* Customer Detail Modal */}
       {
-        viewingCustomer && (() => {
-          const sub = viewingCustomer.subscription;
-
-          // Use pre-calculated stats from customers tab if available, otherwise calculate from bookings
-          const totalSpent = viewingCustomer.totalSpent !== undefined
-            ? viewingCustomer.totalSpent
-            : customerBookings.reduce((sum, booking) => sum + (booking.total_amount || 0), 0) + (sub?.amount_paid || 0);
-
-          const totalVisits = viewingCustomer.totalVisits !== undefined
-            ? viewingCustomer.totalVisits
-            : customerBookings.length + (subscriptionUsageHistory.length || 0);
-
-          const lastVisit = viewingCustomer.lastVisit
-            ? new Date(viewingCustomer.lastVisit)
-            : (customerBookings[0]?.booking_date ? new Date(customerBookings[0].booking_date) : (sub?.purchase_date ? new Date(sub.purchase_date) : null));
-
-          const hoursRemaining = sub?.hours_remaining || 0;
-          const hoursPurchased = sub?.hours_purchased || 1;
-          const hoursUsed = hoursPurchased - hoursRemaining;
-          const progressPercent = (hoursRemaining / hoursPurchased) * 100;
-          const expiryDate = sub?.expiry_date ? new Date(sub.expiry_date) : null;
-          const daysLeft = expiryDate ? Math.max(0, Math.ceil((expiryDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))) : 0;
-
-          return (
-            <div
-              onClick={() => setViewingCustomer(null)}
-              style={{
-                position: 'fixed',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                background: 'rgba(0, 0, 0, 0.7)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                zIndex: 1000,
-                padding: isMobile ? 16 : 20,
-              }}
-            >
-              <div
-                onClick={(e) => e.stopPropagation()}
-                style={{
-                  background: theme.background,
-                  borderRadius: isMobile ? 16 : 24,
-                  width: '100%',
-                  maxWidth: 1200,
-                  maxHeight: '90vh',
-                  overflow: 'auto',
-                  position: 'relative',
-                }}
-              >
-                {/* Header */}
-                <div style={{
-                  padding: isMobile ? '20px 20px 16px' : '32px 32px 24px',
-                  borderBottom: `1px solid ${theme.border}`,
-                  position: 'sticky',
-                  top: 0,
-                  background: theme.background,
-                  zIndex: 10,
-                }}>
-                  <button
-                    onClick={() => setViewingCustomer(null)}
-                    style={{
-                      position: 'absolute',
-                      top: isMobile ? 16 : 24,
-                      left: isMobile ? 16 : 24,
-                      background: 'transparent',
-                      border: 'none',
-                      color: theme.textMuted,
-                      fontSize: isMobile ? 14 : 16,
-                      cursor: 'pointer',
-                      padding: 8,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 6,
-                    }}
-                  >
-                    ← Back to Subscriptions
-                  </button>
-
-                  <div style={{ marginTop: isMobile ? 32 : 40, display: 'flex', alignItems: 'center', gap: 16 }}>
-                    <div style={{
-                      width: isMobile ? 56 : 72,
-                      height: isMobile ? 56 : 72,
-                      borderRadius: '50%',
-                      background: 'linear-gradient(135deg, #8b5cf6, #ec4899)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: isMobile ? 24 : 32,
-                      fontWeight: 700,
-                      color: '#fff',
-                    }}>
-                      {viewingCustomer.name?.charAt(0).toUpperCase() || 'U'}
-                    </div>
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <h2 style={{ fontSize: isMobile ? 20 : 28, fontWeight: 700, color: theme.textPrimary, margin: 0 }}>
-                          {viewingCustomer.name}
-                        </h2>
-                        <span style={{
-                          padding: '4px 12px',
-                          background: sub?.status === 'active' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(107, 114, 128, 0.2)',
-                          color: sub?.status === 'active' ? '#10b981' : '#6b7280',
-                          borderRadius: 12,
-                          fontSize: isMobile ? 11 : 12,
-                          fontWeight: 600,
-                          textTransform: 'capitalize',
-                        }}>
-                          Subscriber
-                        </span>
-                      </div>
-                      <p style={{ fontSize: isMobile ? 14 : 16, color: theme.textMuted, margin: '4px 0 0 0' }}>
-                        {viewingCustomer.phone}
-                      </p>
-                    </div>
-                    <div style={{ marginLeft: 'auto', display: 'flex', gap: 12 }}>
-                      <button style={{
-                        padding: isMobile ? '8px 16px' : '10px 20px',
-                        background: 'transparent',
-                        border: `2px solid ${theme.border}`,
-                        borderRadius: 10,
-                        color: theme.textPrimary,
-                        fontSize: isMobile ? 13 : 14,
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                      }}>
-                        ✏️ Edit
-                      </button>
-                      <button style={{
-                        padding: isMobile ? '8px 16px' : '10px 20px',
-                        background: 'rgba(239, 68, 68, 0.1)',
-                        border: `2px solid rgba(239, 68, 68, 0.3)`,
-                        borderRadius: 10,
-                        color: '#ef4444',
-                        fontSize: isMobile ? 13 : 14,
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                      }}>
-                        🗑️ Delete
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Content */}
-                <div style={{ padding: isMobile ? 20 : 32 }}>
-                  {/* Stats Cards */}
-                  <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)',
-                    gap: isMobile ? 12 : 16,
-                    marginBottom: isMobile ? 24 : 32,
-                  }}>
-                    <div style={{
-                      background: 'rgba(59, 130, 246, 0.05)',
-                      border: `1px solid rgba(59, 130, 246, 0.2)`,
-                      borderRadius: 16,
-                      padding: isMobile ? 16 : 20,
-                      textAlign: 'center',
-                    }}>
-                      <div style={{
-                        width: isMobile ? 48 : 56,
-                        height: isMobile ? 48 : 56,
-                        borderRadius: 12,
-                        background: 'rgba(59, 130, 246, 0.1)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        margin: '0 auto 12px',
-                        fontSize: isMobile ? 20 : 24,
-                      }}>
-                        ▶️
-                      </div>
-                      <div style={{ fontSize: isMobile ? 28 : 36, fontWeight: 700, color: theme.textPrimary, marginBottom: 4 }}>
-                        {totalVisits}
-                      </div>
-                      <div style={{ fontSize: isMobile ? 13 : 14, color: theme.textMuted }}>
-                        Total Visits
-                      </div>
-                    </div>
-
-                    <div style={{
-                      background: 'rgba(34, 197, 94, 0.05)',
-                      border: `1px solid rgba(34, 197, 94, 0.2)`,
-                      borderRadius: 16,
-                      padding: isMobile ? 16 : 20,
-                      textAlign: 'center',
-                    }}>
-                      <div style={{
-                        width: isMobile ? 48 : 56,
-                        height: isMobile ? 48 : 56,
-                        borderRadius: 12,
-                        background: 'rgba(34, 197, 94, 0.1)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        margin: '0 auto 12px',
-                        fontSize: isMobile ? 20 : 24,
-                      }}>
-                        ₹
-                      </div>
-                      <div style={{ fontSize: isMobile ? 28 : 36, fontWeight: 700, color: theme.textPrimary, marginBottom: 4 }}>
-                        ₹{totalSpent.toLocaleString()}
-                      </div>
-                      <div style={{ fontSize: isMobile ? 13 : 14, color: theme.textMuted }}>
-                        Total Spent
-                      </div>
-                    </div>
-
-                    <div style={{
-                      background: 'rgba(251, 191, 36, 0.05)',
-                      border: `1px solid rgba(251, 191, 36, 0.2)`,
-                      borderRadius: 16,
-                      padding: isMobile ? 16 : 20,
-                      textAlign: 'center',
-                    }}>
-                      <div style={{
-                        width: isMobile ? 48 : 56,
-                        height: isMobile ? 48 : 56,
-                        borderRadius: 12,
-                        background: 'rgba(251, 191, 36, 0.1)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        margin: '0 auto 12px',
-                        fontSize: isMobile ? 20 : 24,
-                      }}>
-                        ⏱️
-                      </div>
-                      <div style={{ fontSize: isMobile ? 28 : 36, fontWeight: 700, color: theme.textPrimary, marginBottom: 4 }}>
-                        {lastVisit ? (() => {
-                          const now = new Date();
-                          const diff = Math.floor((now.getTime() - lastVisit.getTime()) / (1000 * 60 * 60));
-                          if (diff < 1) return 'Just now';
-                          if (diff < 24) return `${diff} hours ago`;
-                          const days = Math.floor(diff / 24);
-                          return `${days} day${days > 1 ? 's' : ''} ago`;
-                        })() : 'N/A'}
-                      </div>
-                      <div style={{ fontSize: isMobile ? 13 : 14, color: theme.textMuted }}>
-                        Last Visit
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Active Subscription */}
-                  {sub && (
-                    <div style={{
-                      background: 'rgba(59, 130, 246, 0.05)',
-                      border: `1px solid rgba(59, 130, 246, 0.2)`,
-                      borderRadius: 16,
-                      padding: isMobile ? 20 : 24,
-                      marginBottom: isMobile ? 24 : 32,
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                          <div style={{
-                            width: 48,
-                            height: 48,
-                            borderRadius: 12,
-                            background: 'rgba(59, 130, 246, 0.1)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: 20,
-                          }}>
-                            ⏱️
-                          </div>
-                          <div>
-                            <h3 style={{ fontSize: isMobile ? 16 : 18, fontWeight: 700, color: theme.textPrimary, margin: 0 }}>
-                              Active Subscription
-                            </h3>
-                            <p style={{ fontSize: isMobile ? 13 : 14, color: '#3b82f6', margin: '2px 0 0 0' }}>
-                              {sub.membership_plans?.name || '5 Hour Pack'}
-                            </p>
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => {
-                            setViewingSubscription(sub);
-                            setViewingCustomer(null);
-                          }}
-                          style={{
-                            padding: '8px 16px',
-                            background: '#3b82f6',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: 8,
-                            fontSize: 13,
-                            fontWeight: 600,
-                            cursor: 'pointer',
-                          }}
-                        >
-                          Manage
-                        </button>
-                      </div>
-
-                      <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: isMobile ? '1fr' : '3fr 1fr',
-                        gap: 16,
-                        marginBottom: 16,
-                      }}>
-                        <div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                            <span style={{ fontSize: isMobile ? 13 : 14, color: '#3b82f6', fontWeight: 600 }}>
-                              {Math.floor(hoursRemaining)}h {Math.round((hoursRemaining % 1) * 60)}m remaining
-                            </span>
-                            <span style={{ fontSize: isMobile ? 13 : 14, color: theme.textMuted }}>
-                              {hoursPurchased} Hours total
-                            </span>
-                          </div>
-                          <div style={{
-                            width: '100%',
-                            height: 12,
-                            background: 'rgba(255, 255, 255, 0.1)',
-                            borderRadius: 6,
-                            overflow: 'hidden',
-                          }}>
-                            <div style={{
-                              width: `${progressPercent}%`,
-                              height: '100%',
-                              background: progressPercent > 50 ? '#10b981' : progressPercent > 20 ? '#f59e0b' : '#ef4444',
-                              transition: 'width 0.3s',
-                            }} />
-                          </div>
-                          <div style={{ fontSize: isMobile ? 11 : 12, color: theme.textMuted, marginTop: 6 }}>
-                            Used: {Math.floor(hoursUsed)}h {Math.round((hoursUsed % 1) * 60)}m ({Math.round((hoursUsed / hoursPurchased) * 100)}%)
-                          </div>
-                        </div>
-                      </div>
-
-                      <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(3, 1fr)',
-                        gap: 16,
-                      }}>
-                        <div>
-                          <div style={{ fontSize: isMobile ? 11 : 12, color: theme.textMuted, marginBottom: 4 }}>
-                            Expires
-                          </div>
-                          <div style={{ fontSize: isMobile ? 14 : 15, fontWeight: 600, color: theme.textPrimary }}>
-                            {expiryDate ? expiryDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'}
-                          </div>
-                        </div>
-                        <div>
-                          <div style={{ fontSize: isMobile ? 11 : 12, color: theme.textMuted, marginBottom: 4 }}>
-                            Days Left
-                          </div>
-                          <div style={{ fontSize: isMobile ? 14 : 15, fontWeight: 600, color: theme.textPrimary }}>
-                            {daysLeft} days
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Recent Sessions */}
-                  <div style={{
-                    background: 'rgba(255, 255, 255, 0.02)',
-                    border: `1px solid ${theme.border}`,
-                    borderRadius: 16,
-                    padding: isMobile ? 20 : 24,
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <div style={{
-                          width: 48,
-                          height: 48,
-                          borderRadius: 12,
-                          background: 'rgba(251, 191, 36, 0.1)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: 20,
-                        }}>
-                          🔄
-                        </div>
-                        <div>
-                          <h3 style={{ fontSize: isMobile ? 16 : 18, fontWeight: 700, color: theme.textPrimary, margin: 0 }}>
-                            Recent Sessions
-                          </h3>
-                          <p style={{ fontSize: isMobile ? 13 : 14, color: theme.textMuted, margin: '2px 0 0 0' }}>
-                            Last 10 gaming sessions
-                          </p>
-                        </div>
-                      </div>
-                      <button style={{
-                        padding: '8px 16px',
-                        background: 'transparent',
-                        border: `2px solid ${theme.border}`,
-                        borderRadius: 8,
-                        color: theme.textPrimary,
-                        fontSize: 13,
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                      }}>
-                        View All
-                      </button>
-                    </div>
-
-                    <div style={{ overflowX: 'auto' }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                        <thead>
-                          <tr style={{ borderBottom: `1px solid ${theme.border}` }}>
-                            <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: isMobile ? 11 : 12, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase' }}>DATE</th>
-                            <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: isMobile ? 11 : 12, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase' }}>STATION</th>
-                            <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: isMobile ? 11 : 12, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase' }}>DURATION</th>
-                            <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: isMobile ? 11 : 12, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase' }}>AMOUNT</th>
-                            <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: isMobile ? 11 : 12, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase' }}>STATUS</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {loadingCustomerData ? (
-                            <tr>
-                              <td colSpan={5} style={{ padding: '40px 16px', textAlign: 'center', color: theme.textMuted }}>
-                                Loading sessions...
-                              </td>
-                            </tr>
-                          ) : customerBookings.length === 0 ? (
-                            <tr>
-                              <td colSpan={5} style={{ padding: '40px 16px', textAlign: 'center', color: theme.textMuted }}>
-                                No sessions yet
-                              </td>
-                            </tr>
-                          ) : (
-                            customerBookings.map((booking) => {
-                              const bookingDate = new Date(booking.booking_date);
-                              const consoleInfo = booking.booking_items?.[0];
-                              const stationName = consoleInfo?.console?.toUpperCase() || 'N/A';
-                              const isSubscription = booking.source === 'subscription' || !booking.total_amount;
-
-                              return (
-                                <tr key={booking.id} style={{ borderBottom: `1px solid ${theme.border}` }}>
-                                  <td style={{ padding: '16px', fontSize: isMobile ? 13 : 14, color: theme.textPrimary }}>
-                                    <div>{bookingDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
-                                    <div style={{ fontSize: isMobile ? 11 : 12, color: theme.textMuted }}>
-                                      {convertTo12Hour(booking.start_time)}
-                                    </div>
-                                  </td>
-                                  <td style={{ padding: '16px', fontSize: isMobile ? 13 : 14, fontWeight: 600, color: theme.textPrimary }}>
-                                    {stationName}-{consoleInfo?.quantity || 1}
-                                  </td>
-                                  <td style={{ padding: '16px', fontSize: isMobile ? 13 : 14, color: theme.textPrimary }}>
-                                    {booking.duration ? `${Math.floor(booking.duration / 60)}h ${booking.duration % 60}m` : 'N/A'}
-                                  </td>
-                                  <td style={{ padding: '16px', fontSize: isMobile ? 13 : 14, fontWeight: 600, color: isSubscription ? '#3b82f6' : theme.textPrimary }}>
-                                    {isSubscription ? 'Subscription' : `₹${booking.total_amount}`}
-                                  </td>
-                                  <td style={{ padding: '16px' }}>
-                                    <span style={{
-                                      padding: '4px 12px',
-                                      background: booking.status === 'completed' ? 'rgba(34, 197, 94, 0.2)' : 'rgba(107, 114, 128, 0.2)',
-                                      color: booking.status === 'completed' ? '#22c55e' : '#6b7280',
-                                      borderRadius: 12,
-                                      fontSize: isMobile ? 11 : 12,
-                                      fontWeight: 600,
-                                      textTransform: 'capitalize',
-                                    }}>
-                                      {booking.status || 'Completed'}
-                                    </span>
-                                  </td>
-                                </tr>
-                              );
-                            })
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          );
-        })()
+        viewingCustomer && (
+          <CustomerDetailsModal
+            customer={viewingCustomer}
+            customerBookings={customerBookings}
+            loadingCustomerData={loadingCustomerData}
+            isMobile={isMobile}
+            onClose={() => setViewingCustomer(null)}
+            onBackToSubscription={(sub: any) => {
+              setViewingSubscription(sub);
+              setViewingCustomer(null);
+            }}
+          />
+        )
       }
 
       {/* PWA Install Prompt for Owner Dashboard */}
       <OwnerPWAInstaller />
     </>
-  );
-}
-
-// Live Billing Tab Component - REMOVED (walk-in functionality was removed from the application)
-
-// Helper Components
-function StatCard({
-  title,
-  value,
-  subtitle,
-  icon,
-  gradient,
-  color,
-}: {
-  title: string;
-  value: string | number;
-  subtitle: string;
-  icon: string;
-  gradient: string;
-  color: string;
-}) {
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
-
-  return (
-    <div
-      style={{
-        padding: isMobile ? "16px" : "24px",
-        borderRadius: isMobile ? 12 : 16,
-        background: gradient,
-        border: `1px solid ${color}40`,
-        position: "relative",
-        overflow: "hidden",
-      }}
-    >
-      <div style={{ position: "absolute", top: -20, right: -20, fontSize: isMobile ? 60 : 80, opacity: 0.1 }}>
-        {icon}
-      </div>
-      <div style={{ position: "relative", zIndex: 1 }}>
-        <p
-          style={{
-            fontSize: isMobile ? 9 : 11,
-            color: `${color}E6`,
-            marginBottom: isMobile ? 6 : 8,
-            textTransform: "uppercase",
-            letterSpacing: isMobile ? 1 : 1.5,
-            fontWeight: 600,
-          }}
-        >
-          {title}
-        </p>
-        <p
-          style={{
-            fontFamily: fonts.heading,
-            fontSize: isMobile ? 24 : 36,
-            margin: isMobile ? "6px 0" : "8px 0",
-            color: color,
-            lineHeight: 1,
-          }}
-        >
-          {value}
-        </p>
-        <p style={{ fontSize: isMobile ? 11 : 13, color: `${color}B3`, marginTop: isMobile ? 6 : 8 }}>{subtitle}</p>
-      </div>
-    </div>
-  );
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const statusLower = status.toLowerCase();
-  let background = "rgba(245, 158, 11, 0.15)";
-  let color = "#f59e0b";
-
-  if (statusLower === "confirmed") {
-    background = "rgba(34, 197, 94, 0.15)";
-    color = "#22c55e";
-  } else if (statusLower === "cancelled") {
-    background = "rgba(239, 68, 68, 0.15)";
-    color = "#ef4444";
-  } else if (statusLower === "completed") {
-    background = "rgba(59, 130, 246, 0.15)";
-    color = "#3b82f6";
-  }
-
-  return (
-    <span
-      style={{
-        padding: "4px 10px",
-        borderRadius: 6,
-        fontSize: 11,
-        fontWeight: 500,
-        background,
-        color,
-        textTransform: "uppercase",
-      }}
-    >
-      {status}
-    </span>
   );
 }

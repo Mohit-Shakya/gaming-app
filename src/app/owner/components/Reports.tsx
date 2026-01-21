@@ -14,6 +14,9 @@ import {
     Gamepad2,
     Calendar,
     X,
+    Users,
+    Globe,
+    Store,
 } from 'lucide-react';
 
 interface ReportsProps {
@@ -24,6 +27,7 @@ interface ReportsProps {
 interface BookingItem {
     console: string;
     quantity: number;
+    price?: number;
 }
 
 interface BookingData {
@@ -36,6 +40,7 @@ interface BookingData {
     start_time?: string;
     booking_items?: BookingItem[];
     customer_name?: string;
+    source?: string;
 }
 
 interface PreviousBookingData {
@@ -54,10 +59,15 @@ export function Reports({ cafeId, isMobile }: ReportsProps) {
     const [loading, setLoading] = useState(true);
     const [bookings, setBookings] = useState<BookingData[]>([]);
     const [previousBookings, setPreviousBookings] = useState<PreviousBookingData[]>([]);
+    const [peakHoursBookings, setPeakHoursBookings] = useState<BookingData[]>([]);
+    const [cafeHours, setCafeHours] = useState<{ openHour: number; closeHour: number }>({ openHour: 10, closeHour: 23 });
+    const [expandedChart, setExpandedChart] = useState(false);
 
     // Fetch data based on range
     useEffect(() => {
         fetchReportsData();
+        fetchCafeHours();
+        fetchPeakHoursData(); // Separate 30-day fetch for peak hours
     }, [dateRange, cafeId, customStart, customEnd]);
 
     const getDateRange = (range: string) => {
@@ -115,6 +125,12 @@ export function Reports({ cafeId, isMobile }: ReportsProps) {
             prevStartDate = prevFirstDay.toISOString().slice(0, 10);
             const prevLastDay = new Date(now.getFullYear(), now.getMonth(), 0);
             prevEndDate = prevLastDay.toISOString().slice(0, 10);
+        } else if (range === 'all') {
+            // All time - use a very early start date
+            startDate = '2020-01-01';
+            endDate = todayStr;
+            prevStartDate = '2019-01-01';
+            prevEndDate = '2019-12-31';
         } else if (range === 'custom' && customStart) {
             startDate = customStart;
             endDate = customEnd || customStart;
@@ -149,10 +165,13 @@ export function Reports({ cafeId, isMobile }: ReportsProps) {
                     status, 
                     payment_mode, 
                     start_time, 
+ 
                     customer_name,
+                    source,
                     booking_items (
                         console,
-                        quantity
+                        quantity,
+                        price
                     )
                 `)
                 .eq('cafe_id', cafeId)
@@ -220,7 +239,12 @@ export function Reports({ cafeId, isMobile }: ReportsProps) {
         const daily: Record<string, number> = {};
         bookings.forEach(b => {
             const dateObj = new Date(b.booking_date);
-            const date = dateObj.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+            // Include weekday name: "Wed 15 Jan"
+            const date = dateObj.toLocaleDateString('en-IN', {
+                weekday: 'short',
+                day: 'numeric',
+                month: 'short'
+            });
             daily[date] = (daily[date] || 0) + (b.total_amount || 0);
         });
         return Object.entries(daily).map(([date, amount]) => ({ date, amount }));
@@ -228,27 +252,133 @@ export function Reports({ cafeId, isMobile }: ReportsProps) {
 
     const maxRevenue = Math.max(...revenueTrendData.map(d => d.amount), 100);
 
-    // 2. Peak Hours
+    // 2. Peak Hours - filtered to cafe operating hours
     const peakHoursData = useMemo(() => {
-        const hourly = new Array(24).fill(0);
+        const { openHour, closeHour } = cafeHours;
+        const hoursCount = closeHour > openHour ? closeHour - openHour : 24 - openHour + closeHour;
+        const hourly: { hour: number; count: number }[] = [];
+
+        // Initialize hours within operating range
+        for (let i = 0; i < hoursCount; i++) {
+            const hour = (openHour + i) % 24;
+            hourly.push({ hour, count: 0 });
+        }
+
+        // Helper to parse time string to 24-hour format
+        const parseTimeToHour = (timeStr: string): number | null => {
+            if (!timeStr) return null;
+
+            // Try "4:00 PM" or "04:00 PM" format
+            const amPmMatch = timeStr.match(/(\d{1,2})(?::(\d{2}))?\s*(AM|PM)/i);
+            if (amPmMatch) {
+                let hour = parseInt(amPmMatch[1], 10);
+                const period = amPmMatch[3].toUpperCase();
+                if (period === 'PM' && hour !== 12) hour += 12;
+                else if (period === 'AM' && hour === 12) hour = 0;
+                return hour;
+            }
+
+            // Try "16:00" 24-hour format
+            const h24Match = timeStr.match(/^(\d{1,2}):(\d{2})$/);
+            if (h24Match) {
+                return parseInt(h24Match[1], 10);
+            }
+
+            return null;
+        };
+
+        // Count bookings per hour
         bookings.forEach(b => {
+            let hour: number | null = null;
+
             if (b.start_time) {
-                const parts = b.start_time.split(':');
-                if (parts.length >= 1) {
-                    const hour = parseInt(parts[0], 10);
-                    if (!isNaN(hour) && hour >= 0 && hour < 24) {
-                        hourly[hour]++;
-                    }
-                }
-            } else {
-                const hour = new Date(b.created_at).getHours();
-                hourly[hour]++;
+                hour = parseTimeToHour(b.start_time);
+            }
+
+            if (hour === null) {
+                // Fallback to created_at
+                hour = new Date(b.created_at).getHours();
+            }
+
+            if (hour !== null) {
+                const hourEntry = hourly.find(h => h.hour === hour);
+                if (hourEntry) hourEntry.count++;
             }
         });
-        return hourly;
-    }, [bookings]);
 
-    const maxHourly = Math.max(...peakHoursData, 5);
+        return hourly;
+    }, [peakHoursBookings, cafeHours]);
+
+    const maxHourly = Math.max(...peakHoursData.map(h => h.count), 5);
+
+    // Fetch 30 days of booking data specifically for peak hours analysis
+    const fetchPeakHoursData = async () => {
+        try {
+            const now = new Date();
+            const thirtyDaysAgo = new Date(now);
+            thirtyDaysAgo.setDate(now.getDate() - 30);
+            const startDate = thirtyDaysAgo.toISOString().slice(0, 10);
+            const endDate = now.toISOString().slice(0, 10);
+
+            const { data, error } = await supabase
+                .from('bookings')
+                .select('id, start_time, created_at, status')
+                .eq('cafe_id', cafeId)
+                .neq('status', 'cancelled')
+                .gte('booking_date', startDate)
+                .lte('booking_date', endDate);
+
+            if (!error && data) {
+                setPeakHoursBookings(data as BookingData[]);
+            }
+        } catch (err) {
+            console.error('Error fetching peak hours data:', err);
+        }
+    };
+
+    // Fetch cafe operating hours
+    const fetchCafeHours = async () => {
+        try {
+            const { data: cafe } = await supabase
+                .from('cafes')
+                .select('opening_hours')
+                .eq('id', cafeId)
+                .single();
+
+            if (cafe?.opening_hours) {
+                // Parse opening_hours string like "Mon-Sun: 10:00 AM - 10:00 PM"
+                const hoursStr = cafe.opening_hours;
+
+                // Match: "10:00 AM - 10:00 PM" - captures hour and AM/PM for both times
+                const match = hoursStr.match(/(\d{1,2})(?::\d{2})?\s*(AM|PM)\s*[-–]\s*(\d{1,2})(?::\d{2})?\s*(AM|PM)/i);
+
+                if (match) {
+                    let openHour = parseInt(match[1], 10);
+                    const openPeriod = match[2].toUpperCase();
+                    let closeHour = parseInt(match[3], 10);
+                    const closePeriod = match[4].toUpperCase();
+
+                    // Convert to 24-hour format
+                    if (openPeriod === 'PM' && openHour !== 12) {
+                        openHour += 12;
+                    } else if (openPeriod === 'AM' && openHour === 12) {
+                        openHour = 0;
+                    }
+
+                    if (closePeriod === 'PM' && closeHour !== 12) {
+                        closeHour += 12;
+                    } else if (closePeriod === 'AM' && closeHour === 12) {
+                        closeHour = 0;
+                    }
+
+                    console.log('[Reports] Parsed cafe hours:', { openHour, closeHour, from: hoursStr });
+                    setCafeHours({ openHour, closeHour });
+                }
+            }
+        } catch (err) {
+            console.error('Error fetching cafe hours:', err);
+        }
+    };
 
     // 3. Payment Method Breakdown
     const paymentData = useMemo(() => {
@@ -299,7 +429,10 @@ export function Reports({ cafeId, isMobile }: ReportsProps) {
                     }
                     consoles[consoleName].count += qty;
                     // Approximate revenue per item (split evenly)
-                    const itemRevenue = (b.total_amount || 0) / (b.booking_items?.length || 1);
+                    // Use precise item price if available, otherwise estimate
+                    const itemRevenue = (typeof item.price === 'number')
+                        ? item.price
+                        : ((b.total_amount || 0) / (b.booking_items?.length || 1));
                     consoles[consoleName].revenue += itemRevenue;
                 });
             }
@@ -398,6 +531,7 @@ export function Reports({ cafeId, isMobile }: ReportsProps) {
                                 { label: 'Last 7 Days', value: '7d' },
                                 { label: 'Last 30 Days', value: '30d' },
                                 { label: 'This Month', value: 'month' },
+                                { label: 'All Bookings', value: 'all' },
                                 { label: 'Custom Range', value: 'custom' },
                             ]}
                             className="w-40 border-none bg-transparent"
@@ -509,44 +643,119 @@ export function Reports({ cafeId, isMobile }: ReportsProps) {
             {/* Charts Section - Row 1 */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Revenue Trend Chart */}
-                <Card className="min-h-[300px] flex flex-col">
-                    <div className="flex items-center justify-between mb-6">
-                        <div>
-                            <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                                <TrendingUp size={20} className="text-emerald-500" />
-                                Revenue Trend
-                            </h3>
-                            <p className="text-sm text-slate-400">Daily earnings based on service date</p>
+                <div
+                    className={revenueTrendData.length > 7 ? "cursor-pointer" : ""}
+                    onClick={() => revenueTrendData.length > 7 && setExpandedChart(true)}
+                >
+                    <Card className="min-h-[300px] flex flex-col hover:ring-1 hover:ring-emerald-500/30 transition-all">
+                        <div className="flex items-center justify-between mb-6">
+                            <div>
+                                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                                    <TrendingUp size={20} className="text-emerald-500" />
+                                    Revenue Trend
+                                </h3>
+                                <p className="text-sm text-slate-400">Daily earnings based on service date</p>
+                            </div>
+                            {revenueTrendData.length > 7 && (
+                                <span className="text-xs text-slate-500 bg-slate-800 px-2 py-1 rounded">Click to expand</span>
+                            )}
+                        </div>
+
+                        <div className="w-full relative pt-6 pb-2">
+                            {loading ? (
+                                <div className="h-[150px] flex items-center justify-center text-slate-500">Loading chart...</div>
+                            ) : revenueTrendData.length === 0 ? (
+                                <div className="h-[150px] flex items-center justify-center text-slate-500">No data available</div>
+                            ) : (() => {
+                                const displayData = revenueTrendData.slice(-7);
+                                const maxInView = Math.max(...displayData.map(x => x.amount), 100);
+                                return (
+                                    <div className="flex items-end justify-between px-2 gap-1" style={{ height: '150px' }}>
+                                        {displayData.map((d, i) => {
+                                            const barHeight = Math.max((d.amount / maxInView) * 100, 8);
+                                            // Format date: "Thu, 15 Jan" -> "Thu 15"
+                                            const parts = d.date.split(' ');
+                                            const shortDate = `${parts[0].replace(',', '')} ${parts[1]}`;
+                                            return (
+                                                <div key={i} className="flex flex-col items-center gap-2 group flex-1">
+                                                    <div className="w-full flex flex-col items-center h-full justify-end relative">
+                                                        <div className="w-full max-w-[60px] relative flex items-end h-[120px]">
+                                                            <div
+                                                                className="w-full bg-emerald-500/20 border-t-2 border-emerald-500 rounded-t-sm hover:bg-emerald-500/40 transition-all relative"
+                                                                style={{ height: `${barHeight}%` }}
+                                                            >
+                                                                <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-[10px] text-emerald-400 font-medium whitespace-nowrap">
+                                                                    ₹{d.amount.toLocaleString()}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <span className="text-[10px] text-slate-500 whitespace-nowrap">{shortDate}</span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                );
+                            })()}
+                        </div>
+                        {revenueTrendData.length > 7 && (
+                            <p className="text-center text-xs text-slate-500 mt-3">Showing last 7 days of {revenueTrendData.length} • Click to see all</p>
+                        )}
+                    </Card>
+                </div>
+
+                {/* Expanded Revenue Chart Modal */}
+                {expandedChart && (
+                    <div
+                        className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4"
+                        onClick={() => setExpandedChart(false)}
+                    >
+                        <div
+                            className="bg-slate-900 rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden border border-slate-800"
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <div className="flex items-center justify-between p-6 border-b border-slate-800">
+                                <div>
+                                    <h3 className="text-xl font-semibold text-white flex items-center gap-2">
+                                        <TrendingUp size={24} className="text-emerald-500" />
+                                        Revenue Trend - Full View
+                                    </h3>
+                                    <p className="text-sm text-slate-400">{revenueTrendData.length} days of data</p>
+                                </div>
+                                <button
+                                    onClick={() => setExpandedChart(false)}
+                                    className="p-2 hover:bg-slate-800 rounded-lg transition-colors"
+                                >
+                                    <X size={24} className="text-slate-400" />
+                                </button>
+                            </div>
+                            <div className="p-6 overflow-x-auto">
+                                <div className="flex items-end gap-6 h-[400px]" style={{ minWidth: `${revenueTrendData.length * 80}px` }}>
+                                    {revenueTrendData.map((d, i) => {
+                                        const heightPercent = (d.amount / maxRevenue) * 100;
+                                        return (
+                                            <div key={i} className="flex flex-col items-center gap-2 group flex-1 h-full" style={{ minWidth: '60px' }}>
+                                                <div className="flex-1 w-full flex items-end justify-center">
+                                                    <div className="w-full max-w-[50px] relative h-full flex items-end">
+                                                        <div
+                                                            className="w-full bg-emerald-500/20 border-t-2 border-emerald-500 rounded-t-sm hover:bg-emerald-500/40 transition-all relative"
+                                                            style={{ height: `${Math.max(heightPercent, 5)}%` }}
+                                                        >
+                                                            <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-xs text-emerald-400 font-medium whitespace-nowrap">
+                                                                ₹{d.amount.toLocaleString()}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <span className="text-[11px] text-slate-400 whitespace-nowrap">{d.date}</span>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            </div>
                         </div>
                     </div>
-
-                    <div className="flex-1 w-full min-h-[180px] relative flex items-end justify-between gap-2 px-2 pb-2">
-                        {loading ? (
-                            <div className="absolute inset-0 flex items-center justify-center text-slate-500">Loading chart...</div>
-                        ) : revenueTrendData.length === 0 ? (
-                            <div className="absolute inset-0 flex items-center justify-center text-slate-500">No data available</div>
-                        ) : (
-                            revenueTrendData.map((d, i) => {
-                                const heightPercent = (d.amount / maxRevenue) * 100;
-                                return (
-                                    <div key={i} className="flex flex-col items-center gap-2 group flex-1 h-full">
-                                        <div className="flex-1 w-full flex items-end">
-                                            <div
-                                                className="w-full bg-emerald-500/20 border-t-2 border-emerald-500 rounded-t-sm hover:bg-emerald-500/40 transition-all relative"
-                                                style={{ height: `${Math.max(heightPercent, 5)}%` }}
-                                            >
-                                                <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap border border-slate-700 pointer-events-none z-10">
-                                                    ₹{d.amount.toLocaleString()}
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <span className="text-[10px] text-slate-500 rotate-0 truncate w-full text-center">{d.date}</span>
-                                    </div>
-                                )
-                            })
-                        )}
-                    </div>
-                </Card>
+                )}
 
                 {/* Peak Hours Chart */}
                 <Card className="min-h-[300px] flex flex-col">
@@ -556,7 +765,7 @@ export function Reports({ cafeId, isMobile }: ReportsProps) {
                                 <Clock size={20} className="text-blue-500" />
                                 Peak Hours
                             </h3>
-                            <p className="text-sm text-slate-400">Based on booking start times</p>
+                            <p className="text-sm text-slate-400">Based on last 30 days of bookings</p>
                         </div>
                     </div>
 
@@ -564,22 +773,24 @@ export function Reports({ cafeId, isMobile }: ReportsProps) {
                         {loading ? (
                             <div className="absolute inset-0 flex items-center justify-center text-slate-500">Loading chart...</div>
                         ) : (
-                            peakHoursData.map((count, hour) => {
-                                const heightPercent = (count / maxHourly) * 100;
+                            peakHoursData.map((data, idx) => {
+                                const heightPercent = (data.count / maxHourly) * 100;
                                 const isBusy = heightPercent > 50;
+                                // Format hour as 12-hour time
+                                const hourLabel = data.hour === 0 ? '12AM' : data.hour < 12 ? `${data.hour}AM` : data.hour === 12 ? '12PM' : `${data.hour - 12}PM`;
                                 return (
-                                    <div key={hour} className="flex-1 flex flex-col items-center group h-full justify-end">
+                                    <div key={idx} className="flex-1 flex flex-col items-center group h-full justify-end">
                                         <div
                                             className={`w-full rounded-t-sm transition-all relative ${isBusy ? 'bg-blue-500' : 'bg-slate-700'}`}
                                             style={{ height: `${Math.max(heightPercent, 5)}%`, opacity: isBusy ? 0.8 : 0.3 }}
                                         >
                                             <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 text-[10px] text-white opacity-0 group-hover:opacity-100">
-                                                {count}
+                                                {data.count}
                                             </div>
                                         </div>
-                                        {hour % 3 === 0 && (
-                                            <div className="absolute bottom-0 text-[10px] text-slate-500 transform translate-y-full">
-                                                {hour}
+                                        {idx % 2 === 0 && (
+                                            <div className="absolute bottom-0 text-[9px] text-slate-500 transform translate-y-full whitespace-nowrap">
+                                                {hourLabel}
                                             </div>
                                         )}
                                     </div>
@@ -588,12 +799,65 @@ export function Reports({ cafeId, isMobile }: ReportsProps) {
                         )}
                         <div className="absolute bottom-0 w-full border-t border-slate-800"></div>
                     </div>
-                    <p className="text-center text-xs text-slate-500 mt-4">24-Hour Distribution (00:00 - 23:00)</p>
+                    <p className="text-center text-xs text-slate-500 mt-4">
+                        Operating Hours ({cafeHours.openHour > 12 ? `${cafeHours.openHour - 12}PM` : `${cafeHours.openHour}AM`} - {cafeHours.closeHour > 12 ? `${cafeHours.closeHour - 12}PM` : `${cafeHours.closeHour}AM`})
+                    </p>
                 </Card>
             </div>
 
             {/* Charts Section - Row 2 */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Console Popularity */}
+                <Card className="min-h-[280px]">
+                    <div className="flex items-center justify-between mb-6">
+                        <div>
+                            <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                                <Gamepad2 size={20} className="text-pink-500" />
+                                Console Popularity
+                            </h3>
+                            <p className="text-sm text-slate-400">Most booked gaming stations</p>
+                        </div>
+                    </div>
+
+                    {loading ? (
+                        <div className="flex items-center justify-center h-40 text-slate-500">Loading...</div>
+                    ) : consoleData.length === 0 ? (
+                        <div className="flex items-center justify-center h-40 text-slate-500">No console data available</div>
+                    ) : (
+                        <div className="space-y-4">
+                            {consoleData.map((console, index) => {
+                                const colors = ['bg-pink-500', 'bg-blue-500', 'bg-emerald-500', 'bg-amber-500', 'bg-purple-500'];
+                                const bgColors = ['bg-pink-500/10', 'bg-blue-500/10', 'bg-emerald-500/10', 'bg-amber-500/10', 'bg-purple-500/10'];
+                                const textColors = ['text-pink-500', 'text-blue-500', 'text-emerald-500', 'text-amber-500', 'text-purple-500'];
+                                const widthPercent = (console.count / maxConsoleCount) * 100;
+
+                                return (
+                                    <div key={console.name} className="flex items-center gap-4">
+                                        <div className={`p-2 rounded-lg ${bgColors[index]} ${textColors[index]}`}>
+                                            <Gamepad2 size={18} />
+                                        </div>
+                                        <div className="flex-1">
+                                            <div className="flex justify-between items-center mb-1">
+                                                <span className="text-sm font-medium text-white">{formatConsoleName(console.name)}</span>
+                                                <span className="text-sm text-slate-400">{console.count} bookings</span>
+                                            </div>
+                                            <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+                                                <div
+                                                    className={`h-full ${colors[index]} rounded-full transition-all duration-500`}
+                                                    style={{ width: `${widthPercent}%` }}
+                                                />
+                                            </div>
+                                            <p className="text-xs text-slate-500 mt-1">₹{Math.round(console.revenue).toLocaleString()} revenue</p>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </Card>
+
+
+
                 {/* Payment Methods Breakdown */}
                 <Card className="min-h-[280px]">
                     <div className="flex items-center justify-between mb-6">
@@ -655,26 +919,28 @@ export function Reports({ cafeId, isMobile }: ReportsProps) {
                             </div>
 
                             {/* Card */}
-                            <div className="flex items-center gap-4">
-                                <div className="p-2 rounded-lg bg-blue-500/10 text-blue-500">
-                                    <CreditCard size={18} />
-                                </div>
-                                <div className="flex-1">
-                                    <div className="flex justify-between items-center mb-1">
-                                        <span className="text-sm font-medium text-white">Card</span>
-                                        <span className="text-sm text-slate-400">
-                                            {paymentData.card.count} ({paymentData.card.percent.toFixed(0)}%)
-                                        </span>
+                            {paymentData.card.count > 0 && (
+                                <div className="flex items-center gap-4">
+                                    <div className="p-2 rounded-lg bg-blue-500/10 text-blue-500">
+                                        <CreditCard size={18} />
                                     </div>
-                                    <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
-                                        <div
-                                            className="h-full bg-blue-500 rounded-full transition-all duration-500"
-                                            style={{ width: `${paymentData.card.percent}%` }}
-                                        />
+                                    <div className="flex-1">
+                                        <div className="flex justify-between items-center mb-1">
+                                            <span className="text-sm font-medium text-white">Card</span>
+                                            <span className="text-sm text-slate-400">
+                                                {paymentData.card.count} ({paymentData.card.percent.toFixed(0)}%)
+                                            </span>
+                                        </div>
+                                        <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+                                            <div
+                                                className="h-full bg-blue-500 rounded-full transition-all duration-500"
+                                                style={{ width: `${paymentData.card.percent}%` }}
+                                            />
+                                        </div>
+                                        <p className="text-xs text-slate-500 mt-1">₹{paymentData.card.amount.toLocaleString()}</p>
                                     </div>
-                                    <p className="text-xs text-slate-500 mt-1">₹{paymentData.card.amount.toLocaleString()}</p>
                                 </div>
-                            </div>
+                            )}
 
                             {/* Online (Other) */}
                             {paymentData.online.count > 0 && (
@@ -703,51 +969,92 @@ export function Reports({ cafeId, isMobile }: ReportsProps) {
                     )}
                 </Card>
 
-                {/* Console Popularity */}
+
+                {/* Booking Source Breakdown */}
                 <Card className="min-h-[280px]">
                     <div className="flex items-center justify-between mb-6">
                         <div>
                             <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                                <Gamepad2 size={20} className="text-pink-500" />
-                                Console Popularity
+                                <Globe size={20} className="text-indigo-500" />
+                                Booking Source
                             </h3>
-                            <p className="text-sm text-slate-400">Most booked gaming stations</p>
+                            <p className="text-sm text-slate-400">Online vs Walk-in</p>
                         </div>
                     </div>
 
                     {loading ? (
                         <div className="flex items-center justify-center h-40 text-slate-500">Loading...</div>
-                    ) : consoleData.length === 0 ? (
-                        <div className="flex items-center justify-center h-40 text-slate-500">No console data available</div>
                     ) : (
                         <div className="space-y-4">
-                            {consoleData.map((console, index) => {
-                                const colors = ['bg-pink-500', 'bg-blue-500', 'bg-emerald-500', 'bg-amber-500', 'bg-purple-500'];
-                                const bgColors = ['bg-pink-500/10', 'bg-blue-500/10', 'bg-emerald-500/10', 'bg-amber-500/10', 'bg-purple-500/10'];
-                                const textColors = ['text-pink-500', 'text-blue-500', 'text-emerald-500', 'text-amber-500', 'text-purple-500'];
-                                const widthPercent = (console.count / maxConsoleCount) * 100;
+                            {(() => {
+                                const sourceStats = bookings.reduce((acc, curr) => {
+                                    // Skip pending bookings (abandoned checkouts)
+                                    if (curr.status === 'pending') return acc;
+
+                                    // Strict check + exclude test anomalies
+                                    const source = (curr.source || '').toLowerCase();
+                                    const payment = (curr.payment_mode || '').toLowerCase();
+                                    const isTest = curr.customer_name?.toLowerCase().includes('test');
+
+                                    // Count as Online only if source is online AND text is not test AND payment is not cash (Pay at Venue = Walk-in)
+                                    if ((source === 'online' || source === 'online_booking') && !isTest && payment !== 'cash') {
+                                        acc.online++;
+                                    } else {
+                                        acc.walkIn++;
+                                    }
+                                    return acc;
+                                }, { online: 0, walkIn: 0 });
+
+                                const total = sourceStats.online + sourceStats.walkIn || 1;
+                                const onlinePercent = (sourceStats.online / total) * 100;
+                                const walkInPercent = (sourceStats.walkIn / total) * 100;
 
                                 return (
-                                    <div key={console.name} className="flex items-center gap-4">
-                                        <div className={`p-2 rounded-lg ${bgColors[index]} ${textColors[index]}`}>
-                                            <Gamepad2 size={18} />
-                                        </div>
-                                        <div className="flex-1">
-                                            <div className="flex justify-between items-center mb-1">
-                                                <span className="text-sm font-medium text-white">{formatConsoleName(console.name)}</span>
-                                                <span className="text-sm text-slate-400">{console.count} bookings</span>
+                                    <>
+                                        {/* Online */}
+                                        <div className="flex items-center gap-4">
+                                            <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-500">
+                                                <Globe size={18} />
                                             </div>
-                                            <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
-                                                <div
-                                                    className={`h-full ${colors[index]} rounded-full transition-all duration-500`}
-                                                    style={{ width: `${widthPercent}%` }}
-                                                />
+                                            <div className="flex-1">
+                                                <div className="flex justify-between items-center mb-1">
+                                                    <span className="text-sm font-medium text-white">Online</span>
+                                                    <span className="text-sm text-slate-400">
+                                                        {sourceStats.online} ({onlinePercent.toFixed(0)}%)
+                                                    </span>
+                                                </div>
+                                                <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+                                                    <div
+                                                        className="h-full bg-indigo-500 rounded-full transition-all duration-500"
+                                                        style={{ width: `${onlinePercent}%` }}
+                                                    />
+                                                </div>
                                             </div>
-                                            <p className="text-xs text-slate-500 mt-1">₹{Math.round(console.revenue).toLocaleString()} revenue</p>
                                         </div>
-                                    </div>
+
+                                        {/* Walk-in */}
+                                        <div className="flex items-center gap-4">
+                                            <div className="p-2 rounded-lg bg-orange-500/10 text-orange-500">
+                                                <Store size={18} />
+                                            </div>
+                                            <div className="flex-1">
+                                                <div className="flex justify-between items-center mb-1">
+                                                    <span className="text-sm font-medium text-white">Walk-in</span>
+                                                    <span className="text-sm text-slate-400">
+                                                        {sourceStats.walkIn} ({walkInPercent.toFixed(0)}%)
+                                                    </span>
+                                                </div>
+                                                <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+                                                    <div
+                                                        className="h-full bg-orange-500 rounded-full transition-all duration-500"
+                                                        style={{ width: `${walkInPercent}%` }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </>
                                 );
-                            })}
+                            })()}
                         </div>
                     )}
                 </Card>
@@ -802,8 +1109,8 @@ export function Reports({ cafeId, isMobile }: ReportsProps) {
                                     </td>
                                     <td className="px-6 py-4">
                                         <span className={`px-2 py-1 rounded-full text-xs font-medium border ${booking.status === 'confirmed' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
-                                                booking.status === 'completed' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
-                                                    'bg-slate-500/10 text-slate-400 border-slate-500/20'
+                                            booking.status === 'completed' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
+                                                'bg-slate-500/10 text-slate-400 border-slate-500/20'
                                             }`}>
                                             {booking.status}
                                         </span>
@@ -826,6 +1133,6 @@ export function Reports({ cafeId, isMobile }: ReportsProps) {
                     </table>
                 </div>
             </Card>
-        </div>
+        </div >
     );
 }
