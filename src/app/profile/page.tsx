@@ -1,7 +1,7 @@
 // src/app/profile/page.tsx
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import useUser from "@/hooks/useUser";
@@ -16,7 +16,34 @@ type ProfileRow = {
   date_of_birth: string | null;
 };
 
+// Wrapper component to handle Suspense for useSearchParams
 export default function ProfilePage() {
+  return (
+    <Suspense fallback={
+      <main style={{
+        minHeight: "100vh",
+        background: `linear-gradient(180deg, #0f0f14 0%, #0a0a10 100%)`,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}>
+        <div style={{
+          width: "48px",
+          height: "48px",
+          border: "3px solid rgba(255,255,255,0.1)",
+          borderTopColor: "#00f0ff",
+          borderRadius: "50%",
+          animation: "spin 1s linear infinite",
+        }} />
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </main>
+    }>
+      <ProfilePageContent />
+    </Suspense>
+  );
+}
+
+function ProfilePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, loading } = useUser();
