@@ -2,7 +2,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import useUser from "@/hooks/useUser";
 import { supabase } from "@/lib/supabaseClient";
@@ -18,7 +18,11 @@ type ProfileRow = {
 
 export default function ProfilePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, loading } = useUser();
+
+  const isPhoneRequired = searchParams.get("required") === "phone";
+  const returnUrl = searchParams.get("returnUrl");
 
   // Editable fields
   const [firstName, setFirstName] = useState("");
@@ -79,7 +83,7 @@ export default function ProfilePage() {
 
         // Load booking stats
         const todayStr = new Date().toISOString().slice(0, 10);
-        
+
         const { data: bookings, error: bookingError } = await supabase
           .from("bookings")
           .select("id, booking_date, status")
@@ -87,8 +91,8 @@ export default function ProfilePage() {
 
         if (!bookingError && bookings) {
           const total = bookings.length;
-          const upcoming = bookings.filter(b => 
-            (b.booking_date ?? "") >= todayStr && 
+          const upcoming = bookings.filter(b =>
+            (b.booking_date ?? "") >= todayStr &&
             (b.status || "").toLowerCase() !== "cancelled"
           ).length;
           setBookingStats({ total, upcoming });
@@ -102,6 +106,14 @@ export default function ProfilePage() {
 
     if (user) loadProfile();
   }, [user]);
+
+  // Force edit mode if phone is required
+  useEffect(() => {
+    if (isPhoneRequired && !profileLoading && !loading) {
+      setIsEditing(true);
+      setSaveError("Please enter your phone number to continue.");
+    }
+  }, [isPhoneRequired, profileLoading, loading]);
 
   // Get display name
   const displayName = useMemo(() => {
@@ -179,6 +191,20 @@ export default function ProfilePage() {
     setSaveMessage(null);
     setSaveError(null);
 
+    // Validate phone number if required or if field is not empty
+    const cleanPhone = phone.trim();
+    if (isPhoneRequired && !cleanPhone) {
+      setSaveError("Phone number is required to continue.");
+      setSaving(false);
+      return;
+    }
+
+    if (cleanPhone && cleanPhone.replace(/\D/g, "").length < 10) {
+      setSaveError("Please enter a valid phone number.");
+      setSaving(false);
+      return;
+    }
+
     try {
       const { error } = await supabase.from("profiles").upsert({
         id: user.id,
@@ -196,6 +222,12 @@ export default function ProfilePage() {
 
       setSaveMessage("Profile updated successfully!");
       setIsEditing(false);
+
+      if (isPhoneRequired) {
+        // Redirect back to where the user came from
+        const nextUrl = returnUrl ? decodeURIComponent(returnUrl) : "/";
+        setTimeout(() => router.replace(nextUrl), 1500);
+      }
     } catch (err) {
       console.error("Unexpected error saving profile:", err);
       setSaveError("Something went wrong. Please try again.");
@@ -280,27 +312,29 @@ export default function ProfilePage() {
         position: "relative",
         zIndex: 1,
       }}
-      className="profile-container"
+        className="profile-container"
       >
-        {/* Back Button */}
-        <button
-          onClick={() => router.back()}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-            background: "none",
-            border: "none",
-            color: colors.textSecondary,
-            fontSize: "14px",
-            cursor: "pointer",
-            padding: "0",
-            marginBottom: "20px",
-          }}
-        >
-          <span style={{ fontSize: "18px" }}>←</span>
-          Back
-        </button>
+        {/* Back Button - Hide if phone required */}
+        {!isPhoneRequired && (
+          <button
+            onClick={() => router.back()}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              background: "none",
+              border: "none",
+              color: colors.textSecondary,
+              fontSize: "14px",
+              cursor: "pointer",
+              padding: "0",
+              marginBottom: "20px",
+            }}
+          >
+            <span style={{ fontSize: "18px" }}>←</span>
+            Back
+          </button>
+        )}
 
         {/* Profile Header Card */}
         <section style={{
@@ -313,7 +347,7 @@ export default function ProfilePage() {
           overflow: "hidden",
           textAlign: "center",
         }}
-        className="profile-header"
+          className="profile-header"
         >
           {/* Decorative elements */}
           <div style={{
@@ -334,7 +368,7 @@ export default function ProfilePage() {
             background: `linear-gradient(135deg, ${colors.red} 0%, ${colors.purple} 50%, ${colors.cyan} 100%)`,
             padding: "3px",
           }}
-          className="avatar-wrapper"
+            className="avatar-wrapper"
           >
             <div style={{
               width: "100%",
@@ -354,7 +388,7 @@ export default function ProfilePage() {
                 WebkitTextFillColor: "transparent",
                 backgroundClip: "text",
               }}
-              className="avatar-initials"
+                className="avatar-initials"
               >
                 {initials}
               </span>
@@ -369,7 +403,7 @@ export default function ProfilePage() {
             color: colors.textPrimary,
             marginBottom: "6px",
           }}
-          className="profile-name"
+            className="profile-name"
           >
             {displayName}
           </h1>
@@ -410,7 +444,7 @@ export default function ProfilePage() {
           gap: "10px",
           marginBottom: "16px",
         }}
-        className="stats-grid"
+          className="stats-grid"
         >
           <Link href="/dashboard" style={{ textDecoration: "none" }}>
             <div style={{
@@ -422,7 +456,7 @@ export default function ProfilePage() {
               transition: "all 0.2s ease",
               cursor: "pointer",
             }}
-            className="stat-card"
+              className="stat-card"
             >
               <p style={{
                 fontFamily: fonts.heading,
@@ -431,7 +465,7 @@ export default function ProfilePage() {
                 color: colors.cyan,
                 marginBottom: "4px",
               }}
-              className="stat-number"
+                className="stat-number"
               >
                 {bookingStats.total}
               </p>
@@ -456,7 +490,7 @@ export default function ProfilePage() {
               transition: "all 0.2s ease",
               cursor: "pointer",
             }}
-            className="stat-card"
+              className="stat-card"
             >
               <p style={{
                 fontFamily: fonts.heading,
@@ -465,7 +499,7 @@ export default function ProfilePage() {
                 color: colors.green,
                 marginBottom: "4px",
               }}
-              className="stat-number"
+                className="stat-number"
               >
                 {bookingStats.upcoming}
               </p>
@@ -526,7 +560,7 @@ export default function ProfilePage() {
           padding: "16px",
           marginBottom: "16px",
         }}
-        className="details-section"
+          className="details-section"
         >
           <div style={{
             display: "flex",
@@ -702,7 +736,7 @@ export default function ProfilePage() {
               }}>
                 <button
                   type="button"
-                  onClick={() => setIsEditing(false)}
+                  disabled={isPhoneRequired}
                   style={{
                     flex: 1,
                     padding: "12px",
@@ -712,7 +746,8 @@ export default function ProfilePage() {
                     color: colors.textSecondary,
                     fontSize: "13px",
                     fontWeight: 600,
-                    cursor: "pointer",
+                    cursor: isPhoneRequired ? "not-allowed" : "pointer",
+                    opacity: isPhoneRequired ? 0.5 : 1,
                   }}
                 >
                   Cancel
@@ -795,7 +830,7 @@ export default function ProfilePage() {
           padding: "16px",
           marginBottom: "16px",
         }}
-        className="actions-section"
+          className="actions-section"
         >
           <h2 style={{
             fontSize: "14px",
@@ -919,7 +954,7 @@ export default function ProfilePage() {
           borderRadius: "16px",
           padding: "16px",
         }}
-        className="logout-section"
+          className="logout-section"
         >
           <div style={{
             display: "flex",

@@ -3,19 +3,45 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabaseClient";
 
 export default function AuthCallbackFinish() {
   const router = useRouter();
 
   useEffect(() => {
-    // Read the redirect URL from sessionStorage (includes query params like ?mode=walkin)
-    const redirectTo = sessionStorage.getItem("redirectAfterLogin") || "/";
+    async function checkProfileAndRedirect() {
+      // 1. Get the session to ensure we are logged in
+      const { data: { session } } = await supabase.auth.getSession();
 
-    // Clear the stored redirect
-    sessionStorage.removeItem("redirectAfterLogin");
+      if (session?.user) {
+        // 2. Check if the user has a phone number in their profile
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('phone')
+          .eq('id', session.user.id)
+          .single();
 
-    // Redirect to the intended destination
-    router.replace(redirectTo);
+        // 3. Read the intended redirect URL
+        const intendedRedirect = sessionStorage.getItem("redirectAfterLogin") || "/";
+        sessionStorage.removeItem("redirectAfterLogin");
+
+        // 4. If phone is missing, redirect to profile with a 'required' flag
+        if (!profile?.phone) {
+          // Store the intended URL so we can redirect back after they add their phone
+          const returnUrl = encodeURIComponent(intendedRedirect);
+          router.replace(`/profile?required=phone&returnUrl=${returnUrl}`);
+          return;
+        }
+
+        // 5. Otherwise, go to the intended destination
+        router.replace(intendedRedirect);
+      } else {
+        // Fallback if no session (shouldn't happen here usually)
+        router.replace("/");
+      }
+    }
+
+    checkProfileAndRedirect();
   }, [router]);
 
   return (
