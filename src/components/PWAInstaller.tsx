@@ -22,24 +22,35 @@ export default function PWAInstaller() {
     const [isStandalone, setIsStandalone] = useState(false);
 
     useEffect(() => {
-        // Check if already installed
-        const isStandaloneMode =
-            window.matchMedia('(display-mode: standalone)').matches ||
-            (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
-        setIsStandalone(isStandaloneMode);
+        // Check if already installed (synchronous check is fine inside useEffect on mount)
+        if (typeof window !== 'undefined') {
+            const isStandaloneMode =
+                window.matchMedia('(display-mode: standalone)').matches ||
+                (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
+            // eslint-disable-next-line react-hooks/exhaustive-deps
+            setIsStandalone(isStandaloneMode);
 
-        // Check if iOS
-        const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent);
-        setIsIOS(isIOSDevice);
+            // Check if iOS
+            const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent);
+            setIsIOS(isIOSDevice);
 
-        // Check if dismissed recently (7 days)
-        const dismissedAt = localStorage.getItem('pwa_dismissed');
-        if (dismissedAt) {
-            const daysSinceDismissal = (Date.now() - parseInt(dismissedAt)) / (1000 * 60 * 60 * 24);
-            if (daysSinceDismissal < 7) return;
+            // Check if dismissed recently (7 days)
+            const dismissedAt = localStorage.getItem('pwa_dismissed');
+            if (dismissedAt) {
+                const daysSinceDismissal = (Date.now() - parseInt(dismissedAt)) / (1000 * 60 * 60 * 24);
+                if (daysSinceDismissal < 7) return;
+            }
+
+            // Show iOS instructions after delay if not installed
+            if (isIOSDevice && !isStandaloneMode) {
+                const timer = setTimeout(() => setShowInstallPrompt(true), 4000);
+                return () => clearTimeout(timer);
+            }
         }
+    }, []); // Empty dependency array is correct for mount logic
 
-        // Listen for install prompt
+    useEffect(() => {
+        // Listen for install prompt separate from init logic
         const handleBeforeInstallPrompt = (e: Event) => {
             e.preventDefault();
             setDeferredPrompt(e as BeforeInstallPromptEvent);
@@ -48,11 +59,6 @@ export default function PWAInstaller() {
         };
 
         window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-
-        // Show iOS instructions after delay
-        if (isIOSDevice && !isStandaloneMode) {
-            setTimeout(() => setShowInstallPrompt(true), 4000);
-        }
 
         return () => {
             window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
