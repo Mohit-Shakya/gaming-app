@@ -1,7 +1,7 @@
 // src/app/cafes/[id]/book/page.tsx
 "use client";
 
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, Suspense } from "react";
 import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import useUser from "@/hooks/useUser";
@@ -313,6 +313,26 @@ const ALL_TIME_SLOTS = buildTimeSlots();
 
 // ============ COMPONENT ============
 export default function BookingPage() {
+  return (
+    <Suspense fallback={
+      <div style={{
+        minHeight: "100vh",
+        background: "#0a0a0f",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        color: "#00f0ff",
+        fontFamily: "monospace"
+      }}>
+        Loading...
+      </div>
+    }>
+      <BookingPageContent />
+    </Suspense>
+  );
+}
+
+function BookingPageContent() {
   const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();
