@@ -1544,24 +1544,81 @@ export default function OwnerDashboardPage() {
       const cafePricing = consolePricing[cafeId];
       const baseHourlyRate = cafes.find(c => c.id === cafeId)?.hourly_price || 100;
 
+      // Map console type if needed (e.g. steering -> steering_wheel)
+      const dbConsole = editConsole === 'steering' ? 'steering_wheel' : editConsole;
+
+      // Per-station console types (pricing is per station, not per controller group)
+      const perStationTypes = ['pc', 'vr', 'steering_wheel', 'steering', 'arcade'];
+      const isPerStation = perStationTypes.includes(editConsole.toLowerCase()) || perStationTypes.includes(dbConsole.toLowerCase());
+
       // Try to get tier-based pricing
-      if (cafePricing && cafePricing[editConsole]) {
-        const tier = cafePricing[editConsole];
+      if (cafePricing && cafePricing[dbConsole]) {
+        const tier = cafePricing[dbConsole];
 
+        // Helper to get price for a specific duration and quantity
+        const getBasePrice = (qty: number, durationMins: number): number | null => {
+          const key = `qty${qty}_${durationMins}min`;
+          if (tier[key] !== null && tier[key] !== undefined) {
+            return tier[key];
+          }
+          // For per-station types, multiply qty1 price by quantity
+          if (isPerStation && qty > 1) {
+            const baseKey = `qty1_${durationMins}min`;
+            if (tier[baseKey] !== null && tier[baseKey] !== undefined) {
+              return tier[baseKey] * qty;
+            }
+          }
+          return null;
+        };
+
+        // Direct lookup for 30 or 60 min
         if (editDuration === 30 || editDuration === 60) {
-          const key = `qty${editControllers}_${editDuration}min`;
-          const tierPrice = tier[key];
-
-          if (tierPrice !== null && tierPrice !== undefined) {
-            return tierPrice;
-          }
-        } else if (editDuration === 90) {
-          // 90min = 60min + 30min
-          const price60 = tier[`qty${editControllers}_60min`];
-          const price30 = tier[`qty${editControllers}_30min`];
-          if (price60 !== null && price30 !== null) {
-            return price60 + price30;
-          }
+          const price = getBasePrice(editControllers, editDuration);
+          if (price !== null) return price;
+        }
+        // 90 min = 60 + 30
+        else if (editDuration === 90) {
+          const p60 = getBasePrice(editControllers, 60);
+          const p30 = getBasePrice(editControllers, 30);
+          if (p60 !== null && p30 !== null) return p60 + p30;
+        }
+        // 120 min = 60 * 2
+        else if (editDuration === 120) {
+          const p60 = getBasePrice(editControllers, 60);
+          if (p60 !== null) return p60 * 2;
+        }
+        // 150 min = 60 * 2 + 30
+        else if (editDuration === 150) {
+          const p60 = getBasePrice(editControllers, 60);
+          const p30 = getBasePrice(editControllers, 30);
+          if (p60 !== null && p30 !== null) return (p60 * 2) + p30;
+        }
+        // 180 min = 60 * 3
+        else if (editDuration === 180) {
+          const p60 = getBasePrice(editControllers, 60);
+          if (p60 !== null) return p60 * 3;
+        }
+        // 210 min = 60 * 3 + 30
+        else if (editDuration === 210) {
+          const p60 = getBasePrice(editControllers, 60);
+          const p30 = getBasePrice(editControllers, 30);
+          if (p60 !== null && p30 !== null) return (p60 * 3) + p30;
+        }
+        // 240 min = 60 * 4
+        else if (editDuration === 240) {
+          const p60 = getBasePrice(editControllers, 60);
+          if (p60 !== null) return p60 * 4;
+        }
+        // 270 min = 60 * 4 + 30
+        else if (editDuration === 270) {
+          const p60 = getBasePrice(editControllers, 60);
+          const p30 = getBasePrice(editControllers, 30);
+          if (p60 !== null && p30 !== null) return (p60 * 4) + p30;
+        }
+        // 300 min = 60 * 5
+        else if (editDuration === 300) {
+          const p60 = getBasePrice(editControllers, 60);
+          if (p60 !== null) return p60 * 5;
         }
       }
 
