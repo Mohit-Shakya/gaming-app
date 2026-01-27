@@ -416,6 +416,171 @@ export async function sendBookingCancellation({
   });
 }
 
+// Daily Report Email
+export interface DailyReportParams {
+  email: string;
+  cafeName: string;
+  reportDate: string;
+  // Revenue metrics
+  totalRevenue: number;
+  yesterdayRevenue: number;
+  revenueChange: number;
+  // Booking metrics
+  totalBookings: number;
+  yesterdayBookings: number;
+  bookingsChange: number;
+  // F&B metrics
+  fnbRevenue: number;
+  fnbItemsSold: number;
+  // Top items
+  topSellingItems: Array<{ name: string; quantity: number; revenue: number }>;
+  // Console breakdown
+  consoleBreakdown: Array<{ name: string; count: number; revenue: number }>;
+  // Payment breakdown
+  cashRevenue: number;
+  onlineRevenue: number;
+}
+
+export async function sendDailyReport({
+  email,
+  cafeName,
+  reportDate,
+  totalRevenue,
+  yesterdayRevenue,
+  revenueChange,
+  totalBookings,
+  yesterdayBookings,
+  bookingsChange,
+  fnbRevenue,
+  fnbItemsSold,
+  topSellingItems,
+  consoleBreakdown,
+  cashRevenue,
+  onlineRevenue,
+}: DailyReportParams) {
+  const changeIndicator = (change: number) => {
+    if (change > 0) return `<span style="color: #22c55e;">↑ ${change.toFixed(1)}%</span>`;
+    if (change < 0) return `<span style="color: #ef4444;">↓ ${Math.abs(change).toFixed(1)}%</span>`;
+    return `<span style="color: #9ca3af;">→ 0%</span>`;
+  };
+
+  const topItemsRows = topSellingItems.slice(0, 5).map((item, idx) => `
+    <tr>
+      <td style="padding: 10px 0; border-bottom: 1px solid #222222;">
+        <span style="color: #ef4444; font-weight: 700; margin-right: 10px;">#${idx + 1}</span>
+        <span style="color: #ffffff;">${item.name}</span>
+      </td>
+      <td style="padding: 10px 0; border-bottom: 1px solid #222222; text-align: center; color: #9ca3af;">${item.quantity} sold</td>
+      <td style="padding: 10px 0; border-bottom: 1px solid #222222; text-align: right; color: #ffffff; font-weight: 600;">${formatCurrency(item.revenue)}</td>
+    </tr>
+  `).join('');
+
+  const consoleRows = consoleBreakdown.slice(0, 5).map(console => `
+    <tr>
+      <td style="padding: 8px 0; color: #ffffff;">${console.name}</td>
+      <td style="padding: 8px 0; text-align: center; color: #9ca3af;">${console.count} sessions</td>
+      <td style="padding: 8px 0; text-align: right; color: #ffffff; font-weight: 600;">${formatCurrency(console.revenue)}</td>
+    </tr>
+  `).join('');
+
+  const content = `
+    <!-- Header Icon -->
+    <table role="presentation" width="100%" style="margin-bottom: 25px;">
+      <tr>
+        <td align="center">
+          <img src="https://img.icons8.com/ios-filled/100/ef4444/combo-chart.png" alt="Analytics" width="50" height="50" style="display: block; width: 50px; border: 0;" />
+        </td>
+      </tr>
+    </table>
+
+    <h1 style="margin: 0 0 5px; font-size: 22px; font-weight: 800; text-align: center; color: #ffffff; text-transform: uppercase;">Daily Report</h1>
+    <p style="margin: 0 0 30px; color: #9ca3af; font-size: 14px; text-align: center;">
+      ${cafeName} • ${reportDate}
+    </p>
+
+    <!-- Revenue Summary -->
+    <div style="background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%); border-radius: 8px; padding: 25px; margin-bottom: 25px; text-align: center;">
+      <p style="margin: 0 0 5px; color: rgba(255,255,255,0.8); font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Total Revenue</p>
+      <p style="margin: 0 0 10px; color: #ffffff; font-size: 36px; font-weight: 900;">${formatCurrency(totalRevenue)}</p>
+      <p style="margin: 0; color: rgba(255,255,255,0.9); font-size: 13px;">
+        vs Yesterday (${formatCurrency(yesterdayRevenue)}): ${changeIndicator(revenueChange)}
+      </p>
+    </div>
+
+    <!-- Key Metrics Grid -->
+    <table role="presentation" width="100%" style="margin-bottom: 25px;">
+      <tr>
+        <td width="50%" style="padding-right: 10px;">
+          <div style="background-color: #000000; border: 1px solid #222222; border-radius: 6px; padding: 15px; text-align: center;">
+            <p style="margin: 0 0 5px; color: #9ca3af; font-size: 11px; text-transform: uppercase;">Bookings</p>
+            <p style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">${totalBookings}</p>
+            <p style="margin: 5px 0 0; font-size: 12px;">vs ${yesterdayBookings} ${changeIndicator(bookingsChange)}</p>
+          </div>
+        </td>
+        <td width="50%" style="padding-left: 10px;">
+          <div style="background-color: #000000; border: 1px solid #222222; border-radius: 6px; padding: 15px; text-align: center;">
+            <p style="margin: 0 0 5px; color: #9ca3af; font-size: 11px; text-transform: uppercase;">F&B Revenue</p>
+            <p style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">${formatCurrency(fnbRevenue)}</p>
+            <p style="margin: 5px 0 0; font-size: 12px; color: #9ca3af;">${fnbItemsSold} items sold</p>
+          </div>
+        </td>
+      </tr>
+    </table>
+
+    <!-- Payment Breakdown -->
+    <table role="presentation" width="100%" style="margin-bottom: 25px;">
+      <tr>
+        <td width="50%" style="padding-right: 10px;">
+          <div style="background-color: #000000; border: 1px solid #222222; border-radius: 6px; padding: 15px; text-align: center;">
+            <p style="margin: 0 0 5px; color: #22c55e; font-size: 11px; text-transform: uppercase;">💵 Cash</p>
+            <p style="margin: 0; color: #ffffff; font-size: 20px; font-weight: 700;">${formatCurrency(cashRevenue)}</p>
+          </div>
+        </td>
+        <td width="50%" style="padding-left: 10px;">
+          <div style="background-color: #000000; border: 1px solid #222222; border-radius: 6px; padding: 15px; text-align: center;">
+            <p style="margin: 0 0 5px; color: #3b82f6; font-size: 11px; text-transform: uppercase;">💳 Online</p>
+            <p style="margin: 0; color: #ffffff; font-size: 20px; font-weight: 700;">${formatCurrency(onlineRevenue)}</p>
+          </div>
+        </td>
+      </tr>
+    </table>
+
+    ${topSellingItems.length > 0 ? `
+    <!-- Top Selling F&B Items -->
+    <div style="margin-bottom: 25px;">
+      <h3 style="margin: 0 0 15px; color: #ffffff; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid #222222; padding-bottom: 10px;">🔥 Top Selling Items</h3>
+      <table role="presentation" width="100%">
+        ${topItemsRows}
+      </table>
+    </div>
+    ` : ''}
+
+    ${consoleBreakdown.length > 0 ? `
+    <!-- Console Breakdown -->
+    <div style="margin-bottom: 25px;">
+      <h3 style="margin: 0 0 15px; color: #ffffff; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid #222222; padding-bottom: 10px;">🎮 Console Breakdown</h3>
+      <table role="presentation" width="100%">
+        ${consoleRows}
+      </table>
+    </div>
+    ` : ''}
+
+    <!-- Footer Note -->
+    <div style="text-align: center; padding-top: 20px; border-top: 1px solid #222222;">
+      <p style="margin: 0; color: #6b7280; font-size: 12px;">
+        This is an automated daily report. View full analytics in your dashboard.
+      </p>
+    </div>
+  `;
+
+  return sendEmail({
+    to: email,
+    toName: cafeName,
+    subject: `📊 Daily Report: ${reportDate} - ${formatCurrency(totalRevenue)} Revenue`,
+    html: emailTemplate(content, 'Daily Report'),
+  });
+}
+
 // Welcome Email
 export interface WelcomeEmailParams {
   email: string;
