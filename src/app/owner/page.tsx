@@ -46,6 +46,7 @@ import ViewOrdersModal from './components/ViewOrdersModal';
 import OwnerPWAInstaller from './components/OwnerPWAInstaller';
 import SubscriptionDetailsModal from './components/SubscriptionDetailsModal';
 import CustomerDetailsModal from './components/CustomerDetailsModal';
+import { SessionEndedPopup } from './components/SessionEndedPopup';
 import StatCard from './components/StatCard';
 import StatusBadge from './components/StatusBadge';
 import { useBilling } from "./hooks/useBilling";
@@ -231,6 +232,14 @@ export default function OwnerDashboardPage() {
   const [viewOrdersModalOpen, setViewOrdersModalOpen] = useState(false);
   const [viewOrdersBookingId, setViewOrdersBookingId] = useState<string>("");
   const [viewOrdersCustomerName, setViewOrdersCustomerName] = useState<string>("");
+
+  // Session Ended Popup state
+  const [sessionEndedPopupOpen, setSessionEndedPopupOpen] = useState(false);
+  const [sessionEndedInfo, setSessionEndedInfo] = useState<{
+    customerName: string;
+    stationName: string;
+    duration: number;
+  } | null>(null);
 
   // Time update trigger for active sessions (updates every second)
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -2132,6 +2141,10 @@ export default function OwnerDashboardPage() {
                     setAddItemsBookingId(bookingId);
                     setAddItemsCustomerName(customerName);
                     setAddItemsModalOpen(true);
+                  }}
+                  onSessionEnded={(info) => {
+                    setSessionEndedInfo(info);
+                    setSessionEndedPopupOpen(true);
                   }}
                 />
               </div>
@@ -5957,6 +5970,15 @@ export default function OwnerDashboardPage() {
         onOrdersUpdated={() => {
           refreshData();
         }}
+      />
+
+      {/* Session Ended Popup */}
+      <SessionEndedPopup
+        isOpen={sessionEndedPopupOpen}
+        onClose={() => setSessionEndedPopupOpen(false)}
+        customerName={sessionEndedInfo?.customerName || ''}
+        stationName={sessionEndedInfo?.stationName || ''}
+        duration={sessionEndedInfo?.duration || 0}
       />
 
       {/* Edit Booking Modal */}

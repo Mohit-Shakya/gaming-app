@@ -8,6 +8,7 @@ export interface InventoryItem {
   name: string;
   category: InventoryCategory;
   price: number;
+  cost_price?: number;
   stock_quantity: number;
   is_available: boolean;
   created_at: string;
@@ -45,3 +46,23 @@ export const CATEGORY_ICONS: Record<InventoryCategory, string> = {
   hot_drinks: '☕',
   combo: '🎁',
 };
+
+// Analytics Types
+export interface ItemSalesData {
+  itemId: string;
+  itemName: string;
+  category: InventoryCategory;
+  quantitySold: number;
+  revenue: number;
+  cost: number;
+  profit: number;
+  profitMargin: number;
+}
+
+export interface CategoryBreakdown {
+  category: InventoryCategory;
+  quantitySold: number;
+  revenue: number;
+  profit: number;
+  percentage: number;
+}

@@ -1,8 +1,15 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
 import { ConsoleId, CONSOLE_ICONS } from '@/lib/constants';
 import { Button } from './ui';
 import { Plus } from 'lucide-react';
+
+interface SessionEndedInfo {
+    customerName: string;
+    stationName: string;
+    duration: number;
+}
 
 interface ActiveSessionsProps {
     bookings: any[];
@@ -12,6 +19,7 @@ interface ActiveSessionsProps {
     currentTime: Date;
     isMobile: boolean;
     onAddItems?: (bookingId: string, customerName: string) => void;
+    onSessionEnded?: (info: SessionEndedInfo) => void;
 }
 
 export function ActiveSessions({
@@ -22,7 +30,10 @@ export function ActiveSessions({
     currentTime,
     isMobile,
     onAddItems,
+    onSessionEnded,
 }: ActiveSessionsProps) {
+    // Track sessions that have already triggered the ended callback
+    const endedSessionsRef = useRef<Set<string>>(new Set());
 
     // 1. Filter and Flatten Bookings
     const activeBookings = bookings.filter(
@@ -84,6 +95,56 @@ export function ActiveSessions({
         const key = consoleName?.toLowerCase() as ConsoleId;
         return CONSOLE_ICONS[key] || '🎮';
     };
+
+    // Detect ended sessions
+    useEffect(() => {
+        if (!onSessionEnded) return;
+
+        const currentMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
+
+        sortedActiveBookings.forEach((booking) => {
+            const bookingId = booking.originalBookingId || booking.id;
+
+            // Skip if already notified
+            if (endedSessionsRef.current.has(bookingId)) return;
+
+            if (booking.start_time && booking.duration) {
+                const timeParts = booking.start_time.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
+                if (timeParts) {
+                    let hours = parseInt(timeParts[1]);
+                    const minutes = parseInt(timeParts[2]);
+                    const period = timeParts[3];
+
+                    if (period) {
+                        if (period.toLowerCase() === 'pm' && hours !== 12) hours += 12;
+                        else if (period.toLowerCase() === 'am' && hours === 12) hours = 0;
+                    }
+
+                    const startMinutes = hours * 60 + minutes;
+                    const endMinutes = startMinutes + booking.duration;
+                    const timeRemaining = endMinutes - currentMinutes;
+
+                    // Session just ended (within the last minute)
+                    if (timeRemaining <= 0 && timeRemaining > -1) {
+                        const consoleInfo = booking.booking_items?.[0];
+                        const consoleType = consoleInfo?.console?.toUpperCase() || 'UNKNOWN';
+                        const isWalkIn = booking.source === 'walk-in';
+                        const customerName = isWalkIn ? booking.customer_name : (booking.user_name || 'Guest');
+
+                        // Mark as notified
+                        endedSessionsRef.current.add(bookingId);
+
+                        // Call the callback
+                        onSessionEnded({
+                            customerName,
+                            stationName: consoleType,
+                            duration: booking.duration,
+                        });
+                    }
+                }
+            }
+        });
+    }, [currentTime, sortedActiveBookings, onSessionEnded]);
 
     if (sortedActiveBookings.length === 0 && activeMemberships.length === 0) {
         return (

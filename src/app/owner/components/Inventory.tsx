@@ -1,7 +1,7 @@
 // Inventory Management Component - Can be removed along with inventory feature
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import {
   Package,
@@ -17,7 +17,9 @@ import {
   Cookie,
   Gift,
   GlassWater,
+  BarChart3,
 } from "lucide-react";
+import InventoryAnalytics from "./InventoryAnalytics";
 import {
   InventoryItem,
   InventoryCategory,
@@ -36,6 +38,7 @@ const CATEGORY_CONFIG: Record<InventoryCategory, { icon: React.ReactNode; color:
 };
 
 export default function Inventory({ cafeId }: InventoryProps) {
+  const [activeTab, setActiveTab] = useState<'items' | 'analytics'>('items');
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -52,16 +55,13 @@ export default function Inventory({ cafeId }: InventoryProps) {
     name: "",
     category: "snacks" as InventoryCategory,
     price: "",
+    cost_price: "",
     stock_quantity: "",
     is_available: true,
   });
 
   // Load inventory items
-  useEffect(() => {
-    loadItems();
-  }, [cafeId]);
-
-  async function loadItems() {
+  const loadItems = useCallback(async () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
@@ -79,7 +79,11 @@ export default function Inventory({ cafeId }: InventoryProps) {
     } finally {
       setLoading(false);
     }
-  }
+  }, [cafeId]);
+
+  useEffect(() => {
+    loadItems();
+  }, [loadItems]);
 
   // Filter items
   const filteredItems = items.filter((item) => {
@@ -104,6 +108,7 @@ export default function Inventory({ cafeId }: InventoryProps) {
       name: "",
       category: "snacks",
       price: "",
+      cost_price: "",
       stock_quantity: "",
       is_available: true,
     });
@@ -118,6 +123,7 @@ export default function Inventory({ cafeId }: InventoryProps) {
       name: item.name,
       category: item.category,
       price: item.price.toString(),
+      cost_price: item.cost_price?.toString() || "",
       stock_quantity: item.stock_quantity.toString(),
       is_available: item.is_available,
     });
@@ -145,6 +151,7 @@ export default function Inventory({ cafeId }: InventoryProps) {
         name: formData.name.trim(),
         category: formData.category,
         price: parseFloat(formData.price),
+        cost_price: formData.cost_price ? parseFloat(formData.cost_price) : null,
         stock_quantity: parseInt(formData.stock_quantity) || 0,
         is_available: formData.is_available,
       };
@@ -168,9 +175,9 @@ export default function Inventory({ cafeId }: InventoryProps) {
 
       setShowModal(false);
       loadItems();
-    } catch (err: any) {
+    } catch (err) {
       console.error("Error saving item:", err);
-      setError(err.message || "Failed to save item");
+      setError(err instanceof Error ? err.message : "Failed to save item");
     } finally {
       setSaving(false);
     }
@@ -220,9 +227,9 @@ export default function Inventory({ cafeId }: InventoryProps) {
       }
 
       loadItems();
-    } catch (err: any) {
+    } catch (err) {
       console.error("Error deleting item:", err);
-      alert(`Failed to delete item: ${err?.message || 'Unknown error'}`);
+      alert(`Failed to delete item: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
   }
 
@@ -278,14 +285,52 @@ export default function Inventory({ cafeId }: InventoryProps) {
             Manage snacks, drinks, and combos
           </p>
         </div>
+        {activeTab === 'items' && (
+          <button
+            onClick={openAddModal}
+            className="flex items-center gap-2 px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-xl font-semibold transition"
+          >
+            <Plus className="w-5 h-5" />
+            Add Item
+          </button>
+        )}
+      </div>
+
+      {/* Tab Navigation */}
+      <div className="flex gap-2 border-b border-slate-700 pb-2">
         <button
-          onClick={openAddModal}
-          className="flex items-center gap-2 px-4 py-2 bg-cyan-500 hover:bg-cyan-600 text-white rounded-xl font-semibold transition"
+          onClick={() => setActiveTab('items')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-t-lg font-medium transition ${
+            activeTab === 'items'
+              ? 'bg-cyan-500/20 text-cyan-400 border-b-2 border-cyan-500'
+              : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
+          }`}
         >
-          <Plus className="w-5 h-5" />
-          Add Item
+          <Package className="w-4 h-4" />
+          Items
+        </button>
+        <button
+          onClick={() => setActiveTab('analytics')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-t-lg font-medium transition ${
+            activeTab === 'analytics'
+              ? 'bg-cyan-500/20 text-cyan-400 border-b-2 border-cyan-500'
+              : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
+          }`}
+        >
+          <BarChart3 className="w-4 h-4" />
+          Analytics
         </button>
       </div>
+
+      {/* Analytics Tab */}
+      {activeTab === 'analytics' && (
+        <InventoryAnalytics cafeId={cafeId} />
+      )}
+
+      {/* Items Tab Content */}
+      {activeTab === 'items' && (
+        <>
+          {/* Filters */}
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
@@ -452,6 +497,8 @@ export default function Inventory({ cafeId }: InventoryProps) {
           })}
         </div>
       )}
+      </>
+      )}
 
       {/* Add/Edit Modal */}
       {showModal && (
@@ -508,7 +555,7 @@ export default function Inventory({ cafeId }: InventoryProps) {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-300 mb-1">
-                    Price (₹)
+                    Selling Price (₹)
                   </label>
                   <input
                     type="number"
@@ -522,17 +569,32 @@ export default function Inventory({ cafeId }: InventoryProps) {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-300 mb-1">
-                    Stock Quantity
+                    Cost Price (₹)
                   </label>
                   <input
                     type="number"
-                    value={formData.stock_quantity}
-                    onChange={(e) => setFormData({ ...formData, stock_quantity: e.target.value })}
-                    placeholder="0"
+                    value={formData.cost_price}
+                    onChange={(e) => setFormData({ ...formData, cost_price: e.target.value })}
+                    placeholder="Optional"
                     min="0"
+                    step="1"
                     className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-cyan-500"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-1">
+                  Stock Quantity
+                </label>
+                <input
+                  type="number"
+                  value={formData.stock_quantity}
+                  onChange={(e) => setFormData({ ...formData, stock_quantity: e.target.value })}
+                  placeholder="0"
+                  min="0"
+                  className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-cyan-500"
+                />
               </div>
 
               <div className="flex items-center gap-3">
