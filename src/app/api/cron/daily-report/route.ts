@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { sendDailyReport } from '@/lib/email';
 
+// Daily Report Cron Job - Sends analytics email at cafe closing time
 // Use service role key for cron jobs (server-side only)
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
