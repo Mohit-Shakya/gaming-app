@@ -118,8 +118,9 @@ export default function CashDrawer({ cafeId, isOwner }: CashDrawerProps) {
           .maybeSingle();
 
         if (insertError) {
-          // Warn instead of error for RLS issues (database policy pending)
-          console.warn('Could not create cash drawer record (likely RLS policy):', insertError.message);
+          // Silent failure for RLS issues to keep console clean as requested
+          // console.warn('Could not create cash drawer record (likely RLS policy):', insertError.message);
+
           // Continue without a record - show cash sales only
           record = null;
         } else {
