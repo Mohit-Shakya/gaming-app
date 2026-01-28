@@ -25,7 +25,10 @@ export default function useUser(): UseUserResult {
         if (!isMounted) return;
 
         if (error) {
-          console.error("[useUser] getUser error:", error);
+          // Ignore "Auth session missing!" error as it just means not logged in
+          if (!error.message.includes("Auth session missing")) {
+             console.error("[useUser] getUser error:", error);
+          }
           setUser(null);
         } else {
           setUser(data.user ?? null);
