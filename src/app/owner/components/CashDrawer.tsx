@@ -261,7 +261,6 @@ export default function CashDrawer({ cafeId, isOwner }: CashDrawerProps) {
           change_left: parseFloat(changeAmount),
           collection_time: collectionTime,
           staff_verified_change: false,
-          updated_at: new Date().toISOString(),
         })
         .eq('id', drawerRecord?.id);
 
@@ -286,7 +285,6 @@ export default function CashDrawer({ cafeId, isOwner }: CashDrawerProps) {
         .update({
           staff_verified_change: true,
           staff_verified_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
         })
         .eq('id', drawerRecord?.id);
 
@@ -308,7 +306,6 @@ export default function CashDrawer({ cafeId, isOwner }: CashDrawerProps) {
         closing_verified_at: new Date().toISOString(),
         expected_closing: status.expectedClosing,
         has_discrepancy: hasDiscrepancy,
-        updated_at: new Date().toISOString(),
       };
 
       if (hasDiscrepancy && actualClosing) {
