@@ -56,6 +56,7 @@ export default function CashDrawer({ cafeId, isOwner }: CashDrawerProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [drawerRecord, setDrawerRecord] = useState<CashDrawerRecord | null>(null);
+  const [calculatedOpeningBalance, setCalculatedOpeningBalance] = useState(0); // Store calculated balance for lazy creation
   const [cashSalesToday, setCashSalesToday] = useState(0);
   const [onlineSalesToday, setOnlineSalesToday] = useState(0);
   const [totalBookingsToday, setTotalBookingsToday] = useState(0);
@@ -84,51 +85,34 @@ export default function CashDrawer({ cafeId, isOwner }: CashDrawerProps) {
     setLoading(true);
     try {
       // Get or create today's record
-      let { data: record, error } = await supabase
+      // No record for today, get yesterday's closing as opening balance
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+      const { data: yesterdayRecord } = await supabase
+        .from('cash_drawer')
+        .select('expected_closing, actual_closing')
+        .eq('cafe_id', cafeId)
+        .eq('date', yesterdayStr)
+        .maybeSingle();
+
+      const openingBalance = yesterdayRecord?.actual_closing ?? yesterdayRecord?.expected_closing ?? 0;
+      setCalculatedOpeningBalance(openingBalance);
+
+      // Fetch today's record (don't auto-create to avoid RLS 401 errors)
+      let record = null;
+      const { data: existingRecord, error } = await supabase
         .from('cash_drawer')
         .select('*')
         .eq('cafe_id', cafeId)
         .eq('date', today)
         .maybeSingle();
 
-      if (!record && !error) {
-        // No record for today, get yesterday's closing as opening balance
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        const yesterdayStr = yesterday.toISOString().split('T')[0];
-
-        const { data: yesterdayRecord } = await supabase
-          .from('cash_drawer')
-          .select('expected_closing, actual_closing')
-          .eq('cafe_id', cafeId)
-          .eq('date', yesterdayStr)
-          .maybeSingle();
-
-        const openingBalance = yesterdayRecord?.actual_closing ?? yesterdayRecord?.expected_closing ?? 0;
-
-        // Create today's record
-        const { data: newRecord, error: insertError } = await supabase
-          .from('cash_drawer')
-          .insert({
-            cafe_id: cafeId,
-            date: today,
-            opening_balance: openingBalance,
-          })
-          .select()
-          .maybeSingle();
-
-        if (insertError) {
-          // Silent failure for RLS issues to keep console clean as requested
-          // console.warn('Could not create cash drawer record (likely RLS policy):', insertError.message);
-
-          // Continue without a record - show cash sales only
-          record = null;
-        } else {
-          record = newRecord;
-        }
+      if (existingRecord) {
+        record = existingRecord;
       } else if (error) {
         console.warn('Error fetching cash drawer:', error.message);
-        record = null;
       }
 
       setDrawerRecord(record);
@@ -226,7 +210,8 @@ export default function CashDrawer({ cafeId, isOwner }: CashDrawerProps) {
 
   // Calculate expected cash in drawer
   const status = useMemo<CashDrawerStatus>(() => {
-    const openingBalance = drawerRecord?.opening_balance || 0;
+    // Use existing record's opening balance, or fall back to calculated one
+    const openingBalance = drawerRecord?.opening_balance ?? calculatedOpeningBalance;
     const hasCollected = !!drawerRecord?.collection_time;
     const changeLeft = drawerRecord?.change_left || 0;
 
@@ -256,23 +241,41 @@ export default function CashDrawer({ cafeId, isOwner }: CashDrawerProps) {
   }, [drawerRecord, cashSalesToday, cashSalesAfterCollection, today]);
 
   // Owner: Submit collection
+  // Owner: Submit collection
   const handleCollection = async () => {
     if (!collectAmount || !changeAmount) return;
     setSaving(true);
 
     try {
       const collectionTime = new Date().toISOString();
-      const { error } = await supabase
-        .from('cash_drawer')
-        .update({
-          amount_collected: parseFloat(collectAmount),
-          change_left: parseFloat(changeAmount),
-          collection_time: collectionTime,
-          staff_verified_change: false,
-        })
-        .eq('id', drawerRecord?.id);
 
-      if (error) throw error;
+      const updateData = {
+        amount_collected: parseFloat(collectAmount),
+        change_left: parseFloat(changeAmount),
+        collection_time: collectionTime,
+        staff_verified_change: false, // Reset verification on new collection
+        updated_at: new Date().toISOString()
+      };
+
+      if (drawerRecord?.id) {
+        // Update existing
+        const { error } = await supabase
+          .from('cash_drawer')
+          .update(updateData)
+          .eq('id', drawerRecord.id);
+        if (error) throw error;
+      } else {
+        // Create new (Upsert logic)
+        const { error } = await supabase
+          .from('cash_drawer')
+          .insert({
+            cafe_id: cafeId,
+            date: today,
+            opening_balance: calculatedOpeningBalance,
+            ...updateData
+          });
+        if (error) throw error;
+      }
 
       setCollectAmount('');
       setChangeAmount('');
@@ -285,18 +288,35 @@ export default function CashDrawer({ cafeId, isOwner }: CashDrawerProps) {
   };
 
   // Staff: Verify change amount
+  // Staff: Verify change amount
   const handleVerifyChange = async () => {
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from('cash_drawer')
-        .update({
-          staff_verified_change: true,
-          staff_verified_at: new Date().toISOString(),
-        })
-        .eq('id', drawerRecord?.id);
+      const updateData = {
+        staff_verified_change: true,
+        staff_verified_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
 
-      if (error) throw error;
+      if (drawerRecord?.id) {
+        const { error } = await supabase
+          .from('cash_drawer')
+          .update(updateData)
+          .eq('id', drawerRecord.id);
+        if (error) throw error;
+      } else {
+        // Create new if verifying change without prior record (unlikely flow but safe to handle)
+        const { error } = await supabase
+          .from('cash_drawer')
+          .insert({
+            cafe_id: cafeId,
+            date: today,
+            opening_balance: calculatedOpeningBalance,
+            ...updateData
+          });
+        if (error) throw error;
+      }
+
       await fetchData();
     } catch (err) {
       console.error('Error verifying change:', err);
@@ -309,11 +329,12 @@ export default function CashDrawer({ cafeId, isOwner }: CashDrawerProps) {
   const handleVerifyClosing = async (hasDiscrepancy: boolean) => {
     setSaving(true);
     try {
-      const updateData: Partial<CashDrawerRecord> = {
+      const updateData: any = { // Using any for partial flexibility
         closing_verified: true,
         closing_verified_at: new Date().toISOString(),
         expected_closing: status.expectedClosing,
         has_discrepancy: hasDiscrepancy,
+        updated_at: new Date().toISOString()
       };
 
       if (hasDiscrepancy && actualClosing) {
@@ -325,12 +346,23 @@ export default function CashDrawer({ cafeId, isOwner }: CashDrawerProps) {
         updateData.discrepancy_amount = 0;
       }
 
-      const { error } = await supabase
-        .from('cash_drawer')
-        .update(updateData)
-        .eq('id', drawerRecord?.id);
-
-      if (error) throw error;
+      if (drawerRecord?.id) {
+        const { error } = await supabase
+          .from('cash_drawer')
+          .update(updateData)
+          .eq('id', drawerRecord.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('cash_drawer')
+          .insert({
+            cafe_id: cafeId,
+            date: today,
+            opening_balance: calculatedOpeningBalance,
+            ...updateData
+          });
+        if (error) throw error;
+      }
 
       setActualClosing('');
       setDiscrepancyNote('');
