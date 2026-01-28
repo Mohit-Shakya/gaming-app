@@ -253,15 +253,9 @@ export async function GET(request: NextRequest) {
     const results: { cafeId: string; cafeName: string; success: boolean; error?: string }[] = [];
 
     for (const cafe of cafes) {
-      // Check if cafe's closing hour matches current hour
-      const closingHour = parseClosingHour(cafe.opening_hours);
-
-      // If we can't parse closing hour, default to 11 PM (23)
-      const targetHour = closingHour !== null ? closingHour : 23;
-
-      // Only send report if current hour matches closing hour
-      if (currentHour === targetHour && cafe.email) {
-        console.log(`[Daily Report Cron] Sending report for ${cafe.name} (closes at ${targetHour})`);
+      // Send report to all cafes with email (runs once daily at 11 PM IST)
+      if (cafe.email) {
+        console.log(`[Daily Report Cron] Sending report for ${cafe.name}`);
 
         try {
           const result = await generateReportForCafe(cafe.id, cafe.name, cafe.email);
