@@ -89,9 +89,9 @@ export default function CashDrawer({ cafeId, isOwner }: CashDrawerProps) {
         .select('*')
         .eq('cafe_id', cafeId)
         .eq('date', today)
-        .single();
+        .maybeSingle();
 
-      if (error && error.code === 'PGRST116') {
+      if (!record && !error) {
         // No record for today, get yesterday's closing as opening balance
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
@@ -102,7 +102,7 @@ export default function CashDrawer({ cafeId, isOwner }: CashDrawerProps) {
           .select('expected_closing, actual_closing')
           .eq('cafe_id', cafeId)
           .eq('date', yesterdayStr)
-          .single();
+          .maybeSingle();
 
         const openingBalance = yesterdayRecord?.actual_closing ?? yesterdayRecord?.expected_closing ?? 0;
 
@@ -115,7 +115,7 @@ export default function CashDrawer({ cafeId, isOwner }: CashDrawerProps) {
             opening_balance: openingBalance,
           })
           .select()
-          .single();
+          .maybeSingle();
 
         if (insertError) {
           console.error('Error creating cash drawer record:', insertError);
