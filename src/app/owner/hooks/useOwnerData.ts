@@ -275,12 +275,27 @@ export function useOwnerData(ownerId: string | null, allowed: boolean) {
         setMembershipPlans(plans || []);
 
         // 4. Fetch Subscriptions
-        const { data: subs } = await supabase
-          .from('subscriptions')
-          .select(`*, membership_plans (name, duration_days, hours_limit)`)
-          .in('cafe_id', cafeIds)
-          .order('created_at', { ascending: false });
-        setSubscriptions(subs || []);
+        // 4. Fetch Subscriptions
+        if (cafeIds.length > 0) {
+          try {
+             // Temporarily removed join to isolate error
+            const { data: subs, error: subsError } = await supabase
+              .from('subscriptions')
+              .select('*') 
+              .in('cafe_id', cafeIds)
+              .order('created_at', { ascending: false });
+
+            if (subsError) {
+              console.error('Error fetching subscriptions:', subsError);
+            } else {
+              setSubscriptions(subs || []);
+            }
+          } catch (e) {
+             console.error('Exception fetching subscriptions:', e);
+          }
+        } else {
+          setSubscriptions([]);
+        }
 
         setLoadingData(false);
       } catch (err: any) {
