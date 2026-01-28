@@ -75,6 +75,12 @@ export default function CashDrawer({ cafeId, isOwner }: CashDrawerProps) {
 
   // Fetch cash drawer data
   const fetchData = useCallback(async () => {
+    // Guard against empty cafeId (can happen before cafes load)
+    if (!cafeId) {
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     try {
       // Get or create today's record
