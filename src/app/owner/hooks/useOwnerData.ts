@@ -279,7 +279,7 @@ export function useOwnerData(ownerId: string | null, allowed: boolean) {
           .from('subscriptions')
           .select(`*, membership_plans (name, duration_days, hours_limit)`)
           .in('cafe_id', cafeIds)
-          .order ('created_at', { ascending: false });
+          .order('created_at', { ascending: false });
         setSubscriptions(subs || []);
 
         setLoadingData(false);

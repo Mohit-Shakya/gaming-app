@@ -41,6 +41,7 @@ import {
   Reports
 } from './components';
 import Inventory from './components/Inventory';
+import CashDrawer from './components/CashDrawer';
 import AddItemsModal from './components/AddItemsModal';
 import ViewOrdersModal from './components/ViewOrdersModal';
 import OwnerPWAInstaller from './components/OwnerPWAInstaller';
@@ -4751,6 +4752,14 @@ export default function OwnerDashboardPage() {
           {activeTab === 'inventory' && (
             <Inventory
               cafeId={selectedCafeId || cafes[0]?.id || ''}
+            />
+          )}
+
+          {/* Cash Drawer Tab */}
+          {activeTab === 'cash-drawer' && (
+            <CashDrawer
+              cafeId={selectedCafeId || cafes[0]?.id || ''}
+              isOwner={true}
             />
           )}
 
