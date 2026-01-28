@@ -108,13 +108,13 @@ export function Memberships({
                 plan_type: newPlanType,
                 console_type: newPlanConsoleType,
                 player_count: newPlanPlayerCount,
-                cafe_id: subscriptions[0]?.membership_plans?.id ? null : (await supabase.auth.getSession()).data.session?.user.id // Fallback needed
+                cafe_id: null // We'll set this below
             };
 
-            // We need cafe_id logic here, in a real app it's passed down or fetched. 
-            // Assuming for now simple insert/update.
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) throw new Error('Not authenticated');
+            // Get current user safely
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session?.user) throw new Error('Not authenticated');
+            const user = session.user;
 
             // Get cafe_id (optimistically assuming first cafe if available or user metadata)
             // Ideally we should pass cafeId as prop. 
