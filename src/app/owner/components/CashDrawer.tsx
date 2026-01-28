@@ -57,6 +57,7 @@ export default function CashDrawer({ cafeId, isOwner }: CashDrawerProps) {
   const [saving, setSaving] = useState(false);
   const [drawerRecord, setDrawerRecord] = useState<CashDrawerRecord | null>(null);
   const [calculatedOpeningBalance, setCalculatedOpeningBalance] = useState(0); // Store calculated balance for lazy creation
+  const [actionError, setActionError] = useState<string | null>(null);
   const [cashSalesToday, setCashSalesToday] = useState(0);
   const [onlineSalesToday, setOnlineSalesToday] = useState(0);
   const [totalBookingsToday, setTotalBookingsToday] = useState(0);
@@ -245,6 +246,7 @@ export default function CashDrawer({ cafeId, isOwner }: CashDrawerProps) {
   const handleCollection = async () => {
     if (!collectAmount || !changeAmount) return;
     setSaving(true);
+    setActionError(null);
 
     try {
       const collectionTime = new Date().toISOString();
@@ -280,8 +282,9 @@ export default function CashDrawer({ cafeId, isOwner }: CashDrawerProps) {
       setCollectAmount('');
       setChangeAmount('');
       await fetchData();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error saving collection:', err);
+      setActionError(err.message || 'Failed to save collection. Check database permissions.');
     } finally {
       setSaving(false);
     }
@@ -291,6 +294,7 @@ export default function CashDrawer({ cafeId, isOwner }: CashDrawerProps) {
   // Staff: Verify change amount
   const handleVerifyChange = async () => {
     setSaving(true);
+    setActionError(null);
     try {
       const updateData = {
         staff_verified_change: true,
@@ -318,8 +322,9 @@ export default function CashDrawer({ cafeId, isOwner }: CashDrawerProps) {
       }
 
       await fetchData();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error verifying change:', err);
+      setActionError(err.message || 'Failed to verify change.');
     } finally {
       setSaving(false);
     }
@@ -328,6 +333,7 @@ export default function CashDrawer({ cafeId, isOwner }: CashDrawerProps) {
   // Staff: Verify closing (matches expected)
   const handleVerifyClosing = async (hasDiscrepancy: boolean) => {
     setSaving(true);
+    setActionError(null);
     try {
       const updateData: any = { // Using any for partial flexibility
         closing_verified: true,
@@ -367,8 +373,9 @@ export default function CashDrawer({ cafeId, isOwner }: CashDrawerProps) {
       setActualClosing('');
       setDiscrepancyNote('');
       await fetchData();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error verifying closing:', err);
+      setActionError(err.message || 'Failed to verify closing.');
     } finally {
       setSaving(false);
     }
@@ -557,6 +564,12 @@ export default function CashDrawer({ cafeId, isOwner }: CashDrawerProps) {
             </div>
           )}
 
+          {actionError && (
+            <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-sm text-red-400">
+              Error: {actionError}
+            </div>
+          )}
+
           <button
             onClick={handleCollection}
             disabled={saving || !collectAmount || !changeAmount}
@@ -611,6 +624,12 @@ export default function CashDrawer({ cafeId, isOwner }: CashDrawerProps) {
           </div>
 
           {/* Staff Verification Button */}
+          {actionError && !isOwner && !status.staffVerifiedChange && (
+            <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-sm text-red-400">
+              Error: {actionError}
+            </div>
+          )}
+
           {!status.staffVerifiedChange && !isOwner && (
             <button
               onClick={handleVerifyChange}
@@ -663,6 +682,12 @@ export default function CashDrawer({ cafeId, isOwner }: CashDrawerProps) {
               {formatCurrency(status.changeLeft || 0)} (change) + {formatCurrency(status.cashSalesAfterCollection)} (sales after collection)
             </p>
           </div>
+
+          {actionError && !actualClosing && (
+            <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-sm text-red-400">
+              Error: {actionError}
+            </div>
+          )}
 
           <div className="flex flex-col md:flex-row gap-4">
             <button
@@ -717,6 +742,12 @@ export default function CashDrawer({ cafeId, isOwner }: CashDrawerProps) {
                   className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-red-500 resize-none"
                 />
               </div>
+              {actionError && (
+                <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-sm text-red-400">
+                  Error: {actionError}
+                </div>
+              )}
+
               <button
                 onClick={() => handleVerifyClosing(true)}
                 disabled={saving || !actualClosing}
@@ -730,117 +761,121 @@ export default function CashDrawer({ cafeId, isOwner }: CashDrawerProps) {
       )}
 
       {/* Day Closed Summary */}
-      {status.closingVerified && (
-        <div className={`rounded-2xl border p-6 ${status.hasDiscrepancy ? 'bg-red-900/20 border-red-500/30' : 'bg-green-900/20 border-green-500/30'}`}>
-          <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-            {status.hasDiscrepancy ? (
-              <>
-                <AlertCircle className="w-5 h-5 text-red-500" />
-                Day Closed with Discrepancy
-              </>
-            ) : (
-              <>
-                <CheckCircle2 className="w-5 h-5 text-green-500" />
-                Day Closed Successfully
-              </>
-            )}
-          </h3>
+      {
+        status.closingVerified && (
+          <div className={`rounded-2xl border p-6 ${status.hasDiscrepancy ? 'bg-red-900/20 border-red-500/30' : 'bg-green-900/20 border-green-500/30'}`}>
+            <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+              {status.hasDiscrepancy ? (
+                <>
+                  <AlertCircle className="w-5 h-5 text-red-500" />
+                  Day Closed with Discrepancy
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="w-5 h-5 text-green-500" />
+                  Day Closed Successfully
+                </>
+              )}
+            </h3>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            <div className="bg-slate-800/50 rounded-xl p-4">
-              <p className="text-xs text-slate-400 mb-1">Expected</p>
-              <p className="text-lg font-semibold text-white">
-                {formatCurrency(status.expectedClosing)}
-              </p>
-            </div>
-            <div className="bg-slate-800/50 rounded-xl p-4">
-              <p className="text-xs text-slate-400 mb-1">Actual</p>
-              <p className="text-lg font-semibold text-white">
-                {formatCurrency(drawerRecord?.actual_closing || status.expectedClosing)}
-              </p>
-            </div>
-            {status.hasDiscrepancy && (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <div className="bg-slate-800/50 rounded-xl p-4">
-                <p className="text-xs text-slate-400 mb-1">Discrepancy</p>
-                <p className={`text-lg font-semibold ${(status.discrepancyAmount || 0) > 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  {(status.discrepancyAmount || 0) > 0 ? '+' : ''}{formatCurrency(status.discrepancyAmount || 0)}
+                <p className="text-xs text-slate-400 mb-1">Expected</p>
+                <p className="text-lg font-semibold text-white">
+                  {formatCurrency(status.expectedClosing)}
                 </p>
               </div>
-            )}
-          </div>
-
-          {drawerRecord?.discrepancy_note && (
-            <div className="mt-4 p-3 bg-slate-800/50 rounded-lg">
-              <p className="text-xs text-slate-400 mb-1">Note:</p>
-              <p className="text-sm text-white">{drawerRecord.discrepancy_note}</p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* History Section (Owner Only) */}
-      {isOwner && (
-        <div className="bg-slate-900/50 rounded-2xl border border-slate-700/50">
-          <button
-            onClick={() => setShowHistory(!showHistory)}
-            className="w-full px-6 py-4 flex items-center justify-between text-left"
-          >
-            <div className="flex items-center gap-3">
-              <History className="w-5 h-5 text-slate-400" />
-              <span className="text-lg font-semibold text-white">History</span>
-              <span className="text-sm text-slate-500">Last 30 days</span>
-            </div>
-            {showHistory ? (
-              <ChevronUp className="w-5 h-5 text-slate-400" />
-            ) : (
-              <ChevronDown className="w-5 h-5 text-slate-400" />
-            )}
-          </button>
-
-          {showHistory && (
-            <div className="px-6 pb-6">
-              {history.length === 0 ? (
-                <p className="text-slate-500 text-center py-8">No history available</p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="text-left text-xs text-slate-500 uppercase">
-                        <th className="pb-3">Date</th>
-                        <th className="pb-3">Collected</th>
-                        <th className="pb-3">Change Left</th>
-                        <th className="pb-3">Closing</th>
-                        <th className="pb-3">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="text-sm">
-                      {history.map((h) => (
-                        <tr key={h.id} className="border-t border-slate-800">
-                          <td className="py-3 text-white">{formatDate(h.date)}</td>
-                          <td className="py-3 text-green-400">{formatCurrency(h.amountCollected)}</td>
-                          <td className="py-3 text-blue-400">{formatCurrency(h.changeLeft)}</td>
-                          <td className="py-3 text-white">{formatCurrency(h.actualClosing || h.expectedClosing)}</td>
-                          <td className="py-3">
-                            {h.hasDiscrepancy ? (
-                              <span className="px-2 py-1 text-xs rounded-full bg-red-500/20 text-red-400">
-                                {h.discrepancyAmount && h.discrepancyAmount > 0 ? '+' : ''}{formatCurrency(h.discrepancyAmount || 0)}
-                              </span>
-                            ) : (
-                              <span className="px-2 py-1 text-xs rounded-full bg-green-500/20 text-green-400">
-                                OK
-                              </span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+              <div className="bg-slate-800/50 rounded-xl p-4">
+                <p className="text-xs text-slate-400 mb-1">Actual</p>
+                <p className="text-lg font-semibold text-white">
+                  {formatCurrency(drawerRecord?.actual_closing || status.expectedClosing)}
+                </p>
+              </div>
+              {status.hasDiscrepancy && (
+                <div className="bg-slate-800/50 rounded-xl p-4">
+                  <p className="text-xs text-slate-400 mb-1">Discrepancy</p>
+                  <p className={`text-lg font-semibold ${(status.discrepancyAmount || 0) > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                    {(status.discrepancyAmount || 0) > 0 ? '+' : ''}{formatCurrency(status.discrepancyAmount || 0)}
+                  </p>
                 </div>
               )}
             </div>
-          )}
-        </div>
-      )}
-    </div>
+
+            {drawerRecord?.discrepancy_note && (
+              <div className="mt-4 p-3 bg-slate-800/50 rounded-lg">
+                <p className="text-xs text-slate-400 mb-1">Note:</p>
+                <p className="text-sm text-white">{drawerRecord.discrepancy_note}</p>
+              </div>
+            )}
+          </div>
+        )
+      }
+
+      {/* History Section (Owner Only) */}
+      {
+        isOwner && (
+          <div className="bg-slate-900/50 rounded-2xl border border-slate-700/50">
+            <button
+              onClick={() => setShowHistory(!showHistory)}
+              className="w-full px-6 py-4 flex items-center justify-between text-left"
+            >
+              <div className="flex items-center gap-3">
+                <History className="w-5 h-5 text-slate-400" />
+                <span className="text-lg font-semibold text-white">History</span>
+                <span className="text-sm text-slate-500">Last 30 days</span>
+              </div>
+              {showHistory ? (
+                <ChevronUp className="w-5 h-5 text-slate-400" />
+              ) : (
+                <ChevronDown className="w-5 h-5 text-slate-400" />
+              )}
+            </button>
+
+            {showHistory && (
+              <div className="px-6 pb-6">
+                {history.length === 0 ? (
+                  <p className="text-slate-500 text-center py-8">No history available</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="text-left text-xs text-slate-500 uppercase">
+                          <th className="pb-3">Date</th>
+                          <th className="pb-3">Collected</th>
+                          <th className="pb-3">Change Left</th>
+                          <th className="pb-3">Closing</th>
+                          <th className="pb-3">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="text-sm">
+                        {history.map((h) => (
+                          <tr key={h.id} className="border-t border-slate-800">
+                            <td className="py-3 text-white">{formatDate(h.date)}</td>
+                            <td className="py-3 text-green-400">{formatCurrency(h.amountCollected)}</td>
+                            <td className="py-3 text-blue-400">{formatCurrency(h.changeLeft)}</td>
+                            <td className="py-3 text-white">{formatCurrency(h.actualClosing || h.expectedClosing)}</td>
+                            <td className="py-3">
+                              {h.hasDiscrepancy ? (
+                                <span className="px-2 py-1 text-xs rounded-full bg-red-500/20 text-red-400">
+                                  {h.discrepancyAmount && h.discrepancyAmount > 0 ? '+' : ''}{formatCurrency(h.discrepancyAmount || 0)}
+                                </span>
+                              ) : (
+                                <span className="px-2 py-1 text-xs rounded-full bg-green-500/20 text-green-400">
+                                  OK
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )
+      }
+    </div >
   );
 }
