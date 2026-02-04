@@ -76,6 +76,7 @@ export function useBilling({
       "vr": "VR",
       "steering": "Steering",
       "steering_wheel": "Steering",
+      "racing_sim": "Racing Sim",
     };
     const stationType = stationTypeMap[consoleType] || consoleType;
 
@@ -281,7 +282,8 @@ export function useBilling({
           snooker_count,
           arcade_count,
           vr_count,
-          steering_wheel_count
+          steering_wheel_count,
+          racing_sim_count
         `)
         .eq("id", selectedCafeId)
         .single();
@@ -297,6 +299,7 @@ export function useBilling({
         if (data.arcade_count > 0) available.push("arcade");
         if (data.vr_count > 0) available.push("vr");
         if (data.steering_wheel_count > 0) available.push("steering");
+        if (data.racing_sim_count > 0) available.push("racing_sim");
         setAvailableConsoles(available);
       }
     }

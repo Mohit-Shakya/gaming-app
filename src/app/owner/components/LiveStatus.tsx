@@ -7,7 +7,7 @@ import { Card, StatusBadge, Button, LoadingSpinner, EmptyState } from './ui';
 import { MonitorPlay, Clock, User, Calendar, AlertCircle } from 'lucide-react';
 
 // Types
-type ConsoleId = "ps5" | "ps4" | "xbox" | "pc" | "pool" | "arcade" | "snooker" | "vr" | "steering";
+type ConsoleId = "ps5" | "ps4" | "xbox" | "pc" | "pool" | "arcade" | "snooker" | "vr" | "steering" | "racing_sim";
 
 type CafeConsoleCounts = {
     ps5_count: number;
@@ -19,6 +19,7 @@ type CafeConsoleCounts = {
     snooker_count: number;
     vr_count: number;
     steering_wheel_count: number;
+    racing_sim_count: number;
 };
 
 type BookingData = {
@@ -74,7 +75,7 @@ export function LiveStatus({ cafeId, isMobile = false }: LiveStatusProps) {
             // Get cafe data
             const { data: cafe, error: cafeError } = await supabase
                 .from("cafes")
-                .select("ps5_count, ps4_count, xbox_count, pc_count, pool_count, arcade_count, snooker_count, vr_count, steering_wheel_count")
+                .select("ps5_count, ps4_count, xbox_count, pc_count, pool_count, arcade_count, snooker_count, vr_count, steering_wheel_count, racing_sim_count")
                 .eq("id", cafeId)
                 .single();
 
@@ -166,6 +167,7 @@ export function LiveStatus({ cafeId, isMobile = false }: LiveStatusProps) {
             { id: "snooker", key: "snooker_count" },
             { id: "vr", key: "vr_count" },
             { id: "steering", key: "steering_wheel_count" },
+            { id: "racing_sim", key: "racing_sim_count" },
         ];
 
         const summaries: ConsoleSummary[] = [];
@@ -205,7 +207,8 @@ export function LiveStatus({ cafeId, isMobile = false }: LiveStatusProps) {
             const consoleBookings: Array<BookingData & { quantity: number; controllerCount: number }> = [];
             activeBookings.forEach(b => {
                 const matchingItems = b.booking_items?.filter(item => {
-                    const itemConsole = (item.console as string) === 'steering_wheel' ? 'steering' : item.console;
+                    const rawConsole = item.console as string;
+                    const itemConsole = rawConsole === 'steering_wheel' ? 'steering' : rawConsole;
                     return itemConsole === id;
                 }) || [];
                 matchingItems.forEach(item => {
@@ -223,7 +226,7 @@ export function LiveStatus({ cafeId, isMobile = false }: LiveStatusProps) {
             // Memberships
             const consoleTypeMap: Record<string, ConsoleId> = {
                 'PC': 'pc', 'PS5': 'ps5', 'PS4': 'ps4', 'Xbox': 'xbox',
-                'Pool': 'pool', 'Snooker': 'snooker', 'Arcade': 'arcade', 'VR': 'vr', 'Steering': 'steering'
+                'Pool': 'pool', 'Snooker': 'snooker', 'Arcade': 'arcade', 'VR': 'vr', 'Steering': 'steering', 'Racing Sim': 'racing_sim'
             };
 
             const consoleMemberships = memberships.filter(m => {

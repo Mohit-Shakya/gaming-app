@@ -49,6 +49,7 @@ export type CafeRow = {
   arcade_count?: number | null;
   vr_count?: number | null;
   steering_wheel_count?: number | null;
+  racing_sim_count?: number | null;
   created_at?: string | null;
   updated_at?: string | null;
   user_id?: string | null;

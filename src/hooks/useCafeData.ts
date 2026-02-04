@@ -77,7 +77,7 @@ export function useCafeData(cafeId: string | null): CafeData {
         const { data, error: cafeError } = await supabase
           .from("cafes")
           .select(
-            "id, name, slug, hourly_price, price_starts_from, google_maps_url, instagram_url, ps5_count, ps4_count, xbox_count, pc_count, pool_count, arcade_count, snooker_count, vr_count, steering_wheel_count"
+            "id, name, slug, hourly_price, price_starts_from, google_maps_url, instagram_url, ps5_count, ps4_count, xbox_count, pc_count, pool_count, arcade_count, snooker_count, vr_count, steering_wheel_count, racing_sim_count"
           )
           .eq(isUUID ? "id" : "slug", cafeId)
           .maybeSingle();

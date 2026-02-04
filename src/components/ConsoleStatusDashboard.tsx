@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { colors, fonts, CONSOLE_LABELS, CONSOLE_ICONS } from "@/lib/constants";
 import { logger } from "@/lib/logger";
 
-type ConsoleId = "ps5" | "ps4" | "xbox" | "pc" | "pool" | "arcade" | "snooker" | "vr" | "steering";
+type ConsoleId = "ps5" | "ps4" | "xbox" | "pc" | "pool" | "arcade" | "snooker" | "vr" | "steering" | "racing_sim";
 
 type CafeConsoleCounts = {
   ps5_count: number;
@@ -18,6 +18,7 @@ type CafeConsoleCounts = {
   snooker_count: number;
   vr_count: number;
   steering_wheel_count: number;
+  racing_sim_count: number;
 };
 
 type BookingData = {
@@ -119,7 +120,7 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
       // Get cafe data
       const { data: cafe, error: cafeError } = await supabase
         .from("cafes")
-        .select("ps5_count, ps4_count, xbox_count, pc_count, pool_count, arcade_count, snooker_count, vr_count, steering_wheel_count")
+        .select("ps5_count, ps4_count, xbox_count, pc_count, pool_count, arcade_count, snooker_count, vr_count, steering_wheel_count, racing_sim_count")
         .eq("id", cafeId)
         .single();
 
@@ -224,6 +225,7 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
       { id: "snooker", key: "snooker_count" },
       { id: "vr", key: "vr_count" },
       { id: "steering", key: "steering_wheel_count" },
+      { id: "racing_sim", key: "racing_sim_count" },
     ];
 
     const summaries: ConsoleSummary[] = [];
@@ -279,7 +281,8 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
         'Snooker': 'snooker',
         'Arcade': 'arcade',
         'VR': 'vr',
-        'Steering': 'steering'
+        'Steering': 'steering',
+        'Racing Sim': 'racing_sim'
       };
 
       // Get memberships for this console type

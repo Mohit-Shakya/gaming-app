@@ -9,7 +9,8 @@ export type ConsoleId =
   | "arcade"
   | "snooker"
   | "vr"
-  | "steering";
+  | "steering"
+  | "racing_sim";
 
 export const colors = {
   red: "#ff073a",
@@ -42,6 +43,7 @@ export const CONSOLE_DB_KEYS: Record<ConsoleId, string> = {
   snooker: "snooker_count",
   vr: "vr_count",
   steering: "steering_wheel_count",
+  racing_sim: "racing_sim_count",
 } as const;
 
 export const CONSOLE_LABELS: Record<ConsoleId, string> = {
@@ -53,7 +55,8 @@ export const CONSOLE_LABELS: Record<ConsoleId, string> = {
   arcade: "Arcade Machine",
   snooker: "Snooker",
   vr: "VR",
-  steering: "Racing Setup",
+  steering: "Steering Wheel",
+  racing_sim: "Racing Sim",
 } as const;
 
 export const CONSOLE_ICONS: Record<ConsoleId, string> = {
@@ -66,6 +69,7 @@ export const CONSOLE_ICONS: Record<ConsoleId, string> = {
   snooker: "🎱",
   vr: "🥽",
   steering: "🏎️",
+  racing_sim: "🏁",
 } as const;
 
 export const CONSOLE_COLORS: Record<ConsoleId, string> = {
@@ -78,6 +82,7 @@ export const CONSOLE_COLORS: Record<ConsoleId, string> = {
   snooker: "#228b22",
   vr: "#9945ff",
   steering: "#e10600",
+  racing_sim: "#ff4500",
 } as const;
 
 // Booking constants

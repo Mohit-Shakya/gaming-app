@@ -71,6 +71,9 @@ export default function CafeForm({ mode, cafe }: CafeFormProps) {
   const [wheelCount, setWheelCount] = useState<string>(
     cafe?.steering_wheel_count?.toString() ?? "0"
   );
+  const [racingSimCount, setRacingSimCount] = useState<string>(
+    (cafe as any)?.racing_sim_count?.toString() ?? "0"
+  );
   const [vrCount, setVrCount] = useState<string>(
     cafe?.vr_count?.toString() ?? "0"
   );
@@ -243,6 +246,7 @@ export default function CafeForm({ mode, cafe }: CafeFormProps) {
         // NEW fields
         snooker_count: snookerCount ? Number(snookerCount) : 0,
         steering_wheel_count: wheelCount ? Number(wheelCount) : 0,
+        racing_sim_count: racingSimCount ? Number(racingSimCount) : 0,
         vr_count: vrCount ? Number(vrCount) : 0,
 
         opening_hours: detailsOpeningHours || null,

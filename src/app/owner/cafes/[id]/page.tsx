@@ -23,6 +23,7 @@ type CafeFormData = {
   arcade_count: number;
   snooker_count: number;
   steering_wheel_count: number;
+  racing_sim_count: number;
   vr_count: number;
   opening_hours: string;
   peak_hours: string;
@@ -58,7 +59,8 @@ const CONSOLE_TYPES = [
   { id: "snooker", label: "Snooker", icon: "🎱", maxQty: 2 },
   { id: "arcade", label: "Arcade", icon: "🕹️", maxQty: 4 },
   { id: "vr", label: "VR", icon: "🥽", maxQty: 4 },
-  { id: "steering_wheel", label: "Racing", icon: "🏎️", maxQty: 4 },
+  { id: "steering_wheel", label: "Steering Wheel", icon: "🏎️", maxQty: 4 },
+  { id: "racing_sim", label: "Racing Sim", icon: "🏁", maxQty: 4 },
 ];
 
 export default function OwnerCafeEditPage() {
@@ -91,6 +93,7 @@ export default function OwnerCafeEditPage() {
     arcade_count: 0,
     snooker_count: 0,
     steering_wheel_count: 0,
+    racing_sim_count: 0,
     vr_count: 0,
     opening_hours: "10:00 AM - 11:00 PM",
     peak_hours: "6:00 PM - 10:00 PM",
@@ -181,6 +184,7 @@ export default function OwnerCafeEditPage() {
             arcade_count: cafe.arcade_count || 0,
             snooker_count: cafe.snooker_count || 0,
             steering_wheel_count: cafe.steering_wheel_count || 0,
+            racing_sim_count: cafe.racing_sim_count || 0,
             vr_count: cafe.vr_count || 0,
             opening_hours: cafe.opening_hours || "10:00 AM - 11:00 PM",
             peak_hours: cafe.peak_hours || "6:00 PM - 10:00 PM",
@@ -801,11 +805,21 @@ export default function OwnerCafeEditPage() {
                   />
                 </FormField>
 
-                <FormField label="Racing Simulators">
+                <FormField label="Steering Wheel">
                   <input
                     type="number"
                     value={formData.steering_wheel_count}
                     onChange={(e) => setFormData({ ...formData, steering_wheel_count: parseInt(e.target.value) || 0 })}
+                    min="0"
+                    style={inputStyle}
+                  />
+                </FormField>
+
+                <FormField label="Racing Sim">
+                  <input
+                    type="number"
+                    value={formData.racing_sim_count}
+                    onChange={(e) => setFormData({ ...formData, racing_sim_count: parseInt(e.target.value) || 0 })}
                     min="0"
                     style={inputStyle}
                   />

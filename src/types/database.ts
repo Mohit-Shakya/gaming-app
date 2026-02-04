@@ -42,6 +42,7 @@ export interface CafeRow {
   snooker_count?: number | null;
   vr_count?: number | null;
   steering_wheel_count?: number | null;
+  racing_sim_count?: number | null;
 
   // Additional details
   opening_hours?: string | null;

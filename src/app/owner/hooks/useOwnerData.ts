@@ -91,7 +91,7 @@ export function useOwnerData(ownerId: string | null, allowed: boolean) {
             id, name, slug, address, description, phone, email, opening_hours, hourly_price,
             google_maps_url, instagram_url, cover_url, price_starts_from,
             monitor_details, processor_details, gpu_details, ram_details, accessories_details,
-            ps5_count, ps4_count, xbox_count, pc_count, pool_count, snooker_count, arcade_count, vr_count, steering_wheel_count,
+            ps5_count, ps4_count, xbox_count, pc_count, pool_count, snooker_count, arcade_count, vr_count, steering_wheel_count, racing_sim_count,
             created_at, is_active, peak_hours, popular_games, offers
           `)
           .eq("owner_id", ownerId)

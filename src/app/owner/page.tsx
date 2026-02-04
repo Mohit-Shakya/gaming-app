@@ -730,6 +730,7 @@ export default function OwnerDashboardPage() {
       else if (cafe?.arcade_count && cafe.arcade_count > 0) consoleType = 'arcade';
       else if (cafe?.vr_count && cafe.vr_count > 0) consoleType = 'vr';
       else if (cafe?.steering_wheel_count && cafe.steering_wheel_count > 0) consoleType = 'steering_wheel';
+      else if ((cafe as any)?.racing_sim_count && (cafe as any).racing_sim_count > 0) consoleType = 'racing_sim';
     }
     const controllers = actualBooking.booking_items?.[0]?.quantity || 1;
     setEditConsole(consoleType);
@@ -1220,7 +1221,8 @@ export default function OwnerDashboardPage() {
       'Snooker': 'snooker_count',
       'Arcade': 'arcade_count',
       'VR': 'vr_count',
-      'Steering': 'steering_wheel_count'
+      'Steering': 'steering_wheel_count',
+      'Racing Sim': 'racing_sim_count'
     };
 
     const countField = consoleCountMap[consoleType];
@@ -4368,6 +4370,8 @@ export default function OwnerDashboardPage() {
                     <option value="PS4">PS4</option>
                     <option value="Xbox">Xbox</option>
                     <option value="VR">VR</option>
+                    <option value="Steering">Steering Wheel</option>
+                    <option value="Racing Sim">Racing Sim</option>
                   </select>
 
                   {/* Status Filter */}
@@ -4467,7 +4471,8 @@ export default function OwnerDashboardPage() {
                         { key: 'ps4_count', name: 'PS4', icon: '🎮', bgColor: 'rgba(139, 92, 246, 0.15)', color: '#8b5cf6', rate: '₹100 Single / ₹200 Multi' },
                         { key: 'xbox_count', name: 'Xbox', icon: '🎮', bgColor: 'rgba(34, 197, 94, 0.15)', color: '#22c55e', rate: '₹120 Single / ₹240 Multi' },
                         { key: 'vr_count', name: 'VR', icon: '🥽', bgColor: 'rgba(236, 72, 153, 0.15)', color: '#ec4899', rate: '₹200/hr' },
-                        { key: 'steering_wheel_count', name: 'Steering', icon: '🏎️', bgColor: 'rgba(251, 146, 60, 0.15)', color: '#fb923c', rate: '₹150/hr' },
+                        { key: 'steering_wheel_count', name: 'Steering Wheel', icon: '🏎️', bgColor: 'rgba(251, 146, 60, 0.15)', color: '#fb923c', rate: '₹150/hr' },
+                        { key: 'racing_sim_count', name: 'Racing Sim', icon: '🏁', bgColor: 'rgba(255, 69, 0, 0.15)', color: '#ff4500', rate: '₹150/hr' },
                         { key: 'pool_count', name: 'Pool', icon: '🎱', bgColor: 'rgba(14, 165, 233, 0.15)', color: '#0ea5e9', rate: '₹80/hr' },
                         { key: 'snooker_count', name: 'Snooker', icon: '🎱', bgColor: 'rgba(132, 204, 22, 0.15)', color: '#84cc16', rate: '₹80/hr' },
                         { key: 'arcade_count', name: 'Arcade', icon: '🕹️', bgColor: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', rate: '₹50/hr' },
@@ -6459,7 +6464,10 @@ export default function OwnerDashboardPage() {
                             <option value="vr">🥽 VR</option>
                           )}
                           {cafes.length > 0 && cafes[0].steering_wheel_count && cafes[0].steering_wheel_count > 0 && (
-                            <option value="steering_wheel">🏎️ Racing</option>
+                            <option value="steering_wheel">🏎️ Steering Wheel</option>
+                          )}
+                          {cafes.length > 0 && (cafes[0] as any).racing_sim_count && (cafes[0] as any).racing_sim_count > 0 && (
+                            <option value="racing_sim">🏁 Racing Sim</option>
                           )}
                         </select>
                       </div>
@@ -7774,7 +7782,8 @@ export default function OwnerDashboardPage() {
                     <option value="snooker">Snooker Table</option>
                     <option value="arcade">Arcade Machine</option>
                     <option value="vr">VR Station</option>
-                    <option value="steering_wheel">Racing Wheel</option>
+                    <option value="steering_wheel">Steering Wheel</option>
+                    <option value="racing_sim">Racing Sim</option>
                   </select>
                 </div>
 

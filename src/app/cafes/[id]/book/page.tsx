@@ -165,6 +165,13 @@ const CONSOLES: ConsoleOption[] = [
     color: CONSOLE_COLORS.steering,
     dbKey: CONSOLE_DB_KEYS.steering
   },
+  {
+    id: "racing_sim",
+    label: CONSOLE_LABELS.racing_sim,
+    icon: <Car className="w-5 h-5" />,
+    color: CONSOLE_COLORS.racing_sim,
+    dbKey: CONSOLE_DB_KEYS.racing_sim
+  },
 ];
 
 // ============ HELPER FUNCTIONS ============
@@ -264,7 +271,7 @@ function generateTickets(
 
   const maxConsoles = ["pool", "snooker"].includes(consoleId)
     ? 2
-    : ["pc", "vr", "steering"].includes(consoleId)
+    : ["pc", "vr", "steering", "racing_sim"].includes(consoleId)
       ? 1
       : 4;
 
@@ -386,7 +393,7 @@ function BookingPageContent() {
         const { data, error } = await supabase
           .from("cafes")
           .select(
-            "id, name, slug, hourly_price, google_maps_url, instagram_url, ps5_count, ps4_count, xbox_count, pc_count, pool_count, arcade_count, snooker_count, vr_count, steering_wheel_count"
+            "id, name, slug, hourly_price, google_maps_url, instagram_url, ps5_count, ps4_count, xbox_count, pc_count, pool_count, arcade_count, snooker_count, vr_count, steering_wheel_count, racing_sim_count"
           )
           .eq(isUUID ? "id" : "slug", cafeId)
           .maybeSingle();
@@ -2454,7 +2461,7 @@ async function checkBookingCapacityWithOverlap(options: {
   const { data: cafeRow, error: cafeError } = await supabase
     .from("cafes")
     .select(
-      "id, ps5_count, ps4_count, xbox_count, pc_count, pool_count, arcade_count, snooker_count, vr_count, steering_wheel_count"
+      "id, ps5_count, ps4_count, xbox_count, pc_count, pool_count, arcade_count, snooker_count, vr_count, steering_wheel_count, racing_sim_count"
     )
     .eq(isUUID ? "id" : "slug", cafeId)
     .maybeSingle();

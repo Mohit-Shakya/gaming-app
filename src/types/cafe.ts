@@ -16,7 +16,8 @@ export type Cafe = {
   arcade_count?: number | null;
 
   // NEW
-  steering_wheel_count?: number | null; // racing rigs
+  steering_wheel_count?: number | null; // steering wheel setup
+  racing_sim_count?: number | null;     // racing simulator
   vr_count?: number | null;             // VR setups
   snooker_count?: number | null;        // snooker tables
 

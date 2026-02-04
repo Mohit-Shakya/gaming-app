@@ -36,6 +36,7 @@ const CONSOLE_CONFIG: {
     | "arcade_count"
     | "snooker_count"
     | "steering_wheel_count"
+    | "racing_sim_count"
     | "vr_count";
   label: string;
   icon: string;
@@ -48,7 +49,8 @@ const CONSOLE_CONFIG: {
   { key: "pool_count", label: "Pool", icon: "cpu", color: "#8b4513" },
   { key: "arcade_count", label: "Arcade", icon: "gamepad", color: "#ff6b00" },
   { key: "snooker_count", label: "Snooker", icon: "cpu", color: "#228b22" },
-  { key: "steering_wheel_count", label: "Racing", icon: "steering", color: "#e10600" },
+  { key: "steering_wheel_count", label: "Steering Wheel", icon: "steering", color: "#e10600" },
+  { key: "racing_sim_count", label: "Racing Sim", icon: "racing_sim", color: "#ff4500" },
   { key: "vr_count", label: "VR", icon: "vr", color: "#9945ff" },
 ];
 
@@ -126,6 +128,7 @@ export default async function CafePage({ params }: CafePageProps) {
       arcade_count,
       snooker_count,
       steering_wheel_count,
+      racing_sim_count,
       vr_count,
       opening_hours,
       peak_hours,
@@ -210,6 +213,7 @@ export default async function CafePage({ params }: CafePageProps) {
       case "cpu":
         return <Cpu size={16} style={baseStyle} />;
       case "steering":
+      case "racing_sim":
         return <Car size={16} style={baseStyle} />;
       default:
         return <Gamepad size={16} style={baseStyle} />;

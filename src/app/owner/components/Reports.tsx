@@ -485,8 +485,9 @@ export function Reports({ cafeId, isMobile }: ReportsProps) {
             'xbox': 'Xbox Series',
             'pc': 'Gaming PC',
             'vr': 'VR Headset',
-            'steering': 'Racing Sim',
-            'steering_wheel': 'Racing Sim',
+            'steering': 'Steering Wheel',
+            'steering_wheel': 'Steering Wheel',
+            'racing_sim': 'Racing Sim',
         };
         return nameMap[name.toLowerCase()] || name.charAt(0).toUpperCase() + name.slice(1);
     };

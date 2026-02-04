@@ -22,6 +22,7 @@ type CafeData = {
   arcade_count: number;
   snooker_count: number;
   steering_wheel_count: number;
+  racing_sim_count: number;
   vr_count: number;
   opening_hours: string;
   peak_hours: string;
@@ -106,6 +107,7 @@ export default function ManageCafes({ openNewCafe = false }: ManageCafesProps = 
     arcade_count: 0,
     snooker_count: 0,
     steering_wheel_count: 0,
+    racing_sim_count: 0,
     vr_count: 0,
     opening_hours: "",
     peak_hours: "",
@@ -186,6 +188,7 @@ export default function ManageCafes({ openNewCafe = false }: ManageCafesProps = 
           arcade_count: data.arcade_count || 0,
           snooker_count: data.snooker_count || 0,
           steering_wheel_count: data.steering_wheel_count || 0,
+          racing_sim_count: data.racing_sim_count || 0,
           vr_count: data.vr_count || 0,
           opening_hours: data.opening_hours || "",
           peak_hours: data.peak_hours || "",
@@ -448,6 +451,7 @@ export default function ManageCafes({ openNewCafe = false }: ManageCafesProps = 
       arcade_count: 0,
       snooker_count: 0,
       steering_wheel_count: 0,
+      racing_sim_count: 0,
       vr_count: 0,
       opening_hours: "",
       peak_hours: "",
@@ -958,7 +962,8 @@ export default function ManageCafes({ openNewCafe = false }: ManageCafesProps = 
                     { key: "pool_count", label: "Pool Tables" },
                     { key: "arcade_count", label: "Arcade Machines" },
                     { key: "snooker_count", label: "Snooker Tables" },
-                    { key: "steering_wheel_count", label: "Racing Wheels" },
+                    { key: "steering_wheel_count", label: "Steering Wheels" },
+                    { key: "racing_sim_count", label: "Racing Sims" },
                     { key: "vr_count", label: "VR Headsets" },
                   ].map((field) => (
                     <div key={field.key}>

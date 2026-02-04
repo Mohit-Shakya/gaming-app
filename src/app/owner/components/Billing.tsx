@@ -71,6 +71,7 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess }: BillingP
                 { id: 'arcade', count: currentCafe.arcade_count },
                 { id: 'vr', count: currentCafe.vr_count },
                 { id: 'steering', count: currentCafe.steering_wheel_count },
+                { id: 'racing_sim', count: (currentCafe as any).racing_sim_count },
             ];
 
             setAvailableConsoles(
@@ -144,7 +145,7 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess }: BillingP
         if (!tier) return 0;
 
         // Per-station console types (pricing is per station, not per controller group)
-        const perStationTypes = ['pc', 'vr', 'steering_wheel', 'steering', 'arcade'];
+        const perStationTypes = ['pc', 'vr', 'steering_wheel', 'steering', 'racing_sim', 'arcade'];
         const isPerStation = perStationTypes.includes(type.toLowerCase()) || perStationTypes.includes(dbType.toLowerCase());
 
         // Handle 90 minute duration (60 + 30)
