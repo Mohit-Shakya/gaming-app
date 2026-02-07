@@ -46,7 +46,7 @@ const getLocalDateString = (date: Date = new Date()): string => {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 };
 
-type ConsoleId = "ps5" | "ps4" | "xbox" | "pc" | "pool" | "arcade" | "snooker" | "vr" | "steering_wheel" | "racing_sim";
+type ConsoleId = "ps5" | "ps4" | "xbox" | "pc" | "pool" | "arcade" | "snooker" | "vr" | "steering" | "racing_sim";
 
 const CONSOLES: { id: ConsoleId; label: string; icon: React.ReactNode; color: string; gradient: string }[] = [
   { id: "ps5", label: "PS5", icon: <Gamepad2 className="w-5 h-5 md:w-6 md:h-6" />, color: "#3b82f6", gradient: "from-blue-500 to-cyan-500" },
@@ -57,7 +57,7 @@ const CONSOLES: { id: ConsoleId; label: string; icon: React.ReactNode; color: st
   { id: "arcade", label: "Arcade", icon: <Gamepad2 className="w-5 h-5 md:w-6 md:h-6" />, color: "#ea580c", gradient: "from-orange-500 to-red-500" },
   { id: "snooker", label: "Snooker", icon: <Target className="w-5 h-5 md:w-6 md:h-6" />, color: "#059669", gradient: "from-emerald-500 to-teal-600" },
   { id: "vr", label: "VR Experience", icon: <RectangleGoggles className="w-5 h-5 md:w-6 md:h-6" />, color: "#7c3aed", gradient: "from-purple-500 to-violet-600" },
-  { id: "steering_wheel", label: "Steering Wheel", icon: <Car className="w-5 h-5 md:w-6 md:h-6" />, color: "#dc2626", gradient: "from-red-600 to-rose-700" },
+  { id: "steering", label: "Steering Wheel", icon: <Car className="w-5 h-5 md:w-6 md:h-6" />, color: "#dc2626", gradient: "from-red-600 to-rose-700" },
   { id: "racing_sim", label: "Racing Sim", icon: <Car className="w-5 h-5 md:w-6 md:h-6" />, color: "#ff4500", gradient: "from-orange-600 to-red-700" },
 ];
 
@@ -70,7 +70,7 @@ const CONSOLE_DB_KEYS: Record<ConsoleId, string> = {
   arcade: "arcade_count",
   snooker: "snooker_count",
   vr: "vr_count",
-  steering_wheel: "steering_wheel_count",
+  steering: "steering_wheel_count",
   racing_sim: "racing_sim_count",
 };
 
@@ -288,7 +288,7 @@ export default function WalkInBookingPage() {
               "Snooker": "snooker",
               "Arcade": "arcade",
               "VR": "vr",
-              "Steering": "steering_wheel",
+              "Steering": "steering",
               "Racing Sim": "racing_sim",
             };
 
@@ -335,7 +335,7 @@ export default function WalkInBookingPage() {
                 // PC, VR, Steering Wheel, Arcade: "Quantity" means number of stations (each station has its own price)
                 // So qty 2 = 2 separate PC/VR stations = 2 x base price
                 // Pool, Snooker: Price is per table (fixed regardless of players at that table)
-                const isPerStation = ["pc", "vr", "steering_wheel", "racing_sim", "arcade"].includes(consoleId);
+                const isPerStation = ["pc", "vr", "steering", "racing_sim", "arcade"].includes(consoleId);
 
                 // For per-station consoles, multiply rate by quantity
                 // For table games, keep fixed price regardless of quantity
@@ -400,7 +400,7 @@ export default function WalkInBookingPage() {
 
       // Smart Fallback for Linear Pricing Consoles (PC, VR, Racing, Arcade)
       // If explicit price for Qty N is missing, but Qty 1 exists, calculate it: Price = Qty 1 Price * Qty
-      const isPerStation = ["pc", "vr", "steering_wheel", "racing_sim", "arcade"].includes(selectedConsole);
+      const isPerStation = ["pc", "vr", "steering", "racing_sim", "arcade"].includes(selectedConsole);
       if (isPerStation && quantity > 1) {
         const baseKey = `qty1_${duration}min` as keyof ConsolePricingTier;
         const baseTierPrice = tier[baseKey];
@@ -868,7 +868,7 @@ export default function WalkInBookingPage() {
                             const tierPrice = tier[key];
                             if (tierPrice !== null && tierPrice !== undefined) return tierPrice;
                             // Fallback for per-station consoles
-                            const isPerStation = ["pc", "vr", "steering_wheel", "racing_sim", "arcade"].includes(selectedConsole);
+                            const isPerStation = ["pc", "vr", "steering", "racing_sim", "arcade"].includes(selectedConsole);
                             if (isPerStation && quantity > 1) {
                               const baseKey = `qty1_${dur}min` as keyof ConsolePricingTier;
                               const baseTierPrice = tier[baseKey];
@@ -956,7 +956,7 @@ export default function WalkInBookingPage() {
                     <div className="mb-4 pb-4 border-b border-gray-800 space-y-2">
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-400">{CONSOLES.find(c => c.id === selectedConsole)?.label}</span>
-                        <span className="text-gray-300">{quantity ? `×${quantity} ${["pc", "vr", "steering_wheel", "racing_sim", "arcade"].includes(selectedConsole) ? "station" : "controller"}${quantity > 1 ? "s" : ""}` : "Not selected"}</span>
+                        <span className="text-gray-300">{quantity ? `×${quantity} ${["pc", "vr", "steering", "racing_sim", "arcade"].includes(selectedConsole) ? "station" : "controller"}${quantity > 1 ? "s" : ""}` : "Not selected"}</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-400">Duration</span>
