@@ -11,21 +11,14 @@ import { supabase } from "@/lib/supabaseClient";
 import { fonts, CONSOLE_LABELS, CONSOLE_ICONS, type ConsoleId } from "@/lib/constants";
 import { getEndTime } from "@/lib/timeUtils";
 import {
-  OwnerStats,
   CafeRow,
   BookingRow,
   NavTab,
   PricingTier,
   BillingItem
 } from "./types";
-import { convertTo24Hour, convertTo12Hour, getConsoleIcon } from "./utils";
+import { convertTo12Hour } from "./utils";
 import { theme } from "./utils/theme";
-// ConsoleStatusDashboard removed
-
-// Types imported but not directly used in this file - used for type safety
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-
-import { ConsolePricingRow, BookingItemRow } from "@/types/database";
 import {
   Sidebar,
   DashboardLayout,
@@ -49,7 +42,6 @@ import SubscriptionDetailsModal from './components/SubscriptionDetailsModal';
 import CustomerDetailsModal from './components/CustomerDetailsModal';
 import { SessionEndedPopup } from './components/SessionEndedPopup';
 import StatCard from './components/StatCard';
-import StatusBadge from './components/StatusBadge';
 import { useBilling } from "./hooks/useBilling";
 import { useOwnerAuth } from "./hooks/useOwnerAuth";
 import { useOwnerData } from "./hooks/useOwnerData";
