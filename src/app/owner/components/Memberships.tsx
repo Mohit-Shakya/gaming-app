@@ -67,6 +67,15 @@ export function Memberships({
     const [editingPlan, setEditingPlan] = useState<MembershipPlan | null>(null);
     const [savingPlan, setSavingPlan] = useState(false);
 
+    // Add Subscription States
+    const [showAddSubModal, setShowAddSubModal] = useState(false);
+    const [savingSub, setSavingSub] = useState(false);
+    const [subCustomerName, setSubCustomerName] = useState('');
+    const [subCustomerPhone, setSubCustomerPhone] = useState('');
+    const [subSelectedPlanId, setSubSelectedPlanId] = useState('');
+    const [subAmountPaid, setSubAmountPaid] = useState('');
+    const [subPaymentMode, setSubPaymentMode] = useState('cash');
+
     // New Plan Form States
     const [newPlanName, setNewPlanName] = useState('');
     const [newPlanDescription, setNewPlanDescription] = useState('');
@@ -178,6 +187,66 @@ export function Memberships({
         setNewPlanPlayerCount('single');
     };
 
+    const handleAddSubscription = async () => {
+        if (!subCustomerName || !subCustomerPhone || !subSelectedPlanId) {
+            alert('Please fill in all required fields');
+            return;
+        }
+
+        const selectedPlan = membershipPlans.find(p => p.id === subSelectedPlanId);
+        if (!selectedPlan) {
+            alert('Please select a valid plan');
+            return;
+        }
+
+        try {
+            setSavingSub(true);
+
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session?.user) throw new Error('Not authenticated');
+
+            const { data: cafeData } = await supabase
+                .from('cafes')
+                .select('id')
+                .eq('owner_id', session.user.id)
+                .single();
+
+            if (!cafeData?.id) throw new Error('No cafe found');
+
+            const now = new Date();
+            const expiryDate = new Date(now);
+            expiryDate.setDate(expiryDate.getDate() + (selectedPlan.validity_days || 30));
+
+            const { error } = await supabase.from('subscriptions').insert({
+                cafe_id: cafeData.id,
+                customer_name: subCustomerName,
+                customer_phone: subCustomerPhone,
+                membership_plan_id: subSelectedPlanId,
+                hours_purchased: selectedPlan.hours || 24,
+                hours_remaining: selectedPlan.hours || 24,
+                amount_paid: parseFloat(subAmountPaid) || selectedPlan.price,
+                purchase_date: now.toISOString(),
+                expiry_date: expiryDate.toISOString(),
+                status: 'active',
+            });
+
+            if (error) throw error;
+
+            alert('Subscription created successfully!');
+            setShowAddSubModal(false);
+            setSubCustomerName('');
+            setSubCustomerPhone('');
+            setSubSelectedPlanId('');
+            setSubAmountPaid('');
+            setSubPaymentMode('cash');
+            onRefresh();
+        } catch (error: any) {
+            alert('Error creating subscription: ' + error.message);
+        } finally {
+            setSavingSub(false);
+        }
+    };
+
     const openEditModal = (plan: MembershipPlan) => {
         setEditingPlan(plan);
         setNewPlanName(plan.name);
@@ -236,7 +305,7 @@ export function Memberships({
                                     className="w-full pl-9 pr-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500"
                                 />
                             </div>
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 items-center">
                                 <Select
                                     value={statusFilter}
                                     onChange={setStatusFilter}
@@ -256,6 +325,21 @@ export function Memberships({
                                     ]}
                                     className="w-40"
                                 />
+                                <Button
+                                    variant="primary"
+                                    size="sm"
+                                    onClick={() => {
+                                        setSubCustomerName('');
+                                        setSubCustomerPhone('');
+                                        setSubSelectedPlanId(membershipPlans[0]?.id || '');
+                                        setSubAmountPaid(membershipPlans[0]?.price?.toString() || '');
+                                        setSubPaymentMode('cash');
+                                        setShowAddSubModal(true);
+                                    }}
+                                    className="whitespace-nowrap"
+                                >
+                                    <Plus size={16} className="mr-1" /> Add Subscription
+                                </Button>
                             </div>
                         </div>
                     </Card>
@@ -520,6 +604,11 @@ export function Memberships({
                                         { value: 'PS4', label: 'PS4' },
                                         { value: 'Xbox', label: 'Xbox' },
                                         { value: 'VR', label: 'VR' },
+                                        { value: 'Steering Wheel', label: 'Steering Wheel' },
+                                        { value: 'Racing Sim', label: 'Racing Sim' },
+                                        { value: 'Pool', label: 'Pool' },
+                                        { value: 'Snooker', label: 'Snooker' },
+                                        { value: 'Arcade', label: 'Arcade' },
                                     ]}
                                 />
                                 <Select
@@ -559,6 +648,113 @@ export function Memberships({
                                 className="flex-1"
                             >
                                 {savingPlan ? 'Saving...' : 'Save Plan'}
+                            </Button>
+                        </div>
+                    </Card>
+                </div>
+            )}
+
+            {/* Add Subscription Modal */}
+            {showAddSubModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                    <Card className="w-full max-w-lg bg-slate-900 border-slate-700" padding="md">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-lg font-bold text-white">Add New Subscription</h3>
+                            <button onClick={() => setShowAddSubModal(false)} className="text-slate-400 hover:text-white">
+                                <XCircle size={24} />
+                            </button>
+                        </div>
+
+                        <div className="space-y-4">
+                            <Input
+                                label="Customer Name"
+                                placeholder="Enter customer name"
+                                value={subCustomerName}
+                                onChange={setSubCustomerName}
+                            />
+
+                            <Input
+                                label="Phone Number"
+                                placeholder="Enter phone number"
+                                value={subCustomerPhone}
+                                onChange={setSubCustomerPhone}
+                            />
+
+                            <Select
+                                label="Membership Plan"
+                                value={subSelectedPlanId}
+                                onChange={(val) => {
+                                    setSubSelectedPlanId(val);
+                                    const plan = membershipPlans.find(p => p.id === val);
+                                    if (plan) setSubAmountPaid(plan.price.toString());
+                                }}
+                                options={membershipPlans.map(p => ({
+                                    value: p.id,
+                                    label: `${p.name} - ₹${p.price} (${p.hours || 'Day'}${p.hours ? 'h' : ' Pass'})`
+                                }))}
+                            />
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase">Amount Paid (₹)</label>
+                                    <input
+                                        type="number"
+                                        className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+                                        value={subAmountPaid}
+                                        onChange={e => setSubAmountPaid(e.target.value)}
+                                    />
+                                </div>
+                                <Select
+                                    label="Payment Mode"
+                                    value={subPaymentMode}
+                                    onChange={setSubPaymentMode}
+                                    options={[
+                                        { value: 'cash', label: 'Cash' },
+                                        { value: 'upi', label: 'UPI' },
+                                    ]}
+                                />
+                            </div>
+
+                            {subSelectedPlanId && (() => {
+                                const plan = membershipPlans.find(p => p.id === subSelectedPlanId);
+                                if (!plan) return null;
+                                return (
+                                    <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700/50">
+                                        <div className="text-xs text-slate-400 mb-2 font-semibold uppercase">Plan Summary</div>
+                                        <div className="grid grid-cols-3 gap-2 text-sm">
+                                            <div>
+                                                <span className="text-slate-500">Hours:</span>{' '}
+                                                <span className="text-white font-medium">{plan.hours || 'Day Pass'}</span>
+                                            </div>
+                                            <div>
+                                                <span className="text-slate-500">Valid:</span>{' '}
+                                                <span className="text-white font-medium">{plan.validity_days} days</span>
+                                            </div>
+                                            <div>
+                                                <span className="text-slate-500">Console:</span>{' '}
+                                                <span className="text-white font-medium">{plan.console_type}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })()}
+                        </div>
+
+                        <div className="flex gap-3 mt-8 pt-4 border-t border-slate-800">
+                            <Button
+                                variant="secondary"
+                                onClick={() => setShowAddSubModal(false)}
+                                className="flex-1"
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                variant="primary"
+                                onClick={handleAddSubscription}
+                                disabled={savingSub}
+                                className="flex-1"
+                            >
+                                {savingSub ? 'Creating...' : 'Create Subscription'}
                             </Button>
                         </div>
                     </Card>

@@ -4,6 +4,11 @@ import { supabase } from "@/lib/supabaseClient";
 import { ConsoleId } from "@/lib/constants";
 import { BillingItem, PricingTier } from "../types";
 
+// Helper function to get local date string (YYYY-MM-DD) instead of UTC
+const getLocalDateString = (date: Date = new Date()): string => {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+};
+
 type UseBillingProps = {
   selectedCafeId: string;
   consolePricing: Record<string, Record<string, PricingTier>>;
@@ -17,7 +22,7 @@ export function useBilling({
 }: UseBillingProps) {
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
-  const [bookingDate, setBookingDate] = useState(new Date().toISOString().split("T")[0]);
+  const [bookingDate, setBookingDate] = useState(getLocalDateString());
   const [startTime, setStartTime] = useState(() => {
     const now = new Date();
     return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
@@ -197,7 +202,7 @@ export function useBilling({
   const resetForm = () => {
     setCustomerName("");
     setCustomerPhone("");
-    setBookingDate(new Date().toISOString().split("T")[0]);
+    setBookingDate(getLocalDateString());
     const now = new Date();
     setStartTime(`${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`);
     setItems([]);

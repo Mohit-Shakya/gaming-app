@@ -54,8 +54,10 @@ import { useBilling } from "./hooks/useBilling";
 import { useOwnerAuth } from "./hooks/useOwnerAuth";
 import { useOwnerData } from "./hooks/useOwnerData";
 
-
-
+// Helper function to get local date string (YYYY-MM-DD) instead of UTC
+const getLocalDateString = (date: Date = new Date()): string => {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+};
 
 
 
@@ -1334,7 +1336,7 @@ export default function OwnerDashboardPage() {
           .from('subscription_usage_history')
           .insert({
             subscription_id: subscriptionId,
-            session_date: new Date().toISOString().split('T')[0],
+            session_date: getLocalDateString(),
             start_time: startTimeDate.toISOString(),
             end_time: endTime.toISOString(),
             duration_hours: elapsedHours,
@@ -1531,7 +1533,7 @@ export default function OwnerDashboardPage() {
     const updateTime = () => {
       const now = new Date();
       setBillingStartTime(`${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`);
-      setBillingBookingDate(now.toISOString().split("T")[0]);
+      setBillingBookingDate(getLocalDateString(now));
     };
 
     updateTime();
@@ -2155,7 +2157,7 @@ export default function OwnerDashboardPage() {
               <div style={{ marginTop: isMobile ? 20 : 24 }}>
                 <BookingsTable
                   title="Today's Bookings"
-                  bookings={bookings.filter((b: any) => b.booking_date === new Date().toISOString().split('T')[0])}
+                  bookings={bookings.filter((b: any) => b.booking_date === getLocalDateString())}
                   loading={loadingData}
                   onViewAll={() => setActiveTab('bookings')}
                   onStatusChange={handleBookingStatusChange}
@@ -2174,8 +2176,8 @@ export default function OwnerDashboardPage() {
                   const today = new Date();
                   const lastWeek = new Date(today);
                   lastWeek.setDate(today.getDate() - 7);
-                  const lastWeekStr = lastWeek.toISOString().split('T')[0];
-                  const todayStr = today.toISOString().split('T')[0];
+                  const lastWeekStr = getLocalDateString(lastWeek);
+                  const todayStr = getLocalDateString(today);
 
                   const weeklyBookings = bookings.filter((b: any) => {
                     const bDate = b.booking_date;
@@ -2386,11 +2388,12 @@ export default function OwnerDashboardPage() {
                     </p>
                     <p style={{ fontSize: isMobile ? 22 : 32, fontWeight: 700, color: "#10b981", fontFamily: fonts.heading }}>
                       ₹{loadingData ? "..." : (() => {
-                        const todayStr = new Date().toISOString().split('T')[0];
+                        const now = new Date();
+                        const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
                         if (revenueFilter === "today") {
                           return bookings
-                            .filter(b => b.booking_date === todayStr)
+                            .filter(b => b.booking_date === todayStr && b.status !== 'cancelled')
                             .reduce((sum, b) => sum + (b.total_amount || 0), 0);
                         } else if (revenueFilter === "week") {
                           const now = new Date();
@@ -2439,7 +2442,7 @@ export default function OwnerDashboardPage() {
                     </p>
                     <p style={{ fontSize: isMobile ? 22 : 32, fontWeight: 700, color: "#3b82f6", fontFamily: fonts.heading }}>
                       {loadingData ? "..." : (() => {
-                        const todayStr = new Date().toISOString().split('T')[0];
+                        const todayStr = getLocalDateString();
 
                         if (revenueFilter === "today") {
                           return bookings.filter(b => b.booking_date === todayStr).length;
@@ -2484,7 +2487,7 @@ export default function OwnerDashboardPage() {
                     </p>
                     <p style={{ fontSize: isMobile ? 22 : 32, fontWeight: 700, color: "#f97316", fontFamily: fonts.heading }}>
                       ₹{loadingData ? "..." : (() => {
-                        const todayStr = new Date().toISOString().split('T')[0];
+                        const todayStr = getLocalDateString();
                         let revenue = 0;
                         let count = 0;
 
@@ -2639,7 +2642,7 @@ export default function OwnerDashboardPage() {
                         for (let i = 0; i < 30; i++) {
                           const date = new Date(today);
                           date.setDate(today.getDate() - i);
-                          const dateStr = date.toISOString().split('T')[0];
+                          const dateStr = getLocalDateString(date);
 
                           // Calculate bookings and revenue for this date
                           const dayBookings = bookings.filter(b => b.booking_date === dateStr);
@@ -3243,7 +3246,7 @@ export default function OwnerDashboardPage() {
                           const duration = booking.duration || 60;
                           if (!bookingDate || !startTime) return false;
                           const now = new Date();
-                          const todayStr = now.toISOString().split('T')[0];
+                          const todayStr = getLocalDateString(now);
                           if (bookingDate < todayStr) return true;
                           if (bookingDate > todayStr) return false;
                           const timeParts = startTime.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
@@ -3456,7 +3459,7 @@ export default function OwnerDashboardPage() {
                             const duration = booking.duration || 60;
                             if (!bookingDate || !startTime) return false;
                             const now = new Date();
-                            const todayStr = now.toISOString().split('T')[0];
+                            const todayStr = getLocalDateString(now);
                             if (bookingDate < todayStr) return true;
                             if (bookingDate > todayStr) return false;
                             const timeParts = startTime.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
@@ -3840,7 +3843,7 @@ export default function OwnerDashboardPage() {
             };
 
             // Calculate "Today" for last visit display
-            const today = new Date().toISOString().split('T')[0];
+            const today = getLocalDateString();
             const getLastVisitDisplay = (date: string) => {
               if (date === today) return 'Today';
               const visitDate = new Date(date);
@@ -7603,9 +7606,15 @@ export default function OwnerDashboardPage() {
 
                       // Apply to all stations of same type if checkbox is checked
                       if (applyToAll) {
-                        // Get console count for this type
+                        // Get console count for this type - map display name to DB column
                         const cafe = cafes[0];
-                        const consoleTypeKey = `${editingStation.type.toLowerCase()}_count` as keyof typeof cafe;
+                        const typeToDbKey: Record<string, string> = {
+                          'PC': 'pc_count', 'PS5': 'ps5_count', 'PS4': 'ps4_count',
+                          'Xbox': 'xbox_count', 'VR': 'vr_count', 'Pool': 'pool_count',
+                          'Snooker': 'snooker_count', 'Arcade': 'arcade_count',
+                          'Steering Wheel': 'steering_wheel_count', 'Racing Sim': 'racing_sim_count',
+                        };
+                        const consoleTypeKey = (typeToDbKey[editingStation.type] || `${editingStation.type.toLowerCase()}_count`) as keyof typeof cafe;
                         const count = (cafe[consoleTypeKey] as number) || 0;
 
                         // Create pricing data for all stations of this type
@@ -7616,23 +7625,23 @@ export default function OwnerDashboardPage() {
                           allPricingData.push(data);
                         }
 
-                        // Upsert all at once
-                        const { error } = await supabase
-                          .from('station_pricing')
-                          .upsert(allPricingData, {
-                            onConflict: 'cafe_id,station_name'
-                          });
-
-                        if (error) throw error;
+                        // Upsert all via API route (bypasses RLS)
+                        const res = await fetch('/api/station-pricing', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ applyToAll: true, allPricingData }),
+                        });
+                        const result = await res.json();
+                        if (!res.ok) throw new Error(result.error);
                       } else {
-                        // Just save this one station
-                        const { error } = await supabase
-                          .from('station_pricing')
-                          .upsert(pricingData, {
-                            onConflict: 'cafe_id,station_name'
-                          });
-
-                        if (error) throw error;
+                        // Just save this one station via API route
+                        const res = await fetch('/api/station-pricing', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ pricingData }),
+                        });
+                        const result = await res.json();
+                        if (!res.ok) throw new Error(result.error);
                       }
 
                       // Reload station pricing to update the table
@@ -7655,9 +7664,9 @@ export default function OwnerDashboardPage() {
                       alert(successMsg);
                       setEditingStation(null);
                       setApplyToAll(false);
-                    } catch (err) {
+                    } catch (err: any) {
                       console.error('Error saving pricing:', err);
-                      alert('Failed to save pricing. Please try again.');
+                      alert(`Failed to save pricing: ${err?.message || err?.details || JSON.stringify(err)}`);
                     } finally {
                       setSavingPricing(false);
                     }

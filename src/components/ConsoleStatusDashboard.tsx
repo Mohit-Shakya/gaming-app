@@ -6,6 +6,11 @@ import { supabase } from "@/lib/supabaseClient";
 import { colors, fonts, CONSOLE_LABELS, CONSOLE_ICONS } from "@/lib/constants";
 import { logger } from "@/lib/logger";
 
+// Helper function to get local date string (YYYY-MM-DD) instead of UTC
+const getLocalDateString = (date: Date = new Date()): string => {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+};
+
 type ConsoleId = "ps5" | "ps4" | "xbox" | "pc" | "pool" | "arcade" | "snooker" | "vr" | "steering" | "racing_sim";
 
 type CafeConsoleCounts = {
@@ -130,7 +135,7 @@ export default function ConsoleStatusDashboard({ cafeId }: { cafeId: string }) {
       }
 
       // Get today's in-progress bookings (started by owner)
-      const today = new Date().toISOString().split("T")[0];
+      const today = getLocalDateString();
       console.log("[ConsoleStatus] Loading bookings for date:", today);
 
       const { data: bookings, error: bookingsError} = await supabase

@@ -21,6 +21,11 @@ import {
 } from 'lucide-react';
 import { CashDrawerRecord, CashDrawerStatus, CashDrawerHistory } from '@/types/cashDrawer';
 
+// Helper function to get local date string (YYYY-MM-DD) instead of UTC
+const getLocalDateString = (date: Date = new Date()): string => {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+};
+
 interface CashDrawerProps {
   cafeId: string;
   isOwner: boolean; // true if logged in user is owner, false if staff
@@ -73,7 +78,7 @@ export default function CashDrawer({ cafeId, isOwner }: CashDrawerProps) {
   const [actualClosing, setActualClosing] = useState('');
   const [discrepancyNote, setDiscrepancyNote] = useState('');
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = getLocalDateString();
 
   // Fetch cash drawer data
   const fetchData = useCallback(async () => {
@@ -89,7 +94,7 @@ export default function CashDrawer({ cafeId, isOwner }: CashDrawerProps) {
       // No record for today, get yesterday's closing as opening balance
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = yesterday.toISOString().split('T')[0];
+      const yesterdayStr = getLocalDateString(yesterday);
 
       const { data: yesterdayRecord } = await supabase
         .from('cash_drawer')
@@ -178,7 +183,7 @@ export default function CashDrawer({ cafeId, isOwner }: CashDrawerProps) {
           .from('cash_drawer')
           .select('*')
           .eq('cafe_id', cafeId)
-          .gte('date', thirtyDaysAgo.toISOString().split('T')[0])
+          .gte('date', getLocalDateString(thirtyDaysAgo))
           .lt('date', today)
           .order('date', { ascending: false });
 

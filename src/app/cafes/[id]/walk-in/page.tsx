@@ -41,6 +41,11 @@ import {
   Banknote,
 } from "lucide-react";
 
+// Helper function to get local date string (YYYY-MM-DD) instead of UTC
+const getLocalDateString = (date: Date = new Date()): string => {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+};
+
 type ConsoleId = "ps5" | "ps4" | "xbox" | "pc" | "pool" | "arcade" | "snooker" | "vr" | "steering_wheel" | "racing_sim";
 
 const CONSOLES: { id: ConsoleId; label: string; icon: React.ReactNode; color: string; gradient: string }[] = [
@@ -459,7 +464,7 @@ export default function WalkInBookingPage() {
       setSubmitting(true);
 
       const now = new Date();
-      const bookingDate = now.toISOString().split("T")[0];
+      const bookingDate = getLocalDateString(now);
       const hours = now.getHours();
       const minutes = now.getMinutes();
       const ampm = hours >= 12 ? "pm" : "am";

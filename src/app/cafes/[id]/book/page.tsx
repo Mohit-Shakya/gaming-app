@@ -464,9 +464,92 @@ function BookingPageContent() {
           });
 
           console.log("[Book] Parsed pricing:", pricing);
+
+          // Also fetch station_pricing for types not in console_pricing
+          const { data: spData } = await supabase
+            .from("station_pricing")
+            .select("station_type, half_hour_rate, hourly_rate, controller_1_half_hour, controller_1_full_hour, controller_2_half_hour, controller_2_full_hour, controller_3_half_hour, controller_3_full_hour, controller_4_half_hour, controller_4_full_hour, single_player_half_hour_rate, single_player_rate, multi_player_half_hour_rate, multi_player_rate")
+            .eq("cafe_id", data.id)
+            .eq("is_active", true);
+
+          if (spData && spData.length > 0) {
+            const stationTypeMap: Record<string, any> = {};
+            spData.forEach((sp: any) => {
+              if (!stationTypeMap[sp.station_type]) stationTypeMap[sp.station_type] = sp;
+            });
+
+            const typeToId: Record<string, ConsoleId> = {
+              "PS5": "ps5", "PS4": "ps4", "Xbox": "xbox", "PC": "pc",
+              "Pool": "pool", "Snooker": "snooker", "Arcade": "arcade",
+              "VR": "vr", "Steering": "steering", "Steering Wheel": "steering",
+              "Racing Sim": "racing_sim",
+            };
+
+            Object.entries(stationTypeMap).forEach(([stationType, sp]: [string, any]) => {
+              const cid = typeToId[stationType];
+              if (!cid || pricing[cid]) return; // Skip if already has console_pricing
+
+              const tier: ConsolePricingTier = {
+                qty1_30min: null, qty1_60min: null, qty2_30min: null, qty2_60min: null,
+                qty3_30min: null, qty3_60min: null, qty4_30min: null, qty4_60min: null,
+              };
+
+              const isPerStation = ["pc", "vr", "steering", "racing_sim", "arcade"].includes(cid);
+              tier.qty1_30min = sp.half_hour_rate || null;
+              tier.qty1_60min = sp.hourly_rate || null;
+              if (isPerStation) {
+                for (let q = 2; q <= 4; q++) {
+                  (tier as any)[`qty${q}_30min`] = sp.half_hour_rate ? sp.half_hour_rate * q : null;
+                  (tier as any)[`qty${q}_60min`] = sp.hourly_rate ? sp.hourly_rate * q : null;
+                }
+              }
+              pricing[cid] = tier;
+            });
+          }
+
           setConsolePricing(pricing);
         } else {
-          console.log("[Book] No pricing data found, falling back to hourly_price:", data.hourly_price);
+          // No console_pricing data - try station_pricing as sole source
+          const { data: spData } = await supabase
+            .from("station_pricing")
+            .select("station_type, half_hour_rate, hourly_rate, controller_1_half_hour, controller_1_full_hour, controller_2_half_hour, controller_2_full_hour, controller_3_half_hour, controller_3_full_hour, controller_4_half_hour, controller_4_full_hour, single_player_half_hour_rate, single_player_rate, multi_player_half_hour_rate, multi_player_rate")
+            .eq("cafe_id", data.id)
+            .eq("is_active", true);
+
+          if (spData && spData.length > 0) {
+            const pricing: Partial<Record<ConsoleId, ConsolePricingTier>> = {};
+            const typeToId: Record<string, ConsoleId> = {
+              "PS5": "ps5", "PS4": "ps4", "Xbox": "xbox", "PC": "pc",
+              "Pool": "pool", "Snooker": "snooker", "Arcade": "arcade",
+              "VR": "vr", "Steering": "steering", "Steering Wheel": "steering",
+              "Racing Sim": "racing_sim",
+            };
+
+            spData.forEach((sp: any) => {
+              const cid = typeToId[sp.station_type];
+              if (!cid || pricing[cid]) return;
+
+              const tier: ConsolePricingTier = {
+                qty1_30min: null, qty1_60min: null, qty2_30min: null, qty2_60min: null,
+                qty3_30min: null, qty3_60min: null, qty4_30min: null, qty4_60min: null,
+              };
+
+              const isPerStation = ["pc", "vr", "steering", "racing_sim", "arcade"].includes(cid);
+              tier.qty1_30min = sp.half_hour_rate || null;
+              tier.qty1_60min = sp.hourly_rate || null;
+              if (isPerStation) {
+                for (let q = 2; q <= 4; q++) {
+                  (tier as any)[`qty${q}_30min`] = sp.half_hour_rate ? sp.half_hour_rate * q : null;
+                  (tier as any)[`qty${q}_60min`] = sp.hourly_rate ? sp.hourly_rate * q : null;
+                }
+              }
+              pricing[cid] = tier;
+            });
+
+            setConsolePricing(pricing);
+          }
+
+          console.log("[Book] No console_pricing data, used station_pricing fallback");
         }
       } catch (err) {
         console.error("Error:", err);

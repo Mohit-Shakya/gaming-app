@@ -5,6 +5,11 @@ import { ConsoleId, CONSOLE_ICONS } from '@/lib/constants';
 import { Button } from './ui';
 import { Plus } from 'lucide-react';
 
+// Helper function to get local date string (YYYY-MM-DD) instead of UTC
+const getLocalDateString = (date: Date = new Date()): string => {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+};
+
 interface SessionEndedInfo {
     customerName: string;
     stationName: string;
@@ -39,7 +44,7 @@ export function ActiveSessions({
     const activeBookings = bookings.filter(
         (b) =>
             b.status === 'in-progress' &&
-            b.booking_date === new Date().toISOString().split('T')[0]
+            b.booking_date === getLocalDateString()
     );
 
     const activeMemberships = subscriptions.filter((sub) =>

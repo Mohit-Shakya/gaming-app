@@ -5,6 +5,11 @@ import { StatCard } from './ui';
 import { Card } from './ui';
 import { TrendingUp, Users, Clock, Calendar, DollarSign } from 'lucide-react';
 
+// Helper function to get local date string (YYYY-MM-DD) instead of UTC
+const getLocalDateString = (date: Date = new Date()): string => {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+};
+
 interface DashboardStatsProps {
     bookings: any[];
     subscriptions: any[];
@@ -24,7 +29,7 @@ export function DashboardStats({
     const activeBookingsCount = bookings.filter(
         (b) =>
             b.status === 'in-progress' &&
-            b.booking_date === new Date().toISOString().split('T')[0]
+            b.booking_date === getLocalDateString()
     ).length;
 
     const activeSubscriptionsCount = subscriptions.filter((sub) =>
@@ -34,13 +39,13 @@ export function DashboardStats({
     const activeNow = activeBookingsCount + activeSubscriptionsCount;
 
     // Logic for Today's Revenue - Exclude cancelled bookings
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = getLocalDateString();
     const todayBookings = bookings.filter((b) =>
         b.booking_date === todayStr && b.status !== 'cancelled'
     );
     const todaySubscriptions = subscriptions.filter((sub) => {
         const purchaseDate = sub.purchase_date
-            ? new Date(sub.purchase_date).toISOString().slice(0, 10)
+            ? getLocalDateString(new Date(sub.purchase_date))
             : null;
         return purchaseDate === todayStr;
     });

@@ -10,6 +10,11 @@ import {
 } from 'lucide-react';
 import { CafeRow } from '@/types/database';
 
+// Helper function to get local date string (YYYY-MM-DD) instead of UTC
+const getLocalDateString = (date: Date = new Date()): string => {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+};
+
 interface BillingProps {
     cafeId: string;
     cafes: CafeRow[];
@@ -34,7 +39,7 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess }: BillingP
     // Form State
     const [customerName, setCustomerName] = useState('');
     const [customerPhone, setCustomerPhone] = useState('');
-    const [bookingDate, setBookingDate] = useState(new Date().toISOString().split('T')[0]);
+    const [bookingDate, setBookingDate] = useState(getLocalDateString());
     const [startTime, setStartTime] = useState('');
     const [items, setItems] = useState<BillingItem[]>([]);
     const [paymentMode, setPaymentMode] = useState<'cash' | 'upi'>('cash');
@@ -43,6 +48,7 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess }: BillingP
 
     // Data State
     const [pricing, setPricing] = useState<any>(null);
+    const [stationPricingData, setStationPricingData] = useState<any[]>([]);
     const [availableConsoles, setAvailableConsoles] = useState<string[]>([]);
 
     // Autocomplete State
@@ -79,25 +85,35 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess }: BillingP
             );
         }
 
-        // Fetch pricing
+        // Fetch pricing from both tables
         async function fetchPricing() {
             if (!cafeId) return;
+
+            // Fetch console_pricing (tier-based)
             const { data } = await supabase
                 .from('console_pricing')
                 .select('*')
                 .eq('cafe_id', cafeId);
 
             if (data) {
-                // Transform to map: { 'ps5': { qty1_30min: 50... } }
                 const pricingMap: any = {};
                 data.forEach(p => {
-                    const type = p.console_type; // e.g. 'ps5'
+                    const type = p.console_type;
                     if (!pricingMap[type]) pricingMap[type] = {};
-
-                    // Key format matching old logic: qtyX_Ymin
                     pricingMap[type][`qty${p.quantity}_${p.duration_minutes}min`] = p.price;
                 });
                 setPricing(pricingMap);
+            }
+
+            // Fetch station_pricing (per-station rates)
+            const { data: spData } = await supabase
+                .from('station_pricing')
+                .select('*')
+                .eq('cafe_id', cafeId)
+                .eq('is_active', true);
+
+            if (spData) {
+                setStationPricingData(spData);
             }
         }
         fetchPricing();
@@ -136,45 +152,63 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess }: BillingP
 
     // Pricing Helper
     const calculatePrice = (type: string, qty: number, duration: number) => {
-        if (!pricing) return 0;
-
         // Map app console types to DB types if needed (e.g. steering -> steering_wheel)
         const dbType = type === 'steering' ? 'steering_wheel' : type;
-        const tier = pricing[dbType];
-
-        if (!tier) return 0;
+        const tier = pricing?.[dbType];
 
         // Per-station console types (pricing is per station, not per controller group)
         const perStationTypes = ['pc', 'vr', 'steering_wheel', 'steering', 'racing_sim', 'arcade'];
         const isPerStation = perStationTypes.includes(type.toLowerCase()) || perStationTypes.includes(dbType.toLowerCase());
 
-        // Handle 90 minute duration (60 + 30)
-        if (duration === 90) {
-            const p60 = tier[`qty${qty}_60min`] || (isPerStation ? (tier['qty1_60min'] || 0) * qty : 0);
-            const p30 = tier[`qty${qty}_30min`] || (isPerStation ? (tier['qty1_30min'] || 0) * qty : 0);
-            return p60 + p30;
-        }
-
-        // Try exact tier first
-        const exactKey = `qty${qty}_${duration}min`;
-        if (tier[exactKey]) return tier[exactKey];
-
-        // Fallback for per-station types: multiply qty1 price by quantity
-        if (isPerStation && qty > 1) {
-            const baseKey = `qty1_${duration}min`;
-            if (tier[baseKey]) {
-                return tier[baseKey] * qty;
+        // Try console_pricing first (tier-based)
+        if (tier) {
+            if (duration === 90) {
+                const p60 = tier[`qty${qty}_60min`] || (isPerStation ? (tier['qty1_60min'] || 0) * qty : 0);
+                const p30 = tier[`qty${qty}_30min`] || (isPerStation ? (tier['qty1_30min'] || 0) * qty : 0);
+                return p60 + p30;
             }
+
+            const exactKey = `qty${qty}_${duration}min`;
+            if (tier[exactKey]) return tier[exactKey];
+
+            if (isPerStation && qty > 1) {
+                const baseKey = `qty1_${duration}min`;
+                if (tier[baseKey]) return tier[baseKey] * qty;
+            }
+
+            if (duration === 120) {
+                const base = tier[`qty${qty}_60min`] || (isPerStation ? (tier['qty1_60min'] || 0) * qty : 0);
+                if (base > 0) return base * 2;
+            }
+            if (duration === 180) {
+                const base = tier[`qty${qty}_60min`] || (isPerStation ? (tier['qty1_60min'] || 0) * qty : 0);
+                if (base > 0) return base * 3;
+            }
+
+            // If tier exists and has a value, return it
+            const anyKey = Object.keys(tier).find(k => tier[k] > 0);
+            if (anyKey) return 0; // tier exists but no matching duration
         }
 
-        // Fallback multipliers for longer durations
-        if (duration === 120) {
-            const base = tier[`qty${qty}_60min`] || (isPerStation ? (tier['qty1_60min'] || 0) * qty : 0);
-            return base * 2;
-        }
-        if (duration === 180) {
-            const base = tier[`qty${qty}_60min`] || (isPerStation ? (tier['qty1_60min'] || 0) * qty : 0);
-            return base * 3;
+        // Fallback: try station_pricing
+        const stationTypeMap: Record<string, string> = {
+            'ps5': 'PS5', 'ps4': 'PS4', 'xbox': 'Xbox', 'pc': 'PC',
+            'pool': 'Pool', 'snooker': 'Snooker', 'arcade': 'Arcade',
+            'vr': 'VR', 'steering': 'Steering Wheel', 'steering_wheel': 'Steering Wheel',
+            'racing_sim': 'Racing Sim',
+        };
+        const stationType = stationTypeMap[type] || type;
+        const station = stationPricingData.find((sp: any) => sp.station_type === stationType);
+
+        if (station) {
+            const halfHour = station.half_hour_rate || 0;
+            const fullHour = station.hourly_rate || 0;
+
+            if (duration === 30) return halfHour * qty;
+            if (duration === 60) return fullHour * qty;
+            if (duration === 90) return (halfHour + fullHour) * qty;
+            if (duration === 120) return fullHour * 2 * qty;
+            if (duration === 180) return fullHour * 3 * qty;
         }
 
         return 0;

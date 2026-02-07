@@ -28,7 +28,8 @@ export function useOwnerData(ownerId: string | null, allowed: boolean) {
     if (!cafes.length) return null;
 
     const now = new Date();
-    const todayStr = now.toISOString().slice(0, 10);
+    // Use local date instead of UTC to match Indian timezone
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     const startOfWeek = new Date(now);
     startOfWeek.setDate(now.getDate() - now.getDay());
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);

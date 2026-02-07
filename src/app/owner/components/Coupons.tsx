@@ -10,6 +10,11 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 
+// Helper function to get local date string (YYYY-MM-DD) instead of UTC
+const getLocalDateString = (date: Date = new Date()): string => {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+};
+
 interface Coupon {
     id: string;
     cafe_id: string;
@@ -300,7 +305,7 @@ See you soon! 🎯`;
             singleUsePerCustomer: false,
             newCustomerOnly: false,
             minVisits: '',
-            validFrom: new Date().toISOString().split('T')[0],
+            validFrom: getLocalDateString(),
             validUntil: '',
             isActive: true
         });
