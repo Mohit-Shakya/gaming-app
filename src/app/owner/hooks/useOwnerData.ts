@@ -279,10 +279,9 @@ export function useOwnerData(ownerId: string | null, allowed: boolean) {
         // 4. Fetch Subscriptions
         if (cafeIds.length > 0) {
           try {
-             // Temporarily removed join to isolate error
             const { data: subs, error: subsError } = await supabase
               .from('subscriptions')
-              .select('*') 
+              .select('*, membership_plans(*)')
               .in('cafe_id', cafeIds)
               .order('created_at', { ascending: false });
 

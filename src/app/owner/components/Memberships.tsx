@@ -122,21 +122,12 @@ export function Memberships({
                 cafe_id: null // We'll set this below
             };
 
-            // Get current user safely
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session?.user) throw new Error('Not authenticated');
-            const user = session.user;
-
-            // Get cafe_id (optimistically assuming first cafe if available or user metadata)
-            // Ideally we should pass cafeId as prop. 
-            // Logic: For this refactor, we will rely on existing RLS or triggers, or fetch quickly.
-            // Actually, let's use a simpler approach - we need to fetch cafes or pass it.
-            // Adding cafeId prop is best practice.
+            if (!cafeId) throw new Error('No cafe selected');
 
             const upsertData = {
                 ...planData,
-                cafe_id: (await supabase.from('cafes').select('id').eq('user_id', user.id).single()).data?.id
-            }
+                cafe_id: cafeId,
+            };
 
             if (editingPlan) {
                 const { error } = await supabase
@@ -237,6 +228,22 @@ export function Memberships({
             alert('Error creating subscription: ' + error.message);
         } finally {
             setSavingSub(false);
+        }
+    };
+
+    const handleDeleteSubscription = async (subId: string, customerName: string) => {
+        if (!confirm(`Delete subscription for ${customerName}? This cannot be undone.`)) return;
+
+        try {
+            const { error } = await supabase
+                .from('subscriptions')
+                .delete()
+                .eq('id', subId);
+
+            if (error) throw error;
+            onRefresh();
+        } catch (error: any) {
+            alert('Error deleting subscription: ' + error.message);
         }
     };
 
@@ -420,6 +427,14 @@ export function Memberships({
                                                             Start
                                                         </Button>
                                                     ) : null}
+                                                    <Button
+                                                        variant="danger"
+                                                        size="sm"
+                                                        onClick={() => handleDeleteSubscription(sub.id, sub.customer_name)}
+                                                        className="flex-none"
+                                                    >
+                                                        <Trash2 size={14} />
+                                                    </Button>
                                                 </div>
                                             </div>
                                         </Card>
