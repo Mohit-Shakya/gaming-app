@@ -8,11 +8,15 @@ import "./globals.css";
 const geistSans = Inter({
   variable: "--font-geist-sans",
   subsets: ["latin"],
+  display: "swap",
+  preload: false,
 });
 
 const geistMono = Roboto_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+  display: "swap",
+  preload: false,
 });
 
 const orbitron = Orbitron({
