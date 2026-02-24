@@ -4721,6 +4721,7 @@ export default function OwnerDashboardPage() {
           {activeTab === 'memberships' && (
             <Memberships
               isMobile={isMobile}
+              cafeId={selectedCafeId || cafes[0]?.id || ''}
               subscriptions={subscriptions}
               membershipPlans={membershipPlans}
               activeTimers={activeTimers}

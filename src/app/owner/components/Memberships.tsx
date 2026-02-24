@@ -35,6 +35,7 @@ interface Subscription {
 
 interface MembershipsProps {
     isMobile: boolean;
+    cafeId: string;
     subscriptions: Subscription[];
     membershipPlans: MembershipPlan[];
     activeTimers: Map<string, number>;
@@ -46,6 +47,7 @@ interface MembershipsProps {
 
 export function Memberships({
     isMobile,
+    cafeId,
     subscriptions,
     membershipPlans,
     activeTimers,
@@ -202,23 +204,14 @@ export function Memberships({
         try {
             setSavingSub(true);
 
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session?.user) throw new Error('Not authenticated');
-
-            const { data: cafeData } = await supabase
-                .from('cafes')
-                .select('id')
-                .eq('owner_id', session.user.id)
-                .single();
-
-            if (!cafeData?.id) throw new Error('No cafe found');
+            if (!cafeId) throw new Error('No cafe selected');
 
             const now = new Date();
             const expiryDate = new Date(now);
             expiryDate.setDate(expiryDate.getDate() + (selectedPlan.validity_days || 30));
 
             const { error } = await supabase.from('subscriptions').insert({
-                cafe_id: cafeData.id,
+                cafe_id: cafeId,
                 customer_name: subCustomerName,
                 customer_phone: subCustomerPhone,
                 membership_plan_id: subSelectedPlanId,
