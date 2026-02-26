@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabaseClient';
 
 export function useOwnerAuth() {
   const router = useRouter();
@@ -37,22 +36,22 @@ export function useOwnerAuth() {
       }
 
       try {
-        const { data: profile, error: profileError } = await supabase
-          .from("profiles")
-          .select("role")
-          .eq("id", sessionUserId)
-          .single();
+        const res = await fetch('/api/owner/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: sessionUserId }),
+        });
 
-        if (profileError) throw profileError;
+        const data = await res.json();
 
-        const role = profile?.role?.toLowerCase();
-        if (role === "owner" || role === "admin" || role === "super_admin") {
-          setAllowed(true);
-          setOwnerId(sessionUserId);
-        } else {
+        if (!res.ok || !data.isOwner) {
           localStorage.removeItem("owner_session");
           router.push("/owner/login");
+          return;
         }
+
+        setAllowed(true);
+        setOwnerId(sessionUserId);
       } catch (err) {
         console.error("Error checking role:", err);
         localStorage.removeItem("owner_session");
