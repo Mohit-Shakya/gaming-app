@@ -3,7 +3,6 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient";
 import { fonts } from "@/lib/constants";
 
 export default function OwnerLoginPage() {
@@ -46,39 +45,24 @@ export default function OwnerLoginPage() {
     setLoading(true);
 
     try {
-      // Use the secure verify_owner_login function
-      const { data, error } = await supabase.rpc('verify_owner_login', {
-        p_username: username,
-        p_password: password
+      const res = await fetch('/api/owner/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
       });
 
-      if (error) {
-        console.error("Login verification error:", error);
-        setError(`Unable to verify owner credentials: ${error.message || 'Unknown error'}`);
+      const result = await res.json();
+
+      if (!res.ok) {
+        setError(result.error || 'Login failed');
         setLoading(false);
         return;
       }
-
-      console.log("Login response data:", data);
-
-      if (!data || data.length === 0) {
-        setError("Invalid username or password - user not found");
-        setLoading(false);
-        return;
-      }
-
-      if (!data[0].is_valid) {
-        setError("Invalid username or password - credentials incorrect");
-        setLoading(false);
-        return;
-      }
-
-      const loginResult = data[0];
 
       // Create owner session
       const ownerSession = {
-        userId: loginResult.user_id,
-        username: loginResult.username,
+        userId: result.userId,
+        username: result.username,
         timestamp: Date.now(),
       };
 
