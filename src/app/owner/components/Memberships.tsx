@@ -3,7 +3,6 @@
 import { useState, useMemo } from 'react';
 import { Card, Button, Input, Select } from './ui';
 import { Search, Filter, Clock, Calendar, CheckCircle, XCircle, Plus, Edit2, Trash2, Smartphone, Monitor, User, Users } from 'lucide-react';
-import { supabase } from '@/lib/supabaseClient';
 
 interface MembershipPlan {
     id: string;
@@ -201,20 +200,24 @@ export function Memberships({
             const expiryDate = new Date(now);
             expiryDate.setDate(expiryDate.getDate() + (selectedPlan.validity_days || 30));
 
-            const { error } = await supabase.from('subscriptions').insert({
-                cafe_id: cafeId,
-                customer_name: subCustomerName,
-                customer_phone: subCustomerPhone,
-                membership_plan_id: subSelectedPlanId,
-                hours_purchased: selectedPlan.hours || 24,
-                hours_remaining: selectedPlan.hours || 24,
-                amount_paid: parseFloat(subAmountPaid) || selectedPlan.price,
-                purchase_date: now.toISOString(),
-                expiry_date: expiryDate.toISOString(),
-                status: 'active',
+            const res = await fetch('/api/owner/subscriptions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    cafe_id: cafeId,
+                    customer_name: subCustomerName,
+                    customer_phone: subCustomerPhone,
+                    membership_plan_id: subSelectedPlanId,
+                    hours_purchased: selectedPlan.hours || 24,
+                    hours_remaining: selectedPlan.hours || 24,
+                    amount_paid: parseFloat(subAmountPaid) || selectedPlan.price,
+                    purchase_date: now.toISOString(),
+                    expiry_date: expiryDate.toISOString(),
+                    status: 'active',
+                }),
             });
-
-            if (error) throw error;
+            const result = await res.json();
+            if (!res.ok) throw new Error(result.error || 'Failed to create subscription');
 
             alert('Subscription created successfully!');
             setShowAddSubModal(false);
@@ -235,12 +238,9 @@ export function Memberships({
         if (!confirm(`Delete subscription for ${customerName}? This cannot be undone.`)) return;
 
         try {
-            const { error } = await supabase
-                .from('subscriptions')
-                .delete()
-                .eq('id', subId);
-
-            if (error) throw error;
+            const res = await fetch(`/api/owner/subscriptions?id=${subId}`, { method: 'DELETE' });
+            const result = await res.json();
+            if (!res.ok) throw new Error(result.error || 'Failed to delete subscription');
             onRefresh();
         } catch (error: any) {
             alert('Error deleting subscription: ' + error.message);

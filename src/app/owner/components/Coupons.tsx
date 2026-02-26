@@ -8,7 +8,6 @@ import {
     AlertCircle, ChevronLeft, Eye, Send,
     Info, UserCheck, Filter
 } from 'lucide-react';
-import { supabase } from '@/lib/supabaseClient';
 
 // Helper function to get local date string (YYYY-MM-DD) instead of UTC
 const getLocalDateString = (date: Date = new Date()): string => {
@@ -107,15 +106,9 @@ export function Coupons({ isMobile, cafeId, onRefresh }: CouponsProps) {
         if (!cafeId) return;
         setLoading(true);
 
-        const { data, error } = await supabase
-            .from('coupons')
-            .select('*')
-            .eq('cafe_id', cafeId)
-            .order('created_at', { ascending: false });
-
-        if (!error && data) {
-            setCoupons(data);
-        }
+        const res = await fetch(`/api/owner/coupons?cafeId=${cafeId}`);
+        const data = await res.json();
+        if (res.ok && Array.isArray(data)) setCoupons(data);
         setLoading(false);
     };
 
@@ -124,114 +117,18 @@ export function Coupons({ isMobile, cafeId, onRefresh }: CouponsProps) {
         setLoadingCustomers(true);
 
         try {
-            // Get all bookings for this cafe to aggregate customer data
-            // Select all fields needed to match Customers tab logic
-            const { data: bookings, error: bookingsError } = await supabase
-                .from('bookings')
-                .select('id, user_id, customer_name, customer_phone, total_amount, booking_date, created_at, status, source')
-                .eq('cafe_id', cafeId);
-
-            console.log('[Coupons] Fetched bookings:', bookings?.length, 'error:', bookingsError);
-
-            if (bookingsError) {
-                console.error('[Coupons] Error fetching bookings:', bookingsError);
-                setLoadingCustomers(false);
-                return;
-            }
-
-            if (bookings && bookings.length > 0) {
-                // Also fetch user profiles for user_id based bookings
-                const userIds = [...new Set(bookings.map(b => b.user_id).filter(Boolean))];
-                const userProfiles = new Map<string, { name: string; phone: string | null }>();
-
-                if (userIds.length > 0) {
-                    const { data: profiles } = await supabase
-                        .from('profiles')
-                        .select('id, first_name, last_name, phone')
-                        .in('id', userIds);
-
-                    if (profiles) {
-                        profiles.forEach((profile: any) => {
-                            const fullName = [profile.first_name, profile.last_name]
-                                .filter(Boolean)
-                                .join(' ') || 'Unknown';
-                            userProfiles.set(profile.id, {
-                                name: fullName,
-                                phone: profile.phone || null
-                            });
-                        });
-                    }
-                }
-
-                // Aggregate customer data (same logic as Customers tab)
-                const customerMap = new Map<string, Customer>();
-
-                bookings.forEach(booking => {
-                    // Skip cancelled bookings
-                    if (booking.status === 'cancelled') return;
-
-                    // Get user profile if exists
-                    const userProfile = booking.user_id ? userProfiles.get(booking.user_id) : null;
-
-                    // Use customer_phone first, then profile phone
-                    const phone = booking.customer_phone || userProfile?.phone;
-                    if (!phone) return; // Skip if no phone
-
-                    // Use customer_name first, then profile name
-                    const customerName = booking.customer_name || userProfile?.name || 'Unknown';
-
-                    // Use phone as unique identifier (same as Customers tab)
-                    const customerId = phone;
-
-                    const existing = customerMap.get(customerId);
-
-                    if (existing) {
-                        existing.visits += 1;
-                        existing.total_spent += booking.total_amount || 0;
-                        const bookingDate = booking.booking_date || booking.created_at;
-                        if (bookingDate && new Date(bookingDate) > new Date(existing.last_visit)) {
-                            existing.last_visit = bookingDate;
-                            existing.name = customerName;
-                        }
-                    } else {
-                        customerMap.set(customerId, {
-                            id: customerId,
-                            name: customerName,
-                            phone: phone,
-                            visits: 1,
-                            total_spent: booking.total_amount || 0,
-                            last_visit: booking.booking_date || booking.created_at || new Date().toISOString(),
-                            coupon_sent: false
-                        });
-                    }
-                });
-
-                // All customers are eligible
-                const customers = Array.from(customerMap.values());
-                console.log('[Coupons] Aggregated customers:', customers.length);
-
-                // Sort by total spent descending
-                customers.sort((a, b) => b.total_spent - a.total_spent);
-
-                setEligibleCustomers(customers);
-            } else {
-                setEligibleCustomers([]);
-            }
+            const res = await fetch(`/api/owner/coupons/customers?cafeId=${cafeId}`);
+            const customers = await res.json();
+            setEligibleCustomers(Array.isArray(customers) ? customers : []);
         } catch (err) {
             console.error('[Coupons] Error in fetchEligibleCustomers:', err);
         }
 
         // Fetch usage history
         try {
-            const { data: usage } = await supabase
-                .from('coupon_usage')
-                .select('*')
-                .eq('coupon_id', coupon.id)
-                .order('used_at', { ascending: false });
-
-            if (usage) {
-                setUsageHistory(usage);
-            }
+            const res = await fetch(`/api/owner/coupons/usage?couponId=${coupon.id}`);
+            const usage = await res.json();
+            if (Array.isArray(usage)) setUsageHistory(usage);
         } catch (err) {
             console.error('[Coupons] Error fetching usage:', err);
         }
@@ -350,13 +247,13 @@ See you soon! 🎯`;
                 is_active: formData.isActive,
             };
 
-            if (selectedCoupon) {
-                const { error } = await supabase.from('coupons').update(payload).eq('id', selectedCoupon.id);
-                if (error) throw error;
-            } else {
-                const { error } = await supabase.from('coupons').insert([payload]);
-                if (error) throw error;
-            }
+            const res = await fetch('/api/owner/coupons', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(selectedCoupon ? { id: selectedCoupon.id, ...payload } : payload),
+            });
+            const result = await res.json();
+            if (!res.ok) throw new Error(result.error || 'Failed to save coupon');
 
             fetchCoupons();
             setView('list');
@@ -396,13 +293,17 @@ See you soon! 🎯`;
     const handleDelete = async (id: string, e?: React.MouseEvent) => {
         e?.stopPropagation();
         if (!confirm("Are you sure you want to delete this coupon?")) return;
-        await supabase.from('coupons').delete().eq('id', id);
+        await fetch(`/api/owner/coupons?id=${id}`, { method: 'DELETE' });
         fetchCoupons();
         if (selectedCoupon?.id === id) setView('list');
     };
 
     const handleDeactivate = async (coupon: Coupon) => {
-        await supabase.from('coupons').update({ is_active: !coupon.is_active }).eq('id', coupon.id);
+        await fetch('/api/owner/coupons', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: coupon.id, is_active: !coupon.is_active }),
+        });
         fetchCoupons();
         if (selectedCoupon?.id === coupon.id) {
             setSelectedCoupon({ ...coupon, is_active: !coupon.is_active });
