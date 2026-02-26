@@ -384,15 +384,16 @@ export default function OwnerDashboardPage() {
     return () => clearInterval(timer);
   }, [activeTab]);
 
-  // Auto-refresh on dashboard: immediately if stale sessions exist, then every 60s
+  // Auto-complete expired sessions: runs every second via currentTime
+  // Immediately marks expired in-progress sessions as "completed" in DB + local state
   useEffect(() => {
-    if (activeTab !== 'dashboard') return;
-
-    const now = new Date();
+    const now = currentTime;
     const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
-    const hasExpired = bookings.some(b => {
+    const expiredBookings = bookings.filter(b => {
       if (b.status !== 'in-progress') return false;
+      if (b.booking_date !== todayStr) return false;
       if (!b.start_time || !b.duration) return false;
       const match = b.start_time.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
       if (!match) return false;
@@ -404,22 +405,23 @@ export default function OwnerDashboardPage() {
       return currentMinutes > hours * 60 + minutes + b.duration;
     });
 
-    // Immediately refresh if there are already-expired sessions
-    if (hasExpired) {
-      refreshData();
-      return;
-    }
+    if (expiredBookings.length === 0) return;
 
-    // Periodic refresh every 60s while in-progress sessions exist
-    const hasInProgress = bookings.some(b => b.status === 'in-progress');
-    if (!hasInProgress) return;
+    // Update local state immediately so UI clears right away
+    const expiredIds = new Set(expiredBookings.map(b => b.id));
+    setBookings(prev => prev.map(b =>
+      expiredIds.has(b.id) ? { ...b, status: 'completed' } : b
+    ));
 
-    const interval = setInterval(() => {
-      refreshData();
-    }, 60000);
-
-    return () => clearInterval(interval);
-  }, [activeTab, bookings]);
+    // Persist to DB via API (fire-and-forget)
+    expiredBookings.forEach(b => {
+      fetch('/api/owner/billing', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId: b.id, booking: { status: 'completed' } }),
+      }).catch(err => console.error('Failed to auto-complete booking:', err));
+    });
+  }, [currentTime, bookings]);
 
 
 
@@ -1132,6 +1134,52 @@ export default function OwnerDashboardPage() {
     }
     fetchUsageHistory();
   }, [viewingSubscription]);
+
+  // Auto-complete expired bookings client-side (avoids relying on server cron)
+  useEffect(() => {
+    const now = currentTime;
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    const todayStr = getLocalDateString(now);
+
+    const expiredBookings = bookings.filter((b: any) => {
+      if (b.status !== 'in-progress') return false;
+      if (b.booking_date !== todayStr) return false;
+      if (!b.start_time || !b.duration) return false;
+
+      const timeParts = b.start_time.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
+      if (!timeParts) return false;
+
+      let hours = parseInt(timeParts[1]);
+      const minutes = parseInt(timeParts[2]);
+      const period = timeParts[3];
+
+      if (period) {
+        if (period.toLowerCase() === 'pm' && hours !== 12) hours += 12;
+        else if (period.toLowerCase() === 'am' && hours === 12) hours = 0;
+      }
+
+      const endMinutes = hours * 60 + minutes + b.duration;
+      return currentMinutes >= endMinutes;
+    });
+
+    if (expiredBookings.length === 0) return;
+
+    const expiredIds = new Set(expiredBookings.map((b: any) => b.id));
+
+    // Immediately update local state so they disappear from Active Sessions
+    setBookings((prev: any[]) =>
+      prev.map((b: any) => expiredIds.has(b.id) ? { ...b, status: 'completed' } : b)
+    );
+
+    // Persist to DB
+    expiredBookings.forEach((b: any) => {
+      fetch('/api/owner/billing', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId: b.id, booking: { status: 'completed' } }),
+      }).catch((err: any) => console.error('Failed to auto-complete booking:', err));
+    });
+  }, [currentTime]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fetch customer data when viewing a customer
   useEffect(() => {
