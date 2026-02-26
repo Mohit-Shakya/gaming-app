@@ -128,18 +128,13 @@ export function Memberships({
                 cafe_id: cafeId,
             };
 
-            if (editingPlan) {
-                const { error } = await supabase
-                    .from('membership_plans')
-                    .update(planData)
-                    .eq('id', editingPlan.id);
-                if (error) throw error;
-            } else {
-                const { error } = await supabase
-                    .from('membership_plans')
-                    .insert([upsertData]);
-                if (error) throw error;
-            }
+            const res = await fetch('/api/owner/membership-plans', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(editingPlan ? { id: editingPlan.id, ...planData } : upsertData),
+            });
+            const result = await res.json();
+            if (!res.ok) throw new Error(result.error || 'Failed to save plan');
 
             setShowPlanModal(false);
             setEditingPlan(null);
@@ -156,13 +151,10 @@ export function Memberships({
     const handleDeletePlan = async (planId: string) => {
         if (!confirm('Are you sure? This will hide the plan from new purchases.')) return;
 
-        const { error } = await supabase
-            .from('membership_plans')
-            .delete()
-            .eq('id', planId);
-
-        if (error) {
-            alert('Error deleting plan: ' + error.message);
+        const res = await fetch(`/api/owner/membership-plans?id=${planId}`, { method: 'DELETE' });
+        const result = await res.json();
+        if (!res.ok) {
+            alert('Error deleting plan: ' + (result.error || 'Unknown error'));
         } else {
             onRefresh();
         }
