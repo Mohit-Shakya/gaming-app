@@ -77,6 +77,11 @@ export function Memberships({
     const [subAmountPaid, setSubAmountPaid] = useState('');
     const [subPaymentMode, setSubPaymentMode] = useState('cash');
 
+    // Customer autocomplete
+    const [allCustomers, setAllCustomers] = useState<{ name: string; phone: string }[]>([]);
+    const [suggestions, setSuggestions] = useState<{ name: string; phone: string }[]>([]);
+    const [showSuggestions, setShowSuggestions] = useState(false);
+
     // New Plan Form States
     const [newPlanName, setNewPlanName] = useState('');
     const [newPlanDescription, setNewPlanDescription] = useState('');
@@ -326,6 +331,14 @@ export function Memberships({
                                         setSubSelectedPlanId(membershipPlans[0]?.id || '');
                                         setSubAmountPaid(membershipPlans[0]?.price?.toString() || '');
                                         setSubPaymentMode('cash');
+                                        setSuggestions([]);
+                                        setShowSuggestions(false);
+                                        // Pre-fetch customers for autocomplete
+                                        if (cafeId && allCustomers.length === 0) {
+                                            fetch(`/api/owner/coupons/customers?cafeId=${cafeId}`)
+                                                .then(r => r.json())
+                                                .then(data => { if (Array.isArray(data)) setAllCustomers(data); });
+                                        }
                                         setShowAddSubModal(true);
                                     }}
                                     className="whitespace-nowrap"
@@ -666,12 +679,55 @@ export function Memberships({
                         </div>
 
                         <div className="space-y-4">
-                            <Input
-                                label="Customer Name"
-                                placeholder="Enter customer name"
-                                value={subCustomerName}
-                                onChange={setSubCustomerName}
-                            />
+                            {/* Customer Name with autocomplete */}
+                            <div className="relative">
+                                <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase">Customer Name</label>
+                                <input
+                                    type="text"
+                                    placeholder="Enter customer name"
+                                    value={subCustomerName}
+                                    autoComplete="off"
+                                    onChange={e => {
+                                        const val = e.target.value;
+                                        setSubCustomerName(val);
+                                        if (val.trim().length > 0) {
+                                            const filtered = allCustomers.filter(c =>
+                                                c.name.toLowerCase().includes(val.toLowerCase())
+                                            ).slice(0, 6);
+                                            setSuggestions(filtered);
+                                            setShowSuggestions(filtered.length > 0);
+                                        } else {
+                                            setSuggestions([]);
+                                            setShowSuggestions(false);
+                                        }
+                                    }}
+                                    onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                                    onFocus={() => {
+                                        if (suggestions.length > 0) setShowSuggestions(true);
+                                    }}
+                                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 text-sm"
+                                />
+                                {showSuggestions && suggestions.length > 0 && (
+                                    <div className="absolute z-50 w-full mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-xl overflow-hidden">
+                                        {suggestions.map((c, i) => (
+                                            <button
+                                                key={i}
+                                                type="button"
+                                                onMouseDown={() => {
+                                                    setSubCustomerName(c.name);
+                                                    setSubCustomerPhone(c.phone);
+                                                    setSuggestions([]);
+                                                    setShowSuggestions(false);
+                                                }}
+                                                className="w-full px-3 py-2.5 text-left hover:bg-slate-700 flex justify-between items-center"
+                                            >
+                                                <span className="text-white text-sm font-medium">{c.name}</span>
+                                                <span className="text-slate-400 text-xs">{c.phone}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
 
                             <Input
                                 label="Phone Number"
