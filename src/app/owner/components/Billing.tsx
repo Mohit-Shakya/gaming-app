@@ -1,8 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { supabase } from '@/lib/supabaseClient';
-import { CONSOLE_ICONS, CONSOLE_LABELS } from '@/lib/constants';
+import { CONSOLE_LABELS } from '@/lib/constants';
 import { Card, Button, Input, Select, StatusBadge, LoadingSpinner } from './ui';
 import {
     User, Smartphone, Calendar, Clock, Plus, Trash2,
@@ -20,6 +19,8 @@ interface BillingProps {
     cafes: CafeRow[];
     isMobile?: boolean;
     onSuccess?: () => void;
+    pricingData?: Record<string, any>;   // consolePricing[cafeId]
+    stationPricingList?: any[];           // Object.values(stationPricing)
 }
 
 type BillingItem = {
@@ -35,7 +36,7 @@ type CustomerSuggestion = {
     phone: string;
 };
 
-export function Billing({ cafeId, cafes, isMobile = false, onSuccess }: BillingProps) {
+export function Billing({ cafeId, cafes, isMobile = false, onSuccess, pricingData, stationPricingList }: BillingProps) {
     // Form State
     const [customerName, setCustomerName] = useState('');
     const [customerPhone, setCustomerPhone] = useState('');
@@ -46,9 +47,9 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess }: BillingP
     const [manualAmount, setManualAmount] = useState<number | null>(null);
     const [submitting, setSubmitting] = useState(false);
 
-    // Data State
-    const [pricing, setPricing] = useState<any>(null);
-    const [stationPricingData, setStationPricingData] = useState<any[]>([]);
+    // Data State — seeded from props, avoids direct Supabase calls on ISP-blocked networks
+    const [pricing, setPricing] = useState<any>(pricingData || null);
+    const [stationPricingData, setStationPricingData] = useState<any[]>(stationPricingList || []);
     const [availableConsoles, setAvailableConsoles] = useState<string[]>([]);
 
     // Autocomplete State
@@ -84,71 +85,41 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess }: BillingP
                 consoleTypes.filter(c => (c.count ?? 0) > 0).map(c => c.id)
             );
         }
-
-        // Fetch pricing from both tables
-        async function fetchPricing() {
-            if (!cafeId) return;
-
-            // Fetch console_pricing (tier-based)
-            const { data } = await supabase
-                .from('console_pricing')
-                .select('*')
-                .eq('cafe_id', cafeId);
-
-            if (data) {
-                const pricingMap: any = {};
-                data.forEach(p => {
-                    const type = p.console_type;
-                    if (!pricingMap[type]) pricingMap[type] = {};
-                    pricingMap[type][`qty${p.quantity}_${p.duration_minutes}min`] = p.price;
-                });
-                setPricing(pricingMap);
-            }
-
-            // Fetch station_pricing (per-station rates)
-            const { data: spData } = await supabase
-                .from('station_pricing')
-                .select('*')
-                .eq('cafe_id', cafeId)
-                .eq('is_active', true);
-
-            if (spData) {
-                setStationPricingData(spData);
-            }
-        }
-        fetchPricing();
     }, [cafeId, cafes]);
 
-    // Customer Autocomplete
+    // Sync pricing from props when they change (e.g. cafe switch)
+    useEffect(() => {
+        if (pricingData) setPricing(pricingData);
+    }, [pricingData]);
+
+    useEffect(() => {
+        if (stationPricingList) setStationPricingData(stationPricingList);
+    }, [stationPricingList]);
+
+    // Customer Autocomplete — load all customers once, filter client-side
+    const [allCustomers, setAllCustomers] = useState<CustomerSuggestion[]>([]);
+    useEffect(() => {
+        if (!cafeId) return;
+        fetch(`/api/owner/coupons/customers?cafeId=${cafeId}`)
+            .then(r => r.json())
+            .then(data => { if (Array.isArray(data)) setAllCustomers(data); })
+            .catch(() => {});
+    }, [cafeId]);
+
     useEffect(() => {
         if (!customerName || customerName.length < 2) {
             setSuggestions([]);
             return;
         }
-
         if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
-
-        searchTimeoutRef.current = setTimeout(async () => {
-            const { data } = await supabase
-                .from('bookings')
-                .select('customer_name, customer_phone')
-                .ilike('customer_name', `%${customerName}%`)
-                .order('created_at', { ascending: false })
-                .limit(5);
-
-            if (data) {
-                // Unique by phone
-                const unique = data.reduce((acc: any[], curr) => {
-                    if (curr.customer_name && !acc.find(item => item.customer_name === curr.customer_name)) {
-                        acc.push({ name: curr.customer_name, phone: curr.customer_phone || '' });
-                    }
-                    return acc;
-                }, []);
-                setSuggestions(unique);
-                setShowSuggestions(true);
-            }
-        }, 300);
-    }, [customerName]);
+        searchTimeoutRef.current = setTimeout(() => {
+            const filtered = allCustomers
+                .filter(c => c.name.toLowerCase().includes(customerName.toLowerCase()))
+                .slice(0, 5);
+            setSuggestions(filtered);
+            setShowSuggestions(filtered.length > 0);
+        }, 150);
+    }, [customerName, allCustomers]);
 
     // Pricing Helper
     const calculatePrice = (type: string, qty: number, duration: number) => {
@@ -262,56 +233,42 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess }: BillingP
 
         setSubmitting(true);
         try {
-            // Format time
             const [hours, mins] = startTime.split(':').map(Number);
             const period = hours >= 12 ? 'pm' : 'am';
             const displayHours = hours % 12 || 12;
             const startTime12h = `${displayHours}:${mins.toString().padStart(2, "0")} ${period}`;
 
-            // Create Booking
-            const { data: booking, error: bookingError } = await supabase
-                .from('bookings')
-                .insert({
-                    cafe_id: cafeId,
-                    customer_name: customerName,
-                    customer_phone: customerPhone || null,
-                    booking_date: bookingDate,
-                    start_time: startTime12h,
-                    duration: items[0].duration, // Primary duration
-                    total_amount: totalAmount,
-                    status: 'in-progress',
-                    source: 'walk-in',
-                    payment_mode: paymentMode
-                })
-                .select()
-                .single();
+            const res = await fetch('/api/owner/billing', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    booking: {
+                        cafe_id: cafeId,
+                        customer_name: customerName,
+                        customer_phone: customerPhone || null,
+                        booking_date: bookingDate,
+                        start_time: startTime12h,
+                        duration: items[0].duration,
+                        total_amount: totalAmount,
+                        status: 'in-progress',
+                        source: 'walk-in',
+                        payment_mode: paymentMode,
+                    },
+                    items,
+                }),
+            });
+            const result = await res.json();
+            if (!res.ok) throw new Error(result.error || 'Failed to create booking');
 
-            if (bookingError) throw bookingError;
-
-            // Create Items
-            const bookingItems = items.map(item => ({
-                booking_id: booking.id,
-                console: item.console,
-                quantity: item.quantity,
-                price: item.price
-            }));
-
-            const { error: itemsError } = await supabase
-                .from('booking_items')
-                .insert(bookingItems);
-
-            if (itemsError) throw itemsError;
-
-            // Success
             setCustomerName('');
             setCustomerPhone('');
             setItems([]);
             if (onSuccess) onSuccess();
-            alert('Booking created successfully!'); // Can replace with toast later
+            alert('Booking created successfully!');
 
-        } catch (error) {
+        } catch (error: any) {
             console.error('Booking failed:', error);
-            alert('Failed to create booking');
+            alert('Failed to create booking: ' + error.message);
         } finally {
             setSubmitting(false);
         }

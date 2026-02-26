@@ -4722,6 +4722,7 @@ export default function OwnerDashboardPage() {
             <Memberships
               isMobile={isMobile}
               cafeId={selectedCafeId || cafes[0]?.id || ''}
+              cafeOpeningHours={cafes.find(c => c.id === (selectedCafeId || cafes[0]?.id))?.opening_hours || ''}
               subscriptions={subscriptions}
               membershipPlans={membershipPlans}
               activeTimers={activeTimers}
@@ -4771,6 +4772,8 @@ export default function OwnerDashboardPage() {
               cafeId={selectedCafeId || cafes[0]?.id}
               cafes={cafes}
               isMobile={isMobile}
+              pricingData={consolePricing[selectedCafeId || cafes[0]?.id]}
+              stationPricingList={Object.values(stationPricing)}
               onSuccess={() => {
                 refreshData();
                 setActiveTab('dashboard');

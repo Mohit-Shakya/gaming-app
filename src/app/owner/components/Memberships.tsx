@@ -35,6 +35,7 @@ interface Subscription {
 interface MembershipsProps {
     isMobile: boolean;
     cafeId: string;
+    cafeOpeningHours?: string;
     subscriptions: Subscription[];
     membershipPlans: MembershipPlan[];
     activeTimers: Map<string, number>;
@@ -44,9 +45,16 @@ interface MembershipsProps {
     onRefresh: () => void;
 }
 
+// Parse closing time from "Mon-Sun: 10:00 AM - 11:00 PM" format
+function parseClosingTime(openingHours: string): string | null {
+    const match = openingHours.match(/(\d{1,2}:\d{2}\s*[AP]M)\s*-\s*(\d{1,2}:\d{2}\s*[AP]M)/i);
+    return match ? match[2].trim() : null;
+}
+
 export function Memberships({
     isMobile,
     cafeId,
+    cafeOpeningHours = '',
     subscriptions,
     membershipPlans,
     activeTimers,
@@ -55,6 +63,7 @@ export function Memberships({
     onStopTimer,
     onRefresh
 }: MembershipsProps) {
+    const closingTime = cafeOpeningHours ? parseClosingTime(cafeOpeningHours) : null;
     const [subTab, setSubTab] = useState<'subscriptions' | 'plans'>('subscriptions');
 
     // Subscription Filter States
@@ -396,12 +405,21 @@ export function Memberships({
 
                                                 {/* Progress */}
                                                 <div className="flex-1 md:max-w-xs">
-                                                    <div className="flex justify-between text-xs mb-1.5">
-                                                        <span className="text-slate-400">Balance</span>
-                                                        <span className={`font-mono font-medium ${isRunning ? 'text-emerald-400' : 'text-slate-200'}`}>
-                                                            {Math.floor(currentRem)}h {Math.round((currentRem % 1) * 60)}m
-                                                        </span>
-                                                    </div>
+                                                    {sub.membership_plans?.plan_type === 'day_pass' ? (
+                                                        <div className="flex justify-between text-xs mb-1.5">
+                                                            <span className="text-slate-400">Ends at</span>
+                                                            <span className={`font-mono font-medium ${isRunning ? 'text-emerald-400' : 'text-slate-200'}`}>
+                                                                {closingTime || `${Math.floor(currentRem)}h ${Math.round((currentRem % 1) * 60)}m`}
+                                                            </span>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex justify-between text-xs mb-1.5">
+                                                            <span className="text-slate-400">Balance</span>
+                                                            <span className={`font-mono font-medium ${isRunning ? 'text-emerald-400' : 'text-slate-200'}`}>
+                                                                {Math.floor(currentRem)}h {Math.round((currentRem % 1) * 60)}m
+                                                            </span>
+                                                        </div>
+                                                    )}
                                                     <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
                                                         <div
                                                             className={`h-full rounded-full transition-all duration-1000 ${percent < 10 ? 'bg-red-500' : percent < 30 ? 'bg-amber-500' : 'bg-emerald-500'
