@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
-import { supabase } from '@/lib/supabaseClient';
 import { CONSOLE_LABELS, CONSOLE_ICONS } from '@/lib/constants';
 import { Card, StatusBadge, Button, LoadingSpinner, EmptyState } from './ui';
 import { MonitorPlay, Clock, User, Calendar, AlertCircle } from 'lucide-react';
@@ -77,80 +76,17 @@ export function LiveStatus({ cafeId, isMobile = false }: LiveStatusProps) {
 
     const loadConsoleStatus = async () => {
         try {
-            // Get cafe data
-            const { data: cafe, error: cafeError } = await supabase
-                .from("cafes")
-                .select("ps5_count, ps4_count, xbox_count, pc_count, pool_count, arcade_count, snooker_count, vr_count, steering_wheel_count, racing_sim_count")
-                .eq("id", cafeId)
-                .single();
+            const res = await fetch(`/api/owner/live-status?cafeId=${cafeId}`);
+            if (!res.ok) throw new Error('Failed to fetch live status');
+            const { cafe, bookings, activeSubscriptions } = await res.json();
 
-            if (cafeError || !cafe) {
-                console.error("Error loading cafe:", cafeError);
+            if (!cafe) {
                 setLoading(false);
                 return;
             }
 
-            // Get today's in-progress bookings
-            const today = getLocalDateString();
-            const { data: bookings, error: bookingsError } = await supabase
-                .from("bookings")
-                .select(`
-                  id,
-                  start_time,
-                  duration,
-                  customer_name,
-                  user_id,
-                  booking_date,
-                  status,
-                  source,
-                  booking_items (console, quantity)
-                `)
-                .eq("cafe_id", cafeId)
-                .eq("booking_date", today)
-                .eq("status", "in-progress");
-
-            if (bookingsError) throw bookingsError;
-
-            // Fetch profiles
-            const userIds = bookings?.filter(b => b.user_id).map(b => b.user_id) || [];
-            const profilesMap: Record<string, { name: string }> = {};
-
-            if (userIds.length > 0) {
-                const { data: profiles } = await supabase
-                    .from("profiles")
-                    .select("id, name")
-                    .in("id", userIds);
-
-                profiles?.forEach(p => {
-                    profilesMap[p.id] = { name: p.name };
-                });
-            }
-
-            // Enrich bookings
-            const enrichedBookings: BookingData[] = (bookings || []).map(b => ({
-                ...b,
-                profile: b.user_id ? profilesMap[b.user_id] : null
-            }));
-
-            // Fetch active memberships
-            const { data: activeSubscriptions, error: subsError } = await supabase
-                .from("subscriptions")
-                .select(`
-                  id,
-                  customer_name,
-                  assigned_console_station,
-                  timer_start_time,
-                  membership_plans (
-                    console_type
-                  )
-                `)
-                .eq("cafe_id", cafeId)
-                .eq("timer_active", true);
-
-            if (subsError) throw subsError;
-
             // Build summaries
-            const summaries = buildConsoleSummaries(cafe, enrichedBookings, activeSubscriptions || []);
+            const summaries = buildConsoleSummaries(cafe, bookings || [], activeSubscriptions || []);
             setConsoleData(summaries);
             setLastUpdated(new Date());
 

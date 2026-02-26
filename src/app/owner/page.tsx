@@ -272,7 +272,8 @@ export default function OwnerDashboardPage() {
   } = useBilling({
     selectedCafeId,
     consolePricing,
-    stationPricing
+    stationPricing,
+    cafeData: cafes.find(c => c.id === selectedCafeId) || cafes[0] || null,
   });
 
 
@@ -436,149 +437,20 @@ export default function OwnerDashboardPage() {
     async function fetchGalleryImages() {
       if (cafes.length === 0) return;
 
-      const { data, error } = await supabase
-        .from('gallery_images')
-        .select('id, image_url')
-        .eq('cafe_id', cafes[0].id)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching gallery images:', error);
+      const res = await fetch(`/api/owner/gallery?cafeId=${cafes[0].id}`);
+      if (!res.ok) {
+        console.error('Error fetching gallery images');
         return;
       }
-
-      setGalleryImages(data || []);
+      const { images } = await res.json();
+      setGalleryImages(images || []);
     }
 
     fetchGalleryImages();
   }, [cafes]);
 
-  // Real-time subscription for bookings
-  useEffect(() => {
-    if (!allowed || !ownerId || cafes.length === 0) return;
-
-    const cafeIds = cafes.map((c) => c.id);
-
-    // Subscribe to bookings table changes for owner's cafes
-    const channel = supabase
-      .channel('bookings-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*', // Listen to INSERT, UPDATE, DELETE
-          schema: 'public',
-          table: 'bookings',
-          filter: `cafe_id=in.(${cafeIds.join(',')})`,
-        },
-        async (payload) => {
-          console.log('[Real-time] Booking changed:', payload);
-
-          // Handle different event types
-          if (payload.eventType === 'DELETE') {
-            // Remove deleted booking from state
-            setBookings(prev => prev.filter(b => b.id !== payload.old.id));
-          } else {
-            // For INSERT and UPDATE, fetch only the changed booking
-            try {
-              const { data: bookingRow, error: bookingError } = await supabase
-                .from("bookings")
-                .select(`
-                  id,
-                  cafe_id,
-                  user_id,
-                  booking_date,
-                  start_time,
-                  duration,
-                  total_amount,
-                  status,
-                  source,
-                  payment_mode,
-                  created_at,
-                  customer_name,
-                  customer_phone,
-                  booking_items (
-                    id,
-                    console,
-                    quantity,
-                    price
-                  )
-                `)
-                .eq("id", payload.new.id)
-                .single();
-
-              if (bookingError) {
-                console.error('[Real-time] Error fetching booking:', bookingError);
-                return;
-              }
-
-              // Fetch user profile if needed
-              let userProfile = null;
-              if (bookingRow.user_id) {
-                const { data: profile } = await supabase
-                  .from("profiles")
-                  .select("id, first_name, last_name, phone")
-                  .eq("id", bookingRow.user_id)
-                  .single();
-
-                if (profile) {
-                  const fullName = [profile.first_name, profile.last_name]
-                    .filter(Boolean)
-                    .join(" ") || null;
-
-                  userProfile = {
-                    name: fullName,
-                    email: null,
-                    phone: profile.phone || null,
-                  };
-                }
-              }
-
-              // Enrich booking with user and cafe data
-              const cafe = cafes.find((c) => c.id === bookingRow.cafe_id);
-              const enrichedBooking: BookingRow = {
-                ...bookingRow,
-                user_name: userProfile?.name || (bookingRow.user_id ? `User ${bookingRow.user_id.slice(0, 8)}` : null),
-                user_email: userProfile?.email || null,
-                user_phone: userProfile?.phone || null,
-                cafe_name: cafe?.name || null,
-              };
-
-              // Update or insert in bookings array
-              setBookings(prev => {
-                const index = prev.findIndex(b => b.id === enrichedBooking.id);
-                if (index >= 0) {
-                  // Update existing
-                  const updated = [...prev];
-                  console.log('[Real-time] Updating booking in state:', {
-                    id: enrichedBooking.id.slice(0, 8),
-                    total_amount: enrichedBooking.total_amount,
-                    duration: enrichedBooking.duration,
-                    booking_items_price: enrichedBooking.booking_items?.[0]?.price
-                  });
-                  updated[index] = enrichedBooking;
-                  return updated;
-                } else {
-                  // Insert new at beginning
-                  console.log('[Real-time] Inserting new booking in state:', enrichedBooking.id.slice(0, 8));
-                  return [enrichedBooking, ...prev];
-                }
-              });
-            } catch (err) {
-              console.error('[Real-time] Error processing booking change:', err);
-              return;
-            }
-          }
-
-
-        }
-      )
-      .subscribe();
-
-    // Cleanup subscription on unmount
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [allowed, ownerId, cafes]);
+  // Realtime subscription removed — ISP blocks WebSocket to Supabase (ERR_CERT_COMMON_NAME_INVALID)
+  // Mutations call refreshData() directly to keep UI in sync
 
   // Handle confirm booking (pending -> confirmed)
   async function handleConfirmBooking(booking: BookingRow) {
@@ -591,18 +463,16 @@ export default function OwnerDashboardPage() {
     if (!confirmed) return;
 
     try {
-      const { error } = await supabase
-        .from("bookings")
-        .update({ status: "confirmed" })
-        .eq("id", booking.id);
-
-      if (error) {
-        console.error("Error confirming booking:", error);
-        alert("Failed to confirm booking");
+      const res = await fetch('/api/owner/billing', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId: booking.id, booking: { status: 'confirmed' } }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        alert('Failed to confirm booking: ' + (data.error || 'Unknown error'));
         return;
       }
-
-      // Refresh bookings list
       refreshData();
       alert("Booking confirmed successfully!");
     } catch (err) {
@@ -622,29 +492,17 @@ export default function OwnerDashboardPage() {
     if (!confirmed) return;
 
     try {
-      // Get current time in 12-hour format
       const currentTime = convertTo12Hour();
-
-      console.log(`[Start Booking] Updating booking ${booking.id}:`);
-      console.log(`  Original start time: ${booking.start_time}`);
-      console.log(`  New start time: ${currentTime}`);
-      console.log(`  Duration: ${booking.duration} minutes`);
-
-      const { error } = await supabase
-        .from("bookings")
-        .update({
-          status: "in-progress",
-          start_time: currentTime  // Update start time to actual start time
-        })
-        .eq("id", booking.id);
-
-      if (error) {
-        console.error("Error starting booking:", error);
-        alert("Failed to start booking");
+      const res = await fetch('/api/owner/billing', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId: booking.id, booking: { status: 'in-progress', start_time: currentTime } }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        alert('Failed to start booking: ' + (data.error || 'Unknown error'));
         return;
       }
-
-      // Refresh bookings list
       refreshData();
       alert("Booking started successfully!");
     } catch (err) {
@@ -1441,26 +1299,29 @@ export default function OwnerDashboardPage() {
       // Combine opening and closing time into opening_hours format
       const opening_hours = `Mon-Sun: ${editedCafe.opening_time} - ${editedCafe.closing_time}`;
 
-      const { error } = await supabase
-        .from("cafes")
-        .update({
-          address: editedCafe.address,
-          phone: editedCafe.phone,
-          email: editedCafe.email,
-          description: editedCafe.description,
-          opening_hours: opening_hours,
-          google_maps_url: editedCafe.google_maps_url || null,
-          instagram_url: editedCafe.instagram_url || null,
-          price_starts_from: editedCafe.price_starts_from ? parseInt(editedCafe.price_starts_from) : null,
-          monitor_details: editedCafe.monitor_details || null,
-          processor_details: editedCafe.processor_details || null,
-          gpu_details: editedCafe.gpu_details || null,
-          ram_details: editedCafe.ram_details || null,
-          accessories_details: editedCafe.accessories_details || null,
-        })
-        .eq("id", cafes[0].id);
-
-      if (error) throw error;
+      const res = await fetch('/api/owner/cafes', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          cafeId: cafes[0].id,
+          updates: {
+            address: editedCafe.address,
+            phone: editedCafe.phone,
+            email: editedCafe.email,
+            description: editedCafe.description,
+            opening_hours: opening_hours,
+            google_maps_url: editedCafe.google_maps_url || null,
+            instagram_url: editedCafe.instagram_url || null,
+            price_starts_from: editedCafe.price_starts_from ? parseInt(editedCafe.price_starts_from) : null,
+            monitor_details: editedCafe.monitor_details || null,
+            processor_details: editedCafe.processor_details || null,
+            gpu_details: editedCafe.gpu_details || null,
+            ram_details: editedCafe.ram_details || null,
+            accessories_details: editedCafe.accessories_details || null,
+          },
+        }),
+      });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed to save settings'); }
 
       // Update local state
       setCafes(prev => prev.map((c, i) => i === 0 ? {
@@ -1500,12 +1361,12 @@ export default function OwnerDashboardPage() {
       const currentCount = (cafes[0] as any)[columnName] || 0;
       const newCount = currentCount + newStationCount;
 
-      const { error } = await supabase
-        .from("cafes")
-        .update({ [columnName]: newCount })
-        .eq("id", cafes[0].id);
-
-      if (error) throw error;
+      const res = await fetch('/api/owner/cafes', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cafeId: cafes[0].id, updates: { [columnName]: newCount } }),
+      });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed to add station'); }
 
       // Update local state
       setCafes(prev => prev.map((c, i) => i === 0 ? {
@@ -1569,13 +1430,13 @@ export default function OwnerDashboardPage() {
         .from('cafe_images')
         .getPublicUrl(fileName);
 
-      // Update database
-      const { error: updateError } = await supabase
-        .from('cafes')
-        .update({ cover_url: publicUrl })
-        .eq('id', cafes[0].id);
-
-      if (updateError) throw updateError;
+      // Update database via API
+      const updateRes = await fetch('/api/owner/cafes', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cafeId: cafes[0].id, updates: { cover_url: publicUrl } }),
+      });
+      if (!updateRes.ok) { const d = await updateRes.json(); throw new Error(d.error || 'Failed to update photo'); }
 
       // Update local state
       setCafes(prev => prev.map((c, i) => i === 0 ? { ...c, cover_url: publicUrl } : c));
@@ -1602,13 +1463,13 @@ export default function OwnerDashboardPage() {
         await supabase.storage.from('cafe_images').remove([`${cafes[0].id}/${oldPath}`]);
       }
 
-      // Update database
-      const { error } = await supabase
-        .from('cafes')
-        .update({ cover_url: null })
-        .eq('id', cafes[0].id);
-
-      if (error) throw error;
+      // Update database via API
+      const delRes = await fetch('/api/owner/cafes', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cafeId: cafes[0].id, updates: { cover_url: null } }),
+      });
+      if (!delRes.ok) { const d = await delRes.json(); throw new Error(d.error || 'Failed to delete photo'); }
 
       // Update local state
       setCafes(prev => prev.map((c, i) => i === 0 ? { ...c, cover_url: null } : c));
@@ -1641,18 +1502,18 @@ export default function OwnerDashboardPage() {
         .from('cafe_images')
         .getPublicUrl(fileName);
 
-      // Insert into gallery_images table
-      const { data, error: insertError } = await supabase
-        .from('gallery_images')
-        .insert({ cafe_id: cafes[0].id, image_url: publicUrl })
-        .select('id, image_url')
-        .single();
-
-      if (insertError) throw insertError;
+      // Insert into gallery_images via API
+      const galleryRes = await fetch('/api/owner/gallery', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cafeId: cafes[0].id, imageUrl: publicUrl }),
+      });
+      if (!galleryRes.ok) { const d = await galleryRes.json(); throw new Error(d.error || 'Failed to save gallery image'); }
+      const { image } = await galleryRes.json();
 
       // Update local state
-      if (data) {
-        setGalleryImages(prev => [data, ...prev]);
+      if (image) {
+        setGalleryImages(prev => [image, ...prev]);
       }
       alert('Gallery photo added successfully!');
     } catch (error) {
@@ -1675,13 +1536,13 @@ export default function OwnerDashboardPage() {
       // Delete from storage
       await supabase.storage.from('cafe_images').remove([fileName]);
 
-      // Delete from database
-      const { error } = await supabase
-        .from('gallery_images')
-        .delete()
-        .eq('id', imageId);
-
-      if (error) throw error;
+      // Delete from database via API
+      const delGalleryRes = await fetch('/api/owner/gallery', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageId }),
+      });
+      if (!delGalleryRes.ok) { const d = await delGalleryRes.json(); throw new Error(d.error || 'Failed to delete gallery image'); }
 
       // Update local state
       setGalleryImages(prev => prev.filter(img => img.id !== imageId));
@@ -1710,12 +1571,12 @@ export default function OwnerDashboardPage() {
 
       const newCount = currentCount - 1;
 
-      const { error } = await supabase
-        .from("cafes")
-        .update({ [columnName]: newCount })
-        .eq("id", cafes[0].id);
-
-      if (error) throw error;
+      const res = await fetch('/api/owner/cafes', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cafeId: cafes[0].id, updates: { [columnName]: newCount } }),
+      });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed to delete station'); }
 
       // Update local state
       setCafes(prev => prev.map((c, i) => i === 0 ? {
@@ -4542,6 +4403,7 @@ export default function OwnerDashboardPage() {
             <Reports
               cafeId={selectedCafeId || cafes[0]?.id || ''}
               isMobile={isMobile}
+              openingHours={cafes[0]?.opening_hours ?? undefined}
             />
           )}
 

@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { Card, Button, Select, StatCard } from './ui';
-import { supabase } from '@/lib/supabaseClient';
 import {
     TrendingUp,
     TrendingDown,
@@ -22,6 +21,7 @@ import {
 interface ReportsProps {
     cafeId: string;
     isMobile: boolean;
+    openingHours?: string;
 }
 
 interface BookingItem {
@@ -51,7 +51,7 @@ interface PreviousBookingData {
     payment_mode: string;
 }
 
-export function Reports({ cafeId, isMobile }: ReportsProps) {
+export function Reports({ cafeId, isMobile, openingHours }: ReportsProps) {
     const [dateRange, setDateRange] = useState('7d');
     const [customStart, setCustomStart] = useState('');
     const [customEnd, setCustomEnd] = useState('');
@@ -158,53 +158,17 @@ export function Reports({ cafeId, isMobile }: ReportsProps) {
         try {
             const { startDate, endDate, prevStartDate, prevEndDate } = getDateRange(dateRange);
 
-            console.log('[Reports] Fetching data:', { cafeId, startDate, endDate });
+            const res = await fetch('/api/owner/reports', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ cafeId, startDate, endDate, prevStartDate, prevEndDate }),
+            });
 
-            // Fetch current period - booking_items is a relation, use proper syntax
-            const { data: currentData, error: currentError } = await supabase
-                .from('bookings')
-                .select(`
-                    id, 
-                    total_amount, 
-                    created_at, 
-                    booking_date, 
-                    status, 
-                    payment_mode, 
-                    start_time, 
- 
-                    customer_name,
-                    source,
-                    booking_items (
-                        console,
-                        quantity,
-                        price
-                    )
-                `)
-                .eq('cafe_id', cafeId)
-                .neq('status', 'cancelled')
-                .gte('booking_date', `${startDate}T00:00:00`)
-                .lte('booking_date', `${endDate}T23:59:59`)
-                .order('booking_date', { ascending: true });
+            if (!res.ok) throw new Error('Failed to fetch reports');
+            const { currentBookings, previousBookings: prevBookings } = await res.json();
 
-            if (currentError) {
-                console.error('[Reports] Query error:', currentError);
-                throw currentError;
-            }
-
-            console.log('[Reports] Fetched', currentData?.length || 0, 'bookings');
-            setBookings(currentData || []);
-
-            // Fetch previous period for comparison
-            const { data: prevData } = await supabase
-                .from('bookings')
-                .select('id, total_amount, booking_date, status, payment_mode')
-                .eq('cafe_id', cafeId)
-                .neq('status', 'cancelled')
-                .gte('booking_date', `${prevStartDate}T00:00:00`)
-                .lte('booking_date', `${prevEndDate}T23:59:59`);
-
-            setPreviousBookings(prevData || []);
-
+            setBookings(currentBookings || []);
+            setPreviousBookings(prevBookings || []);
         } catch (error) {
             console.error('Error fetching reports:', error);
         } finally {
@@ -320,21 +284,10 @@ export function Reports({ cafeId, isMobile }: ReportsProps) {
     // Fetch 30 days of booking data specifically for peak hours analysis
     const fetchPeakHoursData = async () => {
         try {
-            const now = new Date();
-            const thirtyDaysAgo = new Date(now);
-            thirtyDaysAgo.setDate(now.getDate() - 30);
-            const startDate = thirtyDaysAgo.toISOString().slice(0, 10);
-            const endDate = now.toISOString().slice(0, 10);
-
-            const { data, error } = await supabase
-                .from('bookings')
-                .select('id, start_time, created_at, status')
-                .eq('cafe_id', cafeId)
-                .neq('status', 'cancelled')
-                .gte('booking_date', startDate)
-                .lte('booking_date', endDate);
-
-            if (!error && data) {
+            const res = await fetch(`/api/owner/reports?cafeId=${cafeId}`);
+            if (!res.ok) throw new Error('Failed to fetch peak hours data');
+            const { bookings: data } = await res.json();
+            if (data) {
                 setPeakHoursBookings(data as BookingData[]);
             }
         } catch (err) {
@@ -342,47 +295,25 @@ export function Reports({ cafeId, isMobile }: ReportsProps) {
         }
     };
 
-    // Fetch cafe operating hours
-    const fetchCafeHours = async () => {
-        try {
-            const { data: cafe } = await supabase
-                .from('cafes')
-                .select('opening_hours')
-                .eq('id', cafeId)
-                .single();
+    // Parse cafe operating hours from prop
+    const fetchCafeHours = () => {
+        const hoursStr = openingHours;
+        if (!hoursStr) return;
 
-            if (cafe?.opening_hours) {
-                // Parse opening_hours string like "Mon-Sun: 10:00 AM - 10:00 PM"
-                const hoursStr = cafe.opening_hours;
+        const match = hoursStr.match(/(\d{1,2})(?::\d{2})?\s*(AM|PM)\s*[-–]\s*(\d{1,2})(?::\d{2})?\s*(AM|PM)/i);
+        if (match) {
+            let openHour = parseInt(match[1], 10);
+            const openPeriod = match[2].toUpperCase();
+            let closeHour = parseInt(match[3], 10);
+            const closePeriod = match[4].toUpperCase();
 
-                // Match: "10:00 AM - 10:00 PM" - captures hour and AM/PM for both times
-                const match = hoursStr.match(/(\d{1,2})(?::\d{2})?\s*(AM|PM)\s*[-–]\s*(\d{1,2})(?::\d{2})?\s*(AM|PM)/i);
+            if (openPeriod === 'PM' && openHour !== 12) openHour += 12;
+            else if (openPeriod === 'AM' && openHour === 12) openHour = 0;
 
-                if (match) {
-                    let openHour = parseInt(match[1], 10);
-                    const openPeriod = match[2].toUpperCase();
-                    let closeHour = parseInt(match[3], 10);
-                    const closePeriod = match[4].toUpperCase();
+            if (closePeriod === 'PM' && closeHour !== 12) closeHour += 12;
+            else if (closePeriod === 'AM' && closeHour === 12) closeHour = 0;
 
-                    // Convert to 24-hour format
-                    if (openPeriod === 'PM' && openHour !== 12) {
-                        openHour += 12;
-                    } else if (openPeriod === 'AM' && openHour === 12) {
-                        openHour = 0;
-                    }
-
-                    if (closePeriod === 'PM' && closeHour !== 12) {
-                        closeHour += 12;
-                    } else if (closePeriod === 'AM' && closeHour === 12) {
-                        closeHour = 0;
-                    }
-
-                    console.log('[Reports] Parsed cafe hours:', { openHour, closeHour, from: hoursStr });
-                    setCafeHours({ openHour, closeHour });
-                }
-            }
-        } catch (err) {
-            console.error('Error fetching cafe hours:', err);
+            setCafeHours({ openHour, closeHour });
         }
     };
 

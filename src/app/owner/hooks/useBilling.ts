@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from "react";
-import { supabase } from "@/lib/supabaseClient";
 import { ConsoleId } from "@/lib/constants";
 import { BillingItem, PricingTier } from "../types";
 
@@ -13,12 +12,14 @@ type UseBillingProps = {
   selectedCafeId: string;
   consolePricing: Record<string, Record<string, PricingTier>>;
   stationPricing: Record<string, any>;
+  cafeData?: Record<string, any> | null;
 };
 
-export function useBilling({ 
-  selectedCafeId, 
-  consolePricing, 
-  stationPricing 
+export function useBilling({
+  selectedCafeId,
+  consolePricing,
+  stationPricing,
+  cafeData
 }: UseBillingProps) {
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -223,37 +224,33 @@ export function useBilling({
     const startTime12h = `${hours12}:${minutes.toString().padStart(2, "0")} ${period}`;
 
     try {
-      const { data: booking, error: bookingError } = await supabase
-        .from("bookings")
-        .insert({
-          cafe_id: selectedCafeId,
-          customer_name: customerName,
-          customer_phone: customerPhone || null,
-          booking_date: bookingDate,
-          start_time: startTime12h,
-          duration: items[0].duration,
-          total_amount: totalAmount,
-          status: "in-progress",
-          source: "walk-in",
-          payment_mode: paymentMode,
-        })
-        .select()
-        .single();
-
-      if (bookingError) throw bookingError;
-
-      const itemsToInsert = items.map((item) => ({
-        booking_id: booking.id,
-        console: item.console,
-        quantity: item.quantity,
-        price: item.price,
-      }));
-
-      const { error: itemsError } = await supabase
-        .from("booking_items")
-        .insert(itemsToInsert);
-
-      if (itemsError) throw itemsError;
+      const res = await fetch('/api/owner/billing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          booking: {
+            cafe_id: selectedCafeId,
+            customer_name: customerName,
+            customer_phone: customerPhone || null,
+            booking_date: bookingDate,
+            start_time: startTime12h,
+            duration: items[0].duration,
+            total_amount: totalAmount,
+            status: 'in-progress',
+            source: 'walk-in',
+            payment_mode: paymentMode,
+          },
+          items: items.map((item) => ({
+            console: item.console,
+            quantity: item.quantity,
+            price: item.price,
+          })),
+        }),
+      });
+      if (!res.ok) {
+        const d = await res.json();
+        throw new Error(d.error || 'Failed to create booking');
+      }
 
       alert("Bulk booking created successfully!");
       resetForm();
@@ -271,68 +268,38 @@ export function useBilling({
     setTotalAmount(calculatedTotal);
   }, [items]);
 
-  // Load available consoles
+  // Load available consoles from cafeData prop (no direct Supabase call)
   useEffect(() => {
-    if (!selectedCafeId) return;
+    const data = cafeData;
+    if (!data) return;
 
-    async function loadConsoles() {
-      const { data, error } = await supabase
-        .from("cafes")
-        .select(`
-          ps5_count,
-          ps4_count,
-          xbox_count,
-          pc_count,
-          pool_count,
-          snooker_count,
-          arcade_count,
-          vr_count,
-          steering_wheel_count,
-          racing_sim_count
-        `)
-        .eq("id", selectedCafeId)
-        .single();
+    const available: ConsoleId[] = [];
+    if (data.ps5_count > 0) available.push("ps5");
+    if (data.ps4_count > 0) available.push("ps4");
+    if (data.xbox_count > 0) available.push("xbox");
+    if (data.pc_count > 0) available.push("pc");
+    if (data.pool_count > 0) available.push("pool");
+    if (data.snooker_count > 0) available.push("snooker");
+    if (data.arcade_count > 0) available.push("arcade");
+    if (data.vr_count > 0) available.push("vr");
+    if (data.steering_wheel_count > 0) available.push("steering");
+    if (data.racing_sim_count > 0) available.push("racing_sim");
+    setAvailableConsoles(available);
+  }, [cafeData]);
 
-      if (!error && data) {
-        const available: ConsoleId[] = [];
-        if (data.ps5_count > 0) available.push("ps5");
-        if (data.ps4_count > 0) available.push("ps4");
-        if (data.xbox_count > 0) available.push("xbox");
-        if (data.pc_count > 0) available.push("pc");
-        if (data.pool_count > 0) available.push("pool");
-        if (data.snooker_count > 0) available.push("snooker");
-        if (data.arcade_count > 0) available.push("arcade");
-        if (data.vr_count > 0) available.push("vr");
-        if (data.steering_wheel_count > 0) available.push("steering");
-        if (data.racing_sim_count > 0) available.push("racing_sim");
-        setAvailableConsoles(available);
-      }
-    }
-    loadConsoles();
-  }, [selectedCafeId]);
-
-  // Load previous customers
+  // Load previous customers via API route
   useEffect(() => {
     if (!selectedCafeId) return;
 
     async function loadCustomers() {
-      const { data, error } = await supabase
-        .from("bookings")
-        .select("customer_name, customer_phone")
-        .eq("cafe_id", selectedCafeId)
-        .eq("source", "walk-in")
-        .not("customer_name", "is", null)
-        .order("created_at", { ascending: false })
-        .limit(100);
+      const res = await fetch(`/api/owner/coupons/customers?cafeId=${selectedCafeId}`);
+      if (!res.ok) return;
+      const data = await res.json();
 
-      if (!error && data) {
-        const unique = data.reduce((acc: Array<{ name: string; phone: string }>, curr) => {
-          const phone = curr.customer_phone;
-          if (phone && !acc.find(c => c.phone === phone)) {
-            acc.push({ name: curr.customer_name!, phone: phone });
-          }
-          return acc;
-        }, []);
+      if (Array.isArray(data)) {
+        const unique = data
+          .filter((c: any) => c.phone && c.name)
+          .map((c: any) => ({ name: c.name, phone: c.phone }));
         setPreviousCustomers(unique);
       }
     }
