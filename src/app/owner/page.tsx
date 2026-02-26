@@ -656,14 +656,16 @@ export default function OwnerDashboardPage() {
   // Handle edit booking
   const handleBookingStatusChange = async (id: string, status: string) => {
     try {
-      const { error } = await supabase
-        .from('bookings')
-        .update({ status })
-        .eq('id', id);
+      const res = await fetch('/api/owner/billing', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId: id, booking: { status } }),
+      });
 
-      if (error) {
-        console.error('Error updating status:', error);
-        alert('Failed to update booking status');
+      if (!res.ok) {
+        const data = await res.json();
+        console.error('Error updating status:', data.error);
+        alert('Failed to update booking status: ' + (data.error || 'Unknown error'));
       } else {
         refreshData();
       }
@@ -786,198 +788,36 @@ export default function OwnerDashboardPage() {
       console.log('[handleSaveBooking] Parsed amount:', updatedAmount);
       console.log('[handleSaveBooking] Booking ID:', editingBooking.id);
 
-      // CRITICAL: Update booking_items FIRST, then bookings table
-      // This ensures when real-time subscription fires on bookings update,
-      // the booking_items price is already updated
-      if (editingBooking.booking_items && editingBooking.booking_items.length > 0) {
-        const bookingItemId = editingBooking.booking_items[0].id;
-        console.log('[handleSaveBooking] Step 1: Updating booking_items');
-        console.log('[handleSaveBooking] - Item ID:', bookingItemId);
-        console.log('[handleSaveBooking] - Item ID type:', typeof bookingItemId);
-        console.log('[handleSaveBooking] - New console:', editConsole);
-        console.log('[handleSaveBooking] - New quantity:', editControllers);
-        console.log('[handleSaveBooking] - New price:', updatedAmount);
+      // Update booking via server API route (bypasses ISP block)
+      const bookingItemId = editingBooking.booking_items?.[0]?.id;
 
-        // First check if the record exists
-        const { data: existingItem, error: checkError } = await supabase
-          .from("booking_items")
-          .select("*")
-          .eq("id", bookingItemId)
-          .maybeSingle();
-
-        if (checkError) {
-          console.error('[handleSaveBooking] ❌ Error checking booking_item exists:', checkError);
-        } else if (!existingItem) {
-          console.error('[handleSaveBooking] ❌ ERROR: booking_item not found with ID:', bookingItemId);
-          alert(`Error: Booking item not found. The booking may have been deleted.`);
-          return;
-        } else {
-          console.log('[handleSaveBooking] ✓ Found existing booking_item - Current price:', existingItem.price);
-        }
-
-        // Try update WITHOUT .select() first
-        const { error: itemError, count } = await supabase
-          .from("booking_items")
-          .update({
+      const res = await fetch('/api/owner/billing', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bookingId: editingBooking.id,
+          bookingItemId: bookingItemId || null,
+          booking: {
+            total_amount: updatedAmount,
+            status: editStatus,
+            payment_mode: editPaymentMethod,
+            customer_name: editCustomerName,
+            customer_phone: editCustomerPhone,
+            booking_date: editDate,
+            start_time: startTime12h,
+            duration: editDuration,
+          },
+          item: bookingItemId ? {
             console: editConsole,
             quantity: editControllers,
             price: updatedAmount,
-          })
-          .eq("id", bookingItemId);
+          } : null,
+        }),
+      });
 
-        if (itemError) {
-          console.error('[handleSaveBooking] ❌ Error updating booking_items table:', itemError);
-          throw itemError;
-        }
-
-        console.log('[handleSaveBooking] ✓ Step 1: Update command executed, count:', count);
-
-        // Wait for database to fully commit the transaction
-        console.log('[handleSaveBooking] Waiting 500ms for database commit...');
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        // Now verify the update worked by reading it back
-        const { data: verifyItem, error: verifyItemError } = await supabase
-          .from("booking_items")
-          .select("*")
-          .eq("id", bookingItemId)
-          .single();
-
-        if (verifyItemError) {
-          console.error('[handleSaveBooking] ❌ Error verifying booking_items update:', verifyItemError);
-        } else {
-          console.log('[handleSaveBooking] ✓ Step 1 complete: Verified booking_items:', {
-            id: verifyItem.id,
-            price: verifyItem.price,
-            console: verifyItem.console,
-            quantity: verifyItem.quantity
-          });
-
-          if (verifyItem.price !== updatedAmount) {
-            console.error('[handleSaveBooking] ❌ CRITICAL ERROR: booking_items price was NOT updated!');
-            console.error('[handleSaveBooking] Expected:', updatedAmount, 'Got:', verifyItem.price);
-          }
-        }
-      }
-
-      // Update bookings table SECOND (this triggers real-time subscription)
-      console.log('[handleSaveBooking] Step 2: Updating bookings table');
-      console.log('[handleSaveBooking] - Booking ID:', editingBooking.id);
-      console.log('[handleSaveBooking] - Booking ID type:', typeof editingBooking.id);
-      console.log('[handleSaveBooking] - New total_amount:', updatedAmount);
-      console.log('[handleSaveBooking] - New duration:', editDuration);
-
-      // Check if booking exists first
-      const { data: existingBooking, error: bookingCheckError } = await supabase
-        .from("bookings")
-        .select("*")
-        .eq("id", editingBooking.id)
-        .maybeSingle();
-
-      if (bookingCheckError) {
-        console.error('[handleSaveBooking] ❌ Error checking booking exists:', bookingCheckError);
-      } else if (!existingBooking) {
-        console.error('[handleSaveBooking] ❌ ERROR: booking not found with ID:', editingBooking.id);
-        alert(`Error: Booking not found. It may have been deleted.`);
-        return;
-      } else {
-        console.log('[handleSaveBooking] ✓ Found existing booking - Current total_amount:', existingBooking.total_amount, 'duration:', existingBooking.duration);
-      }
-
-      // Try update WITHOUT .select() first
-      const { error, count: bookingCount } = await supabase
-        .from("bookings")
-        .update({
-          total_amount: updatedAmount,
-          status: editStatus,
-          payment_mode: editPaymentMethod,
-          customer_name: editCustomerName,
-          customer_phone: editCustomerPhone,
-          booking_date: editDate,
-          start_time: startTime12h,
-          duration: editDuration,
-        })
-        .eq("id", editingBooking.id);
-
-      if (error) {
-        console.error('[handleSaveBooking] ❌ Error updating bookings table:', error);
-        throw error;
-      }
-
-      console.log('[handleSaveBooking] ✓ Step 2: Update command executed, count:', bookingCount);
-
-      // Wait for database to fully commit the transaction
-      console.log('[handleSaveBooking] Waiting 500ms for database commit...');
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      // Now verify the update worked by reading it back
-      const { data: verifyBooking, error: verifyBookingError } = await supabase
-        .from("bookings")
-        .select("*")
-        .eq("id", editingBooking.id)
-        .single();
-
-      if (verifyBookingError) {
-        console.error('[handleSaveBooking] ❌ Error verifying bookings update:', verifyBookingError);
-      } else {
-        console.log('[handleSaveBooking] ✓ Step 2 complete: Verified bookings:', {
-          id: verifyBooking.id.slice(0, 8),
-          total_amount: verifyBooking.total_amount,
-          duration: verifyBooking.duration,
-          status: verifyBooking.status
-        });
-
-        if (verifyBooking.total_amount !== updatedAmount) {
-          console.error('[handleSaveBooking] ❌ CRITICAL ERROR: bookings total_amount was NOT updated!');
-          console.error('[handleSaveBooking] Expected:', updatedAmount, 'Got:', verifyBooking.total_amount);
-        }
-
-        if (verifyBooking.duration !== editDuration) {
-          console.error('[handleSaveBooking] ❌ CRITICAL ERROR: bookings duration was NOT updated!');
-          console.error('[handleSaveBooking] Expected:', editDuration, 'Got:', verifyBooking.duration);
-        }
-      }
-
-      // CRITICAL: Verify the data was written by reading it back
-      console.log('[handleSaveBooking] Step 3: Verifying database state...');
-      const { data: verifyData, error: verifyError } = await supabase
-        .from("bookings")
-        .select(`
-          id,
-          total_amount,
-          duration,
-          booking_items (
-            id,
-            price
-          )
-        `)
-        .eq("id", editingBooking.id)
-        .single();
-
-      if (verifyError) {
-        console.error('[handleSaveBooking] ❌ Error verifying update:', verifyError);
-      } else {
-        console.log('[handleSaveBooking] ✓ Step 3 complete: Database verification:', {
-          booking_id: verifyData.id.slice(0, 8),
-          total_amount: verifyData.total_amount,
-          duration: verifyData.duration,
-          booking_items_price: verifyData.booking_items?.[0]?.price,
-          expected_amount: updatedAmount
-        });
-
-        if (verifyData.total_amount !== updatedAmount) {
-          console.error('[handleSaveBooking] ⚠️ WARNING: Database total_amount mismatch!', {
-            expected: updatedAmount,
-            actual: verifyData.total_amount
-          });
-        }
-
-        if (verifyData.booking_items?.[0]?.price !== updatedAmount) {
-          console.error('[handleSaveBooking] ⚠️ WARNING: Database booking_items price mismatch!', {
-            expected: updatedAmount,
-            actual: verifyData.booking_items?.[0]?.price
-          });
-        }
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to update booking');
       }
 
       // Update local state immediately for instant UI feedback
@@ -1050,39 +890,26 @@ export default function OwnerDashboardPage() {
 
       if (isPartOfBulkBooking) {
         // Delete only the specific booking_item, not the whole booking
-        console.log('[handleDeleteBooking] Deleting single item from bulk booking:', editingBookingItemId);
-
-        // Find the item to be deleted to get its price
         const itemToDelete = allItems.find(item => item.id === editingBookingItemId);
         const itemPrice = itemToDelete?.price || 0;
-
-        // Delete only this specific booking_item
-        const { error: itemError } = await supabase
-          .from("booking_items")
-          .delete()
-          .eq("id", editingBookingItemId);
-
-        if (itemError) {
-          console.error('[handleDeleteBooking] Error deleting booking_item:', itemError);
-          throw new Error(`Failed to delete booking item: ${itemError.message}`);
-        }
-        console.log('[handleDeleteBooking] ✓ Single booking item deleted');
-
-        // Update the parent booking's total_amount
         const newTotalAmount = (editingBooking.total_amount || 0) - itemPrice;
-        const { error: updateError } = await supabase
-          .from("bookings")
-          .update({ total_amount: newTotalAmount })
-          .eq("id", editingBooking.id);
 
-        if (updateError) {
-          console.error('[handleDeleteBooking] Error updating booking total:', updateError);
-          // Don't throw - item is already deleted, just log the error
-        } else {
-          console.log('[handleDeleteBooking] ✓ Booking total updated to:', newTotalAmount);
+        const res = await fetch('/api/owner/billing', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            bookingId: editingBooking.id,
+            specificItemId: editingBookingItemId,
+            newTotalAmount,
+          }),
+        });
+
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || 'Failed to delete booking item');
         }
 
-        // Update local state - remove the deleted item from booking_items
+        // Update local state
         setBookings((prev) => prev.map((b) => {
           if (b.id === editingBooking.id) {
             return {
@@ -1094,60 +921,28 @@ export default function OwnerDashboardPage() {
           return b;
         }));
 
-        console.log('[handleDeleteBooking] ✓ Local state updated (single item removed)');
         alert("Console removed from booking successfully!");
       } else {
-        // Delete the entire booking (single item or all items)
-        console.log('[handleDeleteBooking] Deleting entire booking');
+        // Delete the entire booking (all items + booking)
+        const bookingItemIds = allItems.map(item => item.id);
 
-        // First, delete all booking_items manually to avoid RLS issues
-        if (allItems.length > 0) {
-          const bookingItemIds = allItems.map(item => item.id);
-          console.log('[handleDeleteBooking] Deleting all booking_items:', bookingItemIds);
+        const res = await fetch('/api/owner/billing', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            bookingId: editingBooking.id,
+            bookingItemIds,
+          }),
+        });
 
-          const { error: itemsError } = await supabase
-            .from("booking_items")
-            .delete()
-            .in("id", bookingItemIds);
-
-          if (itemsError) {
-            console.error('[handleDeleteBooking] Error deleting booking_items:', itemsError);
-            throw new Error(`Failed to delete booking items: ${itemsError.message}`);
-          }
-          console.log('[handleDeleteBooking] ✓ All booking items deleted');
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || 'Failed to delete booking');
         }
 
-        // Then delete the booking
-        const { error, count } = await supabase
-          .from("bookings")
-          .delete()
-          .eq("id", editingBooking.id);
-
-        if (error) {
-          console.error('[handleDeleteBooking] ❌ Error deleting booking:', error);
-          throw new Error(`Failed to delete booking: ${error.message}`);
-        }
-
-        console.log('[handleDeleteBooking] ✓ Delete command executed, rows affected:', count);
-
-        // Verify deletion
-        const { data: checkBooking } = await supabase
-          .from("bookings")
-          .select("id")
-          .eq("id", editingBooking.id)
-          .maybeSingle();
-
-        if (checkBooking) {
-          console.error('[handleDeleteBooking] ❌ ERROR: Booking still exists in database!');
-          throw new Error('Booking was not deleted from database');
-        }
-
-        console.log('[handleDeleteBooking] ✓ Verified: Booking deleted from database');
-
-        // Update local state immediately for instant UI feedback
+        // Update local state
         setBookings((prev) => prev.filter((b) => b.id !== editingBooking.id));
 
-        console.log('[handleDeleteBooking] ✓ Local state updated (booking removed)');
         alert("Booking deleted successfully!");
       }
 
