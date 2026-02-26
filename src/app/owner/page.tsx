@@ -384,8 +384,42 @@ export default function OwnerDashboardPage() {
     return () => clearInterval(timer);
   }, [activeTab]);
 
-  // Auto-refresh bookings data every 10 seconds to detect ended sessions
-  // Real-time subscription handles most updates, this is just a fallback
+  // Auto-refresh on dashboard: immediately if stale sessions exist, then every 60s
+  useEffect(() => {
+    if (activeTab !== 'dashboard') return;
+
+    const now = new Date();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+    const hasExpired = bookings.some(b => {
+      if (b.status !== 'in-progress') return false;
+      if (!b.start_time || !b.duration) return false;
+      const match = b.start_time.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
+      if (!match) return false;
+      let hours = parseInt(match[1]);
+      const minutes = parseInt(match[2]);
+      const period = match[3]?.toLowerCase();
+      if (period === 'pm' && hours !== 12) hours += 12;
+      else if (period === 'am' && hours === 12) hours = 0;
+      return currentMinutes > hours * 60 + minutes + b.duration;
+    });
+
+    // Immediately refresh if there are already-expired sessions
+    if (hasExpired) {
+      refreshData();
+      return;
+    }
+
+    // Periodic refresh every 60s while in-progress sessions exist
+    const hasInProgress = bookings.some(b => b.status === 'in-progress');
+    if (!hasInProgress) return;
+
+    const interval = setInterval(() => {
+      refreshData();
+    }, 60000);
+
+    return () => clearInterval(interval);
+  }, [activeTab, bookings]);
 
 
 
@@ -1798,6 +1832,8 @@ export default function OwnerDashboardPage() {
                   onSessionEnded={(info) => {
                     setSessionEndedInfo(info);
                     setSessionEndedPopupOpen(true);
+                    // Refresh data so the server auto-completes the session status
+                    refreshData();
                   }}
                 />
               </div>
