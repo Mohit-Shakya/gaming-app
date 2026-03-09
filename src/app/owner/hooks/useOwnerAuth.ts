@@ -28,13 +28,19 @@ export function useOwnerAuth() {
         }
         sessionUserId = session.userId;
         sessionUsername = session.username || "Owner";
+        
+        // Optimistic UI: Immediately assume allowed and unblock data fetching
+        setOwnerId(sessionUserId);
         setOwnerUsername(sessionUsername);
+        setAllowed(true);
+        setCheckingRole(false);
       } catch (err) {
         localStorage.removeItem("owner_session");
         router.push("/owner/login");
         return;
       }
 
+      // Background validation. If this fails, retroactively kick them out.
       try {
         const res = await fetch('/api/owner/verify', {
           method: 'POST',
@@ -45,19 +51,12 @@ export function useOwnerAuth() {
         const data = await res.json();
 
         if (!res.ok || !data.isOwner) {
+          setAllowed(false);
           localStorage.removeItem("owner_session");
           router.push("/owner/login");
-          return;
         }
-
-        setAllowed(true);
-        setOwnerId(sessionUserId);
       } catch (err) {
         console.error("Error checking role:", err);
-        localStorage.removeItem("owner_session");
-        router.push("/owner/login");
-      } finally {
-        setCheckingRole(false);
       }
     }
 
