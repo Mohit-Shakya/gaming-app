@@ -40,31 +40,79 @@ export async function POST(request: NextRequest) {
 
     const cafeIds = ownerCafes.map((c: any) => c.id);
 
-    // 2. Fetch Station Pricing
-    const { data: stationPricingData } = await supabase
+    // 2. Start parallel fetches
+    const stationPricingPromise = supabase
       .from("station_pricing")
       .select("*")
       .in("cafe_id", cafeIds)
       .eq("is_active", true);
 
-    const stationPricingMap: Record<string, any> = {};
-    const uniqueTypes: string[] = [];
-    const sortedStations = [...(stationPricingData || [])].sort(
-      (a: any, b: any) => (a.station_number || 0) - (b.station_number || 0)
-    );
-    stationPricingData?.forEach((pricing: any) => {
-      stationPricingMap[pricing.station_name] = pricing;
-      if (!uniqueTypes.includes(pricing.station_type)) uniqueTypes.push(pricing.station_type);
-    });
-
-    // 3. Fetch Console Pricing
-    const { data: pricingData } = await supabase
+    const consolePricingPromise = supabase
       .from("console_pricing")
       .select("cafe_id, console_type, quantity, duration_minutes, price")
       .in("cafe_id", cafeIds);
 
+    const bookingCountPromise = supabase
+      .from("bookings")
+      .select("*", { count: 'exact', head: true })
+      .in("cafe_id", cafeIds);
+
+    const bookingsPromise = supabase
+      .from("bookings")
+      .select(`
+        id, cafe_id, user_id, booking_date, start_time, duration, total_amount, status,
+        source, payment_mode, created_at, customer_name, customer_phone,
+        booking_items (id, console, quantity, price)
+      `)
+      .in("cafe_id", cafeIds)
+      .order("created_at", { ascending: false })
+      .limit(2000);
+
+    const plansPromise = supabase
+      .from('membership_plans')
+      .select('*')
+      .eq('is_active', true)
+      .order('price');
+
+    const subscriptionsPromise = supabase
+      .from('subscriptions')
+      .select('*, membership_plans(*)')
+      .in('cafe_id', cafeIds)
+      .order('created_at', { ascending: false });
+
+    // Await all parallel fetches
+    const [
+      stationPricingRes,
+      consolePricingRes,
+      bookingCountRes,
+      bookingsRes,
+      plansRes,
+      subscriptionsRes
+    ] = await Promise.all([
+      stationPricingPromise,
+      consolePricingPromise,
+      bookingCountPromise,
+      bookingsPromise,
+      plansPromise,
+      subscriptionsPromise
+    ]);
+
+    if (bookingsRes.error) throw bookingsRes.error;
+
+    // Process Station Pricing
+    const stationPricingMap: Record<string, any> = {};
+    const uniqueTypes: string[] = [];
+    const sortedStations = [...(stationPricingRes.data || [])].sort(
+      (a: any, b: any) => (a.station_number || 0) - (b.station_number || 0)
+    );
+    stationPricingRes.data?.forEach((pricing: any) => {
+      stationPricingMap[pricing.station_name] = pricing;
+      if (!uniqueTypes.includes(pricing.station_type)) uniqueTypes.push(pricing.station_type);
+    });
+
+    // Process Console Pricing
     const consolePricingMap: Record<string, any> = {};
-    pricingData?.forEach((item: any) => {
+    consolePricingRes.data?.forEach((item: any) => {
       if (!consolePricingMap[item.cafe_id]) consolePricingMap[item.cafe_id] = {};
       if (!consolePricingMap[item.cafe_id][item.console_type]) {
         consolePricingMap[item.cafe_id][item.console_type] = {
@@ -76,66 +124,43 @@ export async function POST(request: NextRequest) {
       consolePricingMap[item.cafe_id][item.console_type][key] = item.price;
     });
 
-    // 4. Auto-complete ended bookings (past dates)
-    await supabase
-      .from("bookings")
-      .update({ status: "completed" })
-      .in("cafe_id", cafeIds)
-      .in("status", ["in-progress", "confirmed"])
-      .lt("booking_date", todayStr);
+    // Process bookings and auto-complete in memory
+    let ownerBookings = bookingsRes.data || [];
+    
+    // Auto-complete logic for bookings
+    const now = new Date();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    const endedIds: string[] = [];
 
-    // 5. Auto-complete today's ended sessions
-    const { data: todayBookings } = await supabase
-      .from("bookings")
-      .select("id, start_time, duration, status")
-      .in("cafe_id", cafeIds)
-      .eq("booking_date", todayStr)
-      .in("status", ["in-progress", "confirmed"]);
+    ownerBookings = ownerBookings.map((b: any) => {
+        if (b.status === 'in-progress' || b.status === 'confirmed') {
+            if (b.booking_date < todayStr) {
+                b.status = 'completed'; // Mutate in memory
+                endedIds.push(b.id);
+            } else if (b.booking_date === todayStr && b.start_time && b.duration) {
+                const timeParts = b.start_time.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
+                if (timeParts) {
+                    let hours = parseInt(timeParts[1]);
+                    const minutes = parseInt(timeParts[2]);
+                    const period = timeParts[3]?.toLowerCase();
+                    if (period === 'pm' && hours !== 12) hours += 12;
+                    else if (period === 'am' && hours === 12) hours = 0;
+                    if (currentMinutes > hours * 60 + minutes + b.duration) {
+                        b.status = 'completed';
+                        endedIds.push(b.id);
+                    }
+                }
+            }
+        }
+        return b;
+    });
 
-    if (todayBookings && todayBookings.length > 0) {
-      const now = new Date();
-      const currentMinutes = now.getHours() * 60 + now.getMinutes();
-      const endedIds: string[] = [];
-
-      todayBookings.forEach((booking: any) => {
-        if (!booking.start_time || !booking.duration) return;
-        const timeParts = booking.start_time.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
-        if (!timeParts) return;
-        let hours = parseInt(timeParts[1]);
-        const minutes = parseInt(timeParts[2]);
-        const period = timeParts[3]?.toLowerCase();
-        if (period === 'pm' && hours !== 12) hours += 12;
-        else if (period === 'am' && hours === 12) hours = 0;
-        if (currentMinutes > hours * 60 + minutes + booking.duration) endedIds.push(booking.id);
-      });
-
-      if (endedIds.length > 0) {
-        await supabase.from("bookings").update({ status: "completed" }).in("id", endedIds);
-      }
+    // Fire & forget DB update for completed bookings (don't block the request)
+    if (endedIds.length > 0) {
+        supabase.from("bookings").update({ status: "completed" }).in("id", endedIds).then();
     }
 
-    // 6. Fetch booking count
-    const { count: totalCount } = await supabase
-      .from("bookings")
-      .select("*", { count: 'exact', head: true })
-      .in("cafe_id", cafeIds);
-
-    // 7. Fetch all bookings
-    const { data: bookingRows, error: bookingsError } = await supabase
-      .from("bookings")
-      .select(`
-        id, cafe_id, user_id, booking_date, start_time, duration, total_amount, status,
-        source, payment_mode, created_at, customer_name, customer_phone,
-        booking_items (id, console, quantity, price)
-      `)
-      .in("cafe_id", cafeIds)
-      .order("created_at", { ascending: false });
-
-    if (bookingsError) throw bookingsError;
-
-    const ownerBookings = bookingRows ?? [];
-
-    // 8. Enrich bookings with user profiles
+    // Process User Profiles
     const userIds = [...new Set(ownerBookings.map((b: any) => b.user_id).filter(Boolean))];
     const userProfiles = new Map();
 
@@ -163,20 +188,6 @@ export async function POST(request: NextRequest) {
       };
     });
 
-    // 9. Fetch membership plans
-    const { data: plans } = await supabase
-      .from('membership_plans')
-      .select('*')
-      .eq('is_active', true)
-      .order('price');
-
-    // 10. Fetch subscriptions
-    const { data: subs } = await supabase
-      .from('subscriptions')
-      .select('*, membership_plans(*)')
-      .in('cafe_id', cafeIds)
-      .order('created_at', { ascending: false });
-
     return NextResponse.json({
       cafes: ownerCafes,
       bookings: enrichedBookings,
@@ -184,9 +195,9 @@ export async function POST(request: NextRequest) {
       consolePricing: consolePricingMap,
       cafeConsoles: sortedStations,
       availableConsoleTypes: uniqueTypes,
-      membershipPlans: plans || [],
-      subscriptions: subs || [],
-      totalBookingsCount: totalCount || 0,
+      membershipPlans: plansRes.data || [],
+      subscriptions: subscriptionsRes.data || [],
+      totalBookingsCount: bookingCountRes.count || 0,
     });
   } catch (err: any) {
     console.error("Error loading owner data:", err);
