@@ -125,7 +125,6 @@ export default function OwnerDashboardPage() {
 
   // Booking filters
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [sourceFilter, setSourceFilter] = useState<string>("all");
   const [dateFilter, setDateFilter] = useState<string>("");
   const [dateRangeFilter, setDateRangeFilter] = useState<string>("all"); // today, week, month, quarter, custom, all
   const [customStartDate, setCustomStartDate] = useState<string>("");
@@ -1685,12 +1684,6 @@ export default function OwnerDashboardPage() {
       return false;
     }
 
-    // Source filter
-    if (sourceFilter !== "all") {
-      const bookingSource = booking.source?.toLowerCase() || "";
-      if (bookingSource !== sourceFilter) return false;
-    }
-
     // Specific date filter (for date picker)
     if (dateFilter && booking.booking_date) {
       if (booking.booking_date !== dateFilter) return false;
@@ -2014,14 +2007,6 @@ export default function OwnerDashboardPage() {
                   icon="📊"
                   gradient="linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(147, 51, 234, 0.1))"
                   color="#a855f7"
-                />
-                <StatCard
-                  title="Pending"
-                  value={loadingData ? "..." : stats?.pendingBookings ?? 0}
-                  subtitle="Awaiting confirmation"
-                  icon="⏳"
-                  gradient="linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(217, 119, 6, 0.1))"
-                  color="#f59e0b"
                 />
               </div>
 
@@ -2874,31 +2859,7 @@ export default function OwnerDashboardPage() {
                     }}
                   >
                     <option value="all">All Status</option>
-                    <option value="pending">Pending</option>
-                    <option value="confirmed">Confirmed</option>
-                    <option value="in-progress">In Progress</option>
-                    <option value="completed">Completed</option>
                     <option value="cancelled">Cancelled</option>
-                  </select>
-
-                  <select
-                    value={sourceFilter}
-                    onChange={(e) => setSourceFilter(e.target.value)}
-                    style={{
-                      padding: isMobile ? '10px 12px' : '12px 16px',
-                      background: theme.cardBackground,
-                      border: `1px solid ${theme.border}`,
-                      borderRadius: isMobile ? 8 : 10,
-                      color: theme.textPrimary,
-                      fontSize: isMobile ? 12 : 14,
-                      cursor: 'pointer',
-                      minWidth: isMobile ? 'auto' : 140,
-                      flex: isMobile ? '1' : 'auto',
-                    }}
-                  >
-                    <option value="all">All Sources</option>
-                    <option value="online">Online</option>
-                    <option value="walk-in">Walk-in</option>
                   </select>
 
                   <input

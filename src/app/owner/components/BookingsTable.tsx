@@ -114,7 +114,6 @@ export function BookingsTable({
                         >
                             <option value="all">All Status</option>
                             <option value="confirmed">Confirmed</option>
-                            <option value="pending">Pending</option>
                             <option value="completed">Completed</option>
                             <option value="cancelled">Cancelled</option>
                             <option value="in-progress">In Progress</option>
@@ -203,17 +202,6 @@ export function BookingsTable({
                                     {showActions && (
                                         <td className="px-4 py-1.5 text-right">
                                             <div className="flex items-center justify-end gap-1">
-                                                {onStatusChange && booking.status === 'pending' && (
-                                                    <Button
-                                                        size="sm"
-                                                        variant="ghost"
-                                                        className="text-emerald-500 hover:text-emerald-400 hover:bg-emerald-500/10"
-                                                        onClick={(e) => { e.stopPropagation(); onStatusChange(booking.id, 'confirmed'); }}
-                                                        title="Confirm Booking"
-                                                    >
-                                                        <Check size={18} />
-                                                    </Button>
-                                                )}
 
                                                 {onStatusChange && (booking.status === 'confirmed' || booking.status === 'in-progress') && (
                                                     <Button
@@ -227,7 +215,7 @@ export function BookingsTable({
                                                     </Button>
                                                 )}
 
-                                                {onStatusChange && ['pending', 'confirmed', 'in-progress'].includes(booking.status) && (
+                                                {onStatusChange && ['confirmed', 'in-progress'].includes(booking.status) && (
                                                     <Button
                                                         size="sm"
                                                         variant="ghost"
@@ -321,16 +309,6 @@ export function BookingsTable({
                                 {/* Actions */}
                                 {showActions && (
                                     <div className="flex justify-end gap-2 pt-2 border-t border-white/5 mt-2">
-                                        {onStatusChange && booking.status === 'pending' && (
-                                            <Button
-                                                size="sm"
-                                                variant="ghost"
-                                                className="text-emerald-500 bg-emerald-500/10 hover:bg-emerald-500/20 w-full justify-center"
-                                                onClick={(e) => { e.stopPropagation(); onStatusChange(booking.id, 'confirmed'); }}
-                                            >
-                                                <Check size={16} className="mr-1" /> Confirm
-                                            </Button>
-                                        )}
 
                                         {onStatusChange && (booking.status === 'confirmed' || booking.status === 'in-progress') && (
                                             <Button
@@ -366,7 +344,7 @@ export function BookingsTable({
                                             </Button>
                                         )}
 
-                                        {onStatusChange && ['pending', 'confirmed', 'in-progress'].includes(booking.status) && (
+                                        {onStatusChange && ['confirmed', 'in-progress'].includes(booking.status) && (
                                             <Button
                                                 size="sm"
                                                 variant="ghost"

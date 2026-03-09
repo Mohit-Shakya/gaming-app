@@ -18,7 +18,6 @@ interface BookingsManagementProps {
 export function BookingsManagement({ bookings, loading, onUpdateStatus, onEdit, onRefresh, isMobile, onViewOrders, onViewCustomer }: BookingsManagementProps) {
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
-    const [sourceFilter, setSourceFilter] = useState('all');
     const [dateRange, setDateRange] = useState('all');
     const [customStart, setCustomStart] = useState('');
     const [customEnd, setCustomEnd] = useState('');
@@ -35,11 +34,6 @@ export function BookingsManagement({ bookings, loading, onUpdateStatus, onEdit, 
 
             // Status
             const matchesStatus = statusFilter === 'all' || b.status === statusFilter;
-
-            // Source
-            const matchesSource = sourceFilter === 'all' ||
-                (sourceFilter === 'online' && (!b.source || b.source === 'online_booking' || b.source === 'online')) ||
-                (sourceFilter === 'walk-in' && (b.source === 'walk_in' || b.source === 'walk-in'));
 
             // Date Range
             let matchesDate = true;
@@ -68,9 +62,9 @@ export function BookingsManagement({ bookings, loading, onUpdateStatus, onEdit, 
                 }
             }
 
-            return matchesSearch && matchesStatus && matchesSource && matchesDate;
+            return matchesSearch && matchesStatus && matchesDate;
         }).sort((a, b) => new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime());
-    }, [bookings, searchTerm, statusFilter, sourceFilter, dateRange, customStart, customEnd]);
+    }, [bookings, searchTerm, statusFilter, dateRange, customStart, customEnd]);
 
 
 
@@ -105,15 +99,6 @@ export function BookingsManagement({ bookings, loading, onUpdateStatus, onEdit, 
                                 { value: 'in-progress', label: 'In Progress' },
                                 { value: 'completed', label: 'Completed' },
                                 { value: 'cancelled', label: 'Cancelled' },
-                            ]}
-                        />
-                        <Select
-                            value={sourceFilter}
-                            onChange={(val) => setSourceFilter(val)}
-                            options={[
-                                { value: 'all', label: 'All Sources' },
-                                { value: 'online', label: 'Online' },
-                                { value: 'walk-in', label: 'Walk-in' },
                             ]}
                         />
                         <Select

@@ -5,7 +5,6 @@ import Image from "next/image";
 import dynamicImport from "next/dynamic";
 import Link from "next/link";
 import { Gamepad, Gamepad2, GamepadDirectional, MapPin, Camera, Info, Check, Monitor, Cpu, Car, RectangleGoggles } from "lucide-react";
-import StickyFullWidthCTA from "@/components/StickyFullWidthCTA";
 
 // Lazy load heavy components
 const CafeGallery = dynamicImport(() => import("@/components/CafeGallery"), {
@@ -880,9 +879,6 @@ export default async function CafePage({ params }: CafePageProps) {
         {/* Bottom spacing for mobile */}
         <div style={{ height: "120px" }} />
       </div>
-
-      {/* Sticky booking CTA */}
-      <StickyFullWidthCTA href={`/cafes/${(cafe as any).slug || cafe.id}/book`} label={"Book Your Session"} ariaLabel={`Book ${cafe.name}`} />
 
       {/* Responsive styles */}
       <style>{`
