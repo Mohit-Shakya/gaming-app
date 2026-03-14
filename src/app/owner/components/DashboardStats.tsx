@@ -99,7 +99,14 @@ export function DashboardStats({
     .reduce((sum, b) => sum + (b.total_amount || 0), 0);
 
   const membershipRevenue = todaySubscriptions.reduce(
-    (sum, sub) => sum + (parseFloat(sub.amount_paid) || 0),
+    (sum, sub) => {
+      const amountPaid =
+        typeof sub.amount_paid === 'number'
+          ? sub.amount_paid
+          : parseFloat(sub.amount_paid ?? '0') || 0;
+
+      return sum + amountPaid;
+    },
     0
   );
 
