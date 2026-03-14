@@ -15,6 +15,7 @@ export function useOwnerAuth() {
       try {
         const res = await fetch('/api/owner/verify', {
           method: 'GET',
+          credentials: 'include',
           cache: 'no-store',
         });
         const data = await res.json().catch(() => ({}));

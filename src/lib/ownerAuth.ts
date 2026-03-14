@@ -26,6 +26,26 @@ type OwnerAuthResult =
 
 let cachedSupabaseAdmin: SupabaseClient | null = null;
 
+function getOwnerCookieDomain(): string | undefined {
+  const configuredUrl = process.env.NEXT_PUBLIC_SITE_URL;
+
+  if (!configuredUrl) {
+    return undefined;
+  }
+
+  try {
+    const hostname = new URL(configuredUrl).hostname.toLowerCase();
+
+    if (hostname === "www.bookmygame.co.in" || hostname === "bookmygame.co.in") {
+      return "bookmygame.co.in";
+    }
+
+    return undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function getSupabaseServerKey(): string {
   const key =
     process.env.SUPABASE_SERVICE_ROLE_KEY ||
@@ -147,6 +167,7 @@ export function applyOwnerSessionCookie(
     secure: process.env.NODE_ENV === "production",
     path: "/",
     expires: new Date(session.expiresAt),
+    domain: getOwnerCookieDomain(),
   });
 }
 
@@ -159,6 +180,7 @@ export function clearOwnerSessionCookie(response: NextResponse): void {
     secure: process.env.NODE_ENV === "production",
     path: "/",
     expires: new Date(0),
+    domain: getOwnerCookieDomain(),
   });
 }
 
@@ -187,6 +209,12 @@ export function getSupabaseAdmin(): SupabaseClient {
 }
 
 function unauthorizedResponse(message = "Unauthorized"): NextResponse {
+  return NextResponse.json({ error: message }, { status: 401 });
+}
+
+function invalidOwnerSessionResponse(
+  message = "Owner session is no longer valid"
+): NextResponse {
   const response = NextResponse.json({ error: message }, { status: 401 });
   clearOwnerSessionCookie(response);
   return response;
@@ -227,7 +255,7 @@ export async function requireOwnerContext(
   if (!isOwnerRole) {
     return {
       context: null,
-      response: unauthorizedResponse("Owner session is no longer valid"),
+      response: invalidOwnerSessionResponse(),
     };
   }
 

@@ -83,6 +83,8 @@ export function useOwnerData(ownerId: string | null, allowed: boolean) {
 
         const res = await fetch('/api/owner/data', {
           method: 'POST',
+          credentials: 'include',
+          cache: 'no-store',
         });
 
         const data = await res.json();

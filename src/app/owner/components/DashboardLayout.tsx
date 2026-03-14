@@ -41,7 +41,10 @@ export function DashboardLayout({
     const handleLogout = async () => {
         if (confirm('Are you sure you want to logout?')) {
             try {
-                await fetch('/api/owner/login', { method: 'DELETE' });
+                await fetch('/api/owner/login', {
+                    method: 'DELETE',
+                    credentials: 'include',
+                });
             } catch (error) {
                 console.error('Logout failed:', error);
             }
