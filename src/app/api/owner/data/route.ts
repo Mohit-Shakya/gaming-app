@@ -1,16 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabaseClient";
+import { requireOwnerContext } from "@/lib/ownerAuth";
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   try {
-    const { ownerId } = await request.json();
-
-    if (!ownerId) {
-      return NextResponse.json({ error: "ownerId is required" }, { status: 400 });
+    const auth = await requireOwnerContext(request);
+    if (auth.response) {
+      return auth.response;
     }
 
+    const { ownerId, supabase } = auth.context;
     const todayStr = new Date().toISOString().slice(0, 10);
 
     // 1. Fetch Cafes

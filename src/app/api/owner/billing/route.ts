@@ -1,19 +1,48 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabaseClient";
+import {
+  getOwnedBookingIdForBookingItem,
+  getOwnedCafeIdForBooking,
+  requireOwnerCafeAccess,
+  requireOwnerContext,
+} from "@/lib/ownerAuth";
 
 export const dynamic = 'force-dynamic';
 
 // PUT /api/owner/billing — update booking + optional booking_item
 export async function PUT(request: NextRequest) {
   try {
+    const auth = await requireOwnerContext(request);
+    if (auth.response) {
+      return auth.response;
+    }
+
+    const { ownerId, supabase } = auth.context;
     const { bookingId, bookingItemId, booking, item } = await request.json();
 
     if (!bookingId) {
       return NextResponse.json({ error: "bookingId is required" }, { status: 400 });
     }
 
+    const ownedCafeId = await getOwnedCafeIdForBooking(supabase, bookingId, ownerId);
+    if (!ownedCafeId) {
+      return NextResponse.json({ error: "Booking not found" }, { status: 404 });
+    }
+
     // Update booking_item first (if provided)
     if (bookingItemId && item) {
+      const ownedBookingId = await getOwnedBookingIdForBookingItem(
+        supabase,
+        bookingItemId,
+        ownerId
+      );
+
+      if (!ownedBookingId || ownedBookingId !== bookingId) {
+        return NextResponse.json(
+          { error: "Booking item not found" },
+          { status: 404 }
+        );
+      }
+
       const { error: itemError } = await supabase
         .from("booking_items")
         .update(item)
@@ -46,13 +75,37 @@ export async function PUT(request: NextRequest) {
 // DELETE /api/owner/billing — delete booking or specific booking_item
 export async function DELETE(request: NextRequest) {
   try {
+    const auth = await requireOwnerContext(request);
+    if (auth.response) {
+      return auth.response;
+    }
+
+    const { ownerId, supabase } = auth.context;
     const { bookingId, bookingItemIds, specificItemId, newTotalAmount } = await request.json();
 
     if (!bookingId) {
       return NextResponse.json({ error: "bookingId is required" }, { status: 400 });
     }
 
+    const ownedCafeId = await getOwnedCafeIdForBooking(supabase, bookingId, ownerId);
+    if (!ownedCafeId) {
+      return NextResponse.json({ error: "Booking not found" }, { status: 404 });
+    }
+
     if (specificItemId) {
+      const ownedBookingId = await getOwnedBookingIdForBookingItem(
+        supabase,
+        specificItemId,
+        ownerId
+      );
+
+      if (!ownedBookingId || ownedBookingId !== bookingId) {
+        return NextResponse.json(
+          { error: "Booking item not found" },
+          { status: 404 }
+        );
+      }
+
       // Delete only a specific booking_item from a bulk booking
       const { error: itemError } = await supabase
         .from("booking_items")
@@ -106,8 +159,27 @@ export async function DELETE(request: NextRequest) {
 
 // POST /api/owner/billing — create booking + booking_items
 export async function POST(request: NextRequest) {
+  const auth = await requireOwnerContext(request);
+  if (auth.response) {
+    return auth.response;
+  }
+
+  const { ownerId, supabase } = auth.context;
   const body = await request.json();
   const { booking, items } = body;
+
+  if (!booking?.cafe_id) {
+    return NextResponse.json({ error: "booking.cafe_id is required" }, { status: 400 });
+  }
+
+  const accessResponse = await requireOwnerCafeAccess(
+    supabase,
+    ownerId,
+    booking.cafe_id
+  );
+  if (accessResponse) {
+    return accessResponse;
+  }
 
   const { data: newBooking, error: bookingError } = await supabase
     .from('bookings')

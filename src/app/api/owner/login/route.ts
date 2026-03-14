@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabaseClient";
+import {
+  applyOwnerSessionCookie,
+  clearOwnerSessionCookie,
+  createOwnerSession,
+} from "@/lib/ownerAuth";
 
 export const dynamic = 'force-dynamic';
 
@@ -41,10 +46,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       userId: data[0].user_id,
       username: data[0].username,
     });
+
+    applyOwnerSessionCookie(
+      response,
+      createOwnerSession(data[0].user_id, data[0].username)
+    );
+
+    return response;
   } catch (err) {
     console.error("Login error:", err);
     return NextResponse.json(
@@ -52,4 +64,10 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+export async function DELETE() {
+  const response = NextResponse.json({ success: true });
+  clearOwnerSessionCookie(response);
+  return response;
 }

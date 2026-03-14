@@ -939,18 +939,23 @@ export default function OwnerDashboardPage() {
 
     // Save timer state and assigned console to database
     try {
-      const { error } = await supabase
-        .from('subscriptions')
-        .update({
-          timer_active: true,
-          timer_start_time: startTimeISO,
-          assigned_console_station: assignedStation,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', subscriptionId);
+      const response = await fetch('/api/owner/subscriptions', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: subscriptionId,
+          updates: {
+            timer_active: true,
+            timer_start_time: startTimeISO,
+            assigned_console_station: assignedStation,
+            updated_at: new Date().toISOString()
+          }
+        }),
+      });
 
-      if (error) {
-        console.error('[Timer] Failed to save timer state:', error);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('[Timer] Failed to save timer state:', errorData);
         alert('Failed to start timer');
         return;
       }
@@ -992,44 +997,40 @@ export default function OwnerDashboardPage() {
       console.log('[Timer] Updating hours:', subscription.hours_remaining, '->', newHoursRemaining);
 
       try {
-        const { error } = await supabase
-          .from('subscriptions')
-          .update({
-            hours_remaining: newHoursRemaining,
-            timer_active: false,
-            timer_start_time: null,
-            assigned_console_station: null,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', subscriptionId);
+        // Save usage history
+        const endTime = new Date();
+        const startTimeDate = new Date(startTime);
 
-        if (error) {
-          console.error('[Timer] Database error:', error);
+        const response = await fetch('/api/owner/subscriptions', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id: subscriptionId,
+            updates: {
+              hours_remaining: newHoursRemaining,
+              timer_active: false,
+              timer_start_time: null,
+              assigned_console_station: null,
+              updated_at: new Date().toISOString()
+            },
+            usageEntry: {
+              session_date: getLocalDateString(),
+              start_time: startTimeDate.toISOString(),
+              end_time: endTime.toISOString(),
+              duration_hours: elapsedHours,
+              assigned_console_station: subscription.assigned_console_station
+            }
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          console.error('[Timer] Database error:', errorData);
           alert('Failed to update subscription hours');
           return;
         }
 
         console.log('[Timer] Database updated successfully');
-
-        // Save usage history
-        const endTime = new Date();
-        const startTimeDate = new Date(startTime);
-
-        const { error: historyError } = await supabase
-          .from('subscription_usage_history')
-          .insert({
-            subscription_id: subscriptionId,
-            session_date: getLocalDateString(),
-            start_time: startTimeDate.toISOString(),
-            end_time: endTime.toISOString(),
-            duration_hours: elapsedHours,
-            assigned_console_station: subscription.assigned_console_station
-          });
-
-        if (historyError) {
-          console.error('[Timer] Failed to save usage history:', historyError);
-          // Don't fail the entire operation if history save fails
-        }
 
         // Update local state
         setSubscriptions(prev => prev.map(s =>
@@ -1119,18 +1120,17 @@ export default function OwnerDashboardPage() {
 
       console.log('[UsageHistory] Fetching usage history for subscription:', viewingSubscription.id);
       setLoadingUsageHistory(true);
-      const { data, error } = await supabase
-        .from('subscription_usage_history')
-        .select('*')
-        .eq('subscription_id', viewingSubscription.id)
-        .order('session_date', { ascending: false });
+      const response = await fetch(
+        `/api/owner/subscriptions/usage?subscriptionId=${viewingSubscription.id}`
+      );
+      const payload = await response.json().catch(() => ({}));
 
-      if (error) {
-        console.error('[UsageHistory] Error fetching usage history:', error);
+      if (!response.ok) {
+        console.error('[UsageHistory] Error fetching usage history:', payload);
         setSubscriptionUsageHistory([]);
       } else {
-        console.log('[UsageHistory] Fetched usage history:', data);
-        setSubscriptionUsageHistory(data || []);
+        console.log('[UsageHistory] Fetched usage history:', payload.usageHistory);
+        setSubscriptionUsageHistory(payload.usageHistory || []);
       }
       setLoadingUsageHistory(false);
     }
@@ -1202,23 +1202,17 @@ export default function OwnerDashboardPage() {
 
       console.log('Fetching bookings for phone:', viewingCustomer.phone, 'cafe:', selectedCafeId);
 
-      // Fetch all bookings for this customer (by phone number)
-      // Walk-in bookings have customer_phone filled
-      // For now, just get walk-in bookings - online bookings need user_id lookup
-      const { data, error } = await supabase
-        .from('bookings')
-        .select('id, booking_date, start_time, duration, total_amount, status, source, created_at, customer_name')
-        .eq('cafe_id', selectedCafeId)
-        .eq('customer_phone', viewingCustomer.phone)
-        .order('created_at', { ascending: false })
-        .limit(10);
+      const response = await fetch(
+        `/api/owner/customers/bookings?cafeId=${selectedCafeId}&phone=${encodeURIComponent(viewingCustomer.phone)}`
+      );
+      const payload = await response.json().catch(() => ({}));
 
-      if (error) {
-        console.error('Error fetching bookings:', error.message, error);
+      if (!response.ok) {
+        console.error('Error fetching bookings:', payload);
         setCustomerBookings([]);
       } else {
-        console.log('Successfully fetched bookings:', data?.length || 0, 'bookings');
-        setCustomerBookings(data || []);
+        console.log('Successfully fetched bookings:', payload.bookings?.length || 0, 'bookings');
+        setCustomerBookings(payload.bookings || []);
       }
       setLoadingCustomerData(false);
     }
@@ -4863,17 +4857,17 @@ export default function OwnerDashboardPage() {
               setViewingSubscription(null);
             }}
             onDelete={async (id: string) => {
-              const { error } = await supabase
-                .from('subscriptions')
-                .delete()
-                .eq('id', id);
+              const response = await fetch(`/api/owner/subscriptions?id=${id}`, {
+                method: 'DELETE'
+              });
+              const payload = await response.json().catch(() => ({}));
 
-              if (!error) {
+              if (response.ok) {
                 setSubscriptions(subscriptions.filter(s => s.id !== id));
                 setViewingSubscription(null);
                 alert('Subscription deleted successfully!');
               } else {
-                alert('Failed to delete subscription: ' + error.message);
+                alert('Failed to delete subscription: ' + (payload.error || 'Unknown error'));
               }
             }}
           />

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, useMemo } from 'react';
-import { OwnerStats, CafeRow, BookingRow, PricingTier } from '../types';
+import { OwnerStats, CafeRow, BookingRow } from '../types';
 
 export function useOwnerData(ownerId: string | null, allowed: boolean) {
   const [cafes, setCafes] = useState<CafeRow[]>([]);
@@ -84,8 +84,6 @@ export function useOwnerData(ownerId: string | null, allowed: boolean) {
 
         const res = await fetch('/api/owner/data', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ownerId }),
         });
 
         const data = await res.json();

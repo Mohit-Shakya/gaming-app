@@ -38,9 +38,13 @@ export function DashboardLayout({
     setMobileMenuOpen,
     title,
 }: DashboardLayoutProps) {
-    const handleLogout = () => {
+    const handleLogout = async () => {
         if (confirm('Are you sure you want to logout?')) {
-            localStorage.removeItem('owner_session');
+            try {
+                await fetch('/api/owner/login', { method: 'DELETE' });
+            } catch (error) {
+                console.error('Logout failed:', error);
+            }
             window.location.href = '/owner/login';
         }
     };

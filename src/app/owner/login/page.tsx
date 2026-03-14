@@ -23,20 +23,20 @@ export default function OwnerLoginPage() {
 
   // Check if already logged in as owner
   useEffect(() => {
+    let cancelled = false;
+
     async function checkOwnerSession() {
-      const ownerSession = localStorage.getItem("owner_session");
-      if (ownerSession) {
-        const { timestamp } = JSON.parse(ownerSession);
-        // Check if session is less than 24 hours old
-        if (Date.now() - timestamp < 24 * 60 * 60 * 1000) {
-          router.push("/owner");
-          return;
-        } else {
-          localStorage.removeItem("owner_session");
-        }
+      const res = await fetch('/api/owner/verify', { method: 'GET' });
+      if (!cancelled && res.ok) {
+        router.push("/owner");
       }
     }
+
     checkOwnerSession();
+
+    return () => {
+      cancelled = true;
+    };
   }, [router]);
 
   async function handleLogin(e: React.FormEvent) {
@@ -59,16 +59,6 @@ export default function OwnerLoginPage() {
         return;
       }
 
-      // Create owner session
-      const ownerSession = {
-        userId: result.userId,
-        username: result.username,
-        timestamp: Date.now(),
-      };
-
-      localStorage.setItem("owner_session", JSON.stringify(ownerSession));
-
-      // Redirect to owner dashboard
       router.push("/owner");
     } catch (err) {
       console.error("Login error:", err);

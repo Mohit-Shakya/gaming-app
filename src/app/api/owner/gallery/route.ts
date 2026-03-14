@@ -1,16 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabaseClient";
+import {
+  getOwnedCafeIdForRecord,
+  requireOwnerCafeAccess,
+  requireOwnerContext,
+} from "@/lib/ownerAuth";
 
 export const dynamic = 'force-dynamic';
 
 // GET /api/owner/gallery?cafeId=... — fetch gallery images for a cafe
 export async function GET(request: NextRequest) {
   try {
+    const auth = await requireOwnerContext(request);
+    if (auth.response) {
+      return auth.response;
+    }
+
+    const { ownerId, supabase } = auth.context;
     const { searchParams } = new URL(request.url);
     const cafeId = searchParams.get('cafeId');
 
     if (!cafeId) {
       return NextResponse.json({ error: "cafeId is required" }, { status: 400 });
+    }
+
+    const accessResponse = await requireOwnerCafeAccess(supabase, ownerId, cafeId);
+    if (accessResponse) {
+      return accessResponse;
     }
 
     const { data, error } = await supabase
@@ -32,10 +47,21 @@ export async function GET(request: NextRequest) {
 // POST /api/owner/gallery — insert a gallery image record
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireOwnerContext(request);
+    if (auth.response) {
+      return auth.response;
+    }
+
+    const { ownerId, supabase } = auth.context;
     const { cafeId, imageUrl } = await request.json();
 
     if (!cafeId || !imageUrl) {
       return NextResponse.json({ error: "cafeId and imageUrl are required" }, { status: 400 });
+    }
+
+    const accessResponse = await requireOwnerCafeAccess(supabase, ownerId, cafeId);
+    if (accessResponse) {
+      return accessResponse;
     }
 
     const { data, error } = await supabase
@@ -57,10 +83,27 @@ export async function POST(request: NextRequest) {
 // DELETE /api/owner/gallery — delete a gallery image record
 export async function DELETE(request: NextRequest) {
   try {
+    const auth = await requireOwnerContext(request);
+    if (auth.response) {
+      return auth.response;
+    }
+
+    const { ownerId, supabase } = auth.context;
     const { imageId } = await request.json();
 
     if (!imageId) {
       return NextResponse.json({ error: "imageId is required" }, { status: 400 });
+    }
+
+    const ownedCafeId = await getOwnedCafeIdForRecord(
+      supabase,
+      "gallery_images",
+      imageId,
+      ownerId
+    );
+
+    if (!ownedCafeId) {
+      return NextResponse.json({ error: "Image not found" }, { status: 404 });
     }
 
     const { error } = await supabase

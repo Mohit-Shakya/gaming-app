@@ -1,15 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabaseClient";
+import {
+  requireOwnerCafeAccess,
+  requireOwnerContext,
+} from "@/lib/ownerAuth";
 
 export const dynamic = 'force-dynamic';
 
 // POST /api/owner/reports — fetch booking data for reports
 export async function POST(request: NextRequest) {
   try {
+    const auth = await requireOwnerContext(request);
+    if (auth.response) {
+      return auth.response;
+    }
+
+    const { ownerId, supabase } = auth.context;
     const { cafeId, startDate, endDate, prevStartDate, prevEndDate } = await request.json();
 
     if (!cafeId) {
       return NextResponse.json({ error: "cafeId is required" }, { status: 400 });
+    }
+
+    const accessResponse = await requireOwnerCafeAccess(supabase, ownerId, cafeId);
+    if (accessResponse) {
+      return accessResponse;
     }
 
     // Fetch current period bookings
@@ -110,11 +124,22 @@ export async function POST(request: NextRequest) {
 // GET /api/owner/reports/peak — fetch 30-day bookings for peak hours
 export async function GET(request: NextRequest) {
   try {
+    const auth = await requireOwnerContext(request);
+    if (auth.response) {
+      return auth.response;
+    }
+
+    const { ownerId, supabase } = auth.context;
     const { searchParams } = new URL(request.url);
     const cafeId = searchParams.get('cafeId');
 
     if (!cafeId) {
       return NextResponse.json({ error: "cafeId is required" }, { status: 400 });
+    }
+
+    const accessResponse = await requireOwnerCafeAccess(supabase, ownerId, cafeId);
+    if (accessResponse) {
+      return accessResponse;
     }
 
     const now = new Date();

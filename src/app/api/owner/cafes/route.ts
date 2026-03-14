@@ -1,16 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabaseClient";
+import {
+  requireOwnerCafeAccess,
+  requireOwnerContext,
+} from "@/lib/ownerAuth";
 
 export const dynamic = 'force-dynamic';
 
 // GET /api/owner/cafes?cafeId=... — fetch cafe by id
 export async function GET(request: NextRequest) {
   try {
+    const auth = await requireOwnerContext(request);
+    if (auth.response) {
+      return auth.response;
+    }
+
+    const { ownerId, supabase } = auth.context;
     const { searchParams } = new URL(request.url);
     const cafeId = searchParams.get('cafeId');
 
     if (!cafeId) {
       return NextResponse.json({ error: "cafeId is required" }, { status: 400 });
+    }
+
+    const accessResponse = await requireOwnerCafeAccess(supabase, ownerId, cafeId);
+    if (accessResponse) {
+      return accessResponse;
     }
 
     const { data, error } = await supabase
@@ -32,10 +46,21 @@ export async function GET(request: NextRequest) {
 // PUT /api/owner/cafes — update cafe fields
 export async function PUT(request: NextRequest) {
   try {
+    const auth = await requireOwnerContext(request);
+    if (auth.response) {
+      return auth.response;
+    }
+
+    const { ownerId, supabase } = auth.context;
     const { cafeId, updates } = await request.json();
 
     if (!cafeId) {
       return NextResponse.json({ error: "cafeId is required" }, { status: 400 });
+    }
+
+    const accessResponse = await requireOwnerCafeAccess(supabase, ownerId, cafeId);
+    if (accessResponse) {
+      return accessResponse;
     }
 
     const { error } = await supabase

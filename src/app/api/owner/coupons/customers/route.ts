@@ -1,12 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabaseClient";
+import {
+  requireOwnerCafeAccess,
+  requireOwnerContext,
+} from "@/lib/ownerAuth";
 
 export const dynamic = 'force-dynamic';
 
 // GET /api/owner/coupons/customers?cafeId=...
 export async function GET(request: NextRequest) {
+  const auth = await requireOwnerContext(request);
+  if (auth.response) {
+    return auth.response;
+  }
+
+  const { ownerId, supabase } = auth.context;
   const cafeId = request.nextUrl.searchParams.get('cafeId');
   if (!cafeId) return NextResponse.json({ error: "cafeId required" }, { status: 400 });
+
+  const accessResponse = await requireOwnerCafeAccess(supabase, ownerId, cafeId);
+  if (accessResponse) {
+    return accessResponse;
+  }
 
   const { data: bookings, error: bookingsError } = await supabase
     .from('bookings')
