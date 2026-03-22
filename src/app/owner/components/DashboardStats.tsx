@@ -91,16 +91,14 @@ export function DashboardStats({
     return purchaseDate === todayStr;
   });
 
-  const cashRevenue = todayBookings
-    .filter((b) => b.payment_mode?.toLowerCase() === 'cash')
-    .reduce((sum, b) => sum + (b.total_amount || 0), 0);
+  const cashBookings = todayBookings.filter((b) => b.payment_mode?.toLowerCase() === 'cash');
+  const onlineBookings = todayBookings.filter((b) => {
+    const mode = b.payment_mode?.toLowerCase();
+    return mode === 'online' || mode === 'upi';
+  });
 
-  const onlineRevenue = todayBookings
-    .filter((b) => {
-      const mode = b.payment_mode?.toLowerCase();
-      return mode === 'online' || mode === 'upi';
-    })
-    .reduce((sum, b) => sum + (b.total_amount || 0), 0);
+  const cashTotal = cashBookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
+  const onlineTotal = onlineBookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
 
   const membershipRevenue = todaySubscriptions.reduce(
     (sum, sub) => {
@@ -114,13 +112,19 @@ export function DashboardStats({
     0
   );
 
-  const totalRevenue = cashRevenue + onlineRevenue + membershipRevenue;
+  const totalRevenue = cashTotal + onlineTotal + membershipRevenue;
   
   const snacksRevenue = todayBookings.reduce((sum, b) => {
     const orderSum = b.booking_orders?.reduce((s, order) => s + (order.total_price || 0), 0) || 0;
     return sum + orderSum;
   }, 0);
 
+  const cashSnacks = cashBookings.reduce((sum, b) => sum + (b.booking_orders?.reduce((s, o) => s + (o.total_price || 0), 0) || 0), 0);
+  const onlineSnacks = onlineBookings.reduce((sum, b) => sum + (b.booking_orders?.reduce((s, o) => s + (o.total_price || 0), 0) || 0), 0);
+  
+  const displayCash = cashTotal - cashSnacks;
+  const displayOnline = onlineTotal - onlineSnacks;
+  
   const revenueVisible = loadedPreference && showRevenue;
 
   const todaySessions = bookings.filter(
@@ -202,7 +206,7 @@ export function DashboardStats({
             {loadingData
               ? 'Loading revenue...'
               : revenueVisible
-                ? `Cash: ₹${cashRevenue} • Online: ₹${onlineRevenue} • Memberships: ₹${membershipRevenue} • Snacks: ₹${snacksRevenue}`
+                ? `Cash: ₹${displayCash} • Online: ₹${displayOnline} • Memberships: ₹${membershipRevenue} • Snacks: ₹${snacksRevenue}`
                 : 'Hidden. Tap the eye icon to reveal.'}
           </p>
         </div>
