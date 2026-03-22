@@ -241,7 +241,7 @@ export function BookingsTable({
                                                     </Button>
                                                 )}
 
-                                                {onPaymentModeChange && (['confirmed', 'in-progress'].includes(booking.status)) && (
+                                                {onPaymentModeChange && (
                                                     <div className="flex bg-slate-800/50 rounded-lg p-0.5 border border-white/5 mr-1">
                                                         <button
                                                             onClick={(e) => { e.stopPropagation(); onPaymentModeChange(booking.id, 'cash'); }}
@@ -354,7 +354,7 @@ export function BookingsTable({
                                             </Button>
                                         )}
 
-                                        {onPaymentModeChange && (['confirmed', 'in-progress'].includes(booking.status)) && (
+                                        {onPaymentModeChange && (
                                             <div className="flex bg-slate-800/50 rounded-lg p-0.5 border border-white/5 flex-1">
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); onPaymentModeChange(booking.id, 'cash'); }}

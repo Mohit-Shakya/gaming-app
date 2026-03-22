@@ -231,7 +231,7 @@ export default function SessionsTab({
                   </div>
 
                   <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
-                    {onPaymentModeChange && (displayStatus === 'confirmed' || displayStatus === 'in-progress') && (
+                    {onPaymentModeChange && (
                       <div style={{ flex: 1, display: 'flex', background: 'rgba(15,23,42,0.4)', borderRadius: 6, padding: 2, border: `1px solid ${theme.border}` }}>
                         <button
                           onClick={(e) => { e.stopPropagation(); onPaymentModeChange(booking.id, 'cash'); }}
@@ -333,7 +333,7 @@ export default function SessionsTab({
                     </td>
                     <td style={{ padding: '16px 20px' }}>
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'center' }}>
-                        {onPaymentModeChange && (displayStatus === 'confirmed' || displayStatus === 'in-progress') && (
+                        {onPaymentModeChange && (
                           <div style={{ display: 'flex', background: 'rgba(15,23,42,0.4)', borderRadius: 8, padding: 3, border: `1px solid ${theme.border}`, marginRight: 4 }}>
                             <button
                               onClick={(e) => { e.stopPropagation(); onPaymentModeChange(booking.id, 'cash'); }}
