@@ -220,8 +220,7 @@ export default function OwnerDashboardPage() {
   const [editDate, setEditDate] = useState<string>("");
   const [editStartTime, setEditStartTime] = useState<string>(""); // Store as "HH:MM" 24-hour format
   const [editDuration, setEditDuration] = useState<number>(60);
-  const [editConsole, setEditConsole] = useState<string>("");
-  const [editControllers, setEditControllers] = useState<number>(1);
+  const [editItems, setEditItems] = useState<Array<{ id?: string, console: string, quantity: number, price?: number }>>([]);
   const [saving, setSaving] = useState(false);
   const [deletingBooking, setDeletingBooking] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -541,20 +540,16 @@ export default function OwnerDashboardPage() {
       const isMultiItem = editingBooking.booking_items && editingBooking.booking_items.length > 1;
       const snacksPrice = editingBooking.booking_orders?.reduce((sum: number, order: any) => sum + (order.total_price || 0), 0) || 0;
 
-      if (isMultiItem && editDuration) {
-        // Calculate sum of all items in the booking based on their original console and quantity
+      if (editItems.length > 0 && editDuration) {
+        // Calculate sum of all items in editItems array
         let totalConsolesPrice = 0;
-        editingBooking.booking_items?.forEach((item: any) => {
+        editItems.forEach((item) => {
           totalConsolesPrice += getBillingPrice(item.console as ConsoleId, item.quantity || 1, editDuration);
         });
         setEditAmount((totalConsolesPrice + snacksPrice).toString());
-      } else if (editConsole && editDuration) {
-        // Calculate single item price using the currently selected dropdown options
-        const consolePrice = getBillingPrice(editConsole as ConsoleId, editControllers, editDuration);
-        setEditAmount((consolePrice + snacksPrice).toString());
       }
     }
-  }, [editConsole, editControllers, editDuration, editingBooking, editAmountManuallyEdited, getBillingPrice]);
+  }, [editItems, editDuration, editingBooking, editAmountManuallyEdited, getBillingPrice]);
 
 
   // Handle confirm booking (pending -> confirmed)
@@ -674,29 +669,54 @@ export default function OwnerDashboardPage() {
     setEditCustomerPhone(actualBooking.user_phone || actualBooking.customer_phone || "");
     setEditDate(actualBooking.booking_date || "");
     setEditDuration(actualBooking.duration || 60);
-    // Get console and controllers from booking_items
-    let consoleType = actualBooking.booking_items?.[0]?.console || "";
-    // Map 'steering' to 'steering_wheel' for the dropdown
-    if (consoleType === 'steering') {
-      consoleType = 'steering_wheel';
-    }
-    // If no console type, try to get first available console from cafe
-    if (!consoleType && cafes.length > 0) {
+    // Populate editItems array
+    if (actualBooking.booking_items && actualBooking.booking_items.length > 0) {
+      setEditItems(actualBooking.booking_items.map(item => {
+        let consoleType = item.console || "";
+        if (consoleType === 'steering') consoleType = 'steering_wheel';
+        return {
+          id: item.id,
+          console: consoleType,
+          quantity: item.quantity || 1,
+          price: item.price ?? undefined
+        };
+      }));
+    } else {
+      let defaultConsole = "ps5";
       const cafe = cafes.find(c => c.id === actualBooking.cafe_id) || currentCafe;
-      if (cafe?.ps5_count && cafe.ps5_count > 0) consoleType = 'ps5';
-      else if (cafe?.ps4_count && cafe.ps4_count > 0) consoleType = 'ps4';
-      else if (cafe?.xbox_count && cafe.xbox_count > 0) consoleType = 'xbox';
-      else if (cafe?.pc_count && cafe.pc_count > 0) consoleType = 'pc';
-      else if (cafe?.pool_count && cafe.pool_count > 0) consoleType = 'pool';
-      else if (cafe?.snooker_count && cafe.snooker_count > 0) consoleType = 'snooker';
-      else if (cafe?.arcade_count && cafe.arcade_count > 0) consoleType = 'arcade';
-      else if (cafe?.vr_count && cafe.vr_count > 0) consoleType = 'vr';
-      else if (cafe?.steering_wheel_count && cafe.steering_wheel_count > 0) consoleType = 'steering_wheel';
-      else if ((cafe as any)?.racing_sim_count && (cafe as any).racing_sim_count > 0) consoleType = 'racing_sim';
+      if (cafe) {
+        if (cafe?.ps5_count && cafe.ps5_count > 0) defaultConsole = 'ps5';
+        else if (cafe?.ps4_count && cafe.ps4_count > 0) defaultConsole = 'ps4';
+        else if (cafe?.xbox_count && cafe.xbox_count > 0) defaultConsole = 'xbox';
+        else if (cafe?.pc_count && cafe.pc_count > 0) defaultConsole = 'pc';
+      }
+      setEditItems([{ console: defaultConsole, quantity: 1 }]);
     }
-    const controllers = actualBooking.booking_items?.[0]?.quantity || 1;
-    setEditConsole(consoleType);
-    setEditControllers(controllers);
+    // Helper functions for editing multiple items
+    const addEditItem = () => {
+      let defaultConsole = "ps5";
+      const cafe = cafes.find(c => c.id === actualBooking.cafe_id) || currentCafe;
+      if (cafe) {
+        if (cafe?.ps5_count && cafe.ps5_count > 0) defaultConsole = 'ps5';
+        else if (cafe?.ps4_count && cafe.ps4_count > 0) defaultConsole = 'ps4';
+        else if (cafe?.xbox_count && cafe.xbox_count > 0) defaultConsole = 'xbox';
+        else if (cafe?.pc_count && cafe.pc_count > 0) defaultConsole = 'pc';
+      }
+      setEditItems(prev => [...prev, { console: defaultConsole, quantity: 1 }]);
+      setEditAmountManuallyEdited(false);
+    };
+
+    const removeEditItem = (index: number) => {
+      if (editItems.length <= 1) return;
+      setEditItems(prev => prev.filter((_, i) => i !== index));
+      setEditAmountManuallyEdited(false);
+    };
+
+    const updateEditItem = (index: number, updates: Partial<{ console: string, quantity: number }>) => {
+      setEditItems(prev => prev.map((item, i) => i === index ? { ...item, ...updates } : item));
+      setEditAmountManuallyEdited(false);
+    };
+
     // Parse booking time to 24-hour format for time input
     if (actualBooking.start_time) {
       // Try to parse the time (could be "10:30 am", "10:30 AM", "10:30:00 am", "14:30", etc.)
@@ -733,8 +753,7 @@ export default function OwnerDashboardPage() {
       debugLog('[handleSaveBooking] ===== SAVE BOOKING START =====');
       debugLog('[handleSaveBooking] Raw editAmount value:', editAmount, 'Type:', typeof editAmount);
       debugLog('[handleSaveBooking] editDuration:', editDuration);
-      debugLog('[handleSaveBooking] editConsole:', editConsole);
-      debugLog('[handleSaveBooking] editControllers:', editControllers);
+      debugLog('[handleSaveBooking] editItems:', editItems);
 
       // Convert 24-hour time (HH:MM) to 12-hour format for DB (e.g., "10:30 am")
       const [hours, minutes] = editStartTime.split(':').map(Number);
@@ -755,17 +774,11 @@ export default function OwnerDashboardPage() {
       debugLog('[handleSaveBooking] Booking ID:', editingBooking.id);
 
       // Update booking via server API route (bypasses ISP block)
-      const isMultiItem = editingBooking.booking_items && editingBooking.booking_items.length > 1;
-      const bookingItemId = isMultiItem ? null : editingBooking.booking_items?.[0]?.id;
-      const snacksPrice = editingBooking.booking_orders?.reduce((sum: number, order: any) => sum + (order.total_price || 0), 0) || 0;
-      const pureConsolePrice = Math.max(0, updatedAmount - snacksPrice);
-
       const res = await fetch('/api/owner/billing', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           bookingId: editingBooking.id,
-          bookingItemId: bookingItemId || null,
           booking: {
             total_amount: updatedAmount,
             status: editStatus,
@@ -776,11 +789,12 @@ export default function OwnerDashboardPage() {
             start_time: startTime12h,
             duration: editDuration,
           },
-          item: bookingItemId ? {
-            console: editConsole,
-            quantity: editControllers,
-            price: pureConsolePrice,
-          } : null,
+          items: editItems.map(item => ({
+            id: item.id,
+            console: item.console,
+            quantity: item.quantity,
+            price: getBillingPrice(item.console as ConsoleId, item.quantity, editDuration) || 0
+          })),
         }),
       });
 
@@ -805,11 +819,12 @@ export default function OwnerDashboardPage() {
               booking_date: editDate,
               start_time: startTime12h,
               duration: editDuration,
-              booking_items: isMultiItem ? b.booking_items : b.booking_items?.map(item => ({
-                ...item,
-                console: editConsole,
-                quantity: editControllers,
-                price: pureConsolePrice
+              booking_items: editItems.map((item, idx) => ({
+                id: item.id || `temp-item-${idx}`,
+                booking_id: b.id,
+                console: item.console,
+                quantity: item.quantity,
+                price: getBillingPrice(item.console as ConsoleId, item.quantity, editDuration) || 0
               }))
             }
             : b
@@ -1351,106 +1366,7 @@ export default function OwnerDashboardPage() {
     return () => clearInterval(interval);
   }, [activeTab, setBillingStartTime, setBillingBookingDate]);
 
-  // Auto-calculate amount when duration, console, or controllers change in edit modal
-  // Only auto-calculate if user hasn't manually edited the amount
-  useEffect(() => {
-    if (!editingBooking || !editDuration || !editConsole) return;
-    if (editAmountManuallyEdited) return; // Don't auto-calculate if manually edited
 
-    const cafeId = editingBooking.cafe_id;
-    if (!cafeId) return;
-
-    const calculatePrice = () => {
-      // Get tier pricing for this cafe and console
-      const cafePricing = consolePricing[cafeId];
-      const baseHourlyRate = cafes.find(c => c.id === cafeId)?.hourly_price || 100;
-
-      // Map console type if needed (e.g. steering -> steering_wheel)
-      const dbConsole = editConsole === 'steering' ? 'steering_wheel' : editConsole;
-
-      // Per-station console types (pricing is per station, not per controller group)
-      const perStationTypes = ['pc', 'vr', 'steering_wheel', 'steering', 'arcade'];
-      const isPerStation = perStationTypes.includes(editConsole.toLowerCase()) || perStationTypes.includes(dbConsole.toLowerCase());
-
-      // Try to get tier-based pricing
-      if (cafePricing && cafePricing[dbConsole]) {
-        const tier = cafePricing[dbConsole];
-
-        // Helper to get price for a specific duration and quantity
-        const getBasePrice = (qty: number, durationMins: number): number | null => {
-          const key = `qty${qty}_${durationMins}min`;
-          if (tier[key] !== null && tier[key] !== undefined) {
-            return tier[key];
-          }
-          // For per-station types, multiply qty1 price by quantity
-          if (isPerStation && qty > 1) {
-            const baseKey = `qty1_${durationMins}min`;
-            if (tier[baseKey] !== null && tier[baseKey] !== undefined) {
-              return tier[baseKey] * qty;
-            }
-          }
-          return null;
-        };
-
-        // Direct lookup for 30 or 60 min
-        if (editDuration === 30 || editDuration === 60) {
-          const price = getBasePrice(editControllers, editDuration);
-          if (price !== null) return price;
-        }
-        // 90 min = 60 + 30
-        else if (editDuration === 90) {
-          const p60 = getBasePrice(editControllers, 60);
-          const p30 = getBasePrice(editControllers, 30);
-          if (p60 !== null && p30 !== null) return p60 + p30;
-        }
-        // 120 min = 60 * 2
-        else if (editDuration === 120) {
-          const p60 = getBasePrice(editControllers, 60);
-          if (p60 !== null) return p60 * 2;
-        }
-        // 150 min = 60 * 2 + 30
-        else if (editDuration === 150) {
-          const p60 = getBasePrice(editControllers, 60);
-          const p30 = getBasePrice(editControllers, 30);
-          if (p60 !== null && p30 !== null) return (p60 * 2) + p30;
-        }
-        // 180 min = 60 * 3
-        else if (editDuration === 180) {
-          const p60 = getBasePrice(editControllers, 60);
-          if (p60 !== null) return p60 * 3;
-        }
-        // 210 min = 60 * 3 + 30
-        else if (editDuration === 210) {
-          const p60 = getBasePrice(editControllers, 60);
-          const p30 = getBasePrice(editControllers, 30);
-          if (p60 !== null && p30 !== null) return (p60 * 3) + p30;
-        }
-        // 240 min = 60 * 4
-        else if (editDuration === 240) {
-          const p60 = getBasePrice(editControllers, 60);
-          if (p60 !== null) return p60 * 4;
-        }
-        // 270 min = 60 * 4 + 30
-        else if (editDuration === 270) {
-          const p60 = getBasePrice(editControllers, 60);
-          const p30 = getBasePrice(editControllers, 30);
-          if (p60 !== null && p30 !== null) return (p60 * 4) + p30;
-        }
-        // 300 min = 60 * 5
-        else if (editDuration === 300) {
-          const p60 = getBasePrice(editControllers, 60);
-          if (p60 !== null) return p60 * 5;
-        }
-      }
-
-      // Fallback to calculation based on hourly rate
-      const durationMultiplier = editDuration / 60;
-      return Math.round(baseHourlyRate * editControllers * durationMultiplier);
-    };
-
-    const newAmount = calculatePrice();
-    setEditAmount(newAmount.toString());
-  }, [editDuration, editConsole, editControllers, editingBooking, cafes, consolePricing, editAmountManuallyEdited]);
 
   // Handle settings save
   const handleSaveSettings = async () => {
@@ -3386,92 +3302,144 @@ export default function OwnerDashboardPage() {
                       </h3>
                     </div>
 
-                    {editingBooking.booking_items && editingBooking.booking_items.length > 1 ? (
-                      <div style={{ padding: 16, background: "rgba(139, 92, 246, 0.1)", borderRadius: 10, border: "1px solid rgba(139, 92, 246, 0.2)" }}>
-                        <p style={{ margin: 0, fontSize: 13, color: theme.textSecondary, marginBottom: 12 }}>
-                          This is a multi-item booking. Console types cannot be edited directly from this menu.
-                        </p>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                          {editingBooking.booking_items.map((item: any, i: number) => (
-                            <div key={i} style={{ fontSize: 14, fontWeight: 600, color: theme.textPrimary, display: "flex", alignItems: "center", gap: 8 }}>
-                              <span style={{ fontSize: 16 }}>🎮</span>
-                              {item.quantity}x {item.console}
+                    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                      {editItems.map((item, index) => (
+                        <div key={index} style={{ 
+                          padding: 16, 
+                          background: "rgba(139, 92, 246, 0.05)", 
+                          borderRadius: 12, 
+                          border: `1px solid ${theme.border}`,
+                          position: "relative"
+                        }}>
+                          {editItems.length > 1 && (
+                            <button
+                              onClick={() => {
+                                setEditItems(prev => prev.filter((_, i) => i !== index));
+                                setEditAmountManuallyEdited(false);
+                              }}
+                              style={{
+                                position: "absolute",
+                                top: -8,
+                                right: -8,
+                                width: 24,
+                                height: 24,
+                                borderRadius: "50%",
+                                background: "#ef4444",
+                                color: "white",
+                                border: "none",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                cursor: "pointer",
+                                fontSize: 12,
+                                zIndex: 1
+                              }}
+                            >
+                              ✕
+                            </button>
+                          )}
+                          
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                            {/* Console */}
+                            <div>
+                              <label style={{ fontSize: 11, color: theme.textMuted, display: "block", marginBottom: 6, fontWeight: 600 }}>
+                                Console Type
+                              </label>
+                              <select
+                                value={item.console}
+                                onChange={(e) => {
+                                  const newItems = [...editItems];
+                                  newItems[index] = { ...newItems[index], console: e.target.value };
+                                  setEditItems(newItems);
+                                  setEditAmountManuallyEdited(false);
+                                }}
+                                style={{
+                                  width: "100%",
+                                  padding: "10px",
+                                  background: theme.background,
+                                  border: `1px solid ${theme.border}`,
+                                  borderRadius: 8,
+                                  color: theme.textPrimary,
+                                  fontSize: 13,
+                                  fontWeight: 500,
+                                }}
+                              >
+                                <option value="ps5">🎮 PS5</option>
+                                <option value="ps4">🎮 PS4</option>
+                                <option value="xbox">🎮 Xbox</option>
+                                <option value="pc">💻 PC</option>
+                                <option value="pool">🎱 Pool</option>
+                                <option value="snooker">🎱 Snooker</option>
+                                <option value="arcade">🕹️ Arcade</option>
+                                <option value="vr">🥽 VR</option>
+                                <option value="steering_wheel">🏎️ Steering Wheel</option>
+                                <option value="racing_sim">🏁 Racing Sim</option>
+                              </select>
                             </div>
-                          ))}
-                        </div>
-                      </div>
-                    ) : (
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                        {/* Console */}
-                        <div>
-                          <label style={{ fontSize: 12, color: theme.textMuted, display: "block", marginBottom: 8, fontWeight: 600 }}>
-                            Console *
-                          </label>
-                          <select
-                            value={editConsole}
-                            onChange={(e) => setEditConsole(e.target.value)}
-                            style={{
-                              width: "100%",
-                              padding: "14px",
-                              background: theme.background,
-                              border: `2px solid ${theme.border}`,
-                              borderRadius: 10,
-                              color: theme.textPrimary,
-                              fontSize: 14,
-                              fontFamily: fonts.body,
-                              fontWeight: 500,
-                              cursor: "pointer",
-                              transition: "all 0.2s",
-                            }}
-                            onFocus={(e) => e.target.style.borderColor = "#6366f1"}
-                            onBlur={(e) => e.target.style.borderColor = theme.border}
-                          >
-                            <option value="">Select Console</option>
-                            {currentCafe?.ps5_count && currentCafe.ps5_count > 0 && <option value="ps5">🎮 PS5</option>}
-                            {currentCafe?.ps4_count && currentCafe.ps4_count > 0 && <option value="ps4">🎮 PS4</option>}
-                            {currentCafe?.xbox_count && currentCafe.xbox_count > 0 && <option value="xbox">🎮 Xbox</option>}
-                            {currentCafe?.pc_count && currentCafe.pc_count > 0 && <option value="pc">💻 PC</option>}
-                            {currentCafe?.pool_count && currentCafe.pool_count > 0 && <option value="pool">🎱 Pool</option>}
-                            {currentCafe?.snooker_count && currentCafe.snooker_count > 0 && <option value="snooker">🎱 Snooker</option>}
-                            {currentCafe?.arcade_count && currentCafe.arcade_count > 0 && <option value="arcade">🕹️ Arcade</option>}
-                            {currentCafe?.vr_count && currentCafe.vr_count > 0 && <option value="vr">🥽 VR</option>}
-                            {currentCafe?.steering_wheel_count && currentCafe.steering_wheel_count > 0 && <option value="steering_wheel">🏎️ Steering Wheel</option>}
-                            {currentCafe && (currentCafe as any).racing_sim_count && (currentCafe as any).racing_sim_count > 0 && <option value="racing_sim">🏁 Racing Sim</option>}
-                          </select>
-                        </div>
 
-                        {/* Number of Controllers */}
-                        <div>
-                          <label style={{ fontSize: 12, color: theme.textMuted, display: "block", marginBottom: 8, fontWeight: 600 }}>
-                            Controllers *
-                          </label>
-                          <select
-                            value={editControllers}
-                            onChange={(e) => setEditControllers(parseInt(e.target.value))}
-                            style={{
-                              width: "100%",
-                              padding: "14px",
-                              background: theme.background,
-                              border: `2px solid ${theme.border}`,
-                              borderRadius: 10,
-                              color: theme.textPrimary,
-                              fontSize: 14,
-                              fontFamily: fonts.body,
-                              fontWeight: 500,
-                              cursor: "pointer",
-                              transition: "all 0.2s",
-                            }}
-                            onFocus={(e) => e.target.style.borderColor = "#6366f1"}
-                            onBlur={(e) => e.target.style.borderColor = theme.border}
-                          >
-                            <option value={1}>1 Controller</option>
-                            <option value={2}>2 Controllers</option>
-                            <option value={3}>3 Controllers</option>
-                            <option value={4}>4 Controllers</option>
-                          </select>
+                            {/* Controllers / Quantity */}
+                            <div>
+                              <label style={{ fontSize: 11, color: theme.textMuted, display: "block", marginBottom: 6, fontWeight: 600 }}>
+                                {['pc', 'pool', 'snooker', 'arcade', 'vr', 'steering_wheel', 'racing_sim'].includes(item.console) ? 'Quantity' : 'Controllers'}
+                              </label>
+                              <select
+                                value={item.quantity}
+                                onChange={(e) => {
+                                  const newItems = [...editItems];
+                                  newItems[index] = { ...newItems[index], quantity: parseInt(e.target.value) };
+                                  setEditItems(newItems);
+                                  setEditAmountManuallyEdited(false);
+                                }}
+                                style={{
+                                  width: "100%",
+                                  padding: "10px",
+                                  background: theme.background,
+                                  border: `1px solid ${theme.border}`,
+                                  borderRadius: 8,
+                                  color: theme.textPrimary,
+                                  fontSize: 13,
+                                  fontWeight: 500,
+                                }}
+                              >
+                                {[1, 2, 3, 4].map(n => (
+                                  <option key={n} value={n}>{n} {['pc', 'pool', 'snooker', 'arcade', 'vr', 'steering_wheel', 'racing_sim'].includes(item.console) ? 'Station' : 'Controller'}{n > 1 ? 's' : ''}</option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      ))}
+
+                      <button
+                        onClick={() => {
+                          let defaultConsole = "ps5";
+                          const cafe = cafes.find(c => c.id === (editingBooking?.cafe_id)) || currentCafe;
+                          if (cafe) {
+                            if (cafe.ps5_count) defaultConsole = 'ps5';
+                            else if (cafe.pc_count) defaultConsole = 'pc';
+                          }
+                          setEditItems(prev => [...prev, { console: defaultConsole, quantity: 1 }]);
+                          setEditAmountManuallyEdited(false);
+                        }}
+                        style={{
+                          padding: "10px",
+                          background: "rgba(139, 92, 246, 0.1)",
+                          color: "#8b5cf6",
+                          border: "1px dashed #8b5cf6",
+                          borderRadius: 10,
+                          fontSize: 13,
+                          fontWeight: 600,
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: 8,
+                          marginTop: 4
+                        }}
+                      >
+                        <span>+</span> Add Another Console / Station
+                      </button>
+                    </div>
                   </div>
 
                   {/* F&B / Snacks Summary Section */}

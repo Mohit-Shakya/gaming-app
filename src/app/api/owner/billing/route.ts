@@ -8,7 +8,7 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-// PUT /api/owner/billing — update booking + optional booking_item
+// PUT /api/owner/billing — update booking + optional booking_item or items array
 export async function PUT(request: NextRequest) {
   try {
     const auth = await requireOwnerContext(request);
@@ -17,7 +17,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const { ownerId, supabase } = auth.context;
-    const { bookingId, bookingItemId, booking, item } = await request.json();
+    const { bookingId, bookingItemId, booking, item, items } = await request.json();
 
     if (!bookingId) {
       return NextResponse.json({ error: "bookingId is required" }, { status: 400 });
@@ -28,28 +28,70 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Booking not found" }, { status: 404 });
     }
 
-    // Update booking_item first (if provided)
+    // Support single item update (backward compatibility)
     if (bookingItemId && item) {
-      const ownedBookingId = await getOwnedBookingIdForBookingItem(
-        supabase,
-        bookingItemId,
-        ownerId
-      );
-
-      if (!ownedBookingId || ownedBookingId !== bookingId) {
-        return NextResponse.json(
-          { error: "Booking item not found" },
-          { status: 404 }
-        );
-      }
-
       const { error: itemError } = await supabase
         .from("booking_items")
         .update(item)
-        .eq("id", bookingItemId);
+        .eq("id", bookingItemId)
+        .eq("booking_id", bookingId);
 
       if (itemError) {
         return NextResponse.json({ error: itemError.message }, { status: 500 });
+      }
+    }
+
+    // Support multiple items sync
+    if (items && Array.isArray(items)) {
+      // 1. Get current items in DB
+      const { data: currentDbItems, error: getError } = await supabase
+        .from("booking_items")
+        .select("id")
+        .eq("booking_id", bookingId);
+
+      if (getError) {
+        return NextResponse.json({ error: getError.message }, { status: 500 });
+      }
+
+      const itemIdsToKeep = items.filter(it => it.id).map(it => it.id);
+      const dbItemIds = (currentDbItems || []).map(it => it.id);
+      const itemIdsToDelete = dbItemIds.filter(id => !itemIdsToKeep.includes(id));
+
+      // 2. Delete removed items
+      if (itemIdsToDelete.length > 0) {
+        const { error: delError } = await supabase
+          .from("booking_items")
+          .delete()
+          .in("id", itemIdsToDelete)
+          .eq("booking_id", bookingId);
+        
+        if (delError) return NextResponse.json({ error: delError.message }, { status: 500 });
+      }
+
+      // 3. Upsert items
+      for (const it of items) {
+        if (it.id) {
+          // Update existing
+          await supabase
+            .from("booking_items")
+            .update({
+              console: it.console,
+              quantity: it.quantity,
+              price: it.price
+            })
+            .eq("id", it.id)
+            .eq("booking_id", bookingId);
+        } else {
+          // Insert new
+          await supabase
+            .from("booking_items")
+            .insert({
+              booking_id: bookingId,
+              console: it.console,
+              quantity: it.quantity,
+              price: it.price
+            });
+        }
       }
     }
 
