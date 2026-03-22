@@ -44,6 +44,7 @@ export function DashboardStats({
   isMobile,
 }: DashboardStatsProps) {
   const [showRevenue, setShowRevenue] = useState(false);
+  const [showBreakdown, setShowBreakdown] = useState(false);
   const [loadedPreference, setLoadedPreference] = useState(false);
 
   useEffect(() => {
@@ -56,7 +57,8 @@ export function DashboardStats({
     }
   }, []);
 
-  const toggleRevenueVisibility = () => {
+  const toggleRevenueVisibility = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Don't trigger the breakdown toggle
     setShowRevenue((current) => {
       const next = !current;
 
@@ -68,6 +70,12 @@ export function DashboardStats({
 
       return next;
     });
+  };
+
+  const toggleBreakdown = () => {
+    if (revenueVisible) {
+      setShowBreakdown(prev => !prev);
+    }
   };
 
   const activeBookingsCount = bookings.filter(
@@ -138,7 +146,7 @@ export function DashboardStats({
   }, 0);
 
   return (
-    <div className="grid grid-cols-1 gap-4 mb-8 md:grid-cols-2 lg:grid-cols-4 md:gap-6">
+    <div className="grid grid-cols-1 gap-4 mb-8 md:grid-cols-2 lg:grid-cols-3 md:gap-6">
       <StatCard
         title="Active Now"
         value={loadingData ? '...' : activeNow}
@@ -149,9 +157,11 @@ export function DashboardStats({
       />
 
       <div
+        onClick={toggleBreakdown}
         className={`
-          relative overflow-hidden rounded-2xl border
+          relative overflow-hidden rounded-2xl border transition-all duration-300
           ${isMobile ? 'p-4' : 'p-6'}
+          ${revenueVisible ? 'cursor-pointer hover:border-emerald-500/50 hover:bg-emerald-500/5' : ''}
         `}
         style={{
           background:
@@ -192,29 +202,53 @@ export function DashboardStats({
           >
             Today&apos;s Revenue
           </p>
-          <p
+          <div className="flex items-center gap-2">
+            <p
+              className={`
+                font-bold leading-none
+                ${isMobile ? 'text-2xl my-1.5' : 'text-4xl my-2'}
+              `}
+              style={{ color: '#22c55e' }}
+            >
+              {loadingData
+                ? '...'
+                : revenueVisible
+                  ? `₹${totalRevenue}`
+                  : '••••••'}
+            </p>
+            {revenueVisible && !showBreakdown && (
+              <span className="text-[10px] text-emerald-400/50 font-medium bg-emerald-500/10 px-1.5 py-0.5 rounded animate-pulse">
+                TAP TO SEE BREAKDOWN
+              </span>
+            )}
+          </div>
+          
+          <div 
             className={`
-              font-bold leading-none
-              ${isMobile ? 'text-2xl my-1.5' : 'text-4xl my-2'}
+              overflow-hidden transition-all duration-300 ease-in-out
+              ${showBreakdown && revenueVisible ? 'max-h-20 opacity-100 mt-2' : 'max-h-0 opacity-0 mt-0'}
             `}
-            style={{ color: '#22c55e' }}
           >
-            {loadingData
-              ? '...'
-              : revenueVisible
-                ? `₹${totalRevenue}`
-                : '••••••'}
-          </p>
-          <p
-            className={`${isMobile ? 'text-[11px] mt-1.5' : 'text-[13px] mt-2'}`}
-            style={{ color: '#22c55eB3' }}
-          >
-            {loadingData
-              ? 'Loading revenue...'
-              : revenueVisible
-                ? `Cash: ₹${displayCash} • Online: ₹${displayOnline} • Memberships: ₹${membershipRevenue} • Snacks: ₹${snacksRevenue}`
-                : 'Hidden. Tap the eye icon to reveal.'}
-          </p>
+            <p
+              className={`${isMobile ? 'text-[11px]' : 'text-[13px]'}`}
+              style={{ color: '#22c55eB3' }}
+            >
+              {loadingData
+                ? 'Loading revenue...'
+                : revenueVisible
+                  ? `Cash: ₹${displayCash} • Online: ₹${displayOnline} • Memberships: ₹${membershipRevenue} • Snacks: ₹${snacksRevenue}`
+                  : ''}
+            </p>
+          </div>
+          
+          {!revenueVisible && (
+            <p
+              className={`${isMobile ? 'text-[11px] mt-1.5' : 'text-[13px] mt-2'}`}
+              style={{ color: '#22c55eB3' }}
+            >
+              Hidden. Tap the eye icon to reveal.
+            </p>
+          )}
         </div>
       </div>
 
@@ -224,15 +258,6 @@ export function DashboardStats({
         icon="🕐"
         gradient="radial-gradient(circle at top right, rgba(249, 115, 22, 0.15), transparent 70%), linear-gradient(135deg, rgba(30, 41, 59, 0.4), rgba(15, 23, 42, 0.6))"
         color="#f97316"
-        isMobile={isMobile}
-      />
-
-      <StatCard
-        title="Snacks Sold Today"
-        value={loadingData ? '...' : snacksSoldToday}
-        icon="🍔"
-        gradient="radial-gradient(circle at top right, rgba(234, 179, 8, 0.15), transparent 70%), linear-gradient(135deg, rgba(30, 41, 59, 0.4), rgba(15, 23, 42, 0.6))"
-        color="#eab308"
         isMobile={isMobile}
       />
     </div>
