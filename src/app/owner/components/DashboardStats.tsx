@@ -25,6 +25,7 @@ interface DashboardBooking {
   total_amount?: number | null;
   booking_orders?: Array<{
     id: string;
+    quantity?: number | null;
     total_price: number | null;
   }>;
 }
@@ -131,8 +132,13 @@ export function DashboardStats({
     (b) => b.booking_date === todayStr && b.status !== 'cancelled'
   ).length;
 
+  const snacksSoldToday = todayBookings.reduce((sum, b) => {
+    const qtySum = b.booking_orders?.reduce((s, order) => s + (order.quantity || 0), 0) || 0;
+    return sum + qtySum;
+  }, 0);
+
   return (
-    <div className="grid grid-cols-1 gap-4 mb-8 md:grid-cols-3 md:gap-6">
+    <div className="grid grid-cols-1 gap-4 mb-8 md:grid-cols-2 lg:grid-cols-4 md:gap-6">
       <StatCard
         title="Active Now"
         value={loadingData ? '...' : activeNow}
@@ -218,6 +224,15 @@ export function DashboardStats({
         icon="🕐"
         gradient="radial-gradient(circle at top right, rgba(249, 115, 22, 0.15), transparent 70%), linear-gradient(135deg, rgba(30, 41, 59, 0.4), rgba(15, 23, 42, 0.6))"
         color="#f97316"
+        isMobile={isMobile}
+      />
+
+      <StatCard
+        title="Snacks Sold Today"
+        value={loadingData ? '...' : snacksSoldToday}
+        icon="🍔"
+        gradient="radial-gradient(circle at top right, rgba(234, 179, 8, 0.15), transparent 70%), linear-gradient(135deg, rgba(30, 41, 59, 0.4), rgba(15, 23, 42, 0.6))"
+        color="#eab308"
         isMobile={isMobile}
       />
     </div>

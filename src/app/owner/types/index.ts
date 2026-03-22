@@ -78,6 +78,7 @@ export type BookingRow = {
   }>;
   booking_orders?: Array<{
     id: string;
+    quantity?: number | null;
     total_price: number | null;
   }>;
   user_name?: string | null;
