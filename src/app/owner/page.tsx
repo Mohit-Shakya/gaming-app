@@ -538,13 +538,19 @@ export default function OwnerDashboardPage() {
   // Auto-calculate editAmount when inputs change
   useEffect(() => {
     if (editingBooking && !editAmountManuallyEdited) {
-      if (editConsole && editDuration) {
-        // Calculate console price
+      const isMultiItem = editingBooking.booking_items && editingBooking.booking_items.length > 1;
+      const snacksPrice = editingBooking.booking_orders?.reduce((sum: number, order: any) => sum + (order.total_price || 0), 0) || 0;
+
+      if (isMultiItem && editDuration) {
+        // Calculate sum of all items in the booking based on their original console and quantity
+        let totalConsolesPrice = 0;
+        editingBooking.booking_items?.forEach((item: any) => {
+          totalConsolesPrice += getBillingPrice(item.console as ConsoleId, item.quantity || 1, editDuration);
+        });
+        setEditAmount((totalConsolesPrice + snacksPrice).toString());
+      } else if (editConsole && editDuration) {
+        // Calculate single item price using the currently selected dropdown options
         const consolePrice = getBillingPrice(editConsole as ConsoleId, editControllers, editDuration);
-        
-        // Add snacks price attached to this booking
-        const snacksPrice = editingBooking.booking_orders?.reduce((sum: number, order: any) => sum + (order.total_price || 0), 0) || 0;
-        
         setEditAmount((consolePrice + snacksPrice).toString());
       }
     }
@@ -561,11 +567,12 @@ export default function OwnerDashboardPage() {
     const confirmed = confirm(`Confirm booking for ${booking.customer_name || "customer"}?`);
     if (!confirmed) return;
 
+    const trueBookingId = (booking as any).originalBookingId || (booking.id.includes('-item-') ? booking.id.split('-item-')[0] : booking.id);
     try {
       const res = await fetch('/api/owner/billing', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bookingId: booking.id, booking: { status: 'confirmed' } }),
+        body: JSON.stringify({ bookingId: trueBookingId, booking: { status: 'confirmed' } }),
       });
       if (!res.ok) {
         const data = await res.json();
@@ -590,12 +597,13 @@ export default function OwnerDashboardPage() {
     const confirmed = confirm(`Start session for ${booking.customer_name || "customer"}?`);
     if (!confirmed) return;
 
+    const trueBookingId = (booking as any).originalBookingId || (booking.id.includes('-item-') ? booking.id.split('-item-')[0] : booking.id);
     try {
       const currentTime = convertTo12Hour();
       const res = await fetch('/api/owner/billing', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bookingId: booking.id, booking: { status: 'in-progress', start_time: currentTime } }),
+        body: JSON.stringify({ bookingId: trueBookingId, booking: { status: 'in-progress', start_time: currentTime } }),
       });
       if (!res.ok) {
         const data = await res.json();
@@ -612,11 +620,12 @@ export default function OwnerDashboardPage() {
 
   // Handle edit booking
   const handleBookingStatusChange = async (id: string, status: string) => {
+    const trueBookingId = id.includes('-item-') ? id.split('-item-')[0] : id;
     try {
       const res = await fetch('/api/owner/billing', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bookingId: id, booking: { status } }),
+        body: JSON.stringify({ bookingId: trueBookingId, booking: { status } }),
       });
 
       if (!res.ok) {
@@ -746,7 +755,10 @@ export default function OwnerDashboardPage() {
       debugLog('[handleSaveBooking] Booking ID:', editingBooking.id);
 
       // Update booking via server API route (bypasses ISP block)
-      const bookingItemId = editingBooking.booking_items?.[0]?.id;
+      const isMultiItem = editingBooking.booking_items && editingBooking.booking_items.length > 1;
+      const bookingItemId = isMultiItem ? null : editingBooking.booking_items?.[0]?.id;
+      const snacksPrice = editingBooking.booking_orders?.reduce((sum: number, order: any) => sum + (order.total_price || 0), 0) || 0;
+      const pureConsolePrice = Math.max(0, updatedAmount - snacksPrice);
 
       const res = await fetch('/api/owner/billing', {
         method: 'PUT',
@@ -767,7 +779,7 @@ export default function OwnerDashboardPage() {
           item: bookingItemId ? {
             console: editConsole,
             quantity: editControllers,
-            price: updatedAmount,
+            price: pureConsolePrice,
           } : null,
         }),
       });
@@ -793,11 +805,11 @@ export default function OwnerDashboardPage() {
               booking_date: editDate,
               start_time: startTime12h,
               duration: editDuration,
-              booking_items: b.booking_items?.map(item => ({
+              booking_items: isMultiItem ? b.booking_items : b.booking_items?.map(item => ({
                 ...item,
                 console: editConsole,
                 quantity: editControllers,
-                price: parseFloat(editAmount)
+                price: pureConsolePrice
               }))
             }
             : b
@@ -3374,96 +3386,92 @@ export default function OwnerDashboardPage() {
                       </h3>
                     </div>
 
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                      {/* Console */}
-                      <div>
-                        <label style={{ fontSize: 12, color: theme.textMuted, display: "block", marginBottom: 8, fontWeight: 600 }}>
-                          Console *
-                        </label>
-                        <select
-                          value={editConsole}
-                          onChange={(e) => setEditConsole(e.target.value)}
-                          style={{
-                            width: "100%",
-                            padding: "14px",
-                            background: theme.background,
-                            border: `2px solid ${theme.border}`,
-                            borderRadius: 10,
-                            color: theme.textPrimary,
-                            fontSize: 14,
-                            fontFamily: fonts.body,
-                            fontWeight: 500,
-                            cursor: "pointer",
-                            transition: "all 0.2s",
-                          }}
-                          onFocus={(e) => e.target.style.borderColor = "#6366f1"}
-                          onBlur={(e) => e.target.style.borderColor = theme.border}
-                        >
-                          <option value="">Select Console</option>
-                          {currentCafe?.ps5_count && currentCafe.ps5_count > 0 && (
-                            <option value="ps5">🎮 PS5</option>
-                          )}
-                          {currentCafe?.ps4_count && currentCafe.ps4_count > 0 && (
-                            <option value="ps4">🎮 PS4</option>
-                          )}
-                          {currentCafe?.xbox_count && currentCafe.xbox_count > 0 && (
-                            <option value="xbox">🎮 Xbox</option>
-                          )}
-                          {currentCafe?.pc_count && currentCafe.pc_count > 0 && (
-                            <option value="pc">💻 PC</option>
-                          )}
-                          {currentCafe?.pool_count && currentCafe.pool_count > 0 && (
-                            <option value="pool">🎱 Pool</option>
-                          )}
-                          {currentCafe?.snooker_count && currentCafe.snooker_count > 0 && (
-                            <option value="snooker">🎱 Snooker</option>
-                          )}
-                          {currentCafe?.arcade_count && currentCafe.arcade_count > 0 && (
-                            <option value="arcade">🕹️ Arcade</option>
-                          )}
-                          {currentCafe?.vr_count && currentCafe.vr_count > 0 && (
-                            <option value="vr">🥽 VR</option>
-                          )}
-                          {currentCafe?.steering_wheel_count && currentCafe.steering_wheel_count > 0 && (
-                            <option value="steering_wheel">🏎️ Steering Wheel</option>
-                          )}
-                          {currentCafe && (currentCafe as any).racing_sim_count && (currentCafe as any).racing_sim_count > 0 && (
-                            <option value="racing_sim">🏁 Racing Sim</option>
-                          )}
-                        </select>
+                    {editingBooking.booking_items && editingBooking.booking_items.length > 1 ? (
+                      <div style={{ padding: 16, background: theme.background, borderRadius: 10, border: `1px solid ${theme.border}` }}>
+                        <p style={{ margin: 0, fontSize: 13, color: theme.textSecondary, marginBottom: 12 }}>
+                          This is a multi-item booking. Console types cannot be edited directly from this menu.
+                        </p>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                          {editingBooking.booking_items.map((item: any, i: number) => (
+                            <div key={i} style={{ fontSize: 14, fontWeight: 600, color: theme.textPrimary, display: "flex", alignItems: "center", gap: 8 }}>
+                              <span style={{ fontSize: 16 }}>🎮</span>
+                              {item.quantity}x {item.console}
+                            </div>
+                          ))}
+                        </div>
                       </div>
+                    ) : (
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                        {/* Console */}
+                        <div>
+                          <label style={{ fontSize: 12, color: theme.textMuted, display: "block", marginBottom: 8, fontWeight: 600 }}>
+                            Console *
+                          </label>
+                          <select
+                            value={editConsole}
+                            onChange={(e) => setEditConsole(e.target.value)}
+                            style={{
+                              width: "100%",
+                              padding: "14px",
+                              background: theme.background,
+                              border: `2px solid ${theme.border}`,
+                              borderRadius: 10,
+                              color: theme.textPrimary,
+                              fontSize: 14,
+                              fontFamily: fonts.body,
+                              fontWeight: 500,
+                              cursor: "pointer",
+                              transition: "all 0.2s",
+                            }}
+                            onFocus={(e) => e.target.style.borderColor = "#6366f1"}
+                            onBlur={(e) => e.target.style.borderColor = theme.border}
+                          >
+                            <option value="">Select Console</option>
+                            {currentCafe?.ps5_count && currentCafe.ps5_count > 0 && <option value="ps5">🎮 PS5</option>}
+                            {currentCafe?.ps4_count && currentCafe.ps4_count > 0 && <option value="ps4">🎮 PS4</option>}
+                            {currentCafe?.xbox_count && currentCafe.xbox_count > 0 && <option value="xbox">🎮 Xbox</option>}
+                            {currentCafe?.pc_count && currentCafe.pc_count > 0 && <option value="pc">💻 PC</option>}
+                            {currentCafe?.pool_count && currentCafe.pool_count > 0 && <option value="pool">🎱 Pool</option>}
+                            {currentCafe?.snooker_count && currentCafe.snooker_count > 0 && <option value="snooker">🎱 Snooker</option>}
+                            {currentCafe?.arcade_count && currentCafe.arcade_count > 0 && <option value="arcade">🕹️ Arcade</option>}
+                            {currentCafe?.vr_count && currentCafe.vr_count > 0 && <option value="vr">🥽 VR</option>}
+                            {currentCafe?.steering_wheel_count && currentCafe.steering_wheel_count > 0 && <option value="steering_wheel">🏎️ Steering Wheel</option>}
+                            {currentCafe && (currentCafe as any).racing_sim_count && (currentCafe as any).racing_sim_count > 0 && <option value="racing_sim">🏁 Racing Sim</option>}
+                          </select>
+                        </div>
 
-                      {/* Number of Controllers */}
-                      <div>
-                        <label style={{ fontSize: 12, color: theme.textMuted, display: "block", marginBottom: 8, fontWeight: 600 }}>
-                          Controllers *
-                        </label>
-                        <select
-                          value={editControllers}
-                          onChange={(e) => setEditControllers(parseInt(e.target.value))}
-                          style={{
-                            width: "100%",
-                            padding: "14px",
-                            background: theme.background,
-                            border: `2px solid ${theme.border}`,
-                            borderRadius: 10,
-                            color: theme.textPrimary,
-                            fontSize: 14,
-                            fontFamily: fonts.body,
-                            fontWeight: 500,
-                            cursor: "pointer",
-                            transition: "all 0.2s",
-                          }}
-                          onFocus={(e) => e.target.style.borderColor = "#6366f1"}
-                          onBlur={(e) => e.target.style.borderColor = theme.border}
-                        >
-                          <option value={1}>1 Controller</option>
-                          <option value={2}>2 Controllers</option>
-                          <option value={3}>3 Controllers</option>
-                          <option value={4}>4 Controllers</option>
-                        </select>
+                        {/* Number of Controllers */}
+                        <div>
+                          <label style={{ fontSize: 12, color: theme.textMuted, display: "block", marginBottom: 8, fontWeight: 600 }}>
+                            Controllers *
+                          </label>
+                          <select
+                            value={editControllers}
+                            onChange={(e) => setEditControllers(parseInt(e.target.value))}
+                            style={{
+                              width: "100%",
+                              padding: "14px",
+                              background: theme.background,
+                              border: `2px solid ${theme.border}`,
+                              borderRadius: 10,
+                              color: theme.textPrimary,
+                              fontSize: 14,
+                              fontFamily: fonts.body,
+                              fontWeight: 500,
+                              cursor: "pointer",
+                              transition: "all 0.2s",
+                            }}
+                            onFocus={(e) => e.target.style.borderColor = "#6366f1"}
+                            onBlur={(e) => e.target.style.borderColor = theme.border}
+                          >
+                            <option value={1}>1 Controller</option>
+                            <option value={2}>2 Controllers</option>
+                            <option value={3}>3 Controllers</option>
+                            <option value={4}>4 Controllers</option>
+                          </select>
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
 
                   {/* F&B / Snacks Summary Section */}
