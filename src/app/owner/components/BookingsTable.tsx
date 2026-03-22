@@ -17,6 +17,7 @@ interface BookingsTableProps {
     title?: string;
     onViewAll?: () => void;
     showActions?: boolean;
+    onPaymentModeChange?: (id: string, mode: string) => void;
 }
 
 export function BookingsTable({
@@ -30,7 +31,8 @@ export function BookingsTable({
     loading = false,
     title = "Bookings",
     onViewAll,
-    showActions = true
+    showActions = true,
+    onPaymentModeChange
 }: BookingsTableProps) {
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
@@ -239,6 +241,25 @@ export function BookingsTable({
                                                     </Button>
                                                 )}
 
+                                                {onPaymentModeChange && (['confirmed', 'in-progress'].includes(booking.status)) && (
+                                                    <div className="flex bg-slate-800/50 rounded-lg p-0.5 border border-white/5 mr-1">
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); onPaymentModeChange(booking.id, 'cash'); }}
+                                                            className={`px-2 py-1 rounded text-[10px] font-bold uppercase transition-all ${booking.payment_mode === 'cash' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+                                                            title="Set Cash"
+                                                        >
+                                                            Cash
+                                                        </button>
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); onPaymentModeChange(booking.id, 'online'); }}
+                                                            className={`px-2 py-1 rounded text-[10px] font-bold uppercase transition-all ${booking.payment_mode === 'online' || booking.payment_mode === 'paytm' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}
+                                                            title="Set Paytm/Online"
+                                                        >
+                                                            Paytm
+                                                        </button>
+                                                    </div>
+                                                )}
+
                                                 {onEdit && (
                                                     <Button
                                                         size="sm"
@@ -331,6 +352,23 @@ export function BookingsTable({
                                             >
                                                 <ShoppingBag size={16} />
                                             </Button>
+                                        )}
+
+                                        {onPaymentModeChange && (['confirmed', 'in-progress'].includes(booking.status)) && (
+                                            <div className="flex bg-slate-800/50 rounded-lg p-0.5 border border-white/5 flex-1">
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); onPaymentModeChange(booking.id, 'cash'); }}
+                                                    className={`flex-1 py-1.5 rounded text-[10px] font-bold uppercase transition-all ${booking.payment_mode === 'cash' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-slate-400'}`}
+                                                >
+                                                    Cash
+                                                </button>
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); onPaymentModeChange(booking.id, 'online'); }}
+                                                    className={`flex-1 py-1.5 rounded text-[10px] font-bold uppercase transition-all ${booking.payment_mode === 'online' || booking.payment_mode === 'paytm' ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20' : 'text-slate-400'}`}
+                                                >
+                                                    Paytm
+                                                </button>
+                                            </div>
                                         )}
 
                                         {onEdit && (

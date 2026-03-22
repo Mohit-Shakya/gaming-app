@@ -21,6 +21,7 @@ type SessionsTabProps = {
   handleConfirmBooking: (booking: BookingRow) => void;
   handleStartBooking: (booking: BookingRow) => void;
   handleEditBooking: (booking: BookingRow) => void;
+  onPaymentModeChange?: (id: string, mode: string) => void;
 };
 
 export default function SessionsTab({
@@ -41,6 +42,7 @@ export default function SessionsTab({
   handleConfirmBooking,
   handleStartBooking,
   handleEditBooking,
+  onPaymentModeChange,
 }: SessionsTabProps) {
   const isBookingEnded = (booking: BookingRow) => {
     try {
@@ -229,6 +231,23 @@ export default function SessionsTab({
                   </div>
 
                   <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+                    {onPaymentModeChange && (displayStatus === 'confirmed' || displayStatus === 'in-progress') && (
+                      <div style={{ flex: 1, display: 'flex', background: 'rgba(15,23,42,0.4)', borderRadius: 6, padding: 2, border: `1px solid ${theme.border}` }}>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); onPaymentModeChange(booking.id, 'cash'); }}
+                          style={{ flex: 1, padding: '6px', background: booking.payment_mode === 'cash' ? '#10b981' : 'transparent', color: booking.payment_mode === 'cash' ? 'white' : theme.textMuted, border: 'none', borderRadius: 4, fontSize: 10, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}
+                        >
+                          CASH
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); onPaymentModeChange(booking.id, 'online'); }}
+                          style={{ flex: 1, padding: '6px', background: (booking.payment_mode === 'online' || booking.payment_mode === 'paytm') ? '#3b82f6' : 'transparent', color: (booking.payment_mode === 'online' || booking.payment_mode === 'paytm') ? 'white' : theme.textMuted, border: 'none', borderRadius: 4, fontSize: 10, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}
+                        >
+                          PAYTM
+                        </button>
+                      </div>
+                    )}
+                    
                     {displayStatus === 'pending' && booking.source === 'online' && (
                       <button
                         onClick={(e) => { e.stopPropagation(); handleConfirmBooking(booking); }}
@@ -314,6 +333,23 @@ export default function SessionsTab({
                     </td>
                     <td style={{ padding: '16px 20px' }}>
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center', justifyContent: 'center' }}>
+                        {onPaymentModeChange && (displayStatus === 'confirmed' || displayStatus === 'in-progress') && (
+                          <div style={{ display: 'flex', background: 'rgba(15,23,42,0.4)', borderRadius: 8, padding: 3, border: `1px solid ${theme.border}`, marginRight: 4 }}>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); onPaymentModeChange(booking.id, 'cash'); }}
+                              style={{ padding: '6px 12px', background: booking.payment_mode === 'cash' ? '#10b981' : 'transparent', color: booking.payment_mode === 'cash' ? 'white' : theme.textMuted, border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}
+                            >
+                              CASH
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); onPaymentModeChange(booking.id, 'online'); }}
+                              style={{ padding: '6px 12px', background: (booking.payment_mode === 'online' || booking.payment_mode === 'paytm') ? '#3b82f6' : 'transparent', color: (booking.payment_mode === 'online' || booking.payment_mode === 'paytm') ? 'white' : theme.textMuted, border: 'none', borderRadius: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s' }}
+                            >
+                              PAYTM
+                            </button>
+                          </div>
+                        )}
+                        
                         {displayStatus === 'pending' && booking.source === 'online' && (
                           <button onClick={(e) => { e.stopPropagation(); handleConfirmBooking(booking); }}
                             style={{ padding: '6px 14px', background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', color: 'white', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>

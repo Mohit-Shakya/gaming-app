@@ -604,6 +604,35 @@ export default function OwnerDashboardPage() {
     }
   }
 
+  async function handlePaymentModeChange(bookingId: string, mode: string) {
+    const booking = bookings.find(b => b.id === bookingId) as any;
+    const trueBookingId = booking?.originalBookingId || (bookingId.includes('-item-') ? bookingId.split('-item-')[0] : bookingId);
+
+    try {
+      const res = await fetch('/api/owner/billing', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId: trueBookingId, booking: { payment_mode: mode } }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        alert('Failed to update payment mode: ' + (data.error || 'Unknown error'));
+        return;
+      }
+
+      setBookings(prev => prev.map((b: any) => {
+        if (b.id === bookingId || b.originalBookingId === trueBookingId) {
+          return { ...b, payment_mode: mode };
+        }
+        return b;
+      }));
+      refreshData();
+    } catch (err) {
+      console.error('Error updating payment mode:', err);
+    }
+  }
+
   // Handle start booking (confirmed -> in-progress)
   async function handleStartBooking(booking: BookingRow) {
     if (booking.status !== "confirmed") {
@@ -1899,6 +1928,7 @@ export default function OwnerDashboardPage() {
                   loading={loadingData}
                   onViewAll={() => setActiveTab('bookings')}
                   onStatusChange={handleBookingStatusChange}
+                  onPaymentModeChange={handlePaymentModeChange}
                   onEdit={handleEditBooking}
                   onViewOrders={(bookingId, customerName) => {
                     setViewOrdersBookingId(bookingId);
@@ -2228,6 +2258,7 @@ export default function OwnerDashboardPage() {
               handleConfirmBooking={handleConfirmBooking}
               handleStartBooking={handleStartBooking}
               handleEditBooking={handleEditBooking}
+              onPaymentModeChange={handlePaymentModeChange}
             />
           )}
 
