@@ -3387,7 +3387,7 @@ export default function OwnerDashboardPage() {
                     </div>
 
                     {editingBooking.booking_items && editingBooking.booking_items.length > 1 ? (
-                      <div style={{ padding: 16, background: theme.background, borderRadius: 10, border: `1px solid ${theme.border}` }}>
+                      <div style={{ padding: 16, background: "rgba(139, 92, 246, 0.1)", borderRadius: 10, border: "1px solid rgba(139, 92, 246, 0.2)" }}>
                         <p style={{ margin: 0, fontSize: 13, color: theme.textSecondary, marginBottom: 12 }}>
                           This is a multi-item booking. Console types cannot be edited directly from this menu.
                         </p>
