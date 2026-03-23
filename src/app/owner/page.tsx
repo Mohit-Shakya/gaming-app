@@ -36,9 +36,7 @@ import {
 import Inventory from './components/Inventory';
 import AddItemsModal from './components/AddItemsModal';
 import ViewOrdersModal from './components/ViewOrdersModal';
-import OverviewTab from './components/tabs/OverviewTab';
 import SettingsTab from './components/tabs/SettingsTab';
-import SessionsTab from './components/tabs/SessionsTab';
 import CustomersTab from './components/tabs/CustomersTab';
 import OwnerPWAInstaller from './components/OwnerPWAInstaller';
 import SubscriptionDetailsModal from './components/SubscriptionDetailsModal';
@@ -1829,20 +1827,7 @@ export default function OwnerDashboardPage() {
   // Dark theme colors
 
 
-  // Navigation items
-  const navItems: { id: NavTab; label: string; icon: string }[] = [
-    { id: 'dashboard', label: 'Dashboard', icon: '🏠' },
-    { id: 'live-status', label: 'Live Status', icon: '📡' },
-    { id: 'billing', label: 'Billing', icon: '💳' },
-    { id: 'bookings', label: 'Bookings', icon: '📅' },
-    { id: 'customers', label: 'Customers', icon: '👥' },
-    { id: 'stations', label: 'Stations', icon: '🖥️' },
-    { id: 'memberships', label: 'Memberships', icon: '🎫' },
-    { id: 'coupons', label: 'Coupons', icon: '🎟️' },
-    { id: 'inventory', label: 'Inventory', icon: '🍿' },
-    { id: 'reports', label: 'Reports', icon: '📊' },
-    { id: 'settings', label: 'Settings', icon: '⚙️' },
-  ];
+
 
   return (
     <>
@@ -1969,21 +1954,7 @@ export default function OwnerDashboardPage() {
             </div>
           )}
 
-          {/* Overview Tab */}
-          {activeTab === 'overview' && (
-            <OverviewTab
-              isMobile={isMobile}
-              theme={theme}
-              fonts={fonts}
-              loadingData={loadingData}
-              cafes={currentCafe ? [currentCafe] : []}
-              stats={stats}
-              revenueFilter={revenueFilter}
-              setRevenueFilter={setRevenueFilter}
-              bookings={bookings}
-              setActiveTab={(tab: string) => setActiveTab(tab as NavTab)}
-            />
-          )}
+
           {activeTab === 'live-status' && cafes.length > 0 && (
             <div>
               {/* Café Selector (only show if multiple cafés) */}
@@ -2081,6 +2052,7 @@ export default function OwnerDashboardPage() {
               loading={loadingData}
               onUpdateStatus={handleBookingStatusChange}
               onEdit={handleEditBooking}
+              onPaymentModeChange={handlePaymentModeChange}
               onRefresh={() => refreshData()}
               isMobile={isMobile}
               onViewOrders={(bookingId, customerName) => {
@@ -2217,50 +2189,6 @@ export default function OwnerDashboardPage() {
             </div>
           )}
 
-          {/* Analytics Tab */}
-          {activeTab === 'analytics' && (
-            <div
-              style={{
-                background: theme.cardBackground,
-                borderRadius: 16,
-                border: `1px solid ${theme.border}`,
-                padding: "60px 20px",
-                textAlign: "center",
-              }}
-            >
-              <div style={{ fontSize: 64, marginBottom: 16, opacity: 0.3 }}>📈</div>
-              <p style={{ fontSize: 18, color: theme.textSecondary, marginBottom: 8, fontWeight: 500 }}>
-                Analytics Coming Soon
-              </p>
-              <p style={{ fontSize: 14, color: theme.textMuted }}>
-                Detailed insights and reports will be available here.
-              </p>
-            </div>
-          )}
-
-          {/* Sessions Tab */}
-          {activeTab === 'sessions' && (
-            <SessionsTab
-              theme={theme}
-              isMobile={isMobile}
-              loadingData={loadingData}
-              flattenedFilteredBookings={paginatedFlattenedFilteredBookings}
-              searchQuery={searchQuery}
-              setSearchQuery={setSearchQuery}
-              statusFilter={statusFilter}
-              setStatusFilter={setStatusFilter}
-              dateFilter={dateFilter}
-              setDateFilter={setDateFilter}
-              bookingPage={bookingPage}
-              setBookingPage={setBookingPage}
-              bookingsPerPage={bookingsPerPage}
-              totalBookingsCount={filteredBookingsCount}
-              handleConfirmBooking={handleConfirmBooking}
-              handleStartBooking={handleStartBooking}
-              handleEditBooking={handleEditBooking}
-              onPaymentModeChange={handlePaymentModeChange}
-            />
-          )}
 
           {/* Customers Tab */}
           {activeTab === 'customers' && (

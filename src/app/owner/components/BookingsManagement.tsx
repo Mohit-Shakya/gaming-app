@@ -13,9 +13,10 @@ interface BookingsManagementProps {
     isMobile?: boolean;
     onViewOrders?: (bookingId: string, customerName: string) => void;
     onViewCustomer?: (customer: { name: string; phone?: string; email?: string }) => void;
+    onPaymentModeChange?: (bookingId: string, mode: string) => Promise<void>;
 }
 
-export function BookingsManagement({ bookings, loading, onUpdateStatus, onEdit, onRefresh, isMobile, onViewOrders, onViewCustomer }: BookingsManagementProps) {
+export function BookingsManagement({ bookings, loading, onUpdateStatus, onEdit, onRefresh, isMobile, onViewOrders, onViewCustomer, onPaymentModeChange }: BookingsManagementProps) {
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
     const [dateRange, setDateRange] = useState('all');
@@ -150,6 +151,7 @@ export function BookingsManagement({ bookings, loading, onUpdateStatus, onEdit, 
                 showFilters={false}
                 onStatusChange={onUpdateStatus}
                 onEdit={onEdit}
+                onPaymentModeChange={onPaymentModeChange}
                 onViewOrders={onViewOrders}
                 onViewCustomer={onViewCustomer}
                 loading={loading}
