@@ -157,7 +157,7 @@ export function Memberships({
                 description: newPlanDescription || null,
                 price: parseFloat(newPlanPrice),
                 hours: isHourlyPlan(newPlanType) && newPlanHours ? parseFloat(newPlanHours) : null,
-                validity_days: parseInt(newPlanValidity),
+                validity_days: newPlanType === 'day_pass' ? 1 : parseInt(newPlanValidity),
                 plan_type: normalizePlanType(newPlanType),
                 console_type: newPlanConsoleType,
                 player_count: newPlanPlayerCount,
@@ -538,7 +538,7 @@ export function Memberships({
 
                                         <div className="flex flex-wrap gap-2 mb-6">
                                             <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded bg-slate-900/40 text-slate-400">
-                                                {plan.validity_days} Days
+                                                {plan.validity_days} Day{plan.validity_days === 1 ? '' : 's'}
                                             </span>
                                             <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded bg-slate-900/40 text-slate-400 flex items-center gap-1">
                                                 {plan.player_count === 'single' ? <User size={10} /> : <Users size={10} />}
@@ -622,8 +622,9 @@ export function Memberships({
                                     <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase">Validity (Days)</label>
                                     <input
                                         type="number"
-                                        className="w-full bg-slate-800 border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
-                                        value={newPlanValidity}
+                                        className={`w-full bg-slate-800 border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500 ${newPlanType === 'day_pass' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                        value={newPlanType === 'day_pass' ? '1' : newPlanValidity}
+                                        disabled={newPlanType === 'day_pass'}
                                         onChange={e => setNewPlanValidity(e.target.value)}
                                     />
                                 </div>
@@ -633,7 +634,11 @@ export function Memberships({
                                 <Select
                                     label="Type"
                                     value={newPlanType}
-                                    onChange={(value) => setNewPlanType(normalizePlanType(value))}
+                                    onChange={(value) => {
+                                        const type = normalizePlanType(value);
+                                        setNewPlanType(type);
+                                        if (type === 'day_pass') setNewPlanValidity('1');
+                                    }}
                                     options={[
                                         { value: 'hourly_package', label: 'Hourly Bundle' },
                                         { value: 'day_pass', label: 'Day Pass' }
