@@ -125,7 +125,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     const { ownerId, supabase } = auth.context;
-    const { bookingId, bookingItemIds, specificItemId, newTotalAmount } = await request.json();
+    const { bookingId, bookingItemIds, specificItemId, newTotalAmount, deleted_remark } = await request.json();
 
     if (!bookingId) {
       return NextResponse.json({ error: "bookingId is required" }, { status: 400 });
@@ -172,10 +172,13 @@ export async function DELETE(request: NextRequest) {
         }
       }
     } else {
-      // Soft-delete the full booking by setting deleted_at timestamp
+      // Soft-delete the full booking by setting deleted_at + remark
       const { error } = await supabase
         .from("bookings")
-        .update({ deleted_at: new Date().toISOString() })
+        .update({
+          deleted_at: new Date().toISOString(),
+          deleted_remark: deleted_remark || null,
+        })
         .eq("id", bookingId);
 
       if (error) {

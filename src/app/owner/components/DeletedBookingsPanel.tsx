@@ -17,6 +17,7 @@ type DeletedBooking = {
   user_name: string | null;
   user_phone: string | null;
   deleted_at: string;
+  deleted_remark: string | null;
   booking_items?: { id: string; console: string; quantity: number; price: number }[];
 };
 
@@ -171,27 +172,44 @@ export function DeletedBookingsPanel() {
                         <div className="flex flex-wrap items-center gap-2 mb-1">
                           <span className="font-medium text-sm text-slate-200">{customerLabel}</span>
                           {b.user_phone && (
-                            <span className="text-xs text-slate-500">{b.user_phone}</span>
+                            <span className="text-xs text-slate-400">{b.user_phone}</span>
                           )}
                           <span className="text-xs px-2 py-0.5 rounded-full bg-slate-700 text-slate-400">
                             {b.cafe_name}
                           </span>
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                            b.status === 'completed' ? 'bg-emerald-500/15 text-emerald-400' :
+                            b.status === 'confirmed' ? 'bg-blue-500/15 text-blue-400' :
+                            b.status === 'cancelled' ? 'bg-red-500/15 text-red-400' :
+                            'bg-slate-700 text-slate-400'
+                          }`}>
+                            {b.status}
+                          </span>
                         </div>
-                        <div className="flex flex-wrap gap-3 text-xs text-slate-500">
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500 mb-1.5">
                           <span>{formatDate(b.booking_date)} · {b.start_time} · {b.duration} min</span>
                           <span className="text-emerald-400 font-semibold">{formatCurrency(b.total_amount)}</span>
-                          <span>Deleted {formatDateTime(b.deleted_at)}</span>
+                          <span className="text-slate-600">ID: #{b.id.slice(0, 8).toUpperCase()}</span>
+                        </div>
+                        <div className="text-xs text-red-400/70 mb-1.5">
+                          Deleted {formatDateTime(b.deleted_at)}
                         </div>
                         {b.booking_items && b.booking_items.length > 0 && (
-                          <div className="mt-1.5 flex flex-wrap gap-1.5">
+                          <div className="flex flex-wrap gap-1.5 mb-1.5">
                             {b.booking_items.map((item) => (
                               <span
                                 key={item.id}
                                 className="text-[11px] px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 border border-slate-700"
                               >
-                                {item.console} ×{item.quantity}
+                                {item.console} ×{item.quantity} · {formatCurrency(item.price)}
                               </span>
                             ))}
+                          </div>
+                        )}
+                        {b.deleted_remark && (
+                          <div className="flex items-start gap-1.5 text-xs text-amber-400/80 bg-amber-500/5 border border-amber-500/15 rounded-lg px-3 py-2">
+                            <AlertTriangle size={11} className="mt-0.5 shrink-0 text-amber-400" />
+                            <span><span className="font-medium text-amber-400">Remark:</span> {b.deleted_remark}</span>
                           </div>
                         )}
                       </div>

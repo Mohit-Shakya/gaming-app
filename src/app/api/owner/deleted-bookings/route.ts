@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
       .select(`
         id, cafe_id, user_id, booking_date, start_time, duration,
         total_amount, status, source, payment_mode,
-        customer_name, customer_phone, created_at, deleted_at,
+        customer_name, customer_phone, created_at, deleted_at, deleted_remark,
         booking_items (id, console, quantity, price)
       `)
       .in("cafe_id", cafeIds)

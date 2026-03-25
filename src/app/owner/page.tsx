@@ -228,6 +228,7 @@ export default function OwnerDashboardPage() {
   const [saving, setSaving] = useState(false);
   const [deletingBooking, setDeletingBooking] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteRemark, setDeleteRemark] = useState('');
 
   // Helper functions for editing multiple items
   const addEditItem = () => {
@@ -962,7 +963,7 @@ export default function OwnerDashboardPage() {
 
         alert("Console removed from booking successfully!");
       } else {
-        // Delete the entire booking (all items + booking)
+        // Delete the entire booking (soft-delete)
         const bookingItemIds = allItems.map(item => item.id);
 
         const res = await fetch('/api/owner/billing', {
@@ -971,6 +972,7 @@ export default function OwnerDashboardPage() {
           body: JSON.stringify({
             bookingId: editingBooking.id,
             bookingItemIds,
+            deleted_remark: deleteRemark.trim() || null,
           }),
         });
 
@@ -979,10 +981,8 @@ export default function OwnerDashboardPage() {
           throw new Error(data.error || 'Failed to delete booking');
         }
 
-        // Update local state
+        // Remove from local state (soft-deleted = hidden from normal view)
         setBookings((prev) => prev.filter((b) => b.id !== editingBooking.id));
-
-        alert("Booking deleted successfully!");
       }
 
       debugLog('[handleDeleteBooking] ===== DELETE BOOKING COMPLETE =====');
@@ -990,6 +990,7 @@ export default function OwnerDashboardPage() {
       setEditingBooking(null);
       setEditingBookingItemId(null);
       setShowDeleteConfirm(false);
+      setDeleteRemark('');
     } catch (err) {
       console.error("[handleDeleteBooking] ===== DELETE BOOKING FAILED =====");
       console.error("Error deleting booking:", err);
@@ -3406,7 +3407,7 @@ export default function OwnerDashboardPage() {
               zIndex: 10000,
               padding: "20px",
             }}
-            onClick={() => !deletingBooking && setShowDeleteConfirm(false)}
+            onClick={() => { if (!deletingBooking) { setShowDeleteConfirm(false); setDeleteRemark(''); } }}
           >
             <div
               style={{
@@ -3420,124 +3421,103 @@ export default function OwnerDashboardPage() {
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
-              <div style={{
-                padding: "24px 32px",
-                borderBottom: `1px solid ${theme.border}`,
-              }}>
-                <h2 style={{
-                  margin: 0,
-                  fontSize: 20,
-                  fontWeight: 700,
-                  color: theme.textPrimary,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                }}>
-                  <span style={{ fontSize: 24 }}>⚠️</span>
+              <div style={{ padding: "24px 28px", borderBottom: `1px solid ${theme.border}` }}>
+                <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: theme.textPrimary, display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ fontSize: 22 }}>🗑️</span>
                   Delete Booking
                 </h2>
-                <p style={{
-                  margin: "8px 0 0 0",
-                  fontSize: 14,
-                  color: theme.textSecondary,
-                }}>
-                  Are you sure you want to delete this booking?
+                <p style={{ margin: "6px 0 0 0", fontSize: 13, color: theme.textSecondary }}>
+                  This booking will be soft-deleted. You can restore it later from the Deleted Bookings section.
                 </p>
               </div>
 
-              {/* Body */}
-              <div style={{ padding: "24px 32px" }}>
-                <div style={{
-                  padding: "16px",
-                  borderRadius: 12,
-                  background: "rgba(239, 68, 68, 0.1)",
-                  border: "1px solid rgba(239, 68, 68, 0.3)",
-                }}>
-                  <p style={{
-                    margin: 0,
-                    fontSize: 14,
-                    color: theme.textPrimary,
-                    fontWeight: 600,
-                  }}>
-                    Booking ID: #{editingBooking.id.slice(0, 8).toUpperCase()}
-                  </p>
-                  <p style={{
-                    margin: "4px 0",
-                    fontSize: 13,
-                    color: theme.textSecondary,
-                  }}>
-                    Customer: {editingBooking.customer_name || editingBooking.user_name || "N/A"}
-                  </p>
-                  <p style={{
-                    margin: "4px 0",
-                    fontSize: 13,
-                    color: theme.textSecondary,
-                  }}>
-                    Amount: ₹{editingBooking.total_amount}
-                  </p>
-                  <p style={{
-                    margin: "12px 0 0 0",
-                    fontSize: 13,
-                    color: "#ef4444",
-                    fontWeight: 600,
-                  }}>
-                    This will permanently remove this booking. This action cannot be undone.
-                  </p>
+              {/* Booking Details */}
+              <div style={{ padding: "20px 28px" }}>
+                <div style={{ padding: "16px", borderRadius: 12, background: "rgba(15,23,42,0.6)", border: `1px solid ${theme.border}`, marginBottom: 16 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px 20px" }}>
+                    {[
+                      { label: "Customer", value: editingBooking.customer_name || editingBooking.user_name || "Walk-in" },
+                      { label: "Phone", value: editingBooking.customer_phone || editingBooking.user_phone || "—" },
+                      { label: "Date", value: editingBooking.booking_date },
+                      { label: "Start Time", value: editingBooking.start_time || "—" },
+                      { label: "Duration", value: editingBooking.duration ? `${editingBooking.duration} min` : "—" },
+                      { label: "Amount", value: `₹${editingBooking.total_amount?.toLocaleString() || 0}` },
+                      { label: "Status", value: editingBooking.status || "—" },
+                      { label: "Booking ID", value: `#${editingBooking.id.slice(0, 8).toUpperCase()}` },
+                    ].map(({ label, value }) => (
+                      <div key={label}>
+                        <div style={{ fontSize: 10, color: theme.textMuted, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 2 }}>{label}</div>
+                        <div style={{ fontSize: 13, color: theme.textPrimary, fontWeight: 500 }}>{value}</div>
+                      </div>
+                    ))}
+                  </div>
+                  {editingBooking.booking_items && editingBooking.booking_items.length > 0 && (
+                    <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${theme.border}` }}>
+                      <div style={{ fontSize: 10, color: theme.textMuted, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 6 }}>Consoles</div>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                        {editingBooking.booking_items.map((item: any) => (
+                          <span key={item.id} style={{ fontSize: 12, padding: "3px 10px", borderRadius: 20, background: "rgba(56,189,248,0.1)", border: "1px solid rgba(56,189,248,0.2)", color: "#7dd3fc" }}>
+                            {item.console} ×{item.quantity}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Remark field */}
+                <div>
+                  <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: theme.textSecondary, marginBottom: 8 }}>
+                    Reason for Deletion <span style={{ color: "#ef4444" }}>*</span>
+                  </label>
+                  <textarea
+                    value={deleteRemark}
+                    onChange={(e) => setDeleteRemark(e.target.value)}
+                    placeholder="e.g. Customer cancelled, duplicate booking, wrong entry..."
+                    rows={3}
+                    style={{
+                      width: "100%",
+                      padding: "12px 14px",
+                      borderRadius: 10,
+                      border: `1px solid ${deleteRemark.trim() ? "rgba(56,189,248,0.4)" : "rgba(239,68,68,0.4)"}`,
+                      background: "rgba(15,23,42,0.8)",
+                      color: theme.textPrimary,
+                      fontSize: 13,
+                      fontFamily: "inherit",
+                      resize: "vertical",
+                      outline: "none",
+                      transition: "border-color 0.2s",
+                      boxSizing: "border-box",
+                    }}
+                  />
+                  {!deleteRemark.trim() && (
+                    <p style={{ margin: "6px 0 0", fontSize: 12, color: "#ef4444" }}>A reason is required to delete this booking.</p>
+                  )}
                 </div>
               </div>
 
               {/* Footer */}
-              <div style={{
-                padding: "20px 32px",
-                borderTop: `1px solid ${theme.border}`,
-                display: "flex",
-                gap: 12,
-                justifyContent: "flex-end",
-              }}>
+              <div style={{ padding: "16px 28px", borderTop: `1px solid ${theme.border}`, display: "flex", gap: 12, justifyContent: "flex-end" }}>
                 <button
-                  onClick={() => setShowDeleteConfirm(false)}
+                  onClick={() => { setShowDeleteConfirm(false); setDeleteRemark(''); }}
                   disabled={deletingBooking}
-                  style={{
-                    padding: "12px 24px",
-                    background: "transparent",
-                    border: `1px solid ${theme.border}`,
-                    borderRadius: 12,
-                    color: theme.textSecondary,
-                    fontSize: 14,
-                    fontWeight: 600,
-                    cursor: deletingBooking ? "not-allowed" : "pointer",
-                    opacity: deletingBooking ? 0.5 : 1,
-                  }}
+                  style={{ padding: "11px 22px", background: "transparent", border: `1px solid ${theme.border}`, borderRadius: 10, color: theme.textSecondary, fontSize: 14, fontWeight: 600, cursor: deletingBooking ? "not-allowed" : "pointer", opacity: deletingBooking ? 0.5 : 1 }}
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleDeleteBooking}
-                  disabled={deletingBooking}
+                  disabled={deletingBooking || !deleteRemark.trim()}
                   style={{
-                    padding: "12px 24px",
-                    background: deletingBooking
-                      ? "rgba(100, 116, 139, 0.3)"
-                      : "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
+                    padding: "11px 22px",
+                    background: (deletingBooking || !deleteRemark.trim()) ? "rgba(100,116,139,0.3)" : "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
                     border: "none",
-                    borderRadius: 12,
+                    borderRadius: 10,
                     color: "#ffffff",
                     fontSize: 14,
                     fontWeight: 700,
-                    cursor: deletingBooking ? "not-allowed" : "pointer",
+                    cursor: (deletingBooking || !deleteRemark.trim()) ? "not-allowed" : "pointer",
                     transition: "all 0.2s",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.5px",
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!deletingBooking) {
-                      e.currentTarget.style.transform = "scale(1.05)";
-                      e.currentTarget.style.boxShadow = "0 8px 20px rgba(239, 68, 68, 0.4)";
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.transform = "scale(1)";
-                    e.currentTarget.style.boxShadow = "none";
                   }}
                 >
                   {deletingBooking ? "Deleting..." : "Delete Booking"}
