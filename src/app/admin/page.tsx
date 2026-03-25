@@ -174,19 +174,27 @@ export default function AdminDashboardPage() {
 
   // Theme (matching owner dashboard)
   const theme = {
-    background: "#020617",
-    cardBackground: "rgba(15,23,42,0.6)",
-    sidebarBackground: "linear-gradient(180deg, #0f172a 0%, #020617 100%)",
-    border: "rgba(51,65,85,0.5)",
+    background:
+      "radial-gradient(circle at top left, rgba(34,197,94,0.12), transparent 30%), radial-gradient(circle at top right, rgba(56,189,248,0.16), transparent 28%), linear-gradient(180deg, #09111f 0%, #050915 100%)",
+    cardBackground:
+      "linear-gradient(145deg, rgba(12, 22, 38, 0.92), rgba(8, 15, 28, 0.96))",
+    sidebarBackground:
+      "linear-gradient(180deg, rgba(7, 13, 25, 0.98) 0%, rgba(4, 9, 20, 0.98) 100%)",
+    border: "rgba(148, 163, 184, 0.16)",
     textPrimary: "#f8fafc",
-    textSecondary: "#cbd5e1",
-    textMuted: "#64748b",
-    headerBackground: "rgba(15,23,42,0.5)",
+    textSecondary: "#c7d2fe",
+    textMuted: "#7c8aa5",
+    headerBackground: "rgba(5, 10, 22, 0.72)",
     statCardBackground: "#ffffff",
     statCardText: "#111827",
-    hoverBackground: "rgba(51,65,85,0.3)",
-    activeNavBackground: "linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(139, 92, 246, 0.15))",
-    activeNavText: "#a855f7",
+    hoverBackground: "rgba(56, 189, 248, 0.08)",
+    activeNavBackground:
+      "linear-gradient(135deg, rgba(56, 189, 248, 0.22), rgba(34, 197, 94, 0.16))",
+    activeNavText: "#f8fafc",
+    accent: "#38bdf8",
+    accentStrong: "#22c55e",
+    warning: "#f59e0b",
+    danger: "#fb7185",
   };
 
   const navItems: { id: NavTab; label: string; icon: string }[] = [
@@ -201,6 +209,75 @@ export default function AdminDashboardPage() {
     { id: 'reports', label: 'Reports', icon: '📈' },
     { id: 'settings', label: 'Settings', icon: '⚙️' },
   ];
+
+  const tabMeta: Record<NavTab, { title: string; subtitle: string; eyebrow: string }> = {
+    overview: {
+      title: "Mission Control",
+      subtitle: "Watch platform growth, revenue pulse, and operator health from one control surface.",
+      eyebrow: "Live Platform Feed",
+    },
+    cafes: {
+      title: "Café Network",
+      subtitle: "Review store performance, spotlight top operators, and intervene on weak locations.",
+      eyebrow: "Operations",
+    },
+    users: {
+      title: "Account Roster",
+      subtitle: "Track customers, owners, and admin role changes across the network.",
+      eyebrow: "Identity",
+    },
+    bookings: {
+      title: "Booking Traffic",
+      subtitle: "Inspect live booking flow, anomalies, and booking quality across all cafés.",
+      eyebrow: "Reservations",
+    },
+    revenue: {
+      title: "Revenue Desk",
+      subtitle: "Monitor gross earnings and identify the sharpest changes in platform monetization.",
+      eyebrow: "Finance",
+    },
+    reports: {
+      title: "Insight Lab",
+      subtitle: "Deep-dive into trends, compare windows, and turn raw data into operator decisions.",
+      eyebrow: "Analytics",
+    },
+    settings: {
+      title: "Control Settings",
+      subtitle: "Update admin credentials and platform controls without leaving the command deck.",
+      eyebrow: "Security",
+    },
+    announcements: {
+      title: "Broadcast Studio",
+      subtitle: "Push platform-wide messaging with sharper targeting and cleaner oversight.",
+      eyebrow: "Comms",
+    },
+    'audit-logs': {
+      title: "Audit Trail",
+      subtitle: "See who changed what, when they changed it, and what needs review.",
+      eyebrow: "Governance",
+    },
+    coupons: {
+      title: "Offer Engine",
+      subtitle: "Track discount programs, café-level promotions, and redemption pressure points.",
+      eyebrow: "Growth",
+    },
+  };
+
+  const activeTabMeta = tabMeta[activeTab];
+  const averageBookingsPerCafe = stats?.totalCafes
+    ? Math.round((stats.totalBookings || 0) / Math.max(stats.totalCafes, 1))
+    : 0;
+  const averageRevenuePerBooking = stats?.totalBookings
+    ? Math.round((stats.totalRevenue || 0) / Math.max(stats.totalBookings, 1))
+    : 0;
+  const activeCafeRate = stats?.totalCafes
+    ? Math.round(((stats.activeCafes || 0) / Math.max(stats.totalCafes, 1)) * 100)
+    : 0;
+  const formattedToday = new Intl.DateTimeFormat("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(new Date());
 
   // Check if user is admin and has valid admin session
   useEffect(() => {
@@ -1237,12 +1314,14 @@ export default function AdminDashboardPage() {
         display: "flex",
         fontFamily: fonts.body,
         color: theme.textPrimary,
+        position: "relative",
+        overflow: "hidden",
       }}
     >
       {/* Sidebar Navigation */}
       <aside
         style={{
-          width: 320,
+          width: 308,
           background: theme.sidebarBackground,
           borderRight: `1px solid ${theme.border}`,
           display: "flex",
@@ -1250,88 +1329,184 @@ export default function AdminDashboardPage() {
           position: "sticky",
           top: 0,
           height: "100vh",
+          boxShadow: "24px 0 60px rgba(2, 6, 23, 0.35)",
+          backdropFilter: "blur(18px)",
         }}
       >
         {/* Logo */}
         <div
           style={{
-            padding: "32px 28px",
+            padding: "28px 24px 24px",
             borderBottom: `1px solid ${theme.border}`,
           }}
         >
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            <div
-              style={{
-                fontSize: 24,
-                fontWeight: 800,
-                color: theme.textPrimary,
-                letterSpacing: "-0.5px",
-                lineHeight: 1,
-              }}
-            >
-              <span style={{ color: "#a855f7" }}>ADMIN</span>
-              <span style={{ color: theme.textPrimary }}> PANEL</span>
-            </div>
-            <div
-              style={{
-                fontSize: 11,
-                color: theme.textMuted,
-                fontWeight: 500,
-                letterSpacing: "1.5px",
-                textTransform: "uppercase",
-              }}
-            >
-              Platform Control Center
+          <div
+            style={{
+              padding: 18,
+              borderRadius: 24,
+              border: `1px solid ${theme.border}`,
+              background:
+                "linear-gradient(135deg, rgba(56, 189, 248, 0.18), rgba(34, 197, 94, 0.08) 55%, rgba(8, 15, 28, 0.92) 100%)",
+              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)",
+            }}
+          >
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 10,
+                }}
+              >
+                <div
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 14,
+                    display: "grid",
+                    placeItems: "center",
+                    background: "linear-gradient(135deg, #38bdf8, #22c55e)",
+                    color: "#04101d",
+                    fontSize: 22,
+                    fontWeight: 800,
+                    boxShadow: "0 14px 28px rgba(34,197,94,0.18)",
+                  }}
+                >
+                  A
+                </div>
+                <div>
+                  <div
+                    style={{
+                      fontSize: 11,
+                      color: "#8fe7ff",
+                      fontWeight: 700,
+                      letterSpacing: "0.24em",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    BookMyGame
+                  </div>
+                  <div
+                    style={{
+                      fontFamily: fonts.heading,
+                      fontSize: 28,
+                      fontWeight: 800,
+                      letterSpacing: "-0.04em",
+                      lineHeight: 1,
+                    }}
+                  >
+                    Admin Deck
+                  </div>
+                </div>
+              </div>
+              <div
+                style={{
+                  fontSize: 13,
+                  lineHeight: 1.6,
+                  color: theme.textSecondary,
+                }}
+              >
+                Operating surface for network health, bookings, revenue, compliance, and café quality.
+              </div>
             </div>
           </div>
         </div>
 
         {/* Navigation */}
-        <nav style={{ flex: 1, padding: "24px 20px" }}>
+        <nav style={{ flex: 1, padding: "20px 16px 12px" }}>
           {navItems.map((item) => (
             <button
               key={item.id}
               onClick={() => setActiveTab(item.id)}
               style={{
                 width: "100%",
-                padding: "16px 18px",
-                marginBottom: 6,
-                borderRadius: 12,
-                border: "none",
+                padding: "14px 16px",
+                marginBottom: 8,
+                borderRadius: 18,
+                border: `1px solid ${activeTab === item.id ? "rgba(56, 189, 248, 0.24)" : "transparent"}`,
                 background: activeTab === item.id
                   ? theme.activeNavBackground
                   : "transparent",
                 color: activeTab === item.id ? theme.activeNavText : theme.textSecondary,
-                fontSize: 16,
+                fontSize: 15,
                 fontWeight: activeTab === item.id ? 600 : 500,
                 cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
                 gap: 16,
-                transition: "all 0.2s ease",
+                transition: "all 0.24s ease",
                 textAlign: "left",
+                boxShadow: activeTab === item.id ? "0 16px 30px rgba(2, 132, 199, 0.12)" : "none",
               }}
               onMouseEnter={(e) => {
                 if (activeTab !== item.id) {
                   e.currentTarget.style.background = theme.hoverBackground;
+                  e.currentTarget.style.borderColor = "rgba(56, 189, 248, 0.12)";
                 }
               }}
               onMouseLeave={(e) => {
                 if (activeTab !== item.id) {
                   e.currentTarget.style.background = "transparent";
+                  e.currentTarget.style.borderColor = "transparent";
                 }
               }}
             >
-              <span style={{ fontSize: 22, opacity: 0.8 }}>{item.icon}</span>
-              {item.label}
+              <span
+                style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 14,
+                  display: "grid",
+                  placeItems: "center",
+                  background: activeTab === item.id ? "rgba(255,255,255,0.12)" : "rgba(148, 163, 184, 0.08)",
+                  fontSize: 20,
+                }}
+              >
+                {item.icon}
+              </span>
+              <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                <span>{item.label}</span>
+                <span style={{ fontSize: 11, color: activeTab === item.id ? "rgba(255,255,255,0.72)" : theme.textMuted, letterSpacing: "0.06em", textTransform: "uppercase" }}>
+                  {tabMeta[item.id].eyebrow}
+                </span>
+              </div>
             </button>
           ))}
         </nav>
 
+        <div
+          style={{
+            margin: "0 16px 16px",
+            padding: 18,
+            borderRadius: 20,
+            border: `1px solid ${theme.border}`,
+            background:
+              "linear-gradient(180deg, rgba(12, 22, 38, 0.94), rgba(7, 13, 25, 0.96))",
+          }}
+        >
+          <div style={{ fontSize: 11, color: "#8fe7ff", letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: 12 }}>
+            Platform Pulse
+          </div>
+          <div style={{ display: "grid", gap: 12 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+              <span style={{ color: theme.textMuted, fontSize: 13 }}>Today revenue</span>
+              <strong style={{ fontSize: 20, color: theme.textPrimary }}>{formatCurrency(stats?.todayRevenue || 0)}</strong>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+              <span style={{ color: theme.textMuted, fontSize: 13 }}>Today bookings</span>
+              <strong style={{ fontSize: 20, color: "#8fe7ff" }}>{stats?.todayBookings || 0}</strong>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+              <span style={{ color: theme.textMuted, fontSize: 13 }}>Active cafés</span>
+              <strong style={{ fontSize: 20, color: "#86efac" }}>{activeCafeRate}%</strong>
+            </div>
+          </div>
+        </div>
+
         {/* Footer */}
         <div
           style={{
-            padding: "20px 28px",
+            padding: "18px 16px 20px",
             borderTop: `1px solid ${theme.border}`,
             display: "flex",
             flexDirection: "column",
@@ -1342,13 +1517,13 @@ export default function AdminDashboardPage() {
             onClick={() => router.push("/dashboard")}
             style={{
               width: "100%",
-              padding: "12px 16px",
-              borderRadius: 10,
+              padding: "13px 16px",
+              borderRadius: 16,
               border: `1px solid ${theme.border}`,
-              background: "transparent",
+              background: "rgba(148, 163, 184, 0.04)",
               color: theme.textSecondary,
               fontSize: 14,
-              fontWeight: 500,
+              fontWeight: 600,
               cursor: "pointer",
               transition: "all 0.2s",
             }}
@@ -1370,13 +1545,13 @@ export default function AdminDashboardPage() {
             }}
             style={{
               width: "100%",
-              padding: "12px 16px",
-              borderRadius: 10,
-              border: `1px solid rgba(248, 113, 113, 0.3)`,
-              background: "transparent",
-              color: "#f87171",
+              padding: "13px 16px",
+              borderRadius: 16,
+              border: `1px solid rgba(251, 113, 133, 0.28)`,
+              background: "rgba(251, 113, 133, 0.06)",
+              color: "#fda4af",
               fontSize: 14,
-              fontWeight: 500,
+              fontWeight: 600,
               cursor: "pointer",
               transition: "all 0.2s",
             }}
@@ -1395,14 +1570,14 @@ export default function AdminDashboardPage() {
       </aside>
 
       {/* Main Content */}
-      <main style={{ flex: 1, overflow: "auto" }}>
+      <main style={{ flex: 1, overflow: "auto", position: "relative" }}>
         {/* Header */}
         <header
           style={{
-            padding: "24px 32px",
+            padding: "26px 36px 24px",
             borderBottom: `1px solid ${theme.border}`,
             background: theme.headerBackground,
-            backdropFilter: "blur(10px)",
+            backdropFilter: "blur(18px)",
             position: "sticky",
             top: 0,
             zIndex: 10,
@@ -1413,58 +1588,109 @@ export default function AdminDashboardPage() {
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
+              gap: 20,
             }}
           >
-            <div>
-              <h1
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                <span
+                  style={{
+                    padding: "6px 10px",
+                    borderRadius: 999,
+                    background: "rgba(56, 189, 248, 0.12)",
+                    color: "#8fe7ff",
+                    fontSize: 11,
+                    fontWeight: 700,
+                    letterSpacing: "0.18em",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  {activeTabMeta.eyebrow}
+                </span>
+                <span style={{ color: theme.textMuted, fontSize: 13 }}>{formattedToday}</span>
+              </div>
+              <div>
+                <h1
+                  style={{
+                    fontFamily: fonts.heading,
+                    fontSize: 34,
+                    margin: 0,
+                    fontWeight: 800,
+                    letterSpacing: "-0.04em",
+                    lineHeight: 1,
+                  }}
+                >
+                  {activeTabMeta.title}
+                </h1>
+                <p style={{ margin: "10px 0 0", color: theme.textSecondary, fontSize: 15, maxWidth: 720, lineHeight: 1.6 }}>
+                  {activeTabMeta.subtitle}
+                </p>
+              </div>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <div
                 style={{
-                  fontFamily: fonts.heading,
-                  fontSize: 28,
-                  margin: 0,
-                  fontWeight: 700,
+                  display: "grid",
+                  gridTemplateColumns: "repeat(2, minmax(120px, 1fr))",
+                  gap: 10,
                 }}
               >
-                {activeTab === 'overview' && 'Platform Overview'}
-                {activeTab === 'cafes' && 'Café Management'}
-                {activeTab === 'users' && 'User Management'}
-                {activeTab === 'bookings' && 'Booking Management'}
-                {activeTab === 'revenue' && 'Revenue Analytics'}
-                {activeTab === 'announcements' && 'Platform Announcements'}
-                {activeTab === 'audit-logs' && 'Audit Logs'}
-                {activeTab === 'coupons' && 'Coupon Management'}
-                {activeTab === 'reports' && 'Reports & Analytics'}
-                {activeTab === 'settings' && 'Platform Settings'}
-              </h1>
+                <div
+                  style={{
+                    padding: "12px 14px",
+                    borderRadius: 16,
+                    background: "rgba(56, 189, 248, 0.08)",
+                    border: "1px solid rgba(56, 189, 248, 0.12)",
+                  }}
+                >
+                  <div style={{ color: theme.textMuted, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.14em" }}>
+                    Active cafés
+                  </div>
+                  <div style={{ marginTop: 6, fontSize: 22, fontWeight: 700 }}>{stats?.activeCafes || 0}</div>
+                </div>
+                <div
+                  style={{
+                    padding: "12px 14px",
+                    borderRadius: 16,
+                    background: "rgba(34, 197, 94, 0.08)",
+                    border: "1px solid rgba(34, 197, 94, 0.12)",
+                  }}
+                >
+                  <div style={{ color: theme.textMuted, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.14em" }}>
+                    Today revenue
+                  </div>
+                  <div style={{ marginTop: 6, fontSize: 22, fontWeight: 700 }}>{formatCurrency(stats?.todayRevenue || 0)}</div>
+                </div>
+              </div>
+              <button
+                onClick={() => window.location.reload()}
+                style={{
+                  padding: "14px 18px",
+                  borderRadius: 16,
+                  border: "1px solid rgba(56, 189, 248, 0.18)",
+                  background: "linear-gradient(135deg, #38bdf8, #14b8a6)",
+                  color: "#03121f",
+                  fontSize: 13,
+                  fontWeight: 800,
+                  cursor: "pointer",
+                  transition: "all 0.2s",
+                  boxShadow: "0 16px 32px rgba(56, 189, 248, 0.2)",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = "translateY(-2px)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "translateY(0)";
+                }}
+              >
+                Refresh Data
+              </button>
             </div>
-            <button
-              onClick={() => window.location.reload()}
-              style={{
-                padding: "10px 18px",
-                borderRadius: 10,
-                border: "none",
-                background: "linear-gradient(135deg, #a855f7, #9333ea)",
-                color: "#fff",
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: "pointer",
-                transition: "all 0.2s",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = "translateY(-2px)";
-                e.currentTarget.style.boxShadow = "0 8px 20px rgba(168, 85, 247, 0.4)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = "none";
-              }}
-            >
-              🔄 Refresh Data
-            </button>
           </div>
         </header>
 
         {/* Content Area */}
-        <div style={{ padding: "32px" }}>
+        <div style={{ padding: "34px 36px 48px" }}>
           {/* Error Message */}
           {error && (
             <div
@@ -1489,13 +1715,156 @@ export default function AdminDashboardPage() {
           {/* OVERVIEW TAB */}
           {activeTab === 'overview' && (
             <div>
-              {/* Stats Grid */}
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-                  gap: 20,
-                  marginBottom: 32,
+                  gridTemplateColumns: "minmax(0, 1.45fr) minmax(320px, 0.95fr)",
+                  gap: 24,
+                  marginBottom: 28,
+                }}
+              >
+                <div
+                  style={{
+                    padding: "28px",
+                    borderRadius: 28,
+                    background:
+                      "radial-gradient(circle at top right, rgba(56,189,248,0.18), transparent 35%), linear-gradient(145deg, rgba(11, 27, 46, 0.98), rgba(6, 14, 27, 0.98))",
+                    border: `1px solid ${theme.border}`,
+                    boxShadow: "0 30px 80px rgba(2, 6, 23, 0.28)",
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", gap: 16, alignItems: "flex-start", marginBottom: 22 }}>
+                    <div>
+                      <div style={{ color: "#8fe7ff", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.2em", marginBottom: 12 }}>
+                        Performance Snapshot
+                      </div>
+                      <h2
+                        style={{
+                          fontFamily: fonts.heading,
+                          fontSize: 42,
+                          lineHeight: 1,
+                          letterSpacing: "-0.05em",
+                          margin: 0,
+                          maxWidth: 560,
+                        }}
+                      >
+                        {loadingData ? "Loading live platform pulse..." : `₹${(stats?.todayRevenue || 0).toLocaleString()} collected today.`}
+                      </h2>
+                    </div>
+                    <div
+                      style={{
+                        padding: "10px 14px",
+                        borderRadius: 999,
+                        background: "rgba(34, 197, 94, 0.12)",
+                        color: "#86efac",
+                        fontSize: 12,
+                        fontWeight: 700,
+                        letterSpacing: "0.12em",
+                        textTransform: "uppercase",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {stats?.todayBookings || 0} live bookings today
+                    </div>
+                  </div>
+
+                  <p style={{ margin: 0, color: theme.textSecondary, fontSize: 15, lineHeight: 1.7, maxWidth: 620 }}>
+                    Keep operators pointed at the right problems: today&apos;s volume, month-scale revenue, and location activation all in one glance.
+                  </p>
+
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+                      gap: 14,
+                      marginTop: 24,
+                    }}
+                  >
+                    {[
+                      { label: "Today Revenue", value: formatCurrency(stats?.todayRevenue || 0), tone: "rgba(34, 197, 94, 0.12)" },
+                      { label: "Week Revenue", value: formatCurrency(stats?.weekRevenue || 0), tone: "rgba(56, 189, 248, 0.12)" },
+                      { label: "Month Revenue", value: formatCurrency(stats?.monthRevenue || 0), tone: "rgba(245, 158, 11, 0.12)" },
+                    ].map((metric) => (
+                      <div
+                        key={metric.label}
+                        style={{
+                          padding: "18px 18px 16px",
+                          borderRadius: 20,
+                          border: `1px solid ${theme.border}`,
+                          background: metric.tone,
+                        }}
+                      >
+                        <div style={{ color: theme.textMuted, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.16em", marginBottom: 10 }}>
+                          {metric.label}
+                        </div>
+                        <div style={{ fontSize: 24, fontWeight: 700, letterSpacing: "-0.03em" }}>
+                          {loadingData ? "..." : metric.value}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    padding: 24,
+                    borderRadius: 28,
+                    background: theme.cardBackground,
+                    border: `1px solid ${theme.border}`,
+                    boxShadow: "0 24px 64px rgba(2, 6, 23, 0.24)",
+                  }}
+                >
+                  <div style={{ color: "#8fe7ff", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.2em", marginBottom: 16 }}>
+                    Signal Board
+                  </div>
+                  <div style={{ display: "grid", gap: 14 }}>
+                    {[
+                      { label: "Active cafés", value: `${stats?.activeCafes || 0}/${stats?.totalCafes || 0}`, note: `${activeCafeRate}% network activated`, color: "#86efac" },
+                      { label: "Average booking value", value: formatCurrency(averageRevenuePerBooking), note: "Gross earnings / total bookings", color: "#8fe7ff" },
+                      { label: "Average bookings per café", value: `${averageBookingsPerCafe}`, note: "Platform activity density", color: "#fde68a" },
+                    ].map((signal) => (
+                      <div
+                        key={signal.label}
+                        style={{
+                          padding: 16,
+                          borderRadius: 20,
+                          border: `1px solid ${theme.border}`,
+                          background: "rgba(148, 163, 184, 0.05)",
+                        }}
+                      >
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                          <div>
+                            <div style={{ color: theme.textMuted, fontSize: 12, marginBottom: 8 }}>{signal.label}</div>
+                            <div style={{ fontSize: 28, fontWeight: 700, lineHeight: 1.1, color: signal.color }}>
+                              {loadingData ? "..." : signal.value}
+                            </div>
+                          </div>
+                          <div
+                            style={{
+                              width: 14,
+                              height: 14,
+                              borderRadius: 999,
+                              background: signal.color,
+                              boxShadow: `0 0 24px ${signal.color}`,
+                              marginTop: 6,
+                            }}
+                          />
+                        </div>
+                        <div style={{ marginTop: 10, color: theme.textSecondary, fontSize: 13, lineHeight: 1.6 }}>
+                          {signal.note}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                  gap: 18,
+                  marginBottom: 28,
                 }}
               >
                 {[
@@ -1504,140 +1873,175 @@ export default function AdminDashboardPage() {
                     value: stats?.totalCafes || 0,
                     subtext: `${stats?.activeCafes || 0} active • ${stats?.pendingCafes || 0} pending`,
                     icon: "🏪",
-                    color: "#3b82f6",
+                    color: "#38bdf8",
                   },
                   {
                     label: "Total Users",
                     value: stats?.totalUsers || 0,
                     subtext: `${stats?.totalOwners || 0} café owners`,
                     icon: "👥",
-                    color: "#8b5cf6",
+                    color: "#a3e635",
                   },
                   {
                     label: "Total Bookings",
                     value: stats?.totalBookings || 0,
-                    subtext: `${stats?.todayBookings || 0} bookings today`,
+                    subtext: `${stats?.todayBookings || 0} today`,
                     icon: "📅",
-                    color: "#06b6d4",
+                    color: "#f59e0b",
                   },
                   {
                     label: "Total Revenue",
                     value: formatCurrency(stats?.totalRevenue || 0),
-                    subtext: `${formatCurrency(stats?.todayRevenue || 0)} today`,
+                    subtext: `Platform gross since launch`,
                     icon: "💰",
-                    color: "#10b981",
+                    color: "#22c55e",
                   },
-                ].map((card, idx) => (
+                ].map((card) => (
                   <div
-                    key={idx}
+                    key={card.label}
                     style={{
-                      padding: "24px",
-                      borderRadius: 16,
+                      padding: "22px",
+                      borderRadius: 24,
                       background: theme.cardBackground,
                       border: `1px solid ${theme.border}`,
-                      transition: "all 0.3s",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = "translateY(-4px)";
-                      e.currentTarget.style.borderColor = card.color;
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = "translateY(0)";
-                      e.currentTarget.style.borderColor = theme.border;
+                      position: "relative",
+                      overflow: "hidden",
                     }}
                   >
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
-                      <p
-                        style={{
-                          fontSize: 11,
-                          textTransform: "uppercase",
-                          letterSpacing: 1.5,
-                          color: theme.textMuted,
-                          margin: 0,
-                        }}
-                      >
+                    <div
+                      style={{
+                        position: "absolute",
+                        right: -12,
+                        top: -12,
+                        width: 84,
+                        height: 84,
+                        borderRadius: 999,
+                        background: `${card.color}20`,
+                        filter: "blur(8px)",
+                      }}
+                    />
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
+                      <div style={{ color: theme.textMuted, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.18em" }}>
                         {card.label}
-                      </p>
-                      <span style={{ fontSize: 28, opacity: 0.7 }}>{card.icon}</span>
+                      </div>
+                      <span style={{ fontSize: 24 }}>{card.icon}</span>
                     </div>
-                    <p
-                      style={{
-                        fontFamily: fonts.heading,
-                        fontSize: 36,
-                        fontWeight: 700,
-                        margin: "8px 0",
-                        color: theme.textPrimary,
-                      }}
-                    >
+                    <div style={{ fontFamily: fonts.heading, fontSize: 34, lineHeight: 1, letterSpacing: "-0.04em", marginBottom: 8 }}>
                       {loadingData ? "..." : card.value}
-                    </p>
-                    <p
-                      style={{
-                        fontSize: 13,
-                        color: theme.textSecondary,
-                        margin: 0,
-                      }}
-                    >
+                    </div>
+                    <div style={{ color: theme.textSecondary, fontSize: 13 }}>
                       {card.subtext}
-                    </p>
+                    </div>
                   </div>
                 ))}
               </div>
 
-              {/* Platform Insights */}
               <div
                 style={{
-                  padding: "24px",
-                  borderRadius: 16,
-                  background: theme.cardBackground,
-                  border: `1px solid ${theme.border}`,
+                  display: "grid",
+                  gridTemplateColumns: "1.2fr 0.8fr",
+                  gap: 22,
                 }}
               >
-                <h2
+                <div
                   style={{
-                    fontFamily: fonts.heading,
-                    fontSize: 20,
-                    marginBottom: 20,
-                    color: theme.textPrimary,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
+                    padding: "24px",
+                    borderRadius: 24,
+                    background: theme.cardBackground,
+                    border: `1px solid ${theme.border}`,
                   }}
                 >
-                  <span>📈</span> Platform Insights
-                </h2>
-                <div style={{ display: "grid", gap: 16, fontSize: 14 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", background: "rgba(59, 130, 246, 0.1)", borderRadius: 10, border: "1px solid rgba(59, 130, 246, 0.2)" }}>
-                    <span style={{ color: "#3b82f6", fontSize: 18 }}>✓</span>
-                    <span style={{ color: theme.textSecondary }}>
-                      Average of{" "}
-                      <strong style={{ color: theme.textPrimary }}>
-                        {stats?.totalCafes && stats?.totalBookings
-                          ? Math.round(stats.totalBookings / stats.totalCafes)
-                          : 0}
-                      </strong>{" "}
-                      bookings per café
-                    </span>
+                  <h2
+                    style={{
+                      fontFamily: fonts.heading,
+                      fontSize: 22,
+                      margin: "0 0 18px",
+                      color: theme.textPrimary,
+                    }}
+                  >
+                    Strategic Readout
+                  </h2>
+                  <div style={{ display: "grid", gap: 14, fontSize: 14 }}>
+                    {[
+                      {
+                        title: "Network activation",
+                        body: `${activeCafeRate}% of your café network is currently active, with ${stats?.pendingCafes || 0} locations still pending approval or intervention.`,
+                        tone: "rgba(56, 189, 248, 0.08)",
+                      },
+                      {
+                        title: "Revenue quality",
+                        body: `Average revenue per booking is ${formatCurrency(averageRevenuePerBooking)}, which gives you a clean benchmark for testing price or offer changes.`,
+                        tone: "rgba(34, 197, 94, 0.08)",
+                      },
+                      {
+                        title: "Capacity signal",
+                        body: `The platform is averaging ${averageBookingsPerCafe} bookings per café. Use that as your baseline to spot underperformers or sudden spikes.`,
+                        tone: "rgba(245, 158, 11, 0.08)",
+                      },
+                    ].map((item) => (
+                      <div
+                        key={item.title}
+                        style={{
+                          padding: "16px 18px",
+                          borderRadius: 18,
+                          background: item.tone,
+                          border: `1px solid ${theme.border}`,
+                        }}
+                      >
+                        <div style={{ fontSize: 12, color: theme.textMuted, textTransform: "uppercase", letterSpacing: "0.14em", marginBottom: 8 }}>
+                          {item.title}
+                        </div>
+                        <div style={{ color: theme.textSecondary, lineHeight: 1.7 }}>{item.body}</div>
+                      </div>
+                    ))}
                   </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", background: "rgba(16, 185, 129, 0.1)", borderRadius: 10, border: "1px solid rgba(16, 185, 129, 0.2)" }}>
-                    <span style={{ color: "#10b981", fontSize: 18 }}>✓</span>
-                    <span style={{ color: theme.textSecondary }}>
-                      Average revenue per booking:{" "}
-                      <strong style={{ color: theme.textPrimary }}>
-                        {formatCurrency(
-                          stats?.totalBookings && stats?.totalRevenue
-                            ? Math.round(stats.totalRevenue / stats.totalBookings)
-                            : 0
-                        )}
-                      </strong>
-                    </span>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 16px", background: "rgba(139, 92, 246, 0.1)", borderRadius: 10, border: "1px solid rgba(139, 92, 246, 0.2)" }}>
-                    <span style={{ color: "#8b5cf6", fontSize: 18 }}>✓</span>
-                    <span style={{ color: theme.textSecondary }}>
-                      Week revenue: <strong style={{ color: theme.textPrimary }}>{formatCurrency(stats?.weekRevenue || 0)}</strong>{" "}
-                      • Month: <strong style={{ color: theme.textPrimary }}>{formatCurrency(stats?.monthRevenue || 0)}</strong>
-                    </span>
+                </div>
+
+                <div
+                  style={{
+                    padding: "24px",
+                    borderRadius: 24,
+                    background: theme.cardBackground,
+                    border: `1px solid ${theme.border}`,
+                  }}
+                >
+                  <h2
+                    style={{
+                      fontFamily: fonts.heading,
+                      fontSize: 22,
+                      margin: "0 0 18px",
+                    }}
+                  >
+                    Quick Actions
+                  </h2>
+                  <div style={{ display: "grid", gap: 12 }}>
+                    {[
+                      { label: "Review cafés", tab: "cafes" as NavTab, accent: "#38bdf8" },
+                      { label: "Inspect bookings", tab: "bookings" as NavTab, accent: "#f59e0b" },
+                      { label: "Check audit trail", tab: "audit-logs" as NavTab, accent: "#a3e635" },
+                      { label: "Launch announcements", tab: "announcements" as NavTab, accent: "#fb7185" },
+                    ].map((action) => (
+                      <button
+                        key={action.tab}
+                        onClick={() => setActiveTab(action.tab)}
+                        style={{
+                          padding: "16px 18px",
+                          borderRadius: 18,
+                          border: `1px solid ${theme.border}`,
+                          background: "rgba(148, 163, 184, 0.05)",
+                          color: theme.textPrimary,
+                          textAlign: "left",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          fontWeight: 600,
+                        }}
+                      >
+                        <span>{action.label}</span>
+                        <span style={{ color: action.accent, fontSize: 18 }}>→</span>
+                      </button>
+                    ))}
                   </div>
                 </div>
               </div>
