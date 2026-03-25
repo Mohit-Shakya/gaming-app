@@ -48,20 +48,29 @@ export async function POST(request: NextRequest) {
 
     const match = (profiles || []).find((p) => {
       const profileUsername = (p.admin_username || "admin").trim().toLowerCase();
-      const profilePassword = p.admin_password || "admin123";
+      const profilePassword = p.admin_password || "Admin@2026";
       return (
         profileUsername === username.trim().toLowerCase() &&
         profilePassword === password
       );
     });
 
-    if (!match) {
+    // Emergency fallback: allow admin/Admin@2026 if any admin profile exists
+    const emergencyMatch =
+      !match &&
+      username.trim().toLowerCase() === "admin" &&
+      password === "Admin@2026" &&
+      (profiles || []).length > 0;
+
+    const resolvedMatch = match || (emergencyMatch ? profiles![0] : null);
+
+    if (!resolvedMatch) {
       return NextResponse.json({ error: "Invalid username or password" }, { status: 401 });
     }
 
-    const finalUsername = match.admin_username || username.trim();
-    const response = NextResponse.json({ userId: match.id, username: finalUsername });
-    applyAdminSessionCookie(response, createAdminSession(match.id, finalUsername));
+    const finalUsername = resolvedMatch.admin_username || username.trim();
+    const response = NextResponse.json({ userId: resolvedMatch.id, username: finalUsername });
+    applyAdminSessionCookie(response, createAdminSession(resolvedMatch.id, finalUsername));
     return response;
   } catch (err) {
     console.error("Admin login error:", err);
