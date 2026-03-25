@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { fonts } from "@/lib/constants";
 import { logAdminAction } from "@/lib/auditLog";
 import { useAdminAuth } from "@/app/admin/hooks/useAdminAuth";
+import { AdminSidebar, AdminMobileMenuButton } from "@/app/admin/components/AdminSidebar";
 
 type AdminStats = {
   totalCafes: number;
@@ -117,6 +118,8 @@ export default function AdminDashboardPage() {
   const router = useRouter();
   const { adminId, adminUsername, allowed: isAdmin, checkingRole: isChecking } = useAdminAuth();
   const [activeTab, setActiveTab] = useState<NavTab>('overview');
+  const [isMobile, setIsMobile] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Data states
   const [stats, setStats] = useState<AdminStats | null>(null);
@@ -275,6 +278,14 @@ export default function AdminDashboardPage() {
     month: "short",
     year: "numeric",
   }).format(new Date());
+
+  // Mobile detection
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 1024);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
 
   // Auth is handled by useAdminAuth hook above
 
@@ -1201,20 +1212,10 @@ export default function AdminDashboardPage() {
 
   if (isChecking) {
     return (
-      <div
-        style={{
-          minHeight: "100vh",
-          background: theme.background,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontFamily: fonts.body,
-          color: theme.textPrimary,
-        }}
-      >
-        <div style={{ textAlign: "center" }}>
-          <div style={{ fontSize: 48, marginBottom: 16 }}>⚡</div>
-          <p>Verifying admin access...</p>
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="text-center text-slate-400">
+          <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-sm">Verifying admin access...</p>
         </div>
       </div>
     );
@@ -1232,25 +1233,21 @@ export default function AdminDashboardPage() {
         display: "flex",
         fontFamily: fonts.body,
         color: theme.textPrimary,
-        position: "relative",
-        overflow: "hidden",
       }}
     >
-      {/* Sidebar Navigation */}
-      <aside
-        style={{
-          width: 308,
-          background: theme.sidebarBackground,
-          borderRight: `1px solid ${theme.border}`,
-          display: "flex",
-          flexDirection: "column",
-          position: "sticky",
-          top: 0,
-          height: "100vh",
-          boxShadow: "24px 0 60px rgba(2, 6, 23, 0.35)",
-          backdropFilter: "blur(18px)",
+      <AdminSidebar
+        activeTab={activeTab}
+        onTabChange={(tab) => setActiveTab(tab as NavTab)}
+        isMobile={isMobile}
+        isOpen={mobileMenuOpen}
+        onClose={() => setMobileMenuOpen(false)}
+        onLogout={async () => {
+          await fetch("/api/admin/login", { method: "DELETE", credentials: "include" });
+          router.push("/admin/login");
         }}
-      >
+      />
+      {/* REMOVE OLD SIDEBAR START */}
+      <aside style={{ display: "none" }}>
         {/* Logo */}
         <div
           style={{
@@ -1488,120 +1485,55 @@ export default function AdminDashboardPage() {
       </aside>
 
       {/* Main Content */}
-      <main style={{ flex: 1, overflow: "auto", position: "relative" }}>
-        {/* Header */}
-        <header
-          style={{
-            padding: "26px 36px 24px",
-            borderBottom: `1px solid ${theme.border}`,
-            background: theme.headerBackground,
-            backdropFilter: "blur(18px)",
-            position: "sticky",
-            top: 0,
-            zIndex: 10,
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 20,
-            }}
-          >
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                <span
-                  style={{
-                    padding: "6px 10px",
-                    borderRadius: 999,
-                    background: "rgba(56, 189, 248, 0.12)",
-                    color: "#8fe7ff",
-                    fontSize: 11,
-                    fontWeight: 700,
-                    letterSpacing: "0.18em",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  {activeTabMeta.eyebrow}
-                </span>
-                <span style={{ color: theme.textMuted, fontSize: 13 }}>{formattedToday}</span>
-              </div>
+      <main style={{ flex: 1, overflow: "auto", position: "relative", marginLeft: isMobile ? 0 : 288 }}>
+        {/* Header — matches owner portal style */}
+        <header className="sticky top-0 z-30 bg-slate-950/80 backdrop-blur-md border-b border-slate-800/50">
+          <div className="flex items-center justify-between px-4 py-4 md:px-8">
+            <div className="flex items-center gap-4">
+              {isMobile && (
+                <AdminMobileMenuButton onClick={() => setMobileMenuOpen(true)} />
+              )}
               <div>
-                <h1
-                  style={{
-                    fontFamily: fonts.heading,
-                    fontSize: 34,
-                    margin: 0,
-                    fontWeight: 800,
-                    letterSpacing: "-0.04em",
-                    lineHeight: 1,
-                  }}
-                >
+                <h1 className="text-xl font-bold text-white md:text-2xl" style={{ fontFamily: fonts.heading }}>
                   {activeTabMeta.title}
                 </h1>
-                <p style={{ margin: "10px 0 0", color: theme.textSecondary, fontSize: 15, maxWidth: 720, lineHeight: 1.6 }}>
-                  {activeTabMeta.subtitle}
-                </p>
+                {!isMobile && (
+                  <p className="text-sm text-slate-400 mt-0.5">{activeTabMeta.subtitle}</p>
+                )}
               </div>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(2, minmax(120px, 1fr))",
-                  gap: 10,
-                }}
-              >
-                <div
-                  style={{
-                    padding: "12px 14px",
-                    borderRadius: 16,
-                    background: "rgba(56, 189, 248, 0.08)",
-                    border: "1px solid rgba(56, 189, 248, 0.12)",
-                  }}
-                >
-                  <div style={{ color: theme.textMuted, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.14em" }}>
-                    Active cafés
+            <div className="flex items-center gap-3">
+              {!isMobile && (
+                <>
+                  <div
+                    style={{
+                      padding: "10px 14px",
+                      borderRadius: 12,
+                      background: "rgba(56, 189, 248, 0.08)",
+                      border: "1px solid rgba(56, 189, 248, 0.12)",
+                    }}
+                  >
+                    <div style={{ color: theme.textMuted, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.14em" }}>Active cafés</div>
+                    <div style={{ marginTop: 4, fontSize: 18, fontWeight: 700, color: theme.textPrimary }}>{stats?.activeCafes || 0}</div>
                   </div>
-                  <div style={{ marginTop: 6, fontSize: 22, fontWeight: 700 }}>{stats?.activeCafes || 0}</div>
-                </div>
-                <div
-                  style={{
-                    padding: "12px 14px",
-                    borderRadius: 16,
-                    background: "rgba(34, 197, 94, 0.08)",
-                    border: "1px solid rgba(34, 197, 94, 0.12)",
-                  }}
-                >
-                  <div style={{ color: theme.textMuted, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.14em" }}>
-                    Today revenue
+                  <div
+                    style={{
+                      padding: "10px 14px",
+                      borderRadius: 12,
+                      background: "rgba(34, 197, 94, 0.08)",
+                      border: "1px solid rgba(34, 197, 94, 0.12)",
+                    }}
+                  >
+                    <div style={{ color: theme.textMuted, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.14em" }}>Today revenue</div>
+                    <div style={{ marginTop: 4, fontSize: 18, fontWeight: 700, color: theme.textPrimary }}>{formatCurrency(stats?.todayRevenue || 0)}</div>
                   </div>
-                  <div style={{ marginTop: 6, fontSize: 22, fontWeight: 700 }}>{formatCurrency(stats?.todayRevenue || 0)}</div>
-                </div>
-              </div>
+                </>
+              )}
               <button
                 onClick={() => window.location.reload()}
-                style={{
-                  padding: "14px 18px",
-                  borderRadius: 16,
-                  border: "1px solid rgba(56, 189, 248, 0.18)",
-                  background: "linear-gradient(135deg, #38bdf8, #14b8a6)",
-                  color: "#03121f",
-                  fontSize: 13,
-                  fontWeight: 800,
-                  cursor: "pointer",
-                  transition: "all 0.2s",
-                  boxShadow: "0 16px 32px rgba(56, 189, 248, 0.2)",
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = "translateY(-2px)";
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = "translateY(0)";
-                }}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-blue-500 to-cyan-500 text-slate-900 hover:opacity-90 transition-opacity"
               >
-                Refresh Data
+                Refresh
               </button>
             </div>
           </div>
