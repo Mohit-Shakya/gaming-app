@@ -85,16 +85,22 @@ export async function POST(request: NextRequest) {
     const cafeIds = ownerCafes.map((c: any) => c.id);
 
     // 2. Start parallel fetches
-    const stationPricingPromise = supabase
-      .from("station_pricing")
-      .select("*")
-      .in("cafe_id", cafeIds)
-      .eq("is_active", true);
+    const shouldLoadPricing = scope === "full";
 
-    const consolePricingPromise = supabase
-      .from("console_pricing")
-      .select("cafe_id, console_type, quantity, duration_minutes, price")
-      .in("cafe_id", cafeIds);
+    const stationPricingPromise = shouldLoadPricing
+      ? supabase
+          .from("station_pricing")
+          .select("*")
+          .in("cafe_id", cafeIds)
+          .eq("is_active", true)
+      : Promise.resolve({ data: [], error: null });
+
+    const consolePricingPromise = shouldLoadPricing
+      ? supabase
+          .from("console_pricing")
+          .select("cafe_id, console_type, quantity, duration_minutes, price")
+          .in("cafe_id", cafeIds)
+      : Promise.resolve({ data: [], error: null });
 
     const bookingsPromise =
       scope === "full"
@@ -122,12 +128,14 @@ export async function POST(request: NextRequest) {
             .order("created_at", { ascending: false })
             .limit(DASHBOARD_BOOKING_LIMIT);
 
-    const plansPromise = supabase
-      .from('membership_plans')
-      .select('*')
-      .in('cafe_id', cafeIds)
-      .eq('is_active', true)
-      .order('price');
+    const plansPromise = shouldLoadPricing
+      ? supabase
+          .from('membership_plans')
+          .select('*')
+          .in('cafe_id', cafeIds)
+          .eq('is_active', true)
+          .order('price')
+      : Promise.resolve({ data: [], error: null });
 
     const subscriptionsPromise = supabase
       .from('subscriptions')

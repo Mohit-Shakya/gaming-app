@@ -9,6 +9,7 @@ const getLocalDateString = (date: Date = new Date()): string => {
 };
 
 type UseBillingProps = {
+  enabled?: boolean;
   selectedCafeId: string;
   consolePricing: Record<string, Record<string, PricingTier>>;
   stationPricing: Record<string, any>;
@@ -16,6 +17,7 @@ type UseBillingProps = {
 };
 
 export function useBilling({
+  enabled = true,
   selectedCafeId,
   consolePricing,
   stationPricing,
@@ -289,7 +291,7 @@ export function useBilling({
 
   // Load previous customers via API route
   useEffect(() => {
-    if (!selectedCafeId) return;
+    if (!enabled || !selectedCafeId) return;
 
     async function loadCustomers() {
       const res = await fetch(`/api/owner/coupons/customers?cafeId=${selectedCafeId}`);
@@ -304,7 +306,7 @@ export function useBilling({
       }
     }
     loadCustomers();
-  }, [selectedCafeId]);
+  }, [enabled, selectedCafeId]);
 
   // Suggestions logic
   const handleNameChange = (val: string) => {

@@ -76,6 +76,8 @@ export default function OwnerDashboardPage() {
   });
 
   const { ownerId, ownerUsername, allowed, checkingRole } = useOwnerAuth();
+  const canFetchOwnerData = checkingRole || allowed;
+  const canAutoRefreshOwnerData = allowed && !checkingRole;
 
   const {
     stats,
@@ -90,6 +92,7 @@ export default function OwnerDashboardPage() {
     consolePricing,
     stationPricing,
     totalBookingsCount,
+    hasLoadedData,
     setSubscriptions,
     setBookings,
     refreshData,
@@ -98,7 +101,7 @@ export default function OwnerDashboardPage() {
     setCafes,
     setStationPricing,
     setConsolePricing
-  } = useOwnerData(ownerId, allowed, activeTab);
+  } = useOwnerData(canFetchOwnerData, canAutoRefreshOwnerData, activeTab);
 
   // Constants
   const bookingsPerPage = 50;
@@ -301,6 +304,7 @@ export default function OwnerDashboardPage() {
     handleSuggestionClick: handleBillingSuggestionClick,
     getBillingPrice
   } = useBilling({
+    enabled: activeTab === 'billing',
     selectedCafeId,
     consolePricing,
     stationPricing,
@@ -513,6 +517,10 @@ export default function OwnerDashboardPage() {
   // Fetch gallery images when cafes data loads
   useEffect(() => {
     async function fetchGalleryImages() {
+      if (activeTab !== 'settings') {
+        return;
+      }
+
       if (!currentCafeId) {
         setGalleryImages([]);
         return;
@@ -528,7 +536,7 @@ export default function OwnerDashboardPage() {
     }
 
     fetchGalleryImages();
-  }, [currentCafeId]);
+  }, [activeTab, currentCafeId]);
 
   // Realtime subscription removed — ISP blocks WebSocket to Supabase (ERR_CERT_COMMON_NAME_INVALID)
   // Mutations call refreshData() directly to keep UI in sync
@@ -1862,7 +1870,7 @@ export default function OwnerDashboardPage() {
   }, [searchQuery, statusFilter, dateFilter, dateRangeFilter, customStartDate, customEndDate, setBookingPage]);
 
   // Loading state
-  if (checkingRole) {
+  if (checkingRole && !hasLoadedData) {
     return (
       <div
         style={{
@@ -1879,7 +1887,7 @@ export default function OwnerDashboardPage() {
     );
   }
 
-  if (!allowed) {
+  if (!allowed && !hasLoadedData) {
     return null;
   }
 

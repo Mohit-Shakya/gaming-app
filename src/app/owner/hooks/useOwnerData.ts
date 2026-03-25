@@ -11,7 +11,7 @@ function getOwnerDataScope(activeTab: NavTab): OwnerDataScope {
   return FULL_BOOKING_TABS.has(activeTab) ? 'full' : 'dashboard';
 }
 
-export function useOwnerData(ownerId: string | null, allowed: boolean, activeTab: NavTab) {
+export function useOwnerData(canFetch: boolean, canAutoRefresh: boolean, activeTab: NavTab) {
   const [cafes, setCafes] = useState<CafeRow[]>([]);
   const [bookings, setBookings] = useState<BookingRow[]>([]);
   const [loadingData, setLoadingData] = useState(true);
@@ -28,6 +28,7 @@ export function useOwnerData(ownerId: string | null, allowed: boolean, activeTab
   // Pagination state (internal to hook for now, or expose if needed)
   const [bookingPage, setBookingPage] = useState(1);
   const [loadedScope, setLoadedScope] = useState<OwnerDataScope>('dashboard');
+  const [hasLoadedData, setHasLoadedData] = useState(false);
 
   const refreshData = () => setRefreshTrigger(prev => prev + 1);
   const dataScope = useMemo(() => getOwnerDataScope(activeTab), [activeTab]);
@@ -77,17 +78,17 @@ export function useOwnerData(ownerId: string | null, allowed: boolean, activeTab
 
   // Auto-refresh bookings based on timer
   useEffect(() => {
-    if (!allowed || !ownerId || !shouldAutoRefresh) return;
+    if (!canAutoRefresh || !shouldAutoRefresh) return;
 
     const interval = setInterval(() => {
       setRefreshTrigger(prev => prev + 1);
     }, 10000); // 10 seconds
 
     return () => clearInterval(interval);
-  }, [allowed, ownerId, shouldAutoRefresh]);
+  }, [canAutoRefresh, shouldAutoRefresh]);
 
   useEffect(() => {
-    if (!allowed || !ownerId) return;
+    if (!canFetch) return;
 
     let cancelled = false;
 
@@ -121,6 +122,7 @@ export function useOwnerData(ownerId: string | null, allowed: boolean, activeTab
         setSubscriptions(data.subscriptions);
         setTotalBookingsCount(data.totalBookingsCount);
         setLoadedScope(dataScope);
+        setHasLoadedData(true);
         setLoadingData(false);
       } catch (err: any) {
         if (cancelled) return;
@@ -135,7 +137,7 @@ export function useOwnerData(ownerId: string | null, allowed: boolean, activeTab
     return () => {
       cancelled = true;
     };
-  }, [allowed, ownerId, refreshTrigger, dataScope, isScopeUpgrade]);
+  }, [canFetch, refreshTrigger, dataScope, isScopeUpgrade]);
 
   return {
     stats,
@@ -150,6 +152,7 @@ export function useOwnerData(ownerId: string | null, allowed: boolean, activeTab
     consolePricing,
     stationPricing,
     totalBookingsCount,
+    hasLoadedData,
     setSubscriptions,
     setBookings,
     refreshData,
