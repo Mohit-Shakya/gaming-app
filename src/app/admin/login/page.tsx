@@ -3,24 +3,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient";
 import { fonts } from "@/lib/constants";
-
-const EMERGENCY_ADMIN_USERNAME = "admin";
-const EMERGENCY_ADMIN_PASSWORD = "Admin@2026";
-
-type AdminLoginResult = {
-  userId: string;
-  username: string;
-};
-
-type AdminProfileRow = {
-  id: string;
-  role: string | null;
-  is_admin: boolean | null;
-  admin_username: string | null;
-  admin_password: string | null;
-};
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -41,84 +24,22 @@ export default function AdminLoginPage() {
   // Check if already logged in as admin
   useEffect(() => {
     async function checkAdminSession() {
-      const adminSession = localStorage.getItem("admin_session");
-      if (adminSession) {
-        const { timestamp } = JSON.parse(adminSession);
-        // Check if session is less than 24 hours old
-        if (Date.now() - timestamp < 24 * 60 * 60 * 1000) {
+      try {
+        const res = await fetch("/api/admin/verify", {
+          method: "GET",
+          credentials: "include",
+          cache: "no-store",
+        });
+        const data = await res.json().catch(() => ({}));
+        if (data.isAdmin) {
           router.push("/admin");
-          return;
-        } else {
-          localStorage.removeItem("admin_session");
         }
+      } catch {
+        // Not logged in, stay on login page
       }
     }
     checkAdminSession();
   }, [router]);
-
-  async function resolveAdminLogin(
-    enteredUsername: string,
-    enteredPassword: string,
-  ): Promise<AdminLoginResult | null> {
-    const usernameInput = enteredUsername.trim();
-
-    const { data, error } = await supabase.rpc("verify_admin_login", {
-      p_username: usernameInput,
-      p_password: enteredPassword,
-    });
-
-    if (error) {
-      console.error("Login verification error:", error);
-    } else if (data?.[0]?.is_valid) {
-      return {
-        userId: data[0].user_id,
-        username: data[0].username || usernameInput,
-      };
-    }
-
-    const { data: adminProfiles, error: profileError } = await supabase
-      .from("profiles")
-      .select("id, role, is_admin, admin_username, admin_password")
-      .or("role.eq.admin,role.eq.super_admin,is_admin.eq.true")
-      .limit(10);
-
-    if (profileError) {
-      console.error("Admin profile lookup error:", profileError);
-      return null;
-    }
-
-    const profiles = (adminProfiles || []) as AdminProfileRow[];
-
-    const exactCredentialMatch = profiles.find((profile) => {
-      const profileUsername = (profile.admin_username || EMERGENCY_ADMIN_USERNAME).trim().toLowerCase();
-      const profilePassword = profile.admin_password || "admin123";
-      return profileUsername === usernameInput.toLowerCase() && profilePassword === enteredPassword;
-    });
-
-    if (exactCredentialMatch) {
-      return {
-        userId: exactCredentialMatch.id,
-        username: exactCredentialMatch.admin_username || EMERGENCY_ADMIN_USERNAME,
-      };
-    }
-
-    const emergencyAccessAllowed =
-      usernameInput.toLowerCase() === EMERGENCY_ADMIN_USERNAME &&
-      enteredPassword === EMERGENCY_ADMIN_PASSWORD;
-
-    if (!emergencyAccessAllowed || profiles.length === 0) {
-      return null;
-    }
-
-    const preferredAdminProfile =
-      profiles.find((profile) => profile.admin_username?.trim().toLowerCase() === EMERGENCY_ADMIN_USERNAME) ||
-      profiles[0];
-
-    return {
-      userId: preferredAdminProfile.id,
-      username: preferredAdminProfile.admin_username || EMERGENCY_ADMIN_USERNAME,
-    };
-  }
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -126,24 +47,21 @@ export default function AdminLoginPage() {
     setLoading(true);
 
     try {
-      const loginResult = await resolveAdminLogin(username, password);
+      const res = await fetch("/api/admin/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ username, password }),
+      });
 
-      if (!loginResult) {
-        setError("Invalid username or password");
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setError(data.error || "Invalid username or password");
         setLoading(false);
         return;
       }
 
-      // Create admin session
-      const adminSession = {
-        userId: loginResult.userId,
-        username: loginResult.username,
-        timestamp: Date.now(),
-      };
-
-      localStorage.setItem("admin_session", JSON.stringify(adminSession));
-
-      // Redirect to admin dashboard
       router.push("/admin");
     } catch (err) {
       console.error("Login error:", err);
@@ -177,14 +95,7 @@ export default function AdminLoginPage() {
       >
         {/* Logo/Header */}
         <div style={{ textAlign: "center", marginBottom: 40 }}>
-          <div
-            style={{
-              fontSize: 48,
-              marginBottom: 16,
-            }}
-          >
-            🔐
-          </div>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>🔐</div>
           <h1
             style={{
               fontFamily: fonts.heading,
@@ -245,6 +156,7 @@ export default function AdminLoginPage() {
                 fontFamily: fonts.body,
                 outline: "none",
                 transition: "all 0.2s",
+                boxSizing: "border-box",
               }}
               onFocus={(e) => {
                 e.currentTarget.style.borderColor = "#a855f7";
@@ -289,6 +201,7 @@ export default function AdminLoginPage() {
                 fontFamily: fonts.body,
                 outline: "none",
                 transition: "all 0.2s",
+                boxSizing: "border-box",
               }}
               onFocus={(e) => {
                 e.currentTarget.style.borderColor = "#a855f7";
@@ -372,25 +285,6 @@ export default function AdminLoginPage() {
           >
             ← Back to User Dashboard
           </button>
-        </div>
-
-        {/* Default Credentials Info (remove in production) */}
-        <div
-          style={{
-            marginTop: 24,
-            padding: "12px 16px",
-            borderRadius: 10,
-            background: "rgba(59, 130, 246, 0.1)",
-            border: "1px solid rgba(59, 130, 246, 0.2)",
-            fontSize: 12,
-            color: theme.textSecondary,
-            textAlign: "center",
-          }}
-        >
-          <strong style={{ color: "#60a5fa" }}>Emergency Access:</strong>
-          <br />
-          Username: <code style={{ color: theme.textPrimary }}>admin</code> | Password:{" "}
-          <code style={{ color: theme.textPrimary }}>Admin@2026</code>
         </div>
       </div>
     </div>

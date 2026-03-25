@@ -4,9 +4,9 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import useUser from "@/hooks/useUser";
 import { fonts } from "@/lib/constants";
 import { logAdminAction } from "@/lib/auditLog";
+import { useAdminAuth } from "@/app/admin/hooks/useAdminAuth";
 
 type AdminStats = {
   totalCafes: number;
@@ -115,10 +115,7 @@ type CouponRow = {
 
 export default function AdminDashboardPage() {
   const router = useRouter();
-  const { user, loading: userLoading } = useUser();
-
-  const [isChecking, setIsChecking] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const { adminId, adminUsername, allowed: isAdmin, checkingRole: isChecking } = useAdminAuth();
   const [activeTab, setActiveTab] = useState<NavTab>('overview');
 
   // Data states
@@ -279,78 +276,7 @@ export default function AdminDashboardPage() {
     year: "numeric",
   }).format(new Date());
 
-  // Check if user is admin and has valid admin session
-  useEffect(() => {
-    async function checkAdmin() {
-      // Check for admin session first
-      const adminSession = localStorage.getItem("admin_session");
-      if (!adminSession) {
-        router.push("/admin/login");
-        return;
-      }
-
-      // Verify session is not expired (24 hours)
-      let sessionUserId: string;
-      try {
-        const session = JSON.parse(adminSession);
-        if (Date.now() - session.timestamp > 24 * 60 * 60 * 1000) {
-          localStorage.removeItem("admin_session");
-          router.push("/admin/login");
-          return;
-        }
-        sessionUserId = session.userId;
-      } catch {
-        localStorage.removeItem("admin_session");
-        router.push("/admin/login");
-        return;
-      }
-
-      // Verify the user from session is still an admin
-      try {
-        const { data: profile, error: profileError } = await supabase
-          .from("profiles")
-          .select("id, role, is_admin")
-          .eq("id", sessionUserId)
-          .maybeSingle();
-
-        if (profileError) {
-          console.error("Admin check error:", profileError);
-          setIsAdmin(false);
-          localStorage.removeItem("admin_session");
-          router.push("/admin/login");
-          return;
-        }
-
-        if (!profile) {
-          localStorage.removeItem("admin_session");
-          router.push("/admin/login");
-          return;
-        }
-
-        const role = profile.role?.toLowerCase();
-        const is_admin_flag = profile.is_admin;
-
-        const isReallyAdmin = role === "admin" || role === "super_admin" || is_admin_flag === true;
-
-        if (!isReallyAdmin) {
-          localStorage.removeItem("admin_session");
-          router.push("/admin/login");
-          return;
-        }
-
-        setIsAdmin(true);
-      } catch (err) {
-        console.error("Admin check error:", err);
-        localStorage.removeItem("admin_session");
-        router.push("/admin/login");
-        return;
-      } finally {
-        setIsChecking(false);
-      }
-    }
-
-    checkAdmin();
-  }, [router]);
+  // Auth is handled by useAdminAuth hook above
 
   // Load platform statistics
   useEffect(() => {
@@ -1065,8 +991,8 @@ export default function AdminDashboardPage() {
     setSavingSettings(true);
 
     try {
-      if (!user?.id) {
-        setSettingsMessage({ type: 'error', text: 'User not found' });
+      if (!adminId) {
+        setSettingsMessage({ type: 'error', text: 'Admin session not found' });
         setSavingSettings(false);
         return;
       }
@@ -1075,7 +1001,7 @@ export default function AdminDashboardPage() {
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("admin_username, admin_password")
-        .eq("id", user.id)
+        .eq("id", adminId)
         .single();
 
       if (profileError || !profile) {
@@ -1119,25 +1045,17 @@ export default function AdminDashboardPage() {
       const { error: updateError } = await supabase
         .from("profiles")
         .update(updates)
-        .eq("id", user.id);
+        .eq("id", adminId);
 
       if (updateError) throw updateError;
 
-      // Update session with new username if changed
-      if (newUsername) {
-        const adminSession = localStorage.getItem("admin_session");
-        if (adminSession) {
-          const session = JSON.parse(adminSession);
-          session.username = newUsername;
-          localStorage.setItem("admin_session", JSON.stringify(session));
-        }
-      }
+      // Session username is managed server-side; no client update needed
 
       // Log the action
       await logAdminAction({
         action: "update",
         entityType: "settings",
-        entityId: user.id,
+        entityId: adminId,
         details: {
           username_changed: !!newUsername,
           password_changed: !!newPassword
@@ -1281,7 +1199,7 @@ export default function AdminDashboardPage() {
     return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
   };
 
-  if (isChecking || userLoading) {
+  if (isChecking) {
     return (
       <div
         style={{
@@ -1539,8 +1457,8 @@ export default function AdminDashboardPage() {
             👤 User Dashboard
           </button>
           <button
-            onClick={() => {
-              localStorage.removeItem("admin_session");
+            onClick={async () => {
+              await fetch("/api/admin/login", { method: "DELETE", credentials: "include" });
               router.push("/admin/login");
             }}
             style={{
