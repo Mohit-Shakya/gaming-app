@@ -124,23 +124,21 @@ export async function POST(request: NextRequest) {
             .from("bookings")
             .select(`
               id, cafe_id, user_id, booking_date, start_time, duration, total_amount, status,
-              source, payment_mode, created_at, customer_name, customer_phone,
+              source, payment_mode, created_at, customer_name, customer_phone, deleted_at,
               booking_items (id, console, quantity, price)
             `)
             .in("cafe_id", cafeIds)
-            .is("deleted_at", null)
             .order("created_at", { ascending: false })
             .limit(FULL_BOOKING_LIMIT)
         : supabase
             .from("bookings")
             .select(`
               id, cafe_id, user_id, booking_date, start_time, duration, total_amount, status,
-              source, payment_mode, created_at, customer_name, customer_phone,
+              source, payment_mode, created_at, customer_name, customer_phone, deleted_at,
               booking_items (id, console, quantity, price),
               booking_orders (id, quantity, total_price)
             `)
             .in("cafe_id", cafeIds)
-            .is("deleted_at", null)
             .gte("booking_date", dashboardStartDate)
             .order("created_at", { ascending: false })
             .limit(DASHBOARD_BOOKING_LIMIT);
@@ -216,7 +214,8 @@ export async function POST(request: NextRequest) {
     });
 
     // Process bookings and auto-complete in memory
-    let ownerBookings = bookingsRes.data || [];
+    // Filter soft-deleted bookings in-process (avoids slow DB index scan)
+    let ownerBookings = (bookingsRes.data || []).filter((b: any) => !b.deleted_at);
     
     // Auto-complete logic for bookings
     const now = new Date();
