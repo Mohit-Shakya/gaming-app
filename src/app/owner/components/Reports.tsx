@@ -65,18 +65,19 @@ export function Reports({ cafeId, isMobile, openingHours }: ReportsProps) {
     const [customStart, setCustomStart] = useState('');
     const [customEnd, setCustomEnd] = useState('');
     const [showCustomPicker, setShowCustomPicker] = useState(false);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
     const [bookings, setBookings] = useState<BookingData[]>([]);
     const [previousBookings, setPreviousBookings] = useState<PreviousBookingData[]>([]);
     const [peakHoursBookings, setPeakHoursBookings] = useState<BookingData[]>([]);
     const [cafeHours, setCafeHours] = useState<{ openHour: number; closeHour: number }>({ openHour: 10, closeHour: 23 });
     const [expandedChart, setExpandedChart] = useState(false);
 
-    // Fetch data based on range
+    // Fetch data based on range — skip until cafeId is available
     useEffect(() => {
+        if (!cafeId) return;
         fetchReportsData();
         fetchCafeHours();
-        fetchPeakHoursData(); // Separate 30-day fetch for peak hours
+        fetchPeakHoursData();
     }, [dateRange, cafeId, customStart, customEnd]);
 
     const getDateRange = (range: string) => {
@@ -159,6 +160,7 @@ export function Reports({ cafeId, isMobile, openingHours }: ReportsProps) {
     };
 
     const fetchReportsData = async () => {
+        if (!cafeId) return;
         setLoading(true);
         try {
             const { startDate, endDate, prevStartDate, prevEndDate } = getDateRange(dateRange);
@@ -166,6 +168,7 @@ export function Reports({ cafeId, isMobile, openingHours }: ReportsProps) {
             const res = await fetch('/api/owner/reports', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify({ cafeId, startDate, endDate, prevStartDate, prevEndDate }),
             });
 
@@ -290,8 +293,9 @@ export function Reports({ cafeId, isMobile, openingHours }: ReportsProps) {
 
     // Fetch 30 days of booking data specifically for peak hours analysis
     const fetchPeakHoursData = async () => {
+        if (!cafeId) return;
         try {
-            const res = await fetch(`/api/owner/reports?cafeId=${cafeId}`);
+            const res = await fetch(`/api/owner/reports?cafeId=${cafeId}`, { credentials: 'include' });
             if (!res.ok) throw new Error('Failed to fetch peak hours data');
             const { bookings: data } = await res.json();
             if (data) {
