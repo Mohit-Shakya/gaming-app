@@ -99,9 +99,17 @@ export async function PUT(request: NextRequest) {
 
     // Update booking
     if (booking) {
+      const ALLOWED_BOOKING_FIELDS = ['status', 'total_amount', 'payment_mode', 'customer_name', 'customer_phone', 'booking_date', 'duration', 'start_time'] as const;
+      const safeBooking: Record<string, unknown> = {};
+      for (const key of ALLOWED_BOOKING_FIELDS) {
+        if (booking[key] !== undefined) safeBooking[key] = booking[key];
+      }
+      if (Object.keys(safeBooking).length === 0) {
+        return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
+      }
       const { error: bookingError } = await supabase
         .from("bookings")
-        .update(booking)
+        .update(safeBooking)
         .eq("id", bookingId);
 
       if (bookingError) {

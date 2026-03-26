@@ -34,16 +34,16 @@ export function StationsTab({
 
     // Console type configurations
     const consoleTypes = [
-        { id: 'pc', key: 'pc_count', name: 'PC', icon: '🖥️', bgColor: 'rgba(59, 130, 246, 0.15)', color: '#3b82f6', rate: '₹100/hr' },
-        { id: 'ps5', key: 'ps5_count', name: 'PS5', icon: '🎮', bgColor: 'rgba(16, 185, 129, 0.15)', color: '#10b981', rate: '₹150 Single / ₹300 Multi' },
-        { id: 'ps4', key: 'ps4_count', name: 'PS4', icon: '🎮', bgColor: 'rgba(139, 92, 246, 0.15)', color: '#8b5cf6', rate: '₹100 Single / ₹200 Multi' },
-        { id: 'xbox', key: 'xbox_count', name: 'Xbox', icon: '🎮', bgColor: 'rgba(34, 197, 94, 0.15)', color: '#22c55e', rate: '₹120 Single / ₹240 Multi' },
-        { id: 'vr', key: 'vr_count', name: 'VR', icon: '🥽', bgColor: 'rgba(236, 72, 153, 0.15)', color: '#ec4899', rate: '₹200/hr' },
-        { id: 'steering', key: 'steering_wheel_count', name: 'Steering Wheel', icon: '🏎️', bgColor: 'rgba(251, 146, 60, 0.15)', color: '#fb923c', rate: '₹150/hr' },
-        { id: 'racing_sim', key: 'racing_sim_count', name: 'Racing Sim', icon: '🏁', bgColor: 'rgba(255, 69, 0, 0.15)', color: '#ff4500', rate: '₹150/hr' },
-        { id: 'pool', key: 'pool_count', name: 'Pool', icon: '🎱', bgColor: 'rgba(14, 165, 233, 0.15)', color: '#0ea5e9', rate: '₹80/hr' },
-        { id: 'snooker', key: 'snooker_count', name: 'Snooker', icon: '🎱', bgColor: 'rgba(132, 204, 22, 0.15)', color: '#84cc16', rate: '₹80/hr' },
-        { id: 'arcade', key: 'arcade_count', name: 'Arcade', icon: '🕹️', bgColor: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b', rate: '₹50/hr' },
+        { id: 'pc', key: 'pc_count', name: 'PC', icon: '🖥️', bgColor: 'rgba(59, 130, 246, 0.15)', color: '#3b82f6' },
+        { id: 'ps5', key: 'ps5_count', name: 'PS5', icon: '🎮', bgColor: 'rgba(16, 185, 129, 0.15)', color: '#10b981' },
+        { id: 'ps4', key: 'ps4_count', name: 'PS4', icon: '🎮', bgColor: 'rgba(139, 92, 246, 0.15)', color: '#8b5cf6' },
+        { id: 'xbox', key: 'xbox_count', name: 'Xbox', icon: '🎮', bgColor: 'rgba(34, 197, 94, 0.15)', color: '#22c55e' },
+        { id: 'vr', key: 'vr_count', name: 'VR', icon: '🥽', bgColor: 'rgba(236, 72, 153, 0.15)', color: '#ec4899' },
+        { id: 'steering', key: 'steering_wheel_count', name: 'Steering Wheel', icon: '🏎️', bgColor: 'rgba(251, 146, 60, 0.15)', color: '#fb923c' },
+        { id: 'racing_sim', key: 'racing_sim_count', name: 'Racing Sim', icon: '🏁', bgColor: 'rgba(255, 69, 0, 0.15)', color: '#ff4500' },
+        { id: 'pool', key: 'pool_count', name: 'Pool', icon: '🎱', bgColor: 'rgba(14, 165, 233, 0.15)', color: '#0ea5e9' },
+        { id: 'snooker', key: 'snooker_count', name: 'Snooker', icon: '🎱', bgColor: 'rgba(132, 204, 22, 0.15)', color: '#84cc16' },
+        { id: 'arcade', key: 'arcade_count', name: 'Arcade', icon: '🕹️', bgColor: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b' },
     ];
 
     // Calculate session count per station from bookings
@@ -71,7 +71,6 @@ export function StationsTab({
                 icon: consoleType.icon,
                 bgColor: consoleType.bgColor,
                 color: consoleType.color,
-                rate: consoleType.rate,
                 sessions: stationSessionCounts.get(stationName) || 0,
             });
         }
@@ -277,28 +276,32 @@ export function StationsTab({
                                         <td style={{ padding: '16px 20px' }}>
                                             <div style={{ fontSize: 13, color: theme.textSecondary, lineHeight: 1.6, opacity: isPoweredOff ? 0.5 : 1 }}>
                                                 {(() => {
+                                                    if (!savedPricing) {
+                                                        return <span style={{ color: theme.textMuted, fontStyle: 'italic' }}>Not configured</span>;
+                                                    }
                                                     if (['PS5', 'Xbox'].includes(station.type)) {
-                                                        const c1Half = savedPricing?.controller_1_half_hour || 75;
-                                                        const c1Full = savedPricing?.controller_1_full_hour || 150;
+                                                        const c1Half = savedPricing.controller_1_half_hour;
+                                                        const c1Full = savedPricing.controller_1_full_hour;
+                                                        if (!c1Half && !c1Full) return <span style={{ color: theme.textMuted, fontStyle: 'italic' }}>Not configured</span>;
                                                         return (
                                                             <div>
                                                                 <span style={{ fontWeight: 600 }}>₹{c1Half}/30m · ₹{c1Full}/hr</span>
-                                                                {savedPricing?.controller_2_full_hour && (
+                                                                {savedPricing.controller_2_full_hour && (
                                                                     <div style={{ fontSize: 10, color: theme.textMuted }}>Multi-controller rates set</div>
                                                                 )}
                                                             </div>
                                                         );
                                                     } else if (['PS4'].includes(station.type)) {
-                                                        const singleHalf = savedPricing?.single_player_half_hour_rate || 75;
-                                                        const singleFull = savedPricing?.single_player_rate || 150;
+                                                        const singleHalf = savedPricing.single_player_half_hour_rate;
+                                                        const singleFull = savedPricing.single_player_rate;
+                                                        if (!singleHalf && !singleFull) return <span style={{ color: theme.textMuted, fontStyle: 'italic' }}>Not configured</span>;
                                                         return (
                                                             <div style={{ fontWeight: 600 }}>₹{singleHalf}/30m · ₹{singleFull}/hr</div>
                                                         );
                                                     } else {
-                                                        const defaults: any = { 'PC': { h: 50, f: 100 }, 'VR': { h: 100, f: 200 } };
-                                                        const d = defaults[station.type] || { h: 40, f: 80 };
-                                                        const half = savedPricing?.half_hour_rate || d.h;
-                                                        const full = savedPricing?.hourly_rate || d.f;
+                                                        const half = savedPricing.half_hour_rate;
+                                                        const full = savedPricing.hourly_rate;
+                                                        if (!half && !full) return <span style={{ color: theme.textMuted, fontStyle: 'italic' }}>Not configured</span>;
                                                         return <div style={{ fontWeight: 600 }}>₹{half}/30m · ₹{full}/hr</div>;
                                                     }
                                                 })()}

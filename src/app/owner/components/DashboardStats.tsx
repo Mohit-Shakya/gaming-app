@@ -6,9 +6,7 @@ import { StatCard } from './ui';
 
 const REVENUE_VISIBILITY_KEY = 'owner-dashboard-revenue-visible';
 
-const getLocalDateString = (date: Date = new Date()): string => {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-};
+import { getLocalDateString } from '../utils';
 
 interface DashboardStatsProps {
   bookings: DashboardBooking[];

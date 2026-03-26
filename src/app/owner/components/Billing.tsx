@@ -9,10 +9,7 @@ import {
 } from 'lucide-react';
 import { CafeRow } from '@/types/database';
 
-// Helper function to get local date string (YYYY-MM-DD) instead of UTC
-const getLocalDateString = (date: Date = new Date()): string => {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-};
+import { getLocalDateString } from '../utils';
 
 interface BillingProps {
     cafeId: string;

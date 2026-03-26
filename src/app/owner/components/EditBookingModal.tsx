@@ -30,7 +30,7 @@ interface Props {
   // Actions
   saving: boolean; deleting: boolean;
   onSave: () => void; onClose: () => void;
-  onDelete: () => void; onEndNow: () => void;
+  onDelete: () => void; onEndNow: () => number | void;
   onManageSnacks: () => void;
   // Data
   cafe: CafeRow | null;
@@ -94,28 +94,35 @@ export function EditBookingModal({
   const [suggestions, setSuggestions] = useState<{ name: string; phone: string | null }[]>([]);
   const [showSugg, setShowSugg] = useState(false);
   const suggRef = useRef<HTMLDivElement>(null);
+  const [endNowMsg, setEndNowMsg] = useState<string | null>(null);
 
   const searchCustomers = useCallback(async (query: string) => {
     if (query.trim().length < 2) { setSuggestions([]); setShowSugg(false); return; }
-    const [bookRes, profRes] = await Promise.all([
-      supabase.from('bookings').select('customer_name, customer_phone')
-        .eq('cafe_id', booking.cafe_id || '').ilike('customer_name', `%${query}%`)
-        .not('customer_name', 'is', null).limit(8),
-      supabase.from('profiles').select('first_name, last_name, phone')
-        .or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%`).limit(5),
-    ]);
-    const seen = new Set<string>();
-    const results: { name: string; phone: string | null }[] = [];
-    profRes.data?.forEach(p => {
-      const name = [p.first_name, p.last_name].filter(Boolean).join(' ');
-      if (name && !seen.has(name.toLowerCase())) { seen.add(name.toLowerCase()); results.push({ name, phone: p.phone || null }); }
-    });
-    bookRes.data?.forEach(b => {
-      const name = b.customer_name || '';
-      if (name && !seen.has(name.toLowerCase())) { seen.add(name.toLowerCase()); results.push({ name, phone: b.customer_phone || null }); }
-    });
-    setSuggestions(results);
-    setShowSugg(results.length > 0);
+    try {
+      const [bookRes, profRes] = await Promise.all([
+        supabase.from('bookings').select('customer_name, customer_phone')
+          .eq('cafe_id', booking.cafe_id || '').ilike('customer_name', `%${query}%`)
+          .not('customer_name', 'is', null).limit(8),
+        supabase.from('profiles').select('first_name, last_name, phone')
+          .or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%`).limit(5),
+      ]);
+      const seen = new Set<string>();
+      const results: { name: string; phone: string | null }[] = [];
+      profRes.data?.forEach(p => {
+        const name = [p.first_name, p.last_name].filter(Boolean).join(' ');
+        if (name && !seen.has(name.toLowerCase())) { seen.add(name.toLowerCase()); results.push({ name, phone: p.phone || null }); }
+      });
+      bookRes.data?.forEach(b => {
+        const name = b.customer_name || '';
+        if (name && !seen.has(name.toLowerCase())) { seen.add(name.toLowerCase()); results.push({ name, phone: b.customer_phone || null }); }
+      });
+      setSuggestions(results);
+      setShowSugg(results.length > 0);
+    } catch {
+      // Autocomplete is best-effort — silently suppress network errors
+      setSuggestions([]);
+      setShowSugg(false);
+    }
   }, [booking.cafe_id]);
 
   useEffect(() => {
@@ -309,7 +316,13 @@ export function EditBookingModal({
                   {status === 'in-progress' && (
                     <button
                       type="button"
-                      onClick={onEndNow}
+                      onClick={() => {
+                        const newDur = onEndNow();
+                        if (newDur) {
+                          setEndNowMsg(`Rounded to ${newDur} min`);
+                          setTimeout(() => setEndNowMsg(null), 3000);
+                        }
+                      }}
                       className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-[11px] font-semibold hover:bg-red-500/20 transition-colors"
                     >
                       <Zap size={10} /> End Now
@@ -319,6 +332,11 @@ export function EditBookingModal({
                 <div className="px-3 py-2.5 rounded-lg bg-slate-900/30 border border-dashed border-slate-700/50 text-slate-400 text-sm font-medium">
                   {endTime}
                 </div>
+                {endNowMsg && (
+                  <p className="mt-1 text-[11px] text-amber-400 flex items-center gap-1">
+                    <AlertCircle size={10} /> {endNowMsg}
+                  </p>
+                )}
               </div>
             </div>
           </section>
@@ -416,7 +434,11 @@ export function EditBookingModal({
                         {CONSOLE_ICONS[item.console as ConsoleId] || '🎮'} {CONSOLE_LABELS[item.console as ConsoleId] || item.console} × {item.quantity} · {item.duration}min =
                         <span className="text-emerald-400 font-semibold ml-1">₹{price}</span>
                       </div>
-                    ) : null;
+                    ) : (
+                      <div className="mt-2 text-right text-[11px] text-amber-400 flex items-center justify-end gap-1">
+                        <AlertCircle size={10} /> Pricing not set — amount will be ₹0
+                      </div>
+                    );
                   })()}
                 </div>
               ))}

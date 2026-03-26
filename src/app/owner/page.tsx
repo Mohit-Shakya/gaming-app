@@ -18,7 +18,7 @@ import {
   PricingTier,
   BillingItem
 } from "./types";
-import { convertTo12Hour } from "./utils";
+import { convertTo12Hour, getLocalDateString } from "./utils";
 import { theme } from "./utils/theme";
 import {
   Sidebar,
@@ -36,6 +36,7 @@ import { useOwnerData } from "./hooks/useOwnerData";
 import { TodaySnackOrders } from "./components/TodaySnackOrders";
 import SnackSaleModal from "./components/SnackSaleModal";
 import { EditBookingModal } from "./components/EditBookingModal";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 
 const LiveStatus = dynamic(() => import('./components/LiveStatus').then((mod) => mod.LiveStatus), { ssr: false });
 const Billing = dynamic(() => import('./components/Billing').then((mod) => mod.Billing), { ssr: false });
@@ -53,10 +54,6 @@ const SubscriptionDetailsModal = dynamic(() => import('./components/Subscription
 const CustomerDetailsModal = dynamic(() => import('./components/CustomerDetailsModal'), { ssr: false });
 const SessionEndedPopup = dynamic(() => import('./components/SessionEndedPopup').then((mod) => mod.SessionEndedPopup), { ssr: false });
 
-// Helper function to get local date string (YYYY-MM-DD) instead of UTC
-const getLocalDateString = (date: Date = new Date()): string => {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-};
 
 const debugLog = (...args: unknown[]) => {
   if (process.env.NODE_ENV !== "production") {
@@ -468,13 +465,20 @@ export default function OwnerDashboardPage() {
       expiredIds.has(b.id) ? { ...b, status: 'completed' } : b
     ));
 
-    // Persist to DB via API (fire-and-forget)
-    expiredBookings.forEach(b => {
-      fetch('/api/owner/billing', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bookingId: b.id, booking: { status: 'completed' } }),
-      }).catch(err => console.error('Failed to auto-complete booking:', err));
+    // Persist to DB via API — revert local state if any call fails
+    expiredBookings.forEach(async b => {
+      try {
+        const res = await fetch('/api/owner/billing', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ bookingId: b.id, booking: { status: 'completed' } }),
+        });
+        if (!res.ok) throw new Error((await res.json()).error || 'Unknown error');
+      } catch (err) {
+        console.error('Failed to auto-complete booking:', b.id, err);
+        // Revert this booking back to in-progress so it retries next tick
+        setBookings(prev => prev.map(x => x.id === b.id ? { ...x, status: 'in-progress' } : x));
+      }
     });
   }, [currentTime, bookings]);
 
@@ -582,6 +586,7 @@ export default function OwnerDashboardPage() {
     setEditDuration(roundedDuration);
     setEditStatus('completed');
     setEditAmountManuallyEdited(false);
+    return roundedDuration;
   };
 
   // Auto-calculate editAmount when inputs change
@@ -1323,13 +1328,19 @@ export default function OwnerDashboardPage() {
       prev.map((b: any) => expiredIds.has(b.id) ? { ...b, status: 'completed' } : b)
     );
 
-    // Persist to DB
-    expiredBookings.forEach((b: any) => {
-      fetch('/api/owner/billing', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bookingId: b.id, booking: { status: 'completed' } }),
-      }).catch((err: any) => console.error('Failed to auto-complete booking:', err));
+    // Persist to DB — revert local state if any call fails
+    expiredBookings.forEach(async (b: any) => {
+      try {
+        const res = await fetch('/api/owner/billing', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ bookingId: b.id, booking: { status: 'completed' } }),
+        });
+        if (!res.ok) throw new Error((await res.json()).error || 'Unknown error');
+      } catch (err) {
+        console.error('Failed to auto-complete booking:', b.id, err);
+        setBookings((prev: any[]) => prev.map((x: any) => x.id === b.id ? { ...x, status: 'in-progress' } : x));
+      }
     });
   }, [currentTime]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -1527,7 +1538,18 @@ export default function OwnerDashboardPage() {
   // Handle toggle station power
   const handleTogglePower = async (stationName: string) => {
     const isCurrentlyOff = poweredOffStations.has(stationName);
-    
+
+    // Confirm before powering off — station may be in active use
+    if (!isCurrentlyOff) {
+      const hasActiveSession = bookings.some(
+        b => b.status === 'in-progress' && b.booking_items?.some(bi => bi.title === stationName)
+      );
+      const msg = hasActiveSession
+        ? `Station "${stationName}" has an active session. Power it off anyway?`
+        : `Power off "${stationName}"?`;
+      if (!window.confirm(msg)) return;
+    }
+
     // Optimistic update
     setPoweredOffStations(prev => {
       const newSet = new Set(prev);
@@ -1930,6 +1952,7 @@ export default function OwnerDashboardPage() {
 
           {/* Dashboard Tab - New Design */}
           {activeTab === 'dashboard' && (
+            <ErrorBoundary>
             <div>
               {/* Top Stats Cards */}
               <DashboardStats
@@ -2032,6 +2055,7 @@ export default function OwnerDashboardPage() {
                 })()}
               </div>
             </div>
+            </ErrorBoundary>
           )}
 
 

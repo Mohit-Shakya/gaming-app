@@ -34,6 +34,8 @@ export function DeletedBookingsPanel() {
   const [open, setOpen] = useState(false);
   const [bookings, setBookings] = useState<DeletedBooking[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [actionId, setActionId] = useState<string | null>(null);
 
@@ -49,21 +51,26 @@ export function DeletedBookingsPanel() {
     useRef<HTMLInputElement>(null),
   ];
 
-  const fetchDeleted = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  const fetchDeleted = useCallback(async (offset = 0) => {
+    if (offset === 0) { setLoading(true); setError(null); } else { setLoadingMore(true); }
     try {
-      const res = await fetch('/api/owner/deleted-bookings', {
+      const res = await fetch(`/api/owner/deleted-bookings?offset=${offset}`, {
         credentials: 'include',
         cache: 'no-store',
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to load');
-      setBookings(data.deletedBookings || []);
+      if (offset === 0) {
+        setBookings(data.deletedBookings || []);
+      } else {
+        setBookings(prev => [...prev, ...(data.deletedBookings || [])]);
+      }
+      setHasMore(data.hasMore ?? false);
     } catch (err: any) {
       setError(err.message);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   }, []);
 
@@ -293,6 +300,18 @@ export function DeletedBookingsPanel() {
                       </div>
                     );
                   })}
+                  {hasMore && (
+                    <div className="py-4 text-center border-t border-slate-800">
+                      <button
+                        onClick={() => fetchDeleted(bookings.length)}
+                        disabled={loadingMore}
+                        className="flex items-center gap-2 mx-auto px-4 py-2 rounded-lg text-xs font-medium bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-300 transition-colors disabled:opacity-50"
+                      >
+                        {loadingMore ? <Loader2 size={13} className="animate-spin" /> : null}
+                        Load more
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </Card>

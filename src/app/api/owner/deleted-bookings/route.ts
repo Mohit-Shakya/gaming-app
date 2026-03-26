@@ -4,6 +4,8 @@ import { requireOwnerContext } from "@/lib/ownerAuth";
 
 export const dynamic = "force-dynamic";
 
+const PAGE_SIZE = 50;
+
 // GET /api/owner/deleted-bookings — fetch soft-deleted bookings for owner's cafes
 export async function GET(request: NextRequest) {
   try {
@@ -11,6 +13,8 @@ export async function GET(request: NextRequest) {
     if (auth.response) return auth.response;
 
     const { ownerId, supabase } = auth.context;
+    const { searchParams } = new URL(request.url);
+    const offset = Math.max(0, parseInt(searchParams.get('offset') || '0', 10));
 
     // Get owner's cafe IDs
     const { data: cafes, error: cafesError } = await supabase
@@ -38,7 +42,7 @@ export async function GET(request: NextRequest) {
       .in("cafe_id", cafeIds)
       .not("deleted_at", "is", null)
       .order("deleted_at", { ascending: false })
-      .limit(500);
+      .range(offset, offset + PAGE_SIZE - 1);
 
     if (bookingsError) throw bookingsError;
 
@@ -68,7 +72,7 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    return NextResponse.json({ deletedBookings: enriched });
+    return NextResponse.json({ deletedBookings: enriched, hasMore: enriched.length === PAGE_SIZE });
   } catch (err: any) {
     console.error("Error fetching deleted bookings:", err);
     return NextResponse.json(

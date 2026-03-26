@@ -5,10 +5,7 @@ import { ConsoleId, CONSOLE_ICONS } from '@/lib/constants';
 import { Button } from './ui';
 import { Plus } from 'lucide-react';
 
-// Helper function to get local date string (YYYY-MM-DD) instead of UTC
-const getLocalDateString = (date: Date = new Date()): string => {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-};
+import { getLocalDateString } from '../utils';
 
 interface SessionEndedInfo {
     customerName: string;

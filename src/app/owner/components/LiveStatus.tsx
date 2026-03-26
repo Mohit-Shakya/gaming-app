@@ -5,10 +5,7 @@ import { CONSOLE_LABELS, CONSOLE_ICONS } from '@/lib/constants';
 import { Card, StatusBadge, Button, LoadingSpinner, EmptyState } from './ui';
 import { MonitorPlay, Clock, User, Calendar, AlertCircle } from 'lucide-react';
 
-// Helper function to get local date string (YYYY-MM-DD) instead of UTC
-const getLocalDateString = (date: Date = new Date()): string => {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-};
+import { getLocalDateString } from '../utils';
 
 // Types
 type ConsoleId = "ps5" | "ps4" | "xbox" | "pc" | "pool" | "arcade" | "snooker" | "vr" | "steering" | "racing_sim";
