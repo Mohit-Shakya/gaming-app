@@ -78,6 +78,8 @@ export async function GET(request: NextRequest) {
   }
 }
 
+const OWNER_PIN = "8178";
+
 // DELETE /api/owner/deleted-bookings — permanently delete a soft-deleted booking
 export async function DELETE(request: NextRequest) {
   try {
@@ -85,7 +87,11 @@ export async function DELETE(request: NextRequest) {
     if (auth.response) return auth.response;
 
     const { ownerId, supabase } = auth.context;
-    const { bookingId } = await request.json();
+    const { bookingId, ownerPin } = await request.json();
+
+    if (!ownerPin || ownerPin !== OWNER_PIN) {
+      return NextResponse.json({ error: "Invalid PIN" }, { status: 403 });
+    }
 
     if (!bookingId) {
       return NextResponse.json({ error: "bookingId is required" }, { status: 400 });
