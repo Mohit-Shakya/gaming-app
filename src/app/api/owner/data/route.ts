@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
     // bookings/customers tabs only need bookings data — skip everything else
     const isBookingsOnlyTab = scope === "full" && BOOKINGS_ONLY_TABS.has(tab);
     // billing tab only needs pricing data — skip bookings, subscriptions, profiles
-    const isPricingOnlyTab = scope === "full" && PRICING_ONLY_TABS.has(tab);
+    const isPricingOnlyTab = PRICING_ONLY_TABS.has(tab);
 
     // 1. Fetch Cafes
     const { data: cafeRows, error: cafesError } = await supabase
@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
     const cafeIds = ownerCafes.map((c: any) => c.id);
 
     // 2. Start parallel fetches
-    const shouldLoadPricing = scope === "full" && !isBookingsOnlyTab;
+    const shouldLoadPricing = (scope === "full" && !isBookingsOnlyTab) || isPricingOnlyTab;
 
     const stationPricingPromise = shouldLoadPricing
       ? supabase

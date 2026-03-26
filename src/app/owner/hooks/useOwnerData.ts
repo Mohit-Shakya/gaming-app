@@ -4,7 +4,7 @@ import { OwnerStats, CafeRow, BookingRow, NavTab } from '../types';
 
 type OwnerDataScope = 'dashboard' | 'full';
 
-const FULL_BOOKING_TABS = new Set<NavTab>(['bookings', 'customers', 'stations', 'billing']);
+const FULL_BOOKING_TABS = new Set<NavTab>(['bookings', 'customers', 'stations']);
 const AUTO_REFRESH_TABS = new Set<NavTab>(['dashboard']);
 
 function getOwnerDataScope(activeTab: NavTab): OwnerDataScope {
