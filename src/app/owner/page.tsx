@@ -1550,6 +1550,7 @@ export default function OwnerDashboardPage() {
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
+          powerToggleOnly: true,
           pricingData: {
             cafe_id: currentCafeId,
             station_name: stationName,
@@ -1560,10 +1561,7 @@ export default function OwnerDashboardPage() {
         }),
       });
 
-      if (!res.ok) throw new Error('Failed to update power state');
-      
-      // Refresh to ensure everything is in sync
-      refreshData();
+      if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed to update power state'); }
     } catch (error) {
       console.error('Error toggling power:', error);
       // Revert optimistic update on error
