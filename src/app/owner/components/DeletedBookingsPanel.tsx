@@ -198,7 +198,7 @@ export function DeletedBookingsPanel() {
                   <span>Deleted bookings are kept for 30 days before being auto-purged</span>
                 </div>
                 <button
-                  onClick={fetchDeleted}
+                  onClick={() => fetchDeleted()}
                   disabled={loading}
                   className="text-xs text-blue-400 hover:text-blue-300 transition-colors disabled:opacity-50"
                 >
