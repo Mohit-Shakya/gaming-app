@@ -1503,6 +1503,7 @@ export default function OwnerDashboardPage() {
       const res = await fetch('/api/owner/cafes', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ cafeId: currentCafeId, updates: { [columnName]: newCount } }),
       });
       if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed to add station'); }
@@ -1542,11 +1543,12 @@ export default function OwnerDashboardPage() {
     });
 
     try {
-      // Persist to database via upsert in station-pricing API
-      // We need to match the naming convention (e.g. 'PS5-01')
-      const [type, numberStr] = stationName.split('-');
-      const stationNumber = parseInt(numberStr);
-      
+      // Persist is_active toggle via upsert — conflict key is cafe_id,station_name
+      const stationNumber = parseInt(stationName.split('-')[1]);
+      // Reuse existing station_type from pricing map if available, otherwise derive from name
+      const existingPricing = stationPricing[stationName];
+      const stationType = existingPricing?.station_type || stationName.split('-')[0];
+
       const res = await fetch('/api/station-pricing', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1555,9 +1557,9 @@ export default function OwnerDashboardPage() {
           pricingData: {
             cafe_id: currentCafeId,
             station_name: stationName,
-            station_type: type,
+            station_type: stationType,
             station_number: stationNumber,
-            is_active: isCurrentlyOff // if it was off, we are turning it on (is_active = true)
+            is_active: isCurrentlyOff // true = turning on, false = turning off
           }
         }),
       });
@@ -1755,6 +1757,7 @@ export default function OwnerDashboardPage() {
       const res = await fetch('/api/owner/cafes', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ cafeId: currentCafeId, updates: { [columnName]: newCount } }),
       });
       if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed to delete station'); }
@@ -4209,9 +4212,11 @@ export default function OwnerDashboardPage() {
                         const count = (cafe[consoleTypeKey] as number) || 0;
 
                         // Create pricing data for all stations of this type
+                        // Use the same id-prefix as StationsTab (e.g. 'ps5' from 'ps5-01')
+                        const stationIdPrefix = editingStation.name.split('-')[0];
                         const allPricingData = [];
                         for (let i = 1; i <= count; i++) {
-                          const stationName = `${editingStation.type}-${String(i).padStart(2, '0')}`;
+                          const stationName = `${stationIdPrefix}-${String(i).padStart(2, '0')}`;
                           const data = { ...pricingData, station_number: i, station_name: stationName };
                           allPricingData.push(data);
                         }
