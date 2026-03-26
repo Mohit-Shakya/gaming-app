@@ -779,6 +779,14 @@ export function Reports({ cafeId, isMobile, openingHours }: ReportsProps) {
                             </h3>
                             <p className="text-sm text-slate-400">Most booked gaming stations</p>
                         </div>
+                        {consoleData.length > 0 && (
+                            <div className="text-right">
+                                <p className="text-xs text-slate-500">Total</p>
+                                <p className="text-base font-bold text-white">
+                                    ₹{Math.round(consoleData.reduce((s, c) => s + c.revenue, 0)).toLocaleString('en-IN')}
+                                </p>
+                            </div>
+                        )}
                     </div>
 
                     {loading ? (
