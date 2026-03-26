@@ -3,6 +3,9 @@ import { requireOwnerContext } from "@/lib/ownerAuth";
 
 export const dynamic = "force-dynamic";
 
+// PIN stored server-side only — never sent to client
+const OWNER_SNACK_PIN = "8178";
+
 export async function POST(request: NextRequest) {
   try {
     const auth = await requireOwnerContext(request);
@@ -10,34 +13,45 @@ export async function POST(request: NextRequest) {
     const { supabase } = auth.context;
 
     const body = await request.json();
-    const { cafeId, customerName, customerPhone, paymentMode, items } = body;
+    const { cafeId, customerName, customerPhone, paymentMode, isOwnerUse, ownerPin, items } = body;
 
     if (!cafeId || !items?.length) {
       return NextResponse.json({ error: "cafeId and items are required" }, { status: 400 });
     }
 
+    // Validate owner PIN server-side
+    if (isOwnerUse) {
+      if (!ownerPin || ownerPin !== OWNER_SNACK_PIN) {
+        return NextResponse.json({ error: "Invalid PIN" }, { status: 403 });
+      }
+    }
+
     const now = new Date();
-    const bookingDate = now.toLocaleDateString("en-CA"); // YYYY-MM-DD in local time
+    const bookingDate = now.toLocaleDateString("en-CA");
     const hours = now.getHours();
     const mins = now.getMinutes().toString().padStart(2, "0");
     const period = hours >= 12 ? "pm" : "am";
     const h12 = hours % 12 || 12;
     const startTime = `${h12}:${mins} ${period}`;
-    const totalAmount = items.reduce((s: number, i: { total_price: number }) => s + i.total_price, 0);
 
-    // 1. Create a snack-only booking record
+    // Owner use: record items but set total_amount to 0 (excluded from revenue)
+    const totalAmount = isOwnerUse
+      ? 0
+      : items.reduce((s: number, i: { total_price: number }) => s + i.total_price, 0);
+
+    // 1. Create booking record
     const { data: booking, error: bookingError } = await supabase
       .from("bookings")
       .insert({
         cafe_id: cafeId,
-        customer_name: customerName || "Walk-in",
+        customer_name: isOwnerUse ? "Owner" : (customerName || "Walk-in"),
         customer_phone: customerPhone || null,
         booking_date: bookingDate,
         start_time: startTime,
         duration: 0,
         total_amount: totalAmount,
         status: "completed",
-        source: "snack-only",
+        source: isOwnerUse ? "owner-use" : "snack-only",
         payment_mode: paymentMode || "cash",
       })
       .select("id")
@@ -64,7 +78,7 @@ export async function POST(request: NextRequest) {
     const { error: ordersError } = await supabase.from("booking_orders").insert(orders);
     if (ordersError) throw ordersError;
 
-    // 3. Decrement stock for each item
+    // 3. Decrement stock
     for (const item of items) {
       const { data: inv } = await supabase
         .from("inventory_items")
