@@ -264,8 +264,8 @@ export function Reports({ cafeId, isMobile, openingHours }: ReportsProps) {
             return null;
         };
 
-        // Count bookings per hour
-        bookings.forEach(b => {
+        // Count bookings per hour (use 30-day peak data, not the selected-period bookings)
+        peakHoursBookings.forEach(b => {
             let hour: number | null = null;
 
             if (b.start_time) {
@@ -365,18 +365,28 @@ export function Reports({ cafeId, isMobile, openingHours }: ReportsProps) {
 
         bookings.forEach(b => {
             if (b.booking_items && Array.isArray(b.booking_items)) {
+                // Track consoles seen in this booking to count each booking once per console
+                const seenInThisBooking = new Set<string>();
+                // Sum item prices to use for revenue (excludes snacks unlike total_amount)
+                const itemPriceSum = b.booking_items.reduce((s, it) =>
+                    s + (typeof it.price === 'number' ? it.price : 0), 0);
+
                 b.booking_items.forEach((item: BookingItem) => {
                     const consoleName = item.console || 'Unknown';
-                    const qty = item.quantity || 1;
                     if (!consoles[consoleName]) {
                         consoles[consoleName] = { count: 0, revenue: 0 };
                     }
-                    consoles[consoleName].count += qty;
-                    // Approximate revenue per item (split evenly)
-                    // Use precise item price if available, otherwise estimate
-                    const itemRevenue = (typeof item.price === 'number')
+                    // Count each booking once per console type (not by quantity)
+                    if (!seenInThisBooking.has(consoleName)) {
+                        seenInThisBooking.add(consoleName);
+                        consoles[consoleName].count += 1;
+                    }
+                    // Use item price directly; fall back to proportional share of item-only revenue
+                    const itemRevenue = (typeof item.price === 'number' && item.price > 0)
                         ? item.price
-                        : ((b.total_amount || 0) / (b.booking_items?.length || 1));
+                        : itemPriceSum > 0
+                            ? 0 // price unknown for this item, skip rather than guess
+                            : 0;
                     consoles[consoleName].revenue += itemRevenue;
                 });
             }
