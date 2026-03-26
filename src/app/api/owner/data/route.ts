@@ -37,18 +37,24 @@ function getIndiaDateDaysAgo(daysAgo: number): string {
   return getIndiaDateString(date);
 }
 
-async function getRequestedScope(request: NextRequest): Promise<OwnerDataScope> {
+async function getRequestedScope(request: NextRequest): Promise<{ scope: OwnerDataScope; tab: string }> {
   try {
     const body = await request.json();
-    return body?.scope === "full" ? "full" : "dashboard";
+    return {
+      scope: body?.scope === "full" ? "full" : "dashboard",
+      tab: body?.tab || "",
+    };
   } catch {
-    return "dashboard";
+    return { scope: "dashboard", tab: "" };
   }
 }
 
+// Tabs that only need bookings — skip subscriptions, pricing, profiles
+const BOOKINGS_ONLY_TABS = new Set(['bookings', 'customers']);
+
 export async function POST(request: NextRequest) {
   try {
-    const scope = await getRequestedScope(request);
+    const { scope, tab } = await getRequestedScope(request);
     const auth = await requireOwnerContext(request);
     if (auth.response) {
       return auth.response;
@@ -57,6 +63,9 @@ export async function POST(request: NextRequest) {
     const { ownerId, supabase } = auth.context;
     const todayStr = getIndiaDateString();
     const dashboardStartDate = getIndiaDateDaysAgo(DASHBOARD_BOOKING_LOOKBACK_DAYS);
+
+    // bookings/customers tabs only need bookings data — skip everything else
+    const isBookingsOnlyTab = scope === "full" && BOOKINGS_ONLY_TABS.has(tab);
 
     // 1. Fetch Cafes
     const { data: cafeRows, error: cafesError } = await supabase
@@ -86,7 +95,7 @@ export async function POST(request: NextRequest) {
     const cafeIds = ownerCafes.map((c: any) => c.id);
 
     // 2. Start parallel fetches
-    const shouldLoadPricing = scope === "full";
+    const shouldLoadPricing = scope === "full" && !isBookingsOnlyTab;
 
     const stationPricingPromise = shouldLoadPricing
       ? supabase
@@ -140,7 +149,9 @@ export async function POST(request: NextRequest) {
       : Promise.resolve({ data: [], error: null });
 
     const subscriptionsPromise =
-      scope === "full"
+      isBookingsOnlyTab
+        ? Promise.resolve({ data: [], error: null })
+        : scope === "full"
         ? supabase
             .from('subscriptions')
             .select('*, membership_plans(*)')
@@ -234,28 +245,31 @@ export async function POST(request: NextRequest) {
         supabase.from("bookings").update({ status: "completed" }).in("id", endedIds).then();
     }
 
-    // Process User Profiles
-    const profileBookingSource =
-      scope === "full"
-        ? ownerBookings
-        : [
-            ...ownerBookings.filter((b: any) => b.booking_date === todayStr),
-            ...ownerBookings.slice(0, DASHBOARD_RECENT_BOOKINGS_PREVIEW),
-          ];
-
-    const userIds = [...new Set(profileBookingSource.map((b: any) => b.user_id).filter(Boolean))];
+    // Process User Profiles — skip for bookings/customers tabs (customer_name already on row)
     const userProfiles = new Map();
 
-    if (userIds.length > 0) {
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("id, first_name, last_name, phone")
-        .in("id", userIds);
+    if (!isBookingsOnlyTab) {
+      const profileBookingSource =
+        scope === "full"
+          ? ownerBookings
+          : [
+              ...ownerBookings.filter((b: any) => b.booking_date === todayStr),
+              ...ownerBookings.slice(0, DASHBOARD_RECENT_BOOKINGS_PREVIEW),
+            ];
 
-      profiles?.forEach((p: any) => {
-        const fullName = [p.first_name, p.last_name].filter(Boolean).join(" ") || null;
-        userProfiles.set(p.id, { name: fullName, phone: p.phone });
-      });
+      const userIds = [...new Set(profileBookingSource.map((b: any) => b.user_id).filter(Boolean))];
+
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("id, first_name, last_name, phone")
+          .in("id", userIds);
+
+        profiles?.forEach((p: any) => {
+          const fullName = [p.first_name, p.last_name].filter(Boolean).join(" ") || null;
+          userProfiles.set(p.id, { name: fullName, phone: p.phone });
+        });
+      }
     }
 
     const enrichedBookings = ownerBookings.map((booking: any) => {

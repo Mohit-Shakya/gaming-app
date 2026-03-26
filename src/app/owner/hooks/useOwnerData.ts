@@ -100,7 +100,7 @@ export function useOwnerData(canFetch: boolean, canAutoRefresh: boolean, activeT
         const res = await fetch('/api/owner/data', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ scope: dataScope }),
+          body: JSON.stringify({ scope: dataScope, tab: activeTab }),
           credentials: 'include',
           cache: 'no-store',
         });
