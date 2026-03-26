@@ -63,13 +63,18 @@ export async function PUT(request: NextRequest) {
       return accessResponse;
     }
 
-    const { error } = await supabase
+    const { data: updated, error } = await supabase
       .from("cafes")
       .update(updates)
-      .eq("id", cafeId);
+      .eq("id", cafeId)
+      .select("id");
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    if (!updated || updated.length === 0) {
+      return NextResponse.json({ error: "Cafe not found or update was blocked" }, { status: 404 });
     }
 
     return NextResponse.json({ success: true });

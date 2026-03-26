@@ -1515,10 +1515,6 @@ export default function OwnerDashboardPage() {
       } : c));
 
       setShowAddStationModal(false);
-      alert(`Successfully added ${newStationCount} ${newStationType.toUpperCase()} station(s)!`);
-
-      // Trigger a refresh to update the stations list
-      refreshData();
     } catch (error) {
       console.error('Error adding station:', error);
       alert('Failed to add station. Please try again.');
@@ -1769,10 +1765,6 @@ export default function OwnerDashboardPage() {
       } : c));
 
       setStationToDelete(null);
-      alert(`Successfully deleted ${stationToDelete.name}!`);
-
-      // Trigger a refresh to update the stations list
-      refreshData();
     } catch (error) {
       console.error('Error deleting station:', error);
       alert('Failed to delete station. Please try again.');
