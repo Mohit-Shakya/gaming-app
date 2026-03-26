@@ -364,32 +364,34 @@ export function Reports({ cafeId, isMobile, openingHours }: ReportsProps) {
         const consoles: Record<string, { count: number; revenue: number }> = {};
 
         bookings.forEach(b => {
-            if (b.booking_items && Array.isArray(b.booking_items)) {
-                // Track consoles seen in this booking to count each booking once per console
-                const seenInThisBooking = new Set<string>();
-                // Sum item prices to use for revenue (excludes snacks unlike total_amount)
-                const itemPriceSum = b.booking_items.reduce((s, it) =>
-                    s + (typeof it.price === 'number' ? it.price : 0), 0);
+            const items = b.booking_items;
+            if (!items || !Array.isArray(items) || items.length === 0) return;
 
-                b.booking_items.forEach((item: BookingItem) => {
-                    const consoleName = item.console || 'Unknown';
-                    if (!consoles[consoleName]) {
-                        consoles[consoleName] = { count: 0, revenue: 0 };
-                    }
-                    // Count each booking once per console type (not by quantity)
-                    if (!seenInThisBooking.has(consoleName)) {
-                        seenInThisBooking.add(consoleName);
-                        consoles[consoleName].count += 1;
-                    }
-                    // Use item price directly; fall back to proportional share of item-only revenue
-                    const itemRevenue = (typeof item.price === 'number' && item.price > 0)
-                        ? item.price
-                        : itemPriceSum > 0
-                            ? 0 // price unknown for this item, skip rather than guess
-                            : 0;
-                    consoles[consoleName].revenue += itemRevenue;
-                });
-            }
+            const seenInThisBooking = new Set<string>();
+
+            // Sum stored item prices; if all are 0/null fall back to total_amount split
+            const itemPriceSum = items.reduce((s, it) =>
+                s + (typeof it.price === 'number' && it.price > 0 ? it.price : 0), 0);
+            const fallbackPerItem = (b.total_amount || 0) / items.length;
+
+            items.forEach((item: BookingItem) => {
+                const consoleName = item.console || 'Unknown';
+                if (!consoles[consoleName]) {
+                    consoles[consoleName] = { count: 0, revenue: 0 };
+                }
+                // Count each booking once per console type
+                if (!seenInThisBooking.has(consoleName)) {
+                    seenInThisBooking.add(consoleName);
+                    consoles[consoleName].count += 1;
+                }
+                // Use stored item price when available; otherwise proportionally split total_amount
+                const itemRevenue = (typeof item.price === 'number' && item.price > 0)
+                    ? item.price
+                    : itemPriceSum === 0
+                        ? fallbackPerItem
+                        : 0; // other items in this booking have prices — this one is genuinely 0
+                consoles[consoleName].revenue += itemRevenue;
+            });
         });
 
         return Object.entries(consoles)

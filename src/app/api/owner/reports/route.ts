@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
       return accessResponse;
     }
 
-    // Fetch current period bookings
+    // Fetch current period bookings (exclude soft-deleted)
     const { data: currentData, error: currentError } = await supabase
       .from('bookings')
       .select(`
@@ -47,6 +47,7 @@ export async function POST(request: NextRequest) {
       `)
       .eq('cafe_id', cafeId)
       .neq('status', 'cancelled')
+      .is('deleted_at', null)
       .gte('booking_date', startDate)
       .lte('booking_date', endDate)
       .order('booking_date', { ascending: true });
@@ -55,12 +56,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: currentError.message }, { status: 500 });
     }
 
-    // Fetch previous period bookings
+    // Fetch previous period bookings (exclude soft-deleted)
     const { data: prevData } = await supabase
       .from('bookings')
       .select('id, total_amount, booking_date, status, payment_mode')
       .eq('cafe_id', cafeId)
       .neq('status', 'cancelled')
+      .is('deleted_at', null)
       .gte('booking_date', prevStartDate)
       .lte('booking_date', prevEndDate);
 
@@ -164,6 +166,7 @@ export async function GET(request: NextRequest) {
       .select('id, start_time, created_at, status')
       .eq('cafe_id', cafeId)
       .neq('status', 'cancelled')
+      .is('deleted_at', null)
       .gte('booking_date', startDate)
       .lte('booking_date', endDate);
 
