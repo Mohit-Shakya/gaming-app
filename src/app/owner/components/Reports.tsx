@@ -346,6 +346,37 @@ export function Reports({ cafeId, cafeName, isMobile, openingHours }: ReportsPro
 
     const maxRevenue = Math.max(...revenueTrendData.map(d => d.amount), 100);
 
+    // Monthly breakdown — only meaningful for 'all' or 'custom' ranges
+    const monthlyData = useMemo(() => {
+        if (dateRange !== 'all' && dateRange !== 'custom') return [];
+
+        const months: Record<string, { gaming: number; snacks: number; bookings: number }> = {};
+
+        billableBookings.forEach(b => {
+            const [y, m] = b.booking_date.split('-');
+            const key = `${y}-${m}`;
+            if (!months[key]) months[key] = { gaming: 0, snacks: 0, bookings: 0 };
+            months[key].gaming += b.total_amount || 0;
+            months[key].bookings += 1;
+        });
+
+        // Add F&B from direct snack query
+        snackOrders.forEach(o => {
+            const d = new Date(o.ordered_at);
+            const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            if (!months[key]) months[key] = { gaming: 0, snacks: 0, bookings: 0 };
+            months[key].snacks += o.total_price || 0;
+        });
+
+        return Object.entries(months)
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([key, data]) => {
+                const [y, m] = key.split('-');
+                const label = new Date(Number(y), Number(m) - 1, 1).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+                return { key, label, ...data, total: data.gaming + data.snacks };
+            });
+    }, [billableBookings, snackOrders, dateRange]);
+
     // 2. Peak Hours - filtered to cafe operating hours
     const peakHoursData = useMemo(() => {
         const { openHour, closeHour } = cafeHours;
@@ -1014,6 +1045,61 @@ export function Reports({ cafeId, cafeName, isMobile, openingHours }: ReportsPro
                     </p>
                 </Card>
             </div>
+
+            {/* Monthly Breakdown — only for All Time / Custom ranges */}
+            {monthlyData.length > 0 && (
+                <Card padding="none" className="overflow-hidden">
+                    <div className="p-5 border-b border-slate-800 flex items-center justify-between">
+                        <div>
+                            <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                                <Calendar size={20} className="text-blue-400" />
+                                Monthly Breakdown
+                            </h3>
+                            <p className="text-sm text-slate-400">Revenue per month — Gaming + F&B</p>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-xs text-slate-500">Total</p>
+                            <p className="text-base font-bold text-white">
+                                ₹{monthlyData.reduce((s, m) => s + m.total, 0).toLocaleString('en-IN')}
+                            </p>
+                        </div>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left">
+                            <thead>
+                                <tr className="bg-slate-900/50 text-slate-400 text-xs uppercase tracking-wider border-b border-slate-800">
+                                    <th className="px-5 py-3 font-medium">Month</th>
+                                    <th className="px-5 py-3 font-medium text-right">Gaming</th>
+                                    <th className="px-5 py-3 font-medium text-right">F&B</th>
+                                    <th className="px-5 py-3 font-medium text-right">Total</th>
+                                    <th className="px-5 py-3 font-medium text-right">Bookings</th>
+                                    <th className="px-5 py-3 font-medium min-w-[160px]"></th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-800/50">
+                                {(() => {
+                                    const maxTotal = Math.max(...monthlyData.map(m => m.total), 1);
+                                    return monthlyData.slice().reverse().map(m => (
+                                        <tr key={m.key} className="hover:bg-slate-800/20 transition-colors">
+                                            <td className="px-5 py-3 text-sm font-medium text-white">{m.label}</td>
+                                            <td className="px-5 py-3 text-sm text-right text-emerald-400">₹{Math.round(m.gaming).toLocaleString('en-IN')}</td>
+                                            <td className="px-5 py-3 text-sm text-right text-orange-400">₹{Math.round(m.snacks).toLocaleString('en-IN')}</td>
+                                            <td className="px-5 py-3 text-sm text-right font-semibold text-white">₹{Math.round(m.total).toLocaleString('en-IN')}</td>
+                                            <td className="px-5 py-3 text-sm text-right text-slate-400">{m.bookings}</td>
+                                            <td className="px-5 py-3">
+                                                <div className="h-2 bg-slate-800 rounded-full overflow-hidden flex">
+                                                    <div className="h-full bg-emerald-500 transition-all duration-500" style={{ width: `${(m.gaming / maxTotal) * 100}%` }} />
+                                                    <div className="h-full bg-orange-500 transition-all duration-500" style={{ width: `${(m.snacks / maxTotal) * 100}%` }} />
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ));
+                                })()}
+                            </tbody>
+                        </table>
+                    </div>
+                </Card>
+            )}
 
             {/* Charts Section - Row 2 */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
