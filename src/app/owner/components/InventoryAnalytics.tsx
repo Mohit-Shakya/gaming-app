@@ -158,13 +158,27 @@ export default function InventoryAnalytics({ cafeId }: InventoryAnalyticsProps) 
       const { startDate, endDate, prevStartDate, prevEndDate } = getDateRange(dateRange);
       const now = new Date();
 
+      // Step 1: Fetch inventory items for this cafe — use their IDs to scope
+      // booking_orders reliably (avoids unreliable PostgREST embedded resource filter)
+      const { data: items } = await supabase
+        .from('inventory_items')
+        .select('*')
+        .eq('cafe_id', cafeId);
 
+      setInventoryItems(items || []);
+      const itemIds = (items || []).map((i: any) => i.id);
 
-      // Fetch current period orders — include customer details for the transactions table
+      if (itemIds.length === 0) {
+        setOrders([]);
+        setPreviousOrders([]);
+        return;
+      }
+
+      // Step 2: Fetch current period orders filtered by this cafe's item IDs
       const { data: currentOrders, error: currentError } = await supabase
         .from('booking_orders')
         .select('*, bookings!inner(id, cafe_id, customer_name, customer_phone, booking_date, start_time, payment_mode, status)')
-        .eq('bookings.cafe_id', cafeId)
+        .in('inventory_item_id', itemIds)
         .neq('bookings.status', 'cancelled')
         .gte('ordered_at', `${startDate}T00:00:00.000${getTimezoneOffset(now)}`)
         .lte('ordered_at', `${endDate}T23:59:59.999${getTimezoneOffset(now)}`)
@@ -173,25 +187,17 @@ export default function InventoryAnalytics({ cafeId }: InventoryAnalyticsProps) 
       if (currentError) console.error("Error fetching current orders:", currentError);
       setOrders((currentOrders as EnrichedOrder[]) || []);
 
-      // Fetch previous period orders using inner join
+      // Step 3: Fetch previous period orders
       const { data: prevOrders, error: prevError } = await supabase
         .from('booking_orders')
         .select('*, bookings!inner(id, cafe_id)')
-        .eq('bookings.cafe_id', cafeId)
+        .in('inventory_item_id', itemIds)
         .neq('bookings.status', 'cancelled')
         .gte('ordered_at', `${prevStartDate}T00:00:00.000${getTimezoneOffset(now)}`)
         .lte('ordered_at', `${prevEndDate}T23:59:59.999${getTimezoneOffset(now)}`);
 
       if (prevError) console.error("Error fetching previous orders:", prevError);
       setPreviousOrders(prevOrders || []);
-
-      // Fetch inventory items with cost_price
-      const { data: items } = await supabase
-        .from('inventory_items')
-        .select('*')
-        .eq('cafe_id', cafeId);
-
-      setInventoryItems(items || []);
     } catch (error) {
       console.error('Error fetching analytics:', error);
     } finally {

@@ -483,6 +483,12 @@ export function Reports({ cafeId, cafeName, isMobile, openingHours }: ReportsPro
             .sort((a, b) => b.revenue - a.revenue);
     }, [billableBookings]);
 
+    // Count of standalone snack bookings (no console items) for diagnostics
+    const snackBookingCount = useMemo(() =>
+        billableBookings.filter(b => !b.booking_items || b.booking_items.length === 0).length,
+        [billableBookings]
+    );
+
     // Export to CSV
     const exportToCSV = () => {
         const headers = ['Date', 'Time', 'Customer', 'Amount', 'Payment Mode', 'Status', 'Consoles'];
@@ -1148,6 +1154,7 @@ export function Reports({ cafeId, cafeName, isMobile, openingHours }: ReportsPro
                             <div className="flex flex-col items-center justify-center h-40 gap-2">
                                 <Store size={32} className="text-slate-700" />
                                 <p className="text-slate-500 text-sm">No snack sales in this period</p>
+                                <p className="text-slate-600 text-xs">{snackBookingCount} snack booking{snackBookingCount !== 1 ? 's' : ''} found · {billableBookings.length} total</p>
                                 <button
                                     onClick={() => setDateRange('all')}
                                     className="text-xs text-blue-400 hover:text-blue-300 underline underline-offset-2 transition-colors"
