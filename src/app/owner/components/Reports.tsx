@@ -794,20 +794,18 @@ export function Reports({ cafeId, cafeName, isMobile, openingHours }: ReportsPro
                             <p className="text-sm font-medium text-slate-400 mb-1">Total Revenue</p>
                             <p className="text-3xl font-bold text-white">₹{stats.revenue.toLocaleString()}</p>
                             <p className="text-xs text-slate-500 mt-1">{billableBookings.length} transactions</p>
-                            {/* Gaming / Snacks breakdown */}
+                            {/* Gaming / F&B breakdown */}
                             <div className="flex items-center gap-3 mt-3">
                                 <div className="flex items-center gap-1.5">
                                     <div className="w-2 h-2 rounded-full bg-emerald-500" />
                                     <span className="text-xs text-slate-400">Gaming</span>
                                     <span className="text-xs font-semibold text-emerald-400">₹{stats.gamingRevenue.toLocaleString()}</span>
                                 </div>
-                                {stats.snackRevenue > 0 && (
-                                    <div className="flex items-center gap-1.5">
-                                        <div className="w-2 h-2 rounded-full bg-orange-500" />
-                                        <span className="text-xs text-slate-400">Snacks</span>
-                                        <span className="text-xs font-semibold text-orange-400">₹{stats.snackRevenue.toLocaleString()}</span>
-                                    </div>
-                                )}
+                                <div className="flex items-center gap-1.5">
+                                    <div className="w-2 h-2 rounded-full bg-orange-500" />
+                                    <span className="text-xs text-slate-400">F&B</span>
+                                    <span className="text-xs font-semibold text-orange-400">₹{snackStats.totalRevenue.toLocaleString()}</span>
+                                </div>
                             </div>
                         </div>
                         <div className="flex flex-col items-end gap-2">
