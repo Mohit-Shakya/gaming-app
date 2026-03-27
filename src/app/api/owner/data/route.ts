@@ -50,7 +50,8 @@ async function getRequestedScope(request: NextRequest): Promise<{ scope: OwnerDa
 }
 
 // Tabs that only need bookings — skip subscriptions, pricing, profiles
-const BOOKINGS_ONLY_TABS = new Set(['bookings', 'customers']);
+// Note: 'bookings' intentionally excluded so pricing loads for edit modal auto-calc
+const BOOKINGS_ONLY_TABS = new Set(['customers']);
 // Tabs that only need pricing — skip bookings, subscriptions, profiles
 const PRICING_ONLY_TABS = new Set(['billing']);
 

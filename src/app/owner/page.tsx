@@ -589,6 +589,28 @@ export default function OwnerDashboardPage() {
     return roundedDuration;
   };
 
+  // Fetch pricing on-demand when edit modal opens and pricing not yet loaded (e.g. from dashboard tab)
+  useEffect(() => {
+    if (!editingBooking) return;
+    const cafeId = editingBooking.cafe_id || selectedCafeId;
+    if (consolePricing[cafeId] && Object.keys(consolePricing[cafeId]).length > 0) return;
+
+    fetch('/api/owner/data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scope: 'full', tab: 'billing' }),
+      credentials: 'include',
+      cache: 'no-store',
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data.consolePricing) setConsolePricing(data.consolePricing);
+        if (data.stationPricing) setStationPricing(data.stationPricing);
+      })
+      .catch(err => console.error('Failed to fetch pricing for edit modal:', err));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingBooking]);
+
   // Auto-calculate editAmount when inputs change
   useEffect(() => {
     if (editingBooking && !editAmountManuallyEdited) {
@@ -745,7 +767,7 @@ export default function OwnerDashboardPage() {
     setEditingBooking(actualBooking);
     setEditingBookingItemId(specificItemId);
     setEditAmount(actualBooking.total_amount?.toString() || "");
-    setEditAmountManuallyEdited(false); // Allow auto-calculation when duration/console changes
+    setEditAmountManuallyEdited(true); // Preserve DB amount on open; set to false when user changes items
     setEditStatus(actualBooking.status || "confirmed");
     setEditPaymentMethod(actualBooking.payment_mode || "cash");
     setEditCustomerName(actualBooking.user_name || actualBooking.customer_name || "");
