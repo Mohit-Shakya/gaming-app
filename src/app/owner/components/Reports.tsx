@@ -20,6 +20,7 @@ import {
 
 interface ReportsProps {
     cafeId: string;
+    cafeName?: string;
     isMobile: boolean;
     openingHours?: string;
 }
@@ -68,7 +69,7 @@ const parseLocalDate = (value: string): Date => {
     return new Date(year, month - 1, day);
 };
 
-export function Reports({ cafeId, isMobile, openingHours }: ReportsProps) {
+export function Reports({ cafeId, cafeName, isMobile, openingHours }: ReportsProps) {
     const [dateRange, setDateRange] = useState('7d');
     const [customStart, setCustomStart] = useState('');
     const [customEnd, setCustomEnd] = useState('');
@@ -549,7 +550,9 @@ export function Reports({ cafeId, isMobile, openingHours }: ReportsProps) {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-3xl font-bold text-white tracking-tight">Reports & Analytics</h1>
-                    <p className="text-slate-400 mt-1">Insights into your venue's performance</p>
+                    <p className="text-slate-400 mt-1">
+                        {cafeName ? <span className="font-medium text-slate-300">{cafeName}</span> : 'Insights into your venue\'s performance'}
+                    </p>
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -1145,7 +1148,12 @@ export function Reports({ cafeId, isMobile, openingHours }: ReportsProps) {
                             <div className="flex flex-col items-center justify-center h-40 gap-2">
                                 <Store size={32} className="text-slate-700" />
                                 <p className="text-slate-500 text-sm">No snack sales in this period</p>
-                                <p className="text-slate-600 text-xs">Try selecting a longer date range</p>
+                                <button
+                                    onClick={() => setDateRange('all')}
+                                    className="text-xs text-blue-400 hover:text-blue-300 underline underline-offset-2 transition-colors"
+                                >
+                                    Try All Time
+                                </button>
                             </div>
                         ) : (
                         <div className="space-y-4">

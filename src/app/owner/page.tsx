@@ -2383,6 +2383,7 @@ export default function OwnerDashboardPage() {
           {activeTab === 'reports' && (
             <Reports
               cafeId={currentCafeId}
+              cafeName={currentCafe?.name ?? undefined}
               isMobile={isMobile}
               openingHours={currentCafe?.opening_hours ?? undefined}
             />
