@@ -43,7 +43,8 @@ export async function POST(request: NextRequest) {
       .select(`
         id, total_amount, created_at, booking_date, status, payment_mode, start_time,
         customer_name, source,
-        booking_items (console, quantity, price)
+        booking_items (console, quantity, price),
+        booking_orders (item_name, quantity, unit_price, total_price)
       `)
       .eq('cafe_id', cafeId)
       .neq('status', 'cancelled')

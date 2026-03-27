@@ -30,6 +30,13 @@ interface BookingItem {
     price?: number;
 }
 
+interface BookingOrder {
+    item_name: string;
+    quantity: number;
+    unit_price: number;
+    total_price: number;
+}
+
 interface BookingData {
     id: string;
     total_amount: number;
@@ -39,6 +46,7 @@ interface BookingData {
     payment_mode: string;
     start_time?: string;
     booking_items?: BookingItem[];
+    booking_orders?: BookingOrder[];
     customer_name?: string;
     source?: string;
 }
@@ -444,6 +452,35 @@ export function Reports({ cafeId, isMobile, openingHours }: ReportsProps) {
     }, [billableBookings]);
 
     const maxConsoleCount = Math.max(...consoleData.map(c => c.count), 1);
+
+    // 5. F&B / Snack item breakdown — aggregate booking_orders from snack-only bookings
+    const snackData = useMemo(() => {
+        const items: Record<string, { qty: number; revenue: number; transactions: number }> = {};
+
+        billableBookings.forEach(b => {
+            const hasConsoleItems = b.booking_items && b.booking_items.length > 0;
+            if (hasConsoleItems) return; // gaming booking, skip
+            const orders = b.booking_orders;
+            if (!orders || orders.length === 0) return;
+
+            // Track unique bookings per item
+            const seenItems = new Set<string>();
+            orders.forEach((o: BookingOrder) => {
+                const name = o.item_name || 'Unknown';
+                if (!items[name]) items[name] = { qty: 0, revenue: 0, transactions: 0 };
+                items[name].qty += o.quantity;
+                items[name].revenue += o.total_price;
+                if (!seenItems.has(name)) {
+                    seenItems.add(name);
+                    items[name].transactions += 1;
+                }
+            });
+        });
+
+        return Object.entries(items)
+            .map(([name, data]) => ({ name, ...data }))
+            .sort((a, b) => b.revenue - a.revenue);
+    }, [billableBookings]);
 
     // Export to CSV
     const exportToCSV = () => {
@@ -1084,6 +1121,131 @@ export function Reports({ cafeId, isMobile, openingHours }: ReportsProps) {
                     )}
                 </Card>
             </div>
+
+            {/* F&B / Snacks Breakdown */}
+            {snackData.length > 0 && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    {/* Top Snack Items */}
+                    <Card className="min-h-[280px]">
+                        <div className="flex items-center justify-between mb-6">
+                            <div>
+                                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                                    <Store size={20} className="text-orange-500" />
+                                    F&B Top Items
+                                </h3>
+                                <p className="text-sm text-slate-400">Best-selling snacks & drinks</p>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-xs text-slate-500">Snack Revenue</p>
+                                <p className="text-base font-bold text-orange-400">
+                                    ₹{Math.round(stats.snackRevenue).toLocaleString('en-IN')}
+                                </p>
+                            </div>
+                        </div>
+                        <div className="space-y-4">
+                            {snackData.map((item, index) => {
+                                const maxRevenue = snackData[0]?.revenue || 1;
+                                const widthPercent = (item.revenue / maxRevenue) * 100;
+                                const colors = ['bg-orange-500', 'bg-amber-500', 'bg-yellow-500', 'bg-red-400', 'bg-pink-500'];
+                                const textColors = ['text-orange-400', 'text-amber-400', 'text-yellow-400', 'text-red-400', 'text-pink-400'];
+                                return (
+                                    <div key={item.name} className="flex items-center gap-3">
+                                        <span className="text-slate-500 text-xs w-4">{index + 1}</span>
+                                        <div className="flex-1">
+                                            <div className="flex justify-between items-center mb-1">
+                                                <span className="text-sm font-medium text-white truncate max-w-[160px]">{item.name}</span>
+                                                <span className="text-sm text-slate-400">{item.qty} sold</span>
+                                            </div>
+                                            <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+                                                <div
+                                                    className={`h-full ${colors[index % colors.length]} rounded-full transition-all duration-500`}
+                                                    style={{ width: `${widthPercent}%` }}
+                                                />
+                                            </div>
+                                            <p className={`text-xs mt-1 ${textColors[index % textColors.length]}`}>
+                                                ₹{Math.round(item.revenue).toLocaleString()} revenue · {item.transactions} orders
+                                            </p>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </Card>
+
+                    {/* Snack Revenue vs Gaming Revenue */}
+                    <Card className="min-h-[280px]">
+                        <div className="flex items-center justify-between mb-6">
+                            <div>
+                                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                                    <TrendingUp size={20} className="text-emerald-500" />
+                                    Revenue Split
+                                </h3>
+                                <p className="text-sm text-slate-400">Gaming vs F&B contribution</p>
+                            </div>
+                        </div>
+                        <div className="space-y-5">
+                            {/* Gaming */}
+                            <div>
+                                <div className="flex justify-between items-center mb-2">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-3 h-3 rounded-full bg-emerald-500" />
+                                        <span className="text-sm font-medium text-white">Gaming</span>
+                                    </div>
+                                    <div className="text-right">
+                                        <span className="text-sm font-semibold text-emerald-400">₹{Math.round(stats.gamingRevenue).toLocaleString('en-IN')}</span>
+                                        <span className="text-xs text-slate-500 ml-2">
+                                            {stats.revenue > 0 ? ((stats.gamingRevenue / stats.revenue) * 100).toFixed(0) : 0}%
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="h-3 bg-slate-800 rounded-full overflow-hidden">
+                                    <div
+                                        className="h-full bg-emerald-500 rounded-full transition-all duration-700"
+                                        style={{ width: `${stats.revenue > 0 ? (stats.gamingRevenue / stats.revenue) * 100 : 0}%` }}
+                                    />
+                                </div>
+                            </div>
+                            {/* F&B */}
+                            <div>
+                                <div className="flex justify-between items-center mb-2">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-3 h-3 rounded-full bg-orange-500" />
+                                        <span className="text-sm font-medium text-white">F&B / Snacks</span>
+                                    </div>
+                                    <div className="text-right">
+                                        <span className="text-sm font-semibold text-orange-400">₹{Math.round(stats.snackRevenue).toLocaleString('en-IN')}</span>
+                                        <span className="text-xs text-slate-500 ml-2">
+                                            {stats.revenue > 0 ? ((stats.snackRevenue / stats.revenue) * 100).toFixed(0) : 0}%
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="h-3 bg-slate-800 rounded-full overflow-hidden">
+                                    <div
+                                        className="h-full bg-orange-500 rounded-full transition-all duration-700"
+                                        style={{ width: `${stats.revenue > 0 ? (stats.snackRevenue / stats.revenue) * 100 : 0}%` }}
+                                    />
+                                </div>
+                            </div>
+                            {/* Divider + totals */}
+                            <div className="pt-4 border-t border-slate-800 flex justify-between items-center">
+                                <span className="text-sm text-slate-400">Total Revenue</span>
+                                <span className="text-lg font-bold text-white">₹{Math.round(stats.revenue).toLocaleString('en-IN')}</span>
+                            </div>
+                            {/* Snack item count */}
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="bg-slate-800/50 rounded-xl p-3 text-center">
+                                    <p className="text-xl font-bold text-white">{snackData.reduce((s, i) => s + i.qty, 0)}</p>
+                                    <p className="text-xs text-slate-400 mt-0.5">Snack units sold</p>
+                                </div>
+                                <div className="bg-slate-800/50 rounded-xl p-3 text-center">
+                                    <p className="text-xl font-bold text-white">{snackData.reduce((s, i) => s + i.transactions, 0)}</p>
+                                    <p className="text-xs text-slate-400 mt-0.5">Snack orders</p>
+                                </div>
+                            </div>
+                        </div>
+                    </Card>
+                </div>
+            )}
 
             {/* Recent Transactions Table */}
             <Card padding="none" className="overflow-hidden">
