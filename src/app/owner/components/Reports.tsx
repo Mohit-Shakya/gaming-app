@@ -26,10 +26,6 @@ import {
     Globe,
     Store,
     Package,
-    DollarSign,
-    ShoppingCart,
-    Percent,
-    BarChart3,
     Receipt,
     User,
     Phone,
@@ -620,38 +616,6 @@ export function Reports({ cafeId, cafeName, isMobile, openingHours }: ReportsPro
         });
         return Object.values(map).sort((a, b) => b.quantitySold - a.quantitySold).slice(0, 10);
     }, [snackOrders, snackInventoryItems]);
-
-    const snackCategoryBreakdown = useMemo(() => {
-        const cats: Record<InventoryCategory, { qty: number; revenue: number; profit: number }> = {
-            snacks: { qty: 0, revenue: 0, profit: 0 },
-            cold_drinks: { qty: 0, revenue: 0, profit: 0 },
-            hot_drinks: { qty: 0, revenue: 0, profit: 0 },
-            combo: { qty: 0, revenue: 0, profit: 0 },
-        };
-        snackOrders.forEach(o => {
-            const inv = snackInventoryItems.find(i => i.id === o.inventory_item_id);
-            const cat = inv?.category || 'snacks';
-            cats[cat].qty += o.quantity;
-            cats[cat].revenue += o.total_price;
-            cats[cat].profit += inv?.cost_price
-                ? o.total_price - inv.cost_price * o.quantity
-                : o.total_price;
-        });
-        const totalRev = snackStats.totalRevenue || 1;
-        return Object.entries(cats)
-            .map(([c, d]) => ({ category: c as InventoryCategory, ...d, percentage: (d.revenue / totalRev) * 100 }))
-            .filter(c => c.revenue > 0)
-            .sort((a, b) => b.revenue - a.revenue);
-    }, [snackOrders, snackInventoryItems, snackStats.totalRevenue]);
-
-    const snackRevenueTrend = useMemo(() => {
-        const daily: Record<string, number> = {};
-        snackOrders.forEach(o => {
-            const date = new Date(o.ordered_at).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short' });
-            daily[date] = (daily[date] || 0) + (o.total_price || 0);
-        });
-        return Object.entries(daily).map(([date, amount]) => ({ date, amount }));
-    }, [snackOrders]);
 
     const snackTransactions = useMemo((): SnackTransaction[] => {
         const grouped: Record<string, SnackTransaction> = {};
@@ -1315,296 +1279,138 @@ export function Reports({ cafeId, cafeName, isMobile, openingHours }: ReportsPro
                 </Card>
             </div>
 
-            {/* ── F&B Analytics Section (mirrors InventoryAnalytics) ── */}
-            <div className="space-y-6">
-                {/* Section header */}
+            {/* ── F&B Snacks Section ── */}
+            <div className="space-y-5">
+                {/* Header */}
                 <div className="flex items-center justify-between">
                     <div>
                         <h2 className="text-xl font-bold text-white flex items-center gap-2">
                             <Store className="w-5 h-5 text-orange-500" />
-                            F&B Analytics
+                            F&B Snacks
                         </h2>
-                        <p className="text-slate-400 text-sm mt-0.5">Snack & drink performance for this period</p>
+                        <p className="text-slate-400 text-sm mt-0.5">Snack & drink sales for this period</p>
                     </div>
-                    {/* Revenue Split pill */}
-                    <div className="hidden sm:flex items-center gap-4 bg-slate-800/60 border border-slate-700/50 rounded-xl px-4 py-2">
-                        <div className="flex items-center gap-1.5">
-                            <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                            <span className="text-xs text-slate-400">Gaming</span>
-                            <span className="text-xs font-semibold text-emerald-400 ml-1">₹{Math.round(stats.gamingRevenue).toLocaleString('en-IN')}</span>
+                    {snackOrders.length > 0 && (
+                        <div className="hidden sm:flex items-center gap-4 bg-slate-800/60 border border-slate-700/50 rounded-xl px-4 py-2">
+                            <div className="flex items-center gap-1.5">
+                                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                                <span className="text-xs text-slate-400">Gaming</span>
+                                <span className="text-xs font-semibold text-emerald-400 ml-1">₹{Math.round(stats.gamingRevenue).toLocaleString('en-IN')}</span>
+                            </div>
+                            <div className="w-px h-4 bg-slate-700" />
+                            <div className="flex items-center gap-1.5">
+                                <div className="w-2.5 h-2.5 rounded-full bg-orange-500" />
+                                <span className="text-xs text-slate-400">F&B</span>
+                                <span className="text-xs font-semibold text-orange-400 ml-1">₹{Math.round(snackStats.totalRevenue).toLocaleString('en-IN')}</span>
+                            </div>
                         </div>
-                        <div className="w-px h-4 bg-slate-700" />
-                        <div className="flex items-center gap-1.5">
-                            <div className="w-2.5 h-2.5 rounded-full bg-orange-500" />
-                            <span className="text-xs text-slate-400">F&B</span>
-                            <span className="text-xs font-semibold text-orange-400 ml-1">₹{Math.round(snackStats.totalRevenue).toLocaleString('en-IN')}</span>
-                        </div>
-                    </div>
+                    )}
                 </div>
 
                 {snackLoading ? (
-                    <div className="flex items-center justify-center py-16 text-slate-500 text-sm gap-2">
+                    <div className="flex items-center justify-center py-12 text-slate-500 text-sm gap-2">
                         <div className="w-4 h-4 border-2 border-slate-600 border-t-orange-500 rounded-full animate-spin" />
                         Loading F&B data...
                     </div>
                 ) : snackOrders.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-14 gap-3 bg-slate-800/20 rounded-2xl border border-slate-800">
-                        <Store size={36} className="text-slate-700" />
-                        <p className="text-slate-400 text-sm font-medium">No F&B sales in this period</p>
-                        <p className="text-slate-600 text-xs">{snackInventoryItems.length} inventory items configured</p>
+                    <div className="flex flex-col items-center justify-center py-10 gap-2 bg-slate-800/20 rounded-2xl border border-slate-800">
+                        <Store size={32} className="text-slate-700" />
+                        <p className="text-slate-400 text-sm">No F&B sales in this period</p>
                         <button onClick={() => setDateRange('all')} className="text-xs text-blue-400 hover:text-blue-300 underline underline-offset-2 transition-colors">
                             Try All Time
                         </button>
                     </div>
                 ) : (
-                <>
-                    {/* Key Metrics */}
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                        <Card padding="lg" className="bg-gradient-to-br from-slate-900 to-slate-900/50 border-slate-800">
-                            <div className="flex items-start justify-between">
-                                <div>
-                                    <p className="text-sm font-medium text-slate-400 mb-1">F&B Revenue</p>
-                                    <p className="text-2xl font-bold text-white">₹{snackStats.totalRevenue.toLocaleString()}</p>
-                                    <p className="text-xs text-slate-500 mt-1">{snackStats.totalOrders} orders</p>
-                                </div>
-                                <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-500">
-                                    <DollarSign size={18} />
-                                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Top Selling Items */}
+                    <Card>
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="text-base font-semibold text-white flex items-center gap-2">
+                                <Package size={18} className="text-orange-500" />
+                                Top Items
+                            </h3>
+                            <div className="text-right">
+                                <p className="text-xs text-slate-500">F&B Revenue</p>
+                                <p className="text-sm font-bold text-orange-400">₹{snackStats.totalRevenue.toLocaleString('en-IN')}</p>
                             </div>
-                        </Card>
-                        <Card padding="lg" className="bg-gradient-to-br from-slate-900 to-slate-900/50 border-slate-800">
-                            <div className="flex items-start justify-between">
-                                <div>
-                                    <p className="text-sm font-medium text-slate-400 mb-1">F&B Profit</p>
-                                    <p className="text-2xl font-bold text-white">₹{snackStats.totalProfit.toLocaleString()}</p>
-                                    <p className="text-xs text-slate-500 mt-1">{snackStats.profitMargin.toFixed(1)}% margin</p>
-                                </div>
-                                <div className="p-2 rounded-xl bg-green-500/10 text-green-500">
-                                    <TrendingUp size={18} />
-                                </div>
-                            </div>
-                        </Card>
-                        <Card padding="lg" className="bg-gradient-to-br from-slate-900 to-slate-900/50 border-slate-800">
-                            <div className="flex items-start justify-between">
-                                <div>
-                                    <p className="text-sm font-medium text-slate-400 mb-1">Items Sold</p>
-                                    <p className="text-2xl font-bold text-white">{snackStats.totalItemsSold}</p>
-                                    <p className="text-xs text-slate-500 mt-1">Total units</p>
-                                </div>
-                                <div className="p-2 rounded-xl bg-blue-500/10 text-blue-500">
-                                    <ShoppingCart size={18} />
-                                </div>
-                            </div>
-                        </Card>
-                        <Card padding="lg" className="bg-gradient-to-br from-slate-900 to-slate-900/50 border-slate-800">
-                            <div className="flex items-start justify-between">
-                                <div>
-                                    <p className="text-sm font-medium text-slate-400 mb-1">Avg Order</p>
-                                    <p className="text-2xl font-bold text-white">₹{Math.round(snackStats.avgOrderValue)}</p>
-                                    <p className="text-xs text-slate-500 mt-1">Per transaction</p>
-                                </div>
-                                <div className="p-2 rounded-xl bg-amber-500/10 text-amber-500">
-                                    <Percent size={18} />
-                                </div>
-                            </div>
-                        </Card>
-                    </div>
-
-                    {/* Top Items + Category Breakdown */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        {/* Top Selling Items */}
-                        <Card className="min-h-[300px]">
-                            <div className="flex items-center justify-between mb-4">
-                                <div>
-                                    <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                                        <Package size={20} className="text-cyan-500" />
-                                        Top Selling Items
-                                    </h3>
-                                    <p className="text-sm text-slate-400">By quantity sold</p>
-                                </div>
-                            </div>
-                            <div className="space-y-3">
-                                {snackTopItems.slice(0, 5).map((item, index) => {
-                                    const colors = CATEGORY_COLORS[item.category];
-                                    const maxQty = snackTopItems[0]?.quantitySold || 1;
-                                    return (
-                                        <div key={item.itemId} className="flex items-center gap-3">
-                                            <span className="text-slate-500 text-sm w-5">{index + 1}</span>
-                                            <div className="flex-1">
-                                                <div className="flex justify-between items-center mb-1">
-                                                    <span className="text-sm font-medium text-white truncate max-w-[150px]">{item.itemName}</span>
-                                                    <span className="text-sm text-slate-400">{item.quantitySold} sold</span>
-                                                </div>
-                                                <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
-                                                    <div className={`h-full ${colors.bar} rounded-full transition-all duration-500`} style={{ width: `${(item.quantitySold / maxQty) * 100}%` }} />
-                                                </div>
-                                                <div className="flex justify-between mt-1">
-                                                    <span className={`text-xs ${colors.text}`}>{CATEGORY_LABELS[item.category]}</span>
-                                                    <span className="text-xs text-slate-500">₹{item.revenue.toLocaleString()}</span>
-                                                </div>
+                        </div>
+                        <div className="space-y-3">
+                            {snackTopItems.slice(0, 5).map((item, index) => {
+                                const colors = CATEGORY_COLORS[item.category];
+                                const maxQty = snackTopItems[0]?.quantitySold || 1;
+                                return (
+                                    <div key={item.itemId} className="flex items-center gap-3">
+                                        <span className="text-slate-500 text-xs w-4">{index + 1}</span>
+                                        <div className="flex-1">
+                                            <div className="flex justify-between items-center mb-1">
+                                                <span className="text-sm font-medium text-white truncate max-w-[140px]">{item.itemName}</span>
+                                                <span className="text-xs text-slate-400">{item.quantitySold} sold · ₹{item.revenue.toLocaleString()}</span>
+                                            </div>
+                                            <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                                                <div className={`h-full ${colors.bar} rounded-full transition-all duration-500`} style={{ width: `${(item.quantitySold / maxQty) * 100}%` }} />
                                             </div>
                                         </div>
-                                    );
-                                })}
-                            </div>
-                        </Card>
-
-                        {/* Sales by Category */}
-                        <Card className="min-h-[300px]">
-                            <div className="flex items-center justify-between mb-4">
-                                <div>
-                                    <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                                        <BarChart3 size={20} className="text-purple-500" />
-                                        Sales by Category
-                                    </h3>
-                                    <p className="text-sm text-slate-400">Revenue breakdown</p>
-                                </div>
-                            </div>
-                            {snackCategoryBreakdown.length === 0 ? (
-                                <div className="flex items-center justify-center h-48 text-slate-500 text-sm">No category data</div>
-                            ) : (
-                                <div className="space-y-4">
-                                    {snackCategoryBreakdown.map((cat) => {
-                                        const colors = CATEGORY_COLORS[cat.category];
-                                        return (
-                                            <div key={cat.category} className="flex items-center gap-4">
-                                                <div className={`p-2 rounded-lg ${colors.bg} ${colors.text}`}>
-                                                    <Package size={18} />
-                                                </div>
-                                                <div className="flex-1">
-                                                    <div className="flex justify-between items-center mb-1">
-                                                        <span className="text-sm font-medium text-white">{CATEGORY_LABELS[cat.category]}</span>
-                                                        <span className="text-sm text-slate-400">₹{cat.revenue.toLocaleString()} ({cat.percentage.toFixed(0)}%)</span>
-                                                    </div>
-                                                    <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
-                                                        <div className={`h-full ${colors.bar} rounded-full transition-all duration-500`} style={{ width: `${cat.percentage}%` }} />
-                                                    </div>
-                                                    <div className="flex justify-between mt-1">
-                                                        <span className="text-xs text-slate-500">{cat.qty} items sold</span>
-                                                        <span className="text-xs text-emerald-400">₹{cat.profit.toLocaleString()} profit</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                        </Card>
-                    </div>
-
-                    {/* F&B Revenue Trend */}
-                    {snackRevenueTrend.length > 0 && (
-                        <Card className="min-h-[240px]">
-                            <div className="flex items-center justify-between mb-4">
-                                <div>
-                                    <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                                        <TrendingUp size={20} className="text-orange-500" />
-                                        F&B Revenue Trend
-                                    </h3>
-                                    <p className="text-sm text-slate-400">Daily F&B earnings</p>
-                                </div>
-                            </div>
-                            <div className="w-full relative pt-6 pb-2">
-                                {(() => {
-                                    const displayData = snackRevenueTrend.slice(-7);
-                                    const maxInView = Math.max(...displayData.map(x => x.amount), 100);
-                                    return (
-                                        <div className="flex items-end justify-between px-2 gap-1" style={{ height: '150px' }}>
-                                            {displayData.map((d, i) => {
-                                                const barHeight = Math.max((d.amount / maxInView) * 100, 8);
-                                                const parts = d.date.split(' ');
-                                                const shortDate = `${parts[0].replace(',', '')} ${parts[1]}`;
-                                                return (
-                                                    <div key={i} className="flex flex-col items-center gap-2 group flex-1">
-                                                        <div className="w-full flex flex-col items-center h-full justify-end relative">
-                                                            <div className="w-full max-w-[60px] relative flex items-end h-[120px]">
-                                                                <div className="w-full bg-orange-500/20 border-t-2 border-orange-500 rounded-t-sm hover:bg-orange-500/40 transition-all relative" style={{ height: `${barHeight}%` }}>
-                                                                    <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-[10px] text-orange-400 font-medium whitespace-nowrap">
-                                                                        ₹{d.amount.toLocaleString()}
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                        <span className="text-[10px] text-slate-500 whitespace-nowrap">{shortDate}</span>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    );
-                                })()}
-                            </div>
-                            {snackRevenueTrend.length > 7 && (
-                                <p className="text-center text-xs text-slate-500 mt-3">Showing last 7 days of {snackRevenueTrend.length}</p>
-                            )}
-                        </Card>
-                    )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                        <div className="mt-4 pt-3 border-t border-slate-800 flex justify-between text-xs text-slate-500">
+                            <span>{snackStats.totalItemsSold} units sold</span>
+                            <span>{snackStats.totalOrders} orders · avg ₹{Math.round(snackStats.avgOrderValue)}</span>
+                        </div>
+                    </Card>
 
                     {/* Sale Transactions */}
-                    {snackTransactions.length > 0 && (
-                        <Card padding="none" className="overflow-hidden">
-                            <div className="p-5 border-b border-slate-800 flex items-center justify-between">
-                                <div>
-                                    <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                                        <Receipt size={20} className="text-cyan-500" />
-                                        F&B Sale Transactions
-                                    </h3>
-                                    <p className="text-sm text-slate-400">{snackTransactions.filter(t => !t.isOwnerUse).length} customer sales in this period</p>
-                                </div>
-                            </div>
-                            <div className="divide-y divide-slate-800/60">
-                                {snackTransactions.map(tx => {
-                                    const payMode = (tx.paymentMode || 'cash').toLowerCase();
-                                    const isOwner = tx.isOwnerUse;
-                                    const [y, m, d] = tx.date.split('-').map(Number);
-                                    const dateLabel = new Date(y, m - 1, d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
-                                    return (
-                                        <div key={tx.bookingId} className={`px-5 py-4 hover:bg-slate-800/20 transition-colors ${isOwner ? 'opacity-60' : ''}`}>
-                                            <div className="flex items-start justify-between gap-4">
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="flex flex-wrap items-center gap-2 mb-1.5">
-                                                        <div className="flex items-center gap-1.5 text-sm font-medium text-slate-200">
-                                                            <User size={13} className="text-slate-500 shrink-0" />
-                                                            {tx.customerName}
-                                                        </div>
-                                                        {tx.customerPhone && (
-                                                            <div className="flex items-center gap-1 text-xs text-slate-500">
-                                                                <Phone size={11} className="shrink-0" />
-                                                                {tx.customerPhone}
-                                                            </div>
-                                                        )}
-                                                        {isOwner ? (
-                                                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-purple-500/15 text-purple-400">Owner Use</span>
-                                                        ) : payMode === 'cash' ? (
-                                                            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-500/15 text-green-400"><Banknote size={10} />Cash</span>
-                                                        ) : payMode === 'upi' ? (
-                                                            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-500/15 text-blue-400"><CreditCard size={10} />UPI</span>
-                                                        ) : (
-                                                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-700 text-slate-400 capitalize">{tx.paymentMode}</span>
-                                                        )}
-                                                    </div>
-                                                    <div className="flex flex-wrap gap-1.5 mb-1.5">
-                                                        {tx.items.map((item, idx) => (
-                                                            <span key={idx} className="text-[11px] px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 border border-slate-700">
-                                                                {item.name} ×{item.quantity} · ₹{item.price.toLocaleString()}
-                                                            </span>
-                                                        ))}
-                                                    </div>
-                                                    <div className="text-xs text-slate-500">{dateLabel}{tx.time ? ` · ${tx.time}` : ''}</div>
+                    <Card padding="none" className="overflow-hidden">
+                        <div className="p-4 border-b border-slate-800 flex items-center justify-between">
+                            <h3 className="text-base font-semibold text-white flex items-center gap-2">
+                                <Receipt size={18} className="text-cyan-500" />
+                                F&B Transactions
+                            </h3>
+                            <span className="text-xs text-slate-500">{snackTransactions.filter(t => !t.isOwnerUse).length} sales</span>
+                        </div>
+                        <div className="divide-y divide-slate-800/60 max-h-[320px] overflow-y-auto">
+                            {snackTransactions.map(tx => {
+                                const payMode = (tx.paymentMode || 'cash').toLowerCase();
+                                const isOwner = tx.isOwnerUse;
+                                const [y, m, d] = tx.date.split('-').map(Number);
+                                const dateLabel = new Date(y, m - 1, d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+                                return (
+                                    <div key={tx.bookingId} className={`px-4 py-3 hover:bg-slate-800/20 transition-colors ${isOwner ? 'opacity-50' : ''}`}>
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                                                    <span className="text-sm font-medium text-slate-200">{tx.customerName}</span>
+                                                    {tx.customerPhone && <span className="text-xs text-slate-500">{tx.customerPhone}</span>}
+                                                    {isOwner ? (
+                                                        <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-500/15 text-purple-400">Owner</span>
+                                                    ) : payMode === 'cash' ? (
+                                                        <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-green-500/15 text-green-400">Cash</span>
+                                                    ) : payMode === 'upi' ? (
+                                                        <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-500/15 text-blue-400">UPI</span>
+                                                    ) : (
+                                                        <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-700 text-slate-400 capitalize">{tx.paymentMode}</span>
+                                                    )}
                                                 </div>
-                                                <div className="shrink-0 text-right">
-                                                    <p className={`text-base font-bold ${isOwner ? 'text-slate-500' : 'text-emerald-400'}`}>
-                                                        {isOwner ? 'Free' : `₹${tx.totalAmount.toLocaleString()}`}
-                                                    </p>
-                                                    <p className="text-xs text-slate-600 mt-0.5">#{tx.bookingId.slice(0, 8).toUpperCase()}</p>
+                                                <div className="flex flex-wrap gap-1">
+                                                    {tx.items.map((item, idx) => (
+                                                        <span key={idx} className="text-[11px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700/60">
+                                                            {item.name} ×{item.quantity}
+                                                        </span>
+                                                    ))}
                                                 </div>
+                                                <p className="text-[11px] text-slate-600 mt-1">{dateLabel}{tx.time ? ` · ${tx.time}` : ''}</p>
                                             </div>
+                                            <p className={`text-sm font-bold shrink-0 ${isOwner ? 'text-slate-500' : 'text-emerald-400'}`}>
+                                                {isOwner ? 'Free' : `₹${tx.totalAmount.toLocaleString()}`}
+                                            </p>
                                         </div>
-                                    );
-                                })}
-                            </div>
-                        </Card>
-                    )}
-                </>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </Card>
+                </div>
                 )}
             </div>
 
