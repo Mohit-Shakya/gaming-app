@@ -792,8 +792,8 @@ export function Reports({ cafeId, cafeName, isMobile, openingHours }: ReportsPro
                     <div className="flex items-start justify-between">
                         <div className="flex-1">
                             <p className="text-sm font-medium text-slate-400 mb-1">Total Revenue</p>
-                            <p className="text-3xl font-bold text-white">₹{stats.revenue.toLocaleString()}</p>
-                            <p className="text-xs text-slate-500 mt-1">{billableBookings.length} transactions</p>
+                            <p className="text-3xl font-bold text-white">₹{(stats.gamingRevenue + snackStats.totalRevenue).toLocaleString()}</p>
+                            <p className="text-xs text-slate-500 mt-1">{billableBookings.length} transactions · {snackStats.totalOrders} F&B orders</p>
                             {/* Gaming / F&B breakdown */}
                             <div className="flex items-center gap-3 mt-3">
                                 <div className="flex items-center gap-1.5">
