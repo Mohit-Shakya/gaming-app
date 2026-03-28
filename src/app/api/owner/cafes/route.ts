@@ -65,16 +65,31 @@ export async function PUT(request: NextRequest) {
 
     // Ownership already verified above — use only cafeId so the update
     // isn't silently skipped by an owner_id type/value mismatch
-    const { error } = await supabase
+    const { data: updatedRows, error, count } = await supabase
       .from("cafes")
       .update(updates)
-      .eq("id", cafeId);
+      .eq("id", cafeId)
+      .select("id");
+
+    console.log('[cafes PUT] cafeId:', cafeId, 'ownerId:', ownerId, 'updates:', JSON.stringify(updates));
+    console.log('[cafes PUT] result — error:', error?.message, 'rows returned:', updatedRows?.length, 'count:', count);
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true });
+    // Verify write by re-reading the row
+    const updateKeys = Object.keys(updates);
+    if (updateKeys.length > 0) {
+      const { data: verifyRow } = await supabase
+        .from("cafes")
+        .select(updateKeys.join(","))
+        .eq("id", cafeId)
+        .maybeSingle();
+      console.log('[cafes PUT] verify read after update:', JSON.stringify(verifyRow));
+    }
+
+    return NextResponse.json({ success: true, rowsAffected: updatedRows?.length ?? 0 });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || "Failed to update cafe" }, { status: 500 });
   }
