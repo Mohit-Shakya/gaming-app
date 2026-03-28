@@ -314,6 +314,53 @@ export function LiveStatus({ cafeId, isMobile = false }: LiveStatusProps) {
                 </div>
             </div>
 
+            {/* Active Sessions Summary */}
+            {(() => {
+                const activeSessions = consoleData.flatMap(group =>
+                    group.statuses
+                        .filter(s => s.status === 'busy' || s.status === 'ending_soon')
+                        .map(s => ({ ...s, groupLabel: group.label, groupIcon: group.icon }))
+                );
+                if (activeSessions.length === 0) return null;
+                return (
+                    <div>
+                        <h3 className="text-base font-semibold text-white mb-3 px-1">Active Sessions</h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                            {activeSessions.map(session => {
+                                const isEnding = session.status === 'ending_soon';
+                                return (
+                                    <div key={session.id} className={`
+                                        rounded-xl border p-4 flex items-center gap-4
+                                        ${isEnding ? 'bg-amber-500/5 border-amber-500/20' : 'bg-red-500/5 border-red-500/20'}
+                                    `}>
+                                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0 bg-slate-800`}>
+                                            {session.groupIcon}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center justify-between gap-2">
+                                                <span className="font-bold text-white text-sm">
+                                                    {session.groupLabel}-{String(session.consoleNumber).padStart(2, '0')}
+                                                </span>
+                                                {isEnding && (
+                                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/10 text-amber-500 border border-amber-500/20 uppercase flex-shrink-0">Ending Soon</span>
+                                                )}
+                                            </div>
+                                            <div className="text-slate-400 text-xs truncate mt-0.5">{session.booking?.customerName || '—'}</div>
+                                            <div className={`text-xs font-semibold mt-1 ${isEnding ? 'text-amber-400' : 'text-slate-300'}`}>
+                                                {session.booking?.endTime === 'Ongoing'
+                                                    ? `${session.booking.timeRemaining}m elapsed`
+                                                    : `${session.booking?.timeRemaining}m left · Ends ${session.booking?.endTime?.split(' ')[0] || ''}`
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                );
+            })()}
+
             {/* Grid Sections */}
             {consoleData.map((group) => (
                 <div key={group.type}>
