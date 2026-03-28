@@ -352,20 +352,20 @@ export function Reports({ cafeId, cafeName, isMobile, openingHours }: ReportsPro
 
         const months: Record<string, { gaming: number; snacks: number; bookings: number }> = {};
 
+        // Split by whether booking has console items.
+        // total_amount already includes any F&B orders attached to that booking,
+        // so we must NOT add snackOrders separately (would double-count).
         billableBookings.forEach(b => {
             const [y, m] = b.booking_date.split('-');
             const key = `${y}-${m}`;
             if (!months[key]) months[key] = { gaming: 0, snacks: 0, bookings: 0 };
-            months[key].gaming += b.total_amount || 0;
             months[key].bookings += 1;
-        });
-
-        // Add F&B from direct snack query
-        snackOrders.forEach(o => {
-            const d = new Date(o.ordered_at);
-            const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-            if (!months[key]) months[key] = { gaming: 0, snacks: 0, bookings: 0 };
-            months[key].snacks += o.total_price || 0;
+            if (b.booking_items && b.booking_items.length > 0) {
+                months[key].gaming += b.total_amount || 0;
+            } else {
+                // Standalone snack sale or membership-session — classify as snacks
+                months[key].snacks += b.total_amount || 0;
+            }
         });
 
         return Object.entries(months)
@@ -375,7 +375,7 @@ export function Reports({ cafeId, cafeName, isMobile, openingHours }: ReportsPro
                 const label = new Date(Number(y), Number(m) - 1, 1).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
                 return { key, label, ...data, total: data.gaming + data.snacks };
             });
-    }, [billableBookings, snackOrders, dateRange]);
+    }, [billableBookings, dateRange]);
 
     // 2. Peak Hours - filtered to cafe operating hours
     const peakHoursData = useMemo(() => {
@@ -854,20 +854,22 @@ export function Reports({ cafeId, cafeName, isMobile, openingHours }: ReportsPro
                     <div className="flex items-start justify-between">
                         <div className="flex-1">
                             <p className="text-sm font-medium text-slate-400 mb-1">Total Revenue</p>
-                            <p className="text-3xl font-bold text-white">₹{(stats.gamingRevenue + snackStats.totalRevenue).toLocaleString()}</p>
+                            <p className="text-3xl font-bold text-white">₹{stats.revenue.toLocaleString()}</p>
                             <p className="text-xs text-slate-500 mt-1">{billableBookings.length} transactions · {snackStats.totalOrders} F&B orders</p>
-                            {/* Gaming / F&B breakdown */}
+                            {/* Gaming / Standalone-snacks breakdown */}
                             <div className="flex items-center gap-3 mt-3">
                                 <div className="flex items-center gap-1.5">
                                     <div className="w-2 h-2 rounded-full bg-emerald-500" />
                                     <span className="text-xs text-slate-400">Gaming</span>
                                     <span className="text-xs font-semibold text-emerald-400">₹{stats.gamingRevenue.toLocaleString()}</span>
                                 </div>
-                                <div className="flex items-center gap-1.5">
-                                    <div className="w-2 h-2 rounded-full bg-orange-500" />
-                                    <span className="text-xs text-slate-400">F&B</span>
-                                    <span className="text-xs font-semibold text-orange-400">₹{snackStats.totalRevenue.toLocaleString()}</span>
-                                </div>
+                                {stats.snackRevenue > 0 && (
+                                    <div className="flex items-center gap-1.5">
+                                        <div className="w-2 h-2 rounded-full bg-orange-500" />
+                                        <span className="text-xs text-slate-400">Snacks</span>
+                                        <span className="text-xs font-semibold text-orange-400">₹{stats.snackRevenue.toLocaleString()}</span>
+                                    </div>
+                                )}
                             </div>
                         </div>
                         <div className="flex flex-col items-end gap-2">

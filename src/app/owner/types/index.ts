@@ -5,11 +5,10 @@ export type OwnerStats = {
   cafesCount: number;
   bookingsToday: number;
   recentBookings: number;
-  recentRevenue: number;
   todayRevenue: number;
   weekRevenue: number;
-  monthRevenue: number;
-  quarterRevenue: number;
+  monthRevenue: number | null;   // null when loaded data window doesn't cover full month
+  quarterRevenue: number | null; // null when loaded data window doesn't cover full quarter
   totalRevenue: number;
   totalBookings: number;
   pendingBookings: number;

@@ -88,7 +88,10 @@ export function DashboardStats({
 
   const todayStr = getLocalDateString();
   const todayBookings = bookings.filter(
-    (b) => b.booking_date === todayStr && b.status !== 'cancelled'
+    (b) => b.booking_date === todayStr &&
+      b.status !== 'cancelled' &&
+      b.status !== 'in-progress' &&
+      b.payment_mode !== 'owner'
   );
   const todaySubscriptions = subscriptions.filter((sub) => {
     const purchaseDate = sub.purchase_date
@@ -103,9 +106,11 @@ export function DashboardStats({
     const mode = b.payment_mode?.toLowerCase();
     return mode === 'online' || mode === 'upi';
   });
+  const cardBookings = todayBookings.filter((b) => b.payment_mode?.toLowerCase() === 'card');
 
   const cashTotal = cashBookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
   const onlineTotal = onlineBookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
+  const cardTotal = cardBookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
 
   const membershipRevenue = todaySubscriptions.reduce(
     (sum, sub) => {
@@ -119,8 +124,8 @@ export function DashboardStats({
     0
   );
 
-  const totalRevenue = cashTotal + onlineTotal + membershipRevenue;
-  
+  const totalRevenue = cashTotal + onlineTotal + cardTotal + membershipRevenue;
+
   const snacksRevenue = todayBookings.reduce((sum, b) => {
     const orderSum = b.booking_orders?.reduce((s, order) => s + (order.total_price || 0), 0) || 0;
     return sum + orderSum;
@@ -128,14 +133,16 @@ export function DashboardStats({
 
   const cashSnacks = cashBookings.reduce((sum, b) => sum + (b.booking_orders?.reduce((s, o) => s + (o.total_price || 0), 0) || 0), 0);
   const onlineSnacks = onlineBookings.reduce((sum, b) => sum + (b.booking_orders?.reduce((s, o) => s + (o.total_price || 0), 0) || 0), 0);
-  
+  const cardSnacks = cardBookings.reduce((sum, b) => sum + (b.booking_orders?.reduce((s, o) => s + (o.total_price || 0), 0) || 0), 0);
+
   const displayCash = cashTotal - cashSnacks;
   const displayOnline = onlineTotal - onlineSnacks;
+  const displayCard = cardTotal - cardSnacks;
   
   const revenueVisible = loadedPreference && showRevenue;
 
   const todaySessions = bookings.filter(
-    (b) => b.booking_date === todayStr && b.status !== 'cancelled'
+    (b) => b.booking_date === todayStr && b.status !== 'cancelled' && b.payment_mode !== 'owner'
   ).length;
 
   const snacksSoldToday = todayBookings.reduce((sum, b) => {
@@ -234,7 +241,13 @@ export function DashboardStats({
               {loadingData
                 ? 'Loading revenue...'
                 : revenueVisible
-                  ? `Cash: ₹${displayCash} • Online: ₹${displayOnline} • Memberships: ₹${membershipRevenue} • Snacks: ₹${snacksRevenue}`
+                  ? [
+                      `Cash: ₹${displayCash}`,
+                      `Online: ₹${displayOnline}`,
+                      displayCard > 0 ? `Card: ₹${displayCard}` : null,
+                      membershipRevenue > 0 ? `Memberships: ₹${membershipRevenue}` : null,
+                      snacksRevenue > 0 ? `Snacks: ₹${snacksRevenue}` : null,
+                    ].filter(Boolean).join(' • ')
                   : ''}
             </p>
           </div>

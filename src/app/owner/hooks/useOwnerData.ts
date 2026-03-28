@@ -43,12 +43,11 @@ export function useOwnerData(canFetch: boolean, canAutoRefresh: boolean, activeT
   const dataScope = useMemo(() => getOwnerDataScope(activeTab), [activeTab]);
   const fetchKey = useMemo(() => getFetchKey(dataScope, activeTab), [dataScope, activeTab]);
   const shouldAutoRefresh = useMemo(() => AUTO_REFRESH_TABS.has(activeTab), [activeTab]);
-  // Derive stats from bookings and cafes - Exclude cancelled bookings from revenue
+  // Derive stats from bookings and cafes
   const stats = useMemo<OwnerStats | null>(() => {
     if (!cafes.length) return null;
 
     const now = new Date();
-    // Use local date instead of UTC to match Indian timezone
     const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     const startOfWeek = new Date(now);
     startOfWeek.setDate(now.getDate() - now.getDay());
@@ -56,31 +55,47 @@ export function useOwnerData(canFetch: boolean, canAutoRefresh: boolean, activeT
     const currentQuarter = Math.floor(now.getMonth() / 3);
     const startOfQuarter = new Date(now.getFullYear(), currentQuarter * 3, 1);
 
-    // Filter out cancelled bookings for revenue calculations
-    const activeBookings = bookings.filter(b => b.status !== 'cancelled');
+    // Exclude cancelled, owner-use, and still-running sessions from revenue
+    // (in-progress totals are provisional and may change at checkout)
+    const activeBookings = bookings.filter(b =>
+      b.status !== 'cancelled' &&
+      b.status !== 'in-progress' &&
+      (b as any).payment_mode !== 'owner'
+    );
 
     const bookingsToday = activeBookings.filter(b => b.booking_date === todayStr).length;
     const pendingBookings = bookings.filter(b => b.status?.toLowerCase() === "pending").length;
-    const recentRevenue = activeBookings.slice(0, 20).reduce((sum, b) => sum + (b.total_amount || 0), 0);
     const todayRevenue = activeBookings.filter(b => b.booking_date === todayStr).reduce((sum, b) => sum + (b.total_amount || 0), 0);
-
     const weekRevenue = activeBookings.filter(b => new Date(b.booking_date || "") >= startOfWeek).reduce((sum, b) => sum + (b.total_amount || 0), 0);
-    const monthRevenue = activeBookings.filter(b => new Date(b.booking_date || "") >= startOfMonth).reduce((sum, b) => sum + (b.total_amount || 0), 0);
-    const quarterRevenue = activeBookings.filter(b => new Date(b.booking_date || "") >= startOfQuarter).reduce((sum, b) => sum + (b.total_amount || 0), 0);
     const totalRevenue = activeBookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
+
+    // Month/quarter revenue is only meaningful if the loaded data covers the full period.
+    // Dashboard scope loads only ~7 days; show null so UI can render "See Reports" instead.
+    const oldestLoaded = bookings.reduce<string | null>((min, b) => {
+      if (!b.booking_date) return min;
+      return !min || b.booking_date < min ? b.booking_date : min;
+    }, null);
+    const dataCoversMonth = !oldestLoaded || new Date(oldestLoaded) <= startOfMonth;
+    const dataCoversQuarter = !oldestLoaded || new Date(oldestLoaded) <= startOfQuarter;
+
+    const monthRevenue = dataCoversMonth
+      ? activeBookings.filter(b => new Date(b.booking_date || "") >= startOfMonth).reduce((sum, b) => sum + (b.total_amount || 0), 0)
+      : null;
+    const quarterRevenue = dataCoversQuarter
+      ? activeBookings.filter(b => new Date(b.booking_date || "") >= startOfQuarter).reduce((sum, b) => sum + (b.total_amount || 0), 0)
+      : null;
 
     return {
       cafesCount: cafes.length,
       bookingsToday,
       recentBookings: Math.min(activeBookings.length, 20),
-      recentRevenue,
       todayRevenue,
       weekRevenue,
       monthRevenue,
       quarterRevenue,
       totalRevenue,
       totalBookings: totalBookingsCount || bookings.length,
-      pendingBookings
+      pendingBookings,
     };
   }, [bookings, cafes, totalBookingsCount]);
 
