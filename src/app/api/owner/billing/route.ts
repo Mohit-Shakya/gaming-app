@@ -81,7 +81,7 @@ export async function PUT(request: NextRequest) {
       }
 
       // 3. Upsert items in parallel
-      await Promise.all(items.map((it: any) => {
+      const itemResults = await Promise.all(items.map((it: any) => {
         if (it.id) {
           return supabase
             .from("booking_items")
@@ -94,6 +94,10 @@ export async function PUT(request: NextRequest) {
             .insert({ booking_id: bookingId, console: it.console, quantity: it.quantity, price: it.price, title: it.title });
         }
       }));
+      const firstItemError = itemResults.find(r => r.error);
+      if (firstItemError?.error) {
+        return NextResponse.json({ error: firstItemError.error.message }, { status: 500 });
+      }
     }
 
     // Update booking

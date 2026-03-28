@@ -24,8 +24,7 @@ export function useBilling({
   const [customerPhone, setCustomerPhone] = useState("");
   const [bookingDate, setBookingDate] = useState(getLocalDateString());
   const [startTime, setStartTime] = useState(() => {
-    const now = new Date();
-    return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+    return new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date());
   });
   const [items, setItems] = useState<BillingItem[]>([]);
   const [paymentMode, setPaymentMode] = useState<string>("cash");
@@ -89,8 +88,7 @@ export function useBilling({
     setCustomerName("");
     setCustomerPhone("");
     setBookingDate(getLocalDateString());
-    const now = new Date();
-    setStartTime(`${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`);
+    setStartTime(new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date()));
     setItems([]);
     setPaymentMode("cash");
   };
@@ -119,7 +117,7 @@ export function useBilling({
             customer_phone: customerPhone || null,
             booking_date: bookingDate,
             start_time: startTime12h,
-            duration: items[0].duration,
+            duration: Math.max(...items.map(i => i.duration)),
             total_amount: totalAmount,
             status: 'in-progress',
             source: 'walk-in',

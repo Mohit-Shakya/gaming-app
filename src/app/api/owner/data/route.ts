@@ -255,7 +255,8 @@ export async function POST(request: NextRequest) {
 
     // Fire & forget DB update for completed bookings (don't block the request)
     if (endedIds.length > 0) {
-        supabase.from("bookings").update({ status: "completed" }).in("id", endedIds).then();
+        supabase.from("bookings").update({ status: "completed" }).in("id", endedIds)
+          .then(({ error }) => { if (error) console.error('Auto-complete bookings failed:', error.message); });
     }
 
     // Process User Profiles — skip for bookings/customers tabs (customer_name already on row)
