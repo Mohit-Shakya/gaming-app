@@ -80,33 +80,20 @@ export async function PUT(request: NextRequest) {
         if (delError) return NextResponse.json({ error: delError.message }, { status: 500 });
       }
 
-      // 3. Upsert items
-      for (const it of items) {
+      // 3. Upsert items in parallel
+      await Promise.all(items.map((it: any) => {
         if (it.id) {
-          // Update existing
-          await supabase
+          return supabase
             .from("booking_items")
-            .update({
-              console: it.console,
-              quantity: it.quantity,
-              price: it.price,
-              title: it.title
-            })
+            .update({ console: it.console, quantity: it.quantity, price: it.price, title: it.title })
             .eq("id", it.id)
             .eq("booking_id", bookingId);
         } else {
-          // Insert new
-          await supabase
+          return supabase
             .from("booking_items")
-            .insert({
-              booking_id: bookingId,
-              console: it.console,
-              quantity: it.quantity,
-              price: it.price,
-              title: it.title
-            });
+            .insert({ booking_id: bookingId, console: it.console, quantity: it.quantity, price: it.price, title: it.title });
         }
-      }
+      }));
     }
 
     // Update booking

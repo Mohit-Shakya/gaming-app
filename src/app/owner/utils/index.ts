@@ -1,7 +1,12 @@
 // Helper functions for time conversion
 
 export const getLocalDateString = (date: Date = new Date()): string => {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date);
 };
 
 

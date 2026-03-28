@@ -5,7 +5,7 @@
 // Note: This file contains complex React event handlers and UI code where explicit any types
 // are used for flexibility. These can be refactored incrementally with proper typing.
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
@@ -102,15 +102,11 @@ export default function OwnerDashboardPage() {
     setSubscriptions,
     setBookings,
     refreshData,
-    bookingPage,
-    setBookingPage,
     setCafes,
     setStationPricing,
     setConsolePricing
   } = useOwnerData(canFetchOwnerData, canAutoRefreshOwnerData, activeTab);
 
-  // Constants
-  const bookingsPerPage = 50;
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
@@ -146,12 +142,6 @@ export default function OwnerDashboardPage() {
 
 
   // Booking filters
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [dateFilter, setDateFilter] = useState<string>("");
-  const [dateRangeFilter, setDateRangeFilter] = useState<string>("all"); // today, week, month, quarter, custom, all
-  const [customStartDate, setCustomStartDate] = useState<string>("");
-  const [customEndDate, setCustomEndDate] = useState<string>("");
-  const [searchQuery, setSearchQuery] = useState<string>("");
 
 
 
@@ -603,9 +593,6 @@ export default function OwnerDashboardPage() {
       return;
     }
 
-    const confirmed = confirm(`Confirm booking for ${booking.customer_name || "customer"}?`);
-    if (!confirmed) return;
-
     const trueBookingId = (booking as any).originalBookingId || (booking.id.includes('-item-') ? booking.id.split('-item-')[0] : booking.id);
     try {
       const res = await fetch('/api/owner/billing', {
@@ -619,6 +606,7 @@ export default function OwnerDashboardPage() {
         return;
       }
       refreshData();
+      setBookingsMgmtRefreshKey(k => k + 1);
       toast.success("Booking confirmed successfully!");
     } catch (err) {
       console.error("Error confirming booking:", err);
@@ -693,6 +681,7 @@ export default function OwnerDashboardPage() {
         return;
       }
       refreshData();
+      setBookingsMgmtRefreshKey(k => k + 1);
       toast.success("Booking started successfully!");
     } catch (err) {
       console.error("Error starting booking:", err);
@@ -946,13 +935,9 @@ export default function OwnerDashboardPage() {
 
       setEditingBooking(null);
       setEditingBookingItemId(null);
+      setBookingsMgmtRefreshKey(k => k + 1);
       toast.success("Booking updated successfully!");
-
-      // Force a refresh after 1 second to ensure UI shows updated data from database
-      setTimeout(() => {
-        debugLog('[handleSaveBooking] Triggering delayed refresh to sync with database');
-        refreshData();
-      }, 1000);
+      refreshData();
     } catch (err) {
       console.error("Error updating booking:", err);
       toast.error("Failed to update booking: " + (err instanceof Error ? err.message : String(err)));
@@ -985,9 +970,8 @@ export default function OwnerDashboardPage() {
 
       if (isPartOfBulkBooking) {
         // Delete only the specific booking_item, not the whole booking
-        const itemToDelete = allItems.find(item => item.id === editingBookingItemId);
-        const itemPrice = itemToDelete?.price || 0;
-        const newTotalAmount = (editingBooking.total_amount || 0) - itemPrice;
+        const remainingItems = allItems.filter(item => item.id !== editingBookingItemId);
+        const newTotalAmount = remainingItems.reduce((sum: number, item: any) => sum + (item.price || 0), 0);
 
         const res = await fetch('/api/owner/billing', {
           method: 'DELETE',
@@ -1016,6 +1000,7 @@ export default function OwnerDashboardPage() {
           return b;
         }));
 
+        setBookingsMgmtRefreshKey(k => k + 1);
         toast.success("Console removed from booking successfully!");
       } else {
         // Delete the entire booking (soft-delete)
@@ -1038,6 +1023,7 @@ export default function OwnerDashboardPage() {
 
         // Remove from local state (soft-deleted = hidden from normal view)
         setBookings((prev) => prev.filter((b) => b.id !== editingBooking.id));
+        setBookingsMgmtRefreshKey(k => k + 1);
       }
 
       debugLog('[handleDeleteBooking] ===== DELETE BOOKING COMPLETE =====');
@@ -1297,7 +1283,7 @@ export default function OwnerDashboardPage() {
     debugLog('[Timer] Checking for active timers to restore...');
     subscriptions.forEach(subscription => {
       // Check if this subscription has an active timer in the database
-      if (subscription.timer_active && subscription.timer_start_time && !activeTimers.has(subscription.id)) {
+      if (subscription.timer_active && subscription.timer_start_time && !activeTimers.has(subscription.id) && (subscription.hours_remaining || 0) > 0) {
         debugLog('[Timer] Restoring timer for subscription:', subscription.id);
 
         const dbStartTime = new Date(subscription.timer_start_time).getTime();
@@ -1591,15 +1577,14 @@ export default function OwnerDashboardPage() {
   const handleTogglePower = async (stationName: string) => {
     const isCurrentlyOff = poweredOffStations.has(stationName);
 
-    // Confirm before powering off — station may be in active use
+    // Warn if powering off a station with an active session
     if (!isCurrentlyOff) {
       const hasActiveSession = bookings.some(
         b => b.status === 'in-progress' && b.booking_items?.some(bi => bi.title === stationName)
       );
-      const msg = hasActiveSession
-        ? `Station "${stationName}" has an active session. Power it off anyway?`
-        : `Power off "${stationName}"?`;
-      if (!window.confirm(msg)) return;
+      if (hasActiveSession) {
+        toast.warning(`Station "${stationName}" has an active session — powering off anyway.`);
+      }
     }
 
     // Optimistic update
@@ -1707,8 +1692,6 @@ export default function OwnerDashboardPage() {
   const handleProfilePhotoDelete = async () => {
     if (!currentCafe || !currentCafe.cover_url) return;
 
-    if (!confirm('Are you sure you want to delete the profile photo?')) return;
-
     try {
       const oldPath = currentCafe.cover_url.split('/').pop();
       if (oldPath) {
@@ -1780,8 +1763,6 @@ export default function OwnerDashboardPage() {
 
   // Handle gallery photo delete
   const handleGalleryPhotoDelete = async (imageId: string, imageUrl: string) => {
-    if (!confirm('Are you sure you want to delete this gallery photo?')) return;
-
     try {
       const fileName = imageUrl.split('/').slice(-2).join('/');
 
@@ -1851,106 +1832,6 @@ export default function OwnerDashboardPage() {
       setDeletingStation(false);
     }
   };
-
-  // Filter bookings
-  const filteredBookings = useMemo(() => {
-    return bookings.filter((booking) => {
-      // Status filter
-      if (statusFilter !== "all" && booking.status?.toLowerCase() !== statusFilter) {
-        return false;
-      }
-
-      // Specific date filter (for date picker)
-      if (dateFilter && booking.booking_date) {
-        if (booking.booking_date !== dateFilter) return false;
-      }
-
-      // Date Range filter
-      if (dateRangeFilter !== "all" && booking.booking_date) {
-        const bookingDate = new Date(booking.booking_date + 'T00:00:00');
-        const today = new Date();
-        const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-
-        if (dateRangeFilter === "today") {
-          const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
-          if (bookingDate < todayStart || bookingDate > todayEnd) return false;
-        } else if (dateRangeFilter === "week") {
-          const weekAgo = new Date(todayStart);
-          weekAgo.setDate(todayStart.getDate() - 7);
-          const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
-          if (bookingDate < weekAgo || bookingDate > todayEnd) return false;
-        } else if (dateRangeFilter === "month") {
-          const monthAgo = new Date(todayStart);
-          monthAgo.setMonth(todayStart.getMonth() - 1);
-          const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
-          if (bookingDate < monthAgo || bookingDate > todayEnd) return false;
-        } else if (dateRangeFilter === "quarter") {
-          const quarterAgo = new Date(todayStart);
-          quarterAgo.setMonth(todayStart.getMonth() - 3);
-          const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
-          if (bookingDate < quarterAgo || bookingDate > todayEnd) return false;
-        } else if (dateRangeFilter === "custom") {
-          if (customStartDate) {
-            const startDate = new Date(customStartDate + 'T00:00:00');
-            if (bookingDate < startDate) return false;
-          }
-          if (customEndDate) {
-            const endDate = new Date(customEndDate + 'T23:59:59');
-            if (bookingDate > endDate) return false;
-          }
-        }
-      }
-
-      // Search query
-      if (searchQuery) {
-        const query = searchQuery.toLowerCase();
-        const matchesId = booking.id.toLowerCase().includes(query);
-        const matchesName = (booking.customer_name || booking.user_name || "").toLowerCase().includes(query);
-        const matchesEmail = (booking.user_email || "").toLowerCase().includes(query);
-        const matchesPhone = (booking.customer_phone || booking.user_phone || "").toLowerCase().includes(query);
-        if (!matchesId && !matchesName && !matchesEmail && !matchesPhone) {
-          return false;
-        }
-      }
-
-      return true;
-    });
-  }, [bookings, customEndDate, customStartDate, dateFilter, dateRangeFilter, searchQuery, statusFilter]);
-
-  // Flatten filtered bookings so each booking_item appears as a separate row
-  // This handles bulk bookings where one booking has multiple consoles
-  const flattenedFilteredBookings = useMemo(() => {
-    return filteredBookings.flatMap(booking => {
-      const items = booking.booking_items || [];
-      if (items.length <= 1) {
-        // Single item or no items - keep as is
-        return [booking];
-      }
-      // Multiple items - create a separate entry for each
-      return items.map((item, itemIndex) => ({
-        ...booking,
-        // Create a unique ID for each flattened entry
-        id: `${booking.id}-item-${itemIndex}`,
-        originalBookingId: booking.id,
-        // Replace booking_items with just this single item
-        booking_items: [item],
-        // Use item price for display
-        total_amount: item.price || (booking.total_amount || 0) / items.length,
-      }));
-    });
-  }, [filteredBookings]);
-
-  const filteredBookingsCount = flattenedFilteredBookings.length;
-  const paginatedFlattenedFilteredBookings = useMemo(() => {
-    return flattenedFilteredBookings.slice(
-      (bookingPage - 1) * bookingsPerPage,
-      bookingPage * bookingsPerPage
-    );
-  }, [bookingPage, bookingsPerPage, flattenedFilteredBookings]);
-
-  useEffect(() => {
-    setBookingPage(1);
-  }, [searchQuery, statusFilter, dateFilter, dateRangeFilter, customStartDate, customEndDate, setBookingPage]);
 
   // Loading state
   if (checkingRole && !hasLoadedData) {
@@ -2102,7 +1983,9 @@ export default function OwnerDashboardPage() {
                     return bDate >= lastWeekStr && bDate <= todayStr;
                   });
 
-                  const weeklyRevenue = weeklyBookings.reduce((sum: number, b: any) => sum + (b.total_amount || 0), 0);
+                  const weeklyRevenue = weeklyBookings
+                    .filter((b: any) => b.status !== 'cancelled' && b.status !== 'in-progress' && b.payment_mode !== 'owner')
+                    .reduce((sum: number, b: any) => sum + (b.total_amount || 0), 0);
 
                   return (
                     <BookingsTable

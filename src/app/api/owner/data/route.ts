@@ -107,7 +107,6 @@ export async function POST(request: NextRequest) {
           .from("station_pricing")
           .select("*")
           .in("cafe_id", cafeIds)
-          .eq("is_active", true)
       : Promise.resolve({ data: [], error: null });
 
     const consolePricingPromise = shouldLoadPricing
@@ -119,7 +118,7 @@ export async function POST(request: NextRequest) {
 
     const bookingsPromise =
       isPricingOnlyTab
-        ? Promise.resolve({ data: [], error: null })
+        ? Promise.resolve({ data: [], error: null, count: null })
         : scope === "full"
         ? supabase
             .from("bookings")
@@ -128,7 +127,7 @@ export async function POST(request: NextRequest) {
               source, payment_mode, created_at, customer_name, customer_phone, deleted_at,
               booking_items (id, console, quantity, price),
               booking_orders (id, item_name, quantity, total_price)
-            `)
+            `, { count: 'exact' })
             .in("cafe_id", cafeIds)
             .order("created_at", { ascending: false })
             .limit(FULL_BOOKING_LIMIT)
@@ -167,10 +166,10 @@ export async function POST(request: NextRequest) {
             .from('subscriptions')
             .select(`
               id, amount_paid, purchase_date, customer_name, assigned_console_station,
-              timer_active, timer_start_time, membership_plans(name, console_type)
+              timer_active, timer_start_time, hours_remaining, membership_plans(name, console_type)
             `)
             .in('cafe_id', cafeIds)
-            .or(`timer_active.eq.true,purchase_date.eq.${todayStr}`)
+            .or(`timer_active.eq.true,and(purchase_date.gte.${todayStr}T00:00:00+05:30,purchase_date.lte.${todayStr}T23:59:59+05:30)`)
             .order('created_at', { ascending: false });
 
     // Await all parallel fetches
@@ -307,7 +306,7 @@ export async function POST(request: NextRequest) {
       availableConsoleTypes: uniqueTypes,
       membershipPlans: plansRes.data || [],
       subscriptions: subscriptionsRes.data || [],
-      totalBookingsCount: scope === "full" ? enrichedBookings.length : 0,
+      totalBookingsCount: scope === "full" ? (bookingsRes.count ?? enrichedBookings.length) : 0,
     });
   } catch (err: any) {
     console.error("Error loading owner data:", err);

@@ -34,8 +34,6 @@ export function useOwnerData(canFetch: boolean, canAutoRefresh: boolean, activeT
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [totalBookingsCount, setTotalBookingsCount] = useState(0);
 
-  // Pagination state (internal to hook for now, or expose if needed)
-  const [bookingPage, setBookingPage] = useState(1);
   const [loadedScope, setLoadedScope] = useState<OwnerDataScope>('dashboard');
   const [hasLoadedData, setHasLoadedData] = useState(false);
 
@@ -183,8 +181,6 @@ export function useOwnerData(canFetch: boolean, canAutoRefresh: boolean, activeT
     setSubscriptions,
     setBookings,
     refreshData,
-    bookingPage,
-    setBookingPage,
     setCafes,
     setStationPricing,
     setConsolePricing
