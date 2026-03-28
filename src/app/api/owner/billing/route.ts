@@ -17,7 +17,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const { ownerId, supabase } = auth.context;
-    const { bookingId, bookingItemId, booking, item, items } = await request.json();
+    const { bookingId, bookingItemId, booking, item, items, updatedAtCheck } = await request.json();
 
     if (!bookingId) {
       return NextResponse.json({ error: "bookingId is required" }, { status: 400 });
@@ -26,6 +26,18 @@ export async function PUT(request: NextRequest) {
     const ownedCafeId = await getOwnedCafeIdForBooking(supabase, bookingId, ownerId);
     if (!ownedCafeId) {
       return NextResponse.json({ error: "Booking not found" }, { status: 404 });
+    }
+
+    // Conflict detection: if caller provided a base updated_at, verify it hasn't changed
+    if (updatedAtCheck) {
+      const { data: current } = await supabase
+        .from('bookings')
+        .select('updated_at')
+        .eq('id', bookingId)
+        .maybeSingle();
+      if (current?.updated_at && current.updated_at !== updatedAtCheck) {
+        return NextResponse.json({ error: 'Conflict: booking was modified after you opened it' }, { status: 409 });
+      }
     }
 
     // Support single item update (backward compatibility)

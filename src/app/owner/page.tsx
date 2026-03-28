@@ -70,12 +70,12 @@ const debugLog = (...args: unknown[]) => {
 export default function OwnerDashboardPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<NavTab>(() => {
-    // Restore active tab from localStorage
+    // Prefer URL ?tab= param, fall back to localStorage
     if (typeof window !== 'undefined') {
+      const urlTab = new URLSearchParams(window.location.search).get('tab');
+      if (urlTab) return urlTab as NavTab;
       const savedTab = localStorage.getItem('ownerActiveTab');
-      if (savedTab) {
-        return savedTab as NavTab;
-      }
+      if (savedTab) return savedTab as NavTab;
     }
     return 'dashboard';
   });
@@ -166,6 +166,7 @@ export default function OwnerDashboardPage() {
   // Edit modal state
   const [editingBooking, setEditingBooking] = useState<BookingRow | null>(null);
   const [editingBookingItemId, setEditingBookingItemId] = useState<string | null>(null); // Track specific item for bulk bookings
+  const [editConflictBase, setEditConflictBase] = useState<string | null>(null); // updated_at when modal was opened
 
   // Settings state
   const [settingsChanged, setSettingsChanged] = useState(false);
@@ -407,12 +408,15 @@ export default function OwnerDashboardPage() {
     }
   }, [editingStation, stationPricing]);
 
-  // Save active tab to localStorage when it changes
+  // Persist active tab to localStorage + URL
   useEffect(() => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('ownerActiveTab', activeTab);
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', activeTab);
+      router.replace(url.pathname + url.search, { scroll: false });
     }
-  }, [activeTab]);
+  }, [activeTab, router]);
 
   // Initialize poweredOffStations from stationPricing
   useEffect(() => {
@@ -769,6 +773,7 @@ export default function OwnerDashboardPage() {
 
     setEditingBooking(actualBooking);
     setEditingBookingItemId(specificItemId);
+    setEditConflictBase(actualBooking.updated_at ?? null);
     setEditAmount(actualBooking.total_amount?.toString() || "");
     setEditAmountManuallyEdited(true); // Preserve DB amount on open; set to false when user changes items
     setEditStatus(actualBooking.status || "confirmed");
@@ -894,6 +899,7 @@ export default function OwnerDashboardPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           bookingId: editingBooking.id,
+          updatedAtCheck: editConflictBase,
           booking: {
             total_amount: updatedAmount,
             status: editStatus,
@@ -913,6 +919,12 @@ export default function OwnerDashboardPage() {
           })),
         }),
       });
+
+      if (res.status === 409) {
+        setSaving(false);
+        toast.error('This booking was modified by someone else. Please close and reopen it to get the latest version.');
+        return;
+      }
 
       if (!res.ok) {
         const data = await res.json();
@@ -1829,14 +1841,19 @@ export default function OwnerDashboardPage() {
       });
       if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed to delete station'); }
 
-      // Update local state immediately (optimistic), then cancel any
-      // in-flight background fetch so it can't overwrite with old DB data
+      // Also delete the station_pricing row for this specific station (fire-and-forget)
+      fetch(`/api/station-pricing?cafeId=${currentCafeId}&stationName=${encodeURIComponent(stationToDelete.name)}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      }).catch(() => {}); // non-critical — stale pricing rows don't break anything
+
+      // Update local state immediately, then refresh
       setCafes(prev => prev.map((c) => c.id === currentCafeId ? {
         ...c,
         [columnName]: newCount,
       } : c));
       setStationToDelete(null);
-      refreshData(); // cancels in-flight fetch, starts fresh one with updated DB
+      refreshData();
     } catch (error) {
       console.error('Error deleting station:', error);
       toast.error('Failed to delete station. Please try again.');

@@ -1,4 +1,5 @@
 import { PricingTier } from '../types';
+import { normaliseConsoleType } from './index';
 
 export type StationPricingMap = Record<string, any>;
 export type ConsolePricingMap = Record<string, Record<string, PricingTier>>;
@@ -15,8 +16,11 @@ export function calcBillingPrice(
   consolePricing: ConsolePricingMap,
   stationPricing: StationPricingMap
 ): number {
+  const normType = normaliseConsoleType(consoleType);
+
   // --- Tier-based pricing (console_pricing table) ---
-  const pricingTier = consolePricing[cafeId]?.[consoleType];
+  // Try normalised key first, fall back to original for backwards compat
+  const pricingTier = consolePricing[cafeId]?.[normType] ?? consolePricing[cafeId]?.[consoleType];
   if (pricingTier) {
     if (duration === 90) {
       const p60 = pricingTier[`qty${quantity}_60min` as keyof PricingTier] ?? 100;
@@ -40,9 +44,9 @@ export function calcBillingPrice(
   const typeMap: Record<string, string> = {
     ps5: 'PS5', ps4: 'PS4', xbox: 'Xbox', pc: 'PC',
     pool: 'Pool', snooker: 'Snooker', arcade: 'Arcade', vr: 'VR',
-    steering: 'Steering', steering_wheel: 'Steering', racing_sim: 'Racing Sim',
+    steering: 'Steering', racing_sim: 'Racing Sim',
   };
-  const stType = typeMap[consoleType] || consoleType;
+  const stType = typeMap[normType] || consoleType;
   const station = Object.values(stationPricing).find((s: any) => s.station_type === stType);
 
   if (station) {

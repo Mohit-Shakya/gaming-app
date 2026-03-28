@@ -68,6 +68,7 @@ export type BookingRow = {
   source: string | null;
   payment_mode?: string | null;
   created_at: string | null;
+  updated_at?: string | null;
   customer_name?: string | null; // For walk-in bookings only
   customer_phone?: string | null; // For walk-in bookings only
   booking_items?: Array<{

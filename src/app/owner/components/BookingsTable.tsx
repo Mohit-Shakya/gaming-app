@@ -18,6 +18,8 @@ interface BookingsTableProps {
     onViewAll?: () => void;
     showActions?: boolean;
     onPaymentModeChange?: (id: string, mode: string) => void;
+    selectedIds?: Set<string>;
+    onSelectionChange?: (ids: Set<string>) => void;
 }
 
 export function BookingsTable({
@@ -32,8 +34,11 @@ export function BookingsTable({
     title = "Bookings",
     onViewAll,
     showActions = true,
-    onPaymentModeChange
+    onPaymentModeChange,
+    selectedIds,
+    onSelectionChange,
 }: BookingsTableProps) {
+  const selectable = !!onSelectionChange;
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
     const [currentPage, setCurrentPage] = useState(1);
@@ -128,6 +133,20 @@ export function BookingsTable({
                 <table className="w-full text-sm text-left table-fixed">
                     <thead className="text-xs text-slate-400 uppercase bg-slate-900/50 border-b border-white/5">
                         <tr>
+                            {selectable && (
+                                <th className="px-3 py-3 w-8">
+                                    <input
+                                        type="checkbox"
+                                        className="accent-indigo-500 cursor-pointer"
+                                        checked={paginatedBookings.length > 0 && paginatedBookings.every(b => selectedIds?.has(b.id))}
+                                        onChange={(e) => {
+                                            const next = new Set(selectedIds);
+                                            paginatedBookings.forEach(b => e.target.checked ? next.add(b.id) : next.delete(b.id));
+                                            onSelectionChange!(next);
+                                        }}
+                                    />
+                                </th>
+                            )}
                             <th className="px-4 py-3 font-semibold w-[18%]">Customer</th>
                             <th className="px-4 py-3 font-semibold w-[18%]">Details</th>
                             <th className="px-4 py-3 font-semibold w-[18%]">Date & Time</th>
@@ -139,19 +158,34 @@ export function BookingsTable({
                     <tbody className="divide-y divide-white/5">
                         {loading ? (
                             <tr>
-                                <td colSpan={showActions ? 6 : 5} className="px-6 py-8 text-center text-slate-500">
+                                <td colSpan={(showActions ? 6 : 5) + (selectable ? 1 : 0)} className="px-6 py-8 text-center text-slate-500">
                                     Loading bookings...
                                 </td>
                             </tr>
                         ) : paginatedBookings.length === 0 ? (
                             <tr>
-                                <td colSpan={showActions ? 6 : 5} className="px-6 py-8 text-center text-slate-500">
+                                <td colSpan={(showActions ? 6 : 5) + (selectable ? 1 : 0)} className="px-6 py-8 text-center text-slate-500">
                                     No bookings found
                                 </td>
                             </tr>
                         ) : (
                             paginatedBookings.map((booking) => (
-                                <tr key={booking.id} className="hover:bg-white/5 transition-colors">
+                                <tr key={booking.id} className={`hover:bg-white/5 transition-colors ${selectedIds?.has(booking.id) ? 'bg-indigo-500/5' : ''}`}>
+                                    {selectable && (
+                                        <td className="px-3 py-1.5">
+                                            <input
+                                                type="checkbox"
+                                                className="accent-indigo-500 cursor-pointer"
+                                                checked={selectedIds?.has(booking.id) ?? false}
+                                                onChange={(e) => {
+                                                    e.stopPropagation();
+                                                    const next = new Set(selectedIds);
+                                                    e.target.checked ? next.add(booking.id) : next.delete(booking.id);
+                                                    onSelectionChange!(next);
+                                                }}
+                                            />
+                                        </td>
+                                    )}
                                     <td className="px-4 py-1.5">
                                         <div
                                             className={`font-medium text-white ${onViewCustomer ? 'cursor-pointer hover:text-blue-400 hover:underline' : ''}`}

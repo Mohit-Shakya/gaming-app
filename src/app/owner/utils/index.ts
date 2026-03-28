@@ -97,6 +97,24 @@ export function convertTo12Hour(timeStr?: string | null): string {
   return timeStr; // Return original if can't parse
 }
 
+/**
+ * Normalise any console type string variant to canonical lowercase key.
+ * e.g. 'PS5', 'Ps5', 'PS 5' → 'ps5'  |  'Racing Sim', 'racing sim' → 'racing_sim'
+ */
+export function normaliseConsoleType(raw: string): string {
+  if (!raw) return raw;
+  const s = raw.trim().toLowerCase().replace(/\s+/g, '_');
+  // Map known aliases to canonical keys
+  const aliases: Record<string, string> = {
+    steering_wheel: 'steering',
+    'racing-sim': 'racing_sim',
+    racingsim: 'racing_sim',
+    nintendo: 'nintendo_switch',
+    switch: 'nintendo_switch',
+  };
+  return aliases[s] ?? s;
+}
+
 // Helper function to get console icon
 export function getConsoleIcon(consoleType: string): string {
   const type = consoleType?.toUpperCase() || '';

@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { BookingsTable } from './BookingsTable';
 import { Card, Button, Select } from './ui';
-import { RefreshCw, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { RefreshCw, Search, ChevronLeft, ChevronRight, Check, X } from 'lucide-react';
 import { DeletedBookingsPanel } from './DeletedBookingsPanel';
 
 const PAGE_SIZE = 20;
@@ -49,6 +49,8 @@ export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateS
     const [dateRange, setDateRange] = useState('all');
     const [customStart, setCustomStart] = useState('');
     const [customEnd, setCustomEnd] = useState('');
+    const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    const [bulkLoading, setBulkLoading] = useState(false);
 
     const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -77,9 +79,10 @@ export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateS
         }
     }, [cafeId, statusFilter, dateRange, customStart, customEnd]);
 
-    // Re-fetch when filters or page change
+    // Re-fetch when filters or page change; clear selection
     useEffect(() => {
         fetchBookings(page, debouncedSearch);
+        setSelectedIds(new Set());
     }, [fetchBookings, page, debouncedSearch]);
 
     // Debounce search input
@@ -100,6 +103,19 @@ export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateS
 
     const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
     const loading = fetching || externalLoading;
+
+    async function handleBulkStatus(status: string) {
+        if (!selectedIds.size || !onUpdateStatus) return;
+        setBulkLoading(true);
+        const ids = Array.from(selectedIds);
+        try {
+            await Promise.all(ids.map(id => onUpdateStatus(id, status)));
+            setSelectedIds(new Set());
+            fetchBookings(page, debouncedSearch);
+        } finally {
+            setBulkLoading(false);
+        }
+    }
 
     return (
         <div className="space-y-4">
@@ -163,6 +179,41 @@ export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateS
                 )}
             </Card>
 
+            {/* Bulk action bar */}
+            {selectedIds.size > 0 && (
+                <div className="flex items-center gap-3 px-4 py-3 bg-indigo-600/10 border border-indigo-500/30 rounded-xl">
+                    <span className="text-sm font-medium text-indigo-300">{selectedIds.size} selected</span>
+                    <div className="flex gap-2 ml-auto">
+                        <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => handleBulkStatus('completed')}
+                            disabled={bulkLoading}
+                            className="text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10"
+                        >
+                            <Check size={14} className="mr-1" /> Mark Completed
+                        </Button>
+                        <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => handleBulkStatus('cancelled')}
+                            disabled={bulkLoading}
+                            className="text-red-400 border-red-500/30 hover:bg-red-500/10"
+                        >
+                            <X size={14} className="mr-1" /> Mark Cancelled
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setSelectedIds(new Set())}
+                            className="text-slate-400"
+                        >
+                            Clear
+                        </Button>
+                    </div>
+                </div>
+            )}
+
             {/* Table */}
             <BookingsTable
                 bookings={bookings}
@@ -175,6 +226,8 @@ export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateS
                 loading={loading}
                 title={`Bookings (${total.toLocaleString()} total)`}
                 showActions={true}
+                selectedIds={selectedIds}
+                onSelectionChange={setSelectedIds}
             />
 
             {/* Pagination */}

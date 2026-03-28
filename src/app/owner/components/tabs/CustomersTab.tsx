@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { BookingRow } from '../../types';
 import { getLocalDateString } from '../../utils';
 
@@ -118,6 +118,8 @@ function getStatusBadge(customer: Customer) {
   };
 }
 
+const PAGE_SIZE = 20;
+
 export default function CustomersTab({
   theme,
   bookings,
@@ -134,6 +136,7 @@ export default function CustomersTab({
   subscriptions,
   handleViewCustomer,
 }: CustomersTabProps) {
+  const [currentPage, setCurrentPage] = useState(1);
   const customers = useMemo(() => {
     const customerMap = new Map<string, Customer>();
 
@@ -274,6 +277,14 @@ export default function CustomersTab({
     subscriptions,
   ]);
 
+  // Reset to page 1 whenever the filtered list changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [customerSearch, hasSubscription, hasMembership, customerSortBy, customerSortOrder]);
+
+  const totalPages = Math.max(1, Math.ceil(customers.length / PAGE_SIZE));
+  const pagedCustomers = customers.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
   const handleSort = (column: CustomerSortBy) => {
     if (customerSortBy === column) {
       setCustomerSortOrder(customerSortOrder === 'asc' ? 'desc' : 'asc');
@@ -335,7 +346,7 @@ export default function CustomersTab({
             <div>
               <h2 style={{ fontSize: 32, fontWeight: 800, color: theme.textPrimary, margin: 0, marginBottom: 4, letterSpacing: '-0.5px' }}>Customers</h2>
               <p style={{ fontSize: 15, color: theme.textMuted, margin: 0 }}>
-                Manage your customer database • {customers.length} customers shown
+                Manage your customer database • {customers.length} customer{customers.length !== 1 ? 's' : ''}
               </p>
             </div>
           </div>
@@ -398,13 +409,13 @@ export default function CustomersTab({
             </p>
           </div>
         ) : (
-          customers.map((customer, index) => {
+          pagedCustomers.map((customer, index) => {
             const statusBadge = getStatusBadge(customer);
 
             return (
               <div
                 key={customer.id}
-                style={{ display: 'grid', gridTemplateColumns: '200px 120px 180px 120px 100px 130px 150px 60px', gap: 16, padding: '20px 28px', borderBottom: index < customers.length - 1 ? '1px solid rgba(71, 85, 105, 0.15)' : 'none', transition: 'all 0.2s ease', cursor: 'pointer' }}
+                style={{ display: 'grid', gridTemplateColumns: '200px 120px 180px 120px 100px 130px 150px 60px', gap: 16, padding: '20px 28px', borderBottom: index < pagedCustomers.length - 1 ? '1px solid rgba(71, 85, 105, 0.15)' : 'none', transition: 'all 0.2s ease', cursor: 'pointer' }}
                 onClick={() => handleViewCustomer(customer)}
                 onMouseOver={(e) => {
                   e.currentTarget.style.background = 'rgba(99, 102, 241, 0.04)';
@@ -462,8 +473,51 @@ export default function CustomersTab({
       </div>
 
       {customers.length > 0 && (
-        <div style={{ marginTop: 24, textAlign: 'center', color: theme.textSecondary, fontSize: 14 }}>
-          Showing {customers.length} customer{customers.length !== 1 ? 's' : ''}
+        <div style={{ marginTop: 24, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+          <span style={{ color: theme.textSecondary, fontSize: 14 }}>
+            Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, customers.length)} of {customers.length} customer{customers.length !== 1 ? 's' : ''}
+          </span>
+
+          {totalPages > 1 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                style={{ padding: '8px 14px', borderRadius: 8, border: `1px solid ${theme.border}`, background: theme.cardBackground, color: currentPage === 1 ? theme.textMuted : theme.textPrimary, cursor: currentPage === 1 ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 600, opacity: currentPage === 1 ? 0.5 : 1 }}
+              >
+                ← Prev
+              </button>
+
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 2)
+                .reduce<(number | '...')[]>((acc, p, idx, arr) => {
+                  if (idx > 0 && p - (arr[idx - 1] as number) > 1) acc.push('...');
+                  acc.push(p);
+                  return acc;
+                }, [])
+                .map((p, idx) =>
+                  p === '...' ? (
+                    <span key={`ellipsis-${idx}`} style={{ color: theme.textMuted, padding: '0 4px' }}>…</span>
+                  ) : (
+                    <button
+                      key={p}
+                      onClick={() => setCurrentPage(p as number)}
+                      style={{ width: 36, height: 36, borderRadius: 8, border: `1px solid ${currentPage === p ? '#6366f1' : theme.border}`, background: currentPage === p ? '#6366f1' : theme.cardBackground, color: currentPage === p ? '#fff' : theme.textPrimary, cursor: 'pointer', fontSize: 14, fontWeight: 600 }}
+                    >
+                      {p}
+                    </button>
+                  )
+                )}
+
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                style={{ padding: '8px 14px', borderRadius: 8, border: `1px solid ${theme.border}`, background: theme.cardBackground, color: currentPage === totalPages ? theme.textMuted : theme.textPrimary, cursor: currentPage === totalPages ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 600, opacity: currentPage === totalPages ? 0.5 : 1 }}
+              >
+                Next →
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

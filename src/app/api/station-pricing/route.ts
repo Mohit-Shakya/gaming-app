@@ -1,6 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireOwnerContext } from '@/lib/ownerAuth';
 
+// DELETE /api/station-pricing?cafeId=...&stationName=...
+export async function DELETE(request: NextRequest) {
+  try {
+    const auth = await requireOwnerContext(request);
+    if (auth.response) return auth.response;
+    const { ownerId, supabase } = auth.context;
+    const { searchParams } = new URL(request.url);
+    const cafeId = searchParams.get('cafeId');
+    const stationName = searchParams.get('stationName');
+
+    if (!cafeId || !stationName) {
+      return NextResponse.json({ error: 'cafeId and stationName required' }, { status: 400 });
+    }
+
+    // Verify ownership
+    const { data: cafe } = await supabase.from('cafes').select('id').eq('id', cafeId).eq('owner_id', ownerId).maybeSingle();
+    if (!cafe) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
+    await supabase.from('station_pricing').delete().eq('cafe_id', cafeId).eq('station_name', stationName);
+    return NextResponse.json({ success: true });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const auth = await requireOwnerContext(request);
