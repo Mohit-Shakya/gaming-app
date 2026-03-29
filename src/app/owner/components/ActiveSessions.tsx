@@ -63,6 +63,34 @@ export function ActiveSessions({
         }));
     });
 
+    // Parse booking start_time string to total minutes since midnight (0-1439)
+    const parseStartMinutes = (startTime: string): number | null => {
+        const timeParts = startTime.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
+        if (!timeParts) return null;
+        let hours = parseInt(timeParts[1]);
+        const minutes = parseInt(timeParts[2]);
+        const period = timeParts[3];
+        if (period) {
+            if (period.toLowerCase() === 'pm' && hours !== 12) hours += 12;
+            else if (period.toLowerCase() === 'am' && hours === 12) hours = 0;
+        }
+        return hours * 60 + minutes;
+    };
+
+    // Time remaining in minutes — handles midnight wrap-around
+    const calcTimeRemaining = (startMinutes: number, duration: number, currentMinutes: number): number => {
+        const endMinutes = startMinutes + duration;
+        if (endMinutes > 1440) {
+            // Session spans midnight
+            // If we're past midnight (currentMinutes < startMinutes), session is still running
+            const remaining = currentMinutes < startMinutes
+                ? (endMinutes - 1440) - currentMinutes   // past midnight
+                : endMinutes - currentMinutes;            // not yet midnight
+            return remaining;
+        }
+        return endMinutes - currentMinutes;
+    };
+
     // 2. Sort Active Bookings by Time Remaining
     const sortedActiveBookings = [...flattenedBookings].sort((a, b) => {
         const currentMinutes =
@@ -70,22 +98,11 @@ export function ActiveSessions({
 
         const getTimeRemaining = (booking: typeof a) => {
             if (!booking.start_time || !booking.duration) return 999;
-            const timeParts = booking.start_time.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
-            if (!timeParts) return 999;
-
-            let hours = parseInt(timeParts[1]);
-            const minutes = parseInt(timeParts[2]);
-            const period = timeParts[3];
-
-            if (period) {
-                if (period.toLowerCase() === 'pm' && hours !== 12) hours += 12;
-                else if (period.toLowerCase() === 'am' && hours === 12) hours = 0;
-            }
-
-            const startMinutes = hours * 60 + minutes;
-            const endMinutes = startMinutes + booking.duration;
-            return Math.max(0, endMinutes - currentMinutes);
+            const startMinutes = parseStartMinutes(booking.start_time);
+            if (startMinutes === null) return 999;
+            return Math.max(0, calcTimeRemaining(startMinutes, booking.duration, currentMinutes));
         };
+
 
         const timeA = getTimeRemaining(a);
         const timeB = getTimeRemaining(b);
@@ -98,7 +115,7 @@ export function ActiveSessions({
         return CONSOLE_ICONS[key] || '🎮';
     };
 
-    // Detect ended sessions
+    // Detect ended sessions — fires once per session when time runs out
     useEffect(() => {
         if (!onSessionEnded) return;
 
@@ -106,44 +123,22 @@ export function ActiveSessions({
 
         sortedActiveBookings.forEach((booking) => {
             const bookingId = booking.originalBookingId || booking.id;
-
-            // Skip if already notified
             if (endedSessionsRef.current.has(bookingId)) return;
+            if (!booking.start_time || !booking.duration) return;
 
-            if (booking.start_time && booking.duration) {
-                const timeParts = booking.start_time.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
-                if (timeParts) {
-                    let hours = parseInt(timeParts[1]);
-                    const minutes = parseInt(timeParts[2]);
-                    const period = timeParts[3];
+            const startMinutes = parseStartMinutes(booking.start_time);
+            if (startMinutes === null) return;
 
-                    if (period) {
-                        if (period.toLowerCase() === 'pm' && hours !== 12) hours += 12;
-                        else if (period.toLowerCase() === 'am' && hours === 12) hours = 0;
-                    }
+            const timeRemaining = calcTimeRemaining(startMinutes, booking.duration, currentMinutes);
 
-                    const startMinutes = hours * 60 + minutes;
-                    const endMinutes = startMinutes + booking.duration;
-                    const timeRemaining = endMinutes - currentMinutes;
-
-                    // Session just ended (within the last minute)
-                    if (timeRemaining <= 0 && timeRemaining > -1) {
-                        const consoleInfo = booking.booking_items?.[0];
-                        const consoleType = consoleInfo?.console?.toUpperCase() || 'UNKNOWN';
-                        const isWalkIn = booking.source === 'walk-in';
-                        const customerName = isWalkIn ? booking.customer_name : (booking.user_name || 'Guest');
-
-                        // Mark as notified
-                        endedSessionsRef.current.add(bookingId);
-
-                        // Call the callback
-                        onSessionEnded({
-                            customerName,
-                            stationName: consoleType,
-                            duration: booking.duration,
-                        });
-                    }
-                }
+            // Fire when session is over (use <= -1 buffer to avoid missing the exact minute)
+            if (timeRemaining <= 0) {
+                const consoleInfo = booking.booking_items?.[0];
+                const consoleType = consoleInfo?.console?.toUpperCase() || 'UNKNOWN';
+                const isWalkIn = booking.source === 'walk-in';
+                const customerName = isWalkIn ? booking.customer_name : (booking.user_name || 'Guest');
+                endedSessionsRef.current.add(bookingId);
+                onSessionEnded({ customerName, stationName: consoleType, duration: booking.duration });
             }
         });
     }, [currentTime, sortedActiveBookings, onSessionEnded]);
@@ -221,24 +216,12 @@ export function ActiveSessions({
                 let endTime = '';
 
                 if (booking.start_time && booking.duration) {
-                    const timeParts = booking.start_time.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
-                    if (timeParts) {
-                        let hours = parseInt(timeParts[1]);
-                        const minutes = parseInt(timeParts[2]);
-                        const period = timeParts[3];
-
-                        if (period) {
-                            if (period.toLowerCase() === 'pm' && hours !== 12) hours += 12;
-                            else if (period.toLowerCase() === 'am' && hours === 12) hours = 0;
-                        }
-
-                        const startMinutes = hours * 60 + minutes;
-                        const endMinutes = startMinutes + booking.duration;
-                        timeRemaining = Math.max(0, endMinutes - currentMinutes);
-
-                        // End time display
-                        const endHours = Math.floor(endMinutes / 60) % 24;
-                        const endMins = endMinutes % 60;
+                    const startMinutes = parseStartMinutes(booking.start_time);
+                    if (startMinutes !== null) {
+                        timeRemaining = Math.max(0, calcTimeRemaining(startMinutes, booking.duration, currentMinutes));
+                        const endTotalMinutes = (startMinutes + booking.duration) % 1440;
+                        const endHours = Math.floor(endTotalMinutes / 60);
+                        const endMins = endTotalMinutes % 60;
                         const endPeriod = endHours >= 12 ? 'pm' : 'am';
                         const endHours12 = endHours === 0 ? 12 : endHours > 12 ? endHours - 12 : endHours;
                         endTime = `${endHours12}:${endMins.toString().padStart(2, '0')} ${endPeriod}`;

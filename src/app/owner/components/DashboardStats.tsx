@@ -62,7 +62,9 @@ export function DashboardStats({ bookings, subscriptions, activeTimers, loadingD
   };
 
   const todayStr = getLocalDateString();
-  const yesterdayStr = getLocalDateString(new Date(Date.now() - 86400000));
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = getLocalDateString(yesterday);
 
   // Today's stats
   const activeBookingsCount = bookings.filter(b => b.status === 'in-progress' && b.booking_date === todayStr).length;
@@ -93,9 +95,10 @@ export function DashboardStats({ bookings, subscriptions, activeTimers, loadingD
   const yesterdayRevenue = calcRevenue(yesterdayBookings, yesterdaySubscriptions);
 
   // Revenue breakdown
+  const ONLINE_MODES = ['online', 'upi', 'paytm', 'gpay', 'phonepe', 'card'];
   const cashTotal = todayBookings.filter(b => b.payment_mode?.toLowerCase() === 'cash').reduce((s, b) => s + (b.total_amount || 0), 0);
-  const onlineTotal = todayBookings.filter(b => ['online', 'upi'].includes(b.payment_mode?.toLowerCase() || '')).reduce((s, b) => s + (b.total_amount || 0), 0);
-  const cardTotal = todayBookings.filter(b => b.payment_mode?.toLowerCase() === 'card').reduce((s, b) => s + (b.total_amount || 0), 0);
+  const onlineTotal = todayBookings.filter(b => ONLINE_MODES.includes(b.payment_mode?.toLowerCase() || '')).reduce((s, b) => s + (b.total_amount || 0), 0);
+  const cardTotal = 0; // merged into onlineTotal above
   const membershipRevenue = todaySubscriptions.reduce((s, sub) => {
     const amt = typeof sub.amount_paid === 'number' ? sub.amount_paid : parseFloat(sub.amount_paid ?? '0') || 0;
     return s + amt;

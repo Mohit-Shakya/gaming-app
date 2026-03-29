@@ -6,7 +6,9 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-// GET /api/owner/coupons/customers?cafeId=...
+// GET /api/owner/coupons/customers?cafeId=...&search=...
+// If `search` is provided, returns up to 10 matching customers quickly (for autocomplete).
+// Without `search`, returns full customer list with stats (for coupons page).
 export async function GET(request: NextRequest) {
   const auth = await requireOwnerContext(request);
   if (auth.response) {
@@ -15,6 +17,8 @@ export async function GET(request: NextRequest) {
 
   const { ownerId, supabase } = auth.context;
   const cafeId = request.nextUrl.searchParams.get('cafeId');
+  const search = request.nextUrl.searchParams.get('search')?.trim() || '';
+
   if (!cafeId) return NextResponse.json({ error: "cafeId required" }, { status: 400 });
 
   const accessResponse = await requireOwnerCafeAccess(supabase, ownerId, cafeId);
@@ -22,6 +26,34 @@ export async function GET(request: NextRequest) {
     return accessResponse;
   }
 
+  // Fast path: autocomplete search — targeted query, no full customer map build
+  if (search.length >= 2) {
+    const { data, error } = await supabase
+      .from('bookings')
+      .select('customer_name, customer_phone')
+      .eq('cafe_id', cafeId)
+      .neq('status', 'cancelled')
+      .or(`customer_name.ilike.%${search}%,customer_phone.ilike.%${search}%`)
+      .not('customer_phone', 'is', null)
+      .not('customer_name', 'is', null)
+      .limit(20);
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    // Deduplicate by phone
+    const seen = new Set<string>();
+    const results: { name: string; phone: string }[] = [];
+    for (const row of data || []) {
+      if (row.customer_phone && !seen.has(row.customer_phone)) {
+        seen.add(row.customer_phone);
+        results.push({ name: row.customer_name, phone: row.customer_phone });
+        if (results.length >= 10) break;
+      }
+    }
+    return NextResponse.json(results);
+  }
+
+  // Full path: load all customers for coupons page
   const { data: bookings, error: bookingsError } = await supabase
     .from('bookings')
     .select('id, user_id, customer_name, customer_phone, total_amount, booking_date, created_at, status, source')

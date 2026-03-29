@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ConsoleId } from "@/lib/constants";
 import { BillingItem, PricingTier } from "../types";
 import { getLocalDateString } from "../utils";
@@ -35,10 +35,10 @@ export function useBilling({
   const [totalAmount, setTotalAmount] = useState<number>(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [availableConsoles, setAvailableConsoles] = useState<ConsoleId[]>([]);
-  const [previousCustomers, setPreviousCustomers] = useState<Array<{ name: string; phone: string }>>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [filteredSuggestions, setFilteredSuggestions] = useState<Array<{ name: string; phone: string }>>([]);
   const [activeSuggestionField, setActiveSuggestionField] = useState<'name' | 'phone' | null>(null);
+  const searchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Helper function to get price — delegates to shared util
   const getBillingPrice = (consoleType: string, quantity: number, duration: number) =>
@@ -174,52 +174,38 @@ export function useBilling({
     setAvailableConsoles(available);
   }, [cafeData]);
 
-  // Load previous customers via API route
-  useEffect(() => {
-    if (!enabled || !selectedCafeId) return;
-
-    async function loadCustomers() {
-      const res = await fetch(`/api/owner/coupons/customers?cafeId=${selectedCafeId}`);
-      if (!res.ok) return;
-      const data = await res.json();
-
-      if (Array.isArray(data)) {
-        const unique = data
-          .filter((c: any) => c.phone && c.name)
-          .map((c: any) => ({ name: c.name, phone: c.phone }));
-        setPreviousCustomers(unique);
-      }
+  // Debounced server-side customer search for autocomplete
+  const searchCustomers = (query: string) => {
+    if (searchDebounce.current) clearTimeout(searchDebounce.current);
+    if (query.length < 2) {
+      setShowSuggestions(false);
+      setFilteredSuggestions([]);
+      return;
     }
-    loadCustomers();
-  }, [enabled, selectedCafeId]);
+    searchDebounce.current = setTimeout(async () => {
+      if (!selectedCafeId) return;
+      try {
+        const res = await fetch(`/api/owner/coupons/customers?cafeId=${selectedCafeId}&search=${encodeURIComponent(query)}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setFilteredSuggestions(data);
+          setShowSuggestions(data.length > 0);
+        }
+      } catch {}
+    }, 300);
+  };
 
-  // Suggestions logic
   const handleNameChange = (val: string) => {
     setCustomerName(val);
     setActiveSuggestionField('name');
-    if (val.length > 1) {
-      const filtered = previousCustomers.filter(c => 
-        c.name.toLowerCase().includes(val.toLowerCase())
-      );
-      setFilteredSuggestions(filtered);
-      setShowSuggestions(true);
-    } else {
-      setShowSuggestions(false);
-    }
+    searchCustomers(val);
   };
 
   const handlePhoneChange = (val: string) => {
     setCustomerPhone(val);
     setActiveSuggestionField('phone');
-    if (val.length > 2) {
-      const filtered = previousCustomers.filter(c => 
-        c.phone?.includes(val)
-      );
-      setFilteredSuggestions(filtered);
-      setShowSuggestions(true);
-    } else {
-      setShowSuggestions(false);
-    }
+    searchCustomers(val);
   };
 
   const handleSuggestionClick = (customer: { name: string; phone: string }) => {
@@ -238,7 +224,6 @@ export function useBilling({
     totalAmount,
     isSubmitting,
     availableConsoles,
-    previousCustomers,
     showSuggestions, setShowSuggestions,
     filteredSuggestions,
     activeSuggestionField,

@@ -53,7 +53,7 @@ export async function PUT(request: NextRequest) {
       }
     }
 
-    // Support multiple items sync
+    // Support multiple items sync — upsert FIRST, delete AFTER to avoid data loss on failure
     if (items && Array.isArray(items)) {
       // 1. Get current items in DB
       const { data: currentDbItems, error: getError } = await supabase
@@ -69,18 +69,7 @@ export async function PUT(request: NextRequest) {
       const dbItemIds = (currentDbItems || []).map(it => it.id);
       const itemIdsToDelete = dbItemIds.filter(id => !itemIdsToKeep.includes(id));
 
-      // 2. Delete removed items
-      if (itemIdsToDelete.length > 0) {
-        const { error: delError } = await supabase
-          .from("booking_items")
-          .delete()
-          .in("id", itemIdsToDelete)
-          .eq("booking_id", bookingId);
-        
-        if (delError) return NextResponse.json({ error: delError.message }, { status: 500 });
-      }
-
-      // 3. Upsert items in parallel
+      // 2. Upsert (update existing + insert new) BEFORE deleting — if this fails, nothing is lost
       const itemResults = await Promise.all(items.map((it: any) => {
         if (it.id) {
           return supabase
@@ -96,7 +85,18 @@ export async function PUT(request: NextRequest) {
       }));
       const firstItemError = itemResults.find(r => r.error);
       if (firstItemError?.error) {
+        // Upserts failed — no deletes happened, DB is still intact
         return NextResponse.json({ error: firstItemError.error.message }, { status: 500 });
+      }
+
+      // 3. Only delete removed items AFTER successful upserts
+      if (itemIdsToDelete.length > 0) {
+        const { error: delError } = await supabase
+          .from("booking_items")
+          .delete()
+          .in("id", itemIdsToDelete)
+          .eq("booking_id", bookingId);
+        if (delError) return NextResponse.json({ error: delError.message }, { status: 500 });
       }
     }
 

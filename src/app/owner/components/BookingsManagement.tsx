@@ -81,17 +81,19 @@ export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateS
         }
     }, [cafeId, statusFilter, dateRange, customStart, customEnd, limit]);
 
-    // Re-fetch when filters change; clear selection
+    // Re-fetch when filters change — don't clear selection so user can act across searches
     useEffect(() => {
         fetchBookings(debouncedSearch);
-        setSelectedIds(new Set());
     }, [fetchBookings, debouncedSearch]);
 
-    // Re-fetch when parent signals an external change (e.g. status/payment update)
+    // Keep a ref to the latest fetch fn + search so refreshTrigger never uses a stale closure
+    const latestFetchRef = useRef({ fn: fetchBookings, search: debouncedSearch });
+    useEffect(() => { latestFetchRef.current = { fn: fetchBookings, search: debouncedSearch }; }, [fetchBookings, debouncedSearch]);
+
     useEffect(() => {
-        if (refreshTrigger === undefined || refreshTrigger === 0) return;
-        fetchBookings(debouncedSearch);
-    }, [refreshTrigger]); // eslint-disable-line react-hooks/exhaustive-deps
+        if (!refreshTrigger) return;
+        latestFetchRef.current.fn(latestFetchRef.current.search);
+    }, [refreshTrigger]);
 
     // Debounce search input
     const handleSearchChange = (val: string) => {
@@ -112,10 +114,20 @@ export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateS
         if (!selectedIds.size || !onUpdateStatus) return;
         setBulkLoading(true);
         const ids = Array.from(selectedIds);
+        let failedCount = 0;
         try {
-            await Promise.all(ids.map(id => onUpdateStatus(id, status)));
+            // Process in batches of 10 to avoid flooding the server
+            const BATCH = 10;
+            for (let i = 0; i < ids.length; i += BATCH) {
+                const batch = ids.slice(i, i + BATCH);
+                const results = await Promise.allSettled(batch.map(id => onUpdateStatus(id, status)));
+                failedCount += results.filter(r => r.status === 'rejected').length;
+            }
             setSelectedIds(new Set());
             fetchBookings(debouncedSearch);
+            if (failedCount > 0) {
+                console.warn(`Bulk update: ${ids.length - failedCount}/${ids.length} succeeded, ${failedCount} failed`);
+            }
         } finally {
             setBulkLoading(false);
         }

@@ -647,7 +647,7 @@ export default function OwnerDashboardPage() {
         return;
       }
 
-      setBookingsMgmtRefreshKey(k => k + 1);
+      // Optimistic update is already correct — no refresh needed, avoids race with stale data
     } catch (err) {
       console.error('Error updating payment mode:', err);
       // Revert optimistic update
