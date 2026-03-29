@@ -235,42 +235,7 @@ export function LiveStatus({ cafeId, isMobile = false }: LiveStatusProps) {
 
     return (
         <div className="space-y-6">
-            {/* Header */}
-            <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-5">
-                <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-                    <div className="flex items-center gap-3">
-                        <div className="relative flex h-3 w-3">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
-                        </div>
-                        <h2 className="text-lg font-bold text-white">Live Status</h2>
-                        <span className="text-slate-500 text-sm">· updates every 5s</span>
-                    </div>
-                    <span className="text-slate-400 text-sm">
-                        Last updated {lastUpdated.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                    </span>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 text-center">
-                        <div className="text-2xl font-bold text-emerald-400">{totalFree}</div>
-                        <div className="text-xs text-emerald-600 font-semibold uppercase tracking-wide mt-0.5">Free</div>
-                    </div>
-                    <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 text-center">
-                        <div className="text-2xl font-bold text-red-400">{totalBusy}</div>
-                        <div className="text-xs text-red-600 font-semibold uppercase tracking-wide mt-0.5">Busy</div>
-                    </div>
-                    <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 text-center">
-                        <div className="text-2xl font-bold text-amber-400">{totalEndingSoon}</div>
-                        <div className="text-xs text-amber-600 font-semibold uppercase tracking-wide mt-0.5">Ending Soon</div>
-                    </div>
-                    <div className="bg-slate-700/30 border border-slate-700/50 rounded-xl p-3 text-center">
-                        <div className="text-2xl font-bold text-slate-400">{totalOff}</div>
-                        <div className="text-xs text-slate-600 font-semibold uppercase tracking-wide mt-0.5">Powered Off</div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Active Sessions — dashboard style */}
+            {/* Active Sessions — shown first */}
             {activeSessions.length > 0 && (
                 <div>
                     <h3 className="text-base font-semibold text-white mb-3 px-1">Active Sessions ({activeSessions.length})</h3>
@@ -339,6 +304,41 @@ export function LiveStatus({ cafeId, isMobile = false }: LiveStatusProps) {
                     </div>
                 </div>
             )}
+
+            {/* Header — stat chips */}
+            <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-5">
+                <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+                    <div className="flex items-center gap-3">
+                        <div className="relative flex h-3 w-3">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                        </div>
+                        <h2 className="text-lg font-bold text-white">Live Status</h2>
+                        <span className="text-slate-500 text-sm">· updates every 5s</span>
+                    </div>
+                    <span className="text-slate-400 text-sm">
+                        Last updated {lastUpdated.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                    </span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-3 text-center">
+                        <div className="text-2xl font-bold text-emerald-400">{totalFree}</div>
+                        <div className="text-xs text-emerald-600 font-semibold uppercase tracking-wide mt-0.5">Free</div>
+                    </div>
+                    <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 text-center">
+                        <div className="text-2xl font-bold text-red-400">{totalBusy}</div>
+                        <div className="text-xs text-red-600 font-semibold uppercase tracking-wide mt-0.5">Busy</div>
+                    </div>
+                    <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 text-center">
+                        <div className="text-2xl font-bold text-amber-400">{totalEndingSoon}</div>
+                        <div className="text-xs text-amber-600 font-semibold uppercase tracking-wide mt-0.5">Ending Soon</div>
+                    </div>
+                    <div className="bg-slate-700/30 border border-slate-700/50 rounded-xl p-3 text-center">
+                        <div className="text-2xl font-bold text-slate-400">{totalOff}</div>
+                        <div className="text-xs text-slate-600 font-semibold uppercase tracking-wide mt-0.5">Powered Off</div>
+                    </div>
+                </div>
+            </div>
 
             {/* Station Grid by Type */}
             {consoleData.map((group) => (
