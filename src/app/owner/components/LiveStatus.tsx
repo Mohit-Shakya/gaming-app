@@ -56,7 +56,7 @@ export function LiveStatus({ cafeId, isMobile = false }: LiveStatusProps) {
             const res = await fetch(`/api/owner/live-status?cafeId=${cafeId}`);
             if (!res.ok) throw new Error('Failed to fetch live status');
             const { cafe, bookings, activeSubscriptions, stationPricing } = await res.json();
-            console.log('[LiveStatus] API response — cafeId:', cafeId, 'bookings:', bookings?.length, 'inProgress:', (bookings||[]).filter((b:any)=>b.status==='in-progress').length, 'raw:', bookings);
+            console.log('[LiveStatus] API response — cafeId:', cafeId, 'bookings:', bookings?.length, 'inProgress:', (bookings||[]).filter((b:any)=>b.status==='in-progress').length, 'subscriptions (timer_active):', activeSubscriptions?.length, 'raw bookings:', bookings, 'raw subs:', activeSubscriptions);
             if (!cafe) { setLoading(false); return; }
             const summaries = buildConsoleSummaries(cafe, bookings || [], activeSubscriptions || [], stationPricing || []);
             const busy = summaries.flatMap(g => g.statuses).filter(s => s.status === 'busy' || s.status === 'ending_soon');

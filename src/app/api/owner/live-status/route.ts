@@ -45,6 +45,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: cafeError.message }, { status: 500 });
     }
 
+    // DEBUG: diagnose which filter causes 0 results
+    const [{ data: allForCafe }, { data: todayForCafe }, { data: inProgressForCafe }] = await Promise.all([
+      supabase.from("bookings").select("id, booking_date, status").eq("cafe_id", cafeId).limit(5),
+      supabase.from("bookings").select("id, booking_date, status").eq("cafe_id", cafeId).eq("booking_date", todayStr),
+      supabase.from("bookings").select("id, booking_date, status").eq("cafe_id", cafeId).eq("status", "in-progress"),
+    ]);
+    console.log('[live-status DEBUG] cafeId:', cafeId, 'todayStr:', todayStr,
+      '| allForCafe (sample):', allForCafe?.map(b => ({date: b.booking_date, status: b.status})),
+      '| todayForCafe:', todayForCafe?.length, todayForCafe?.map(b => b.status),
+      '| inProgressForCafe:', inProgressForCafe?.length, inProgressForCafe?.map(b => b.booking_date));
+
     // Fetch today's in-progress bookings
     const { data: bookings, error: bookingsError } = await supabase
       .from("bookings")
