@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { LucideIcon } from 'lucide-react';
 import {
     LayoutDashboard,
-    MonitorPlay,
     CreditCard,
     CalendarCheck,
     Users,
@@ -23,7 +22,6 @@ import {
 
 const PRIMARY_NAV = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'live-status', label: 'Live Status', icon: MonitorPlay },
     { id: 'billing', label: 'New Booking', icon: CreditCard },
     { id: 'bookings', label: 'Bookings', icon: CalendarCheck },
     { id: 'customers', label: 'Customers', icon: Users },

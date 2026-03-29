@@ -41,7 +41,6 @@ import SnackSaleModal from "./components/SnackSaleModal";
 import { EditBookingModal } from "./components/EditBookingModal";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 
-const LiveStatus = dynamic(() => import('./components/LiveStatus').then((mod) => mod.LiveStatus), { ssr: false });
 const Billing = dynamic(() => import('./components/Billing').then((mod) => mod.Billing), { ssr: false });
 const BookingsManagement = dynamic(() => import('./components/BookingsManagement').then((mod) => mod.BookingsManagement), { ssr: false });
 const Memberships = dynamic(() => import('./components/Memberships').then((mod) => mod.Memberships), { ssr: false });
@@ -427,8 +426,8 @@ export default function OwnerDashboardPage() {
 
   // Auto-refresh time every second for active sessions (only when sessions tab is active)
   useEffect(() => {
-    // Only run timer when viewing sessions, live-status, or dashboard tabs
-    if (activeTab !== 'sessions' && activeTab !== 'live-status' && activeTab !== 'dashboard') return;
+    // Only run timer when viewing sessions or dashboard tabs
+    if (activeTab !== 'sessions' && activeTab !== 'dashboard') return;
 
     const timer = setInterval(() => {
       setCurrentTime(new Date());
@@ -1932,7 +1931,7 @@ export default function OwnerDashboardPage() {
                       </span>
                     </div>
                     <button
-                      onClick={() => setActiveTab('live-status')}
+                      onClick={() => setActiveTab('dashboard')}
                       className="text-[11px] font-semibold text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 px-2.5 py-1 rounded-lg transition-colors whitespace-nowrap"
                     >
                       View Live →
@@ -2047,96 +2046,6 @@ export default function OwnerDashboardPage() {
             </ErrorBoundary>
           )}
 
-
-          {activeTab === 'live-status' && cafes.length > 0 && (
-            <div>
-              {/* Café Selector (only show if multiple cafés) */}
-              {cafes.length > 1 && (
-                <div style={{
-                  marginBottom: 24,
-                  background: theme.cardBackground,
-                  border: `1px solid ${theme.border}`,
-                  borderRadius: 12,
-                  padding: 16,
-                }}>
-                  <label style={{
-                    fontSize: 13,
-                    fontWeight: 600,
-                    color: theme.textMuted,
-                    display: 'block',
-                    marginBottom: 8,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
-                  }}>
-                    Select Café
-                  </label>
-                  <select
-                    value={selectedCafeId}
-                    onChange={(e) => setSelectedCafeId(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '12px 16px',
-                      background: theme.background,
-                      border: `1px solid ${theme.border}`,
-                      borderRadius: 10,
-                      color: theme.textPrimary,
-                      fontSize: 15,
-                      fontWeight: 500,
-                      cursor: 'pointer',
-                      outline: 'none',
-                    }}
-                  >
-                    {cafes.map(cafe => (
-                      <option key={cafe.id} value={cafe.id}>
-                        {cafe.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              <LiveStatus cafeId={currentCafeId} isMobile={isMobile} />
-            </div>
-          )}
-
-          {activeTab === 'live-status' && cafes.length === 0 && (
-            <div style={{
-              padding: "60px 20px",
-              textAlign: "center",
-              background: theme.cardBackground,
-              borderRadius: 16,
-              border: `1px solid ${theme.border}`,
-            }}>
-              <div style={{ fontSize: "64px", marginBottom: "16px" }}>🏪</div>
-              <h3 style={{
-                fontFamily: fonts.heading,
-                fontSize: "20px",
-                color: theme.textPrimary,
-                marginBottom: "8px"
-              }}>
-                No Café Found
-              </h3>
-              <p style={{ fontSize: "14px", color: theme.textSecondary, marginBottom: "24px" }}>
-                Please add a café first to view live console status
-              </p>
-              <button
-                onClick={() => setActiveTab('cafe-details')}
-                style={{
-                  padding: "12px 24px",
-                  background: "linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)",
-                  border: "none",
-                  borderRadius: "10px",
-                  color: "white",
-                  fontSize: "14px",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  fontFamily: fonts.body,
-                }}
-              >
-                Add Café →
-              </button>
-            </div>
-          )}
 
           {/* Bookings Tab */}
           {activeTab === 'bookings' && (
