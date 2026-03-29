@@ -1899,6 +1899,48 @@ export default function OwnerDashboardPage() {
           {!loadingData && activeTab === 'dashboard' && (
             <ErrorBoundary>
             <div>
+              {/* Ending Soon Alert Banner */}
+              {(() => {
+                const now = new Date();
+                const currentMinutes = now.getHours() * 60 + now.getMinutes();
+                const endingSoon = bookings.filter((b: any) => {
+                  if (b.status !== 'in-progress' || b.booking_date !== getLocalDateString()) return false;
+                  if (!b.start_time || !b.duration) return false;
+                  const timeParts = b.start_time.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
+                  if (!timeParts) return false;
+                  let hours = parseInt(timeParts[1]);
+                  const mins = parseInt(timeParts[2]);
+                  const period = timeParts[3];
+                  if (period) {
+                    if (period.toLowerCase() === 'pm' && hours !== 12) hours += 12;
+                    else if (period.toLowerCase() === 'am' && hours === 12) hours = 0;
+                  }
+                  const endMinutes = hours * 60 + mins + b.duration;
+                  const remaining = endMinutes - currentMinutes;
+                  return remaining > 0 && remaining <= 15;
+                });
+                if (endingSoon.length === 0) return null;
+                return (
+                  <div className="mb-5 rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 flex items-center gap-3">
+                    <span className="text-lg">⏰</span>
+                    <div className="flex-1">
+                      <span className="text-amber-400 font-semibold text-sm">
+                        {endingSoon.length} session{endingSoon.length > 1 ? 's' : ''} ending in under 15 minutes
+                      </span>
+                      <span className="text-amber-400/60 text-xs ml-2">
+                        {endingSoon.map((b: any) => b.customer_name || 'Guest').join(', ')}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => setActiveTab('live-status')}
+                      className="text-[11px] font-semibold text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 px-2.5 py-1 rounded-lg transition-colors whitespace-nowrap"
+                    >
+                      View Live →
+                    </button>
+                  </div>
+                );
+              })()}
+
               {/* Top Stats Cards */}
               <DashboardStats
                 bookings={bookings}

@@ -1,12 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Eye, EyeOff } from 'lucide-react';
-import { StatCard } from './ui';
+import { Eye, EyeOff, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { getLocalDateString } from '../utils';
 
 const REVENUE_VISIBILITY_KEY = 'owner-dashboard-revenue-visible';
-
-import { getLocalDateString } from '../utils';
 
 interface DashboardStatsProps {
   bookings: DashboardBooking[];
@@ -21,11 +19,7 @@ interface DashboardBooking {
   payment_mode?: string | null;
   status?: string | null;
   total_amount?: number | null;
-  booking_orders?: Array<{
-    id: string;
-    quantity?: number | null;
-    total_price: number | null;
-  }>;
+  booking_orders?: Array<{ id: string; quantity?: number | null; total_price: number | null }>;
 }
 
 interface DashboardSubscription {
@@ -34,242 +28,147 @@ interface DashboardSubscription {
   purchase_date?: string | null;
 }
 
-export function DashboardStats({
-  bookings,
-  subscriptions,
-  activeTimers,
-  loadingData,
-  isMobile,
-}: DashboardStatsProps) {
+function Trend({ today, yesterday }: { today: number; yesterday: number }) {
+  if (yesterday === 0 && today === 0) return null;
+  if (yesterday === 0) return <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">New</span>;
+  const pct = Math.round(((today - yesterday) / yesterday) * 100);
+  if (pct === 0) return <span className="flex items-center gap-0.5 text-[10px] font-semibold text-slate-400"><Minus size={10} />0%</span>;
+  const up = pct > 0;
+  return (
+    <span className={`flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded ${up ? 'text-emerald-400 bg-emerald-500/10' : 'text-red-400 bg-red-500/10'}`}>
+      {up ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
+      {up ? '+' : ''}{pct}% vs yesterday
+    </span>
+  );
+}
+
+export function DashboardStats({ bookings, subscriptions, activeTimers, loadingData, isMobile }: DashboardStatsProps) {
   const [showRevenue, setShowRevenue] = useState(false);
   const [showBreakdown, setShowBreakdown] = useState(false);
   const [loadedPreference, setLoadedPreference] = useState(false);
 
   useEffect(() => {
-    try {
-      setShowRevenue(localStorage.getItem(REVENUE_VISIBILITY_KEY) === 'true');
-    } catch {
-      setShowRevenue(false);
-    } finally {
-      setLoadedPreference(true);
-    }
+    try { setShowRevenue(localStorage.getItem(REVENUE_VISIBILITY_KEY) === 'true'); } catch { setShowRevenue(false); }
+    finally { setLoadedPreference(true); }
   }, []);
 
   const toggleRevenueVisibility = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Don't trigger the breakdown toggle
-    setShowRevenue((current) => {
+    e.stopPropagation();
+    setShowRevenue(current => {
       const next = !current;
-
-      try {
-        localStorage.setItem(REVENUE_VISIBILITY_KEY, String(next));
-      } catch {
-        // Ignore storage failures and keep the in-memory toggle working.
-      }
-
+      try { localStorage.setItem(REVENUE_VISIBILITY_KEY, String(next)); } catch {}
       return next;
     });
   };
 
-  const toggleBreakdown = () => {
-    if (revenueVisible) {
-      setShowBreakdown(prev => !prev);
-    }
-  };
+  const todayStr = getLocalDateString();
+  const yesterdayStr = getLocalDateString(new Date(Date.now() - 86400000));
 
-  const activeBookingsCount = bookings.filter(
-    (b) => b.status === 'in-progress' && b.booking_date === getLocalDateString()
-  ).length;
-
-  const activeSubscriptionsCount = subscriptions.filter((sub) =>
-    activeTimers.has(sub.id)
-  ).length;
-
+  // Today's stats
+  const activeBookingsCount = bookings.filter(b => b.status === 'in-progress' && b.booking_date === todayStr).length;
+  const activeSubscriptionsCount = subscriptions.filter(sub => activeTimers.has(sub.id)).length;
   const activeNow = activeBookingsCount + activeSubscriptionsCount;
 
-  const todayStr = getLocalDateString();
-  const todayBookings = bookings.filter(
-    (b) => b.booking_date === todayStr &&
-      b.status !== 'cancelled' &&
-      b.payment_mode !== 'owner'
-  );
-  const todaySubscriptions = subscriptions.filter((sub) => {
-    const purchaseDate = sub.purchase_date
-      ? getLocalDateString(new Date(sub.purchase_date))
-      : null;
+  const todayBookings = bookings.filter(b => b.booking_date === todayStr && b.status !== 'cancelled' && b.payment_mode !== 'owner');
+  const todaySessions = todayBookings.length;
+  const pendingBookings = bookings.filter(b => b.booking_date === todayStr && b.status === 'confirmed').length;
 
-    return purchaseDate === todayStr;
-  });
+  const todaySubscriptions = subscriptions.filter(sub => sub.purchase_date && getLocalDateString(new Date(sub.purchase_date)) === todayStr);
 
-  const cashBookings = todayBookings.filter((b) => b.payment_mode?.toLowerCase() === 'cash');
-  const onlineBookings = todayBookings.filter((b) => {
-    const mode = b.payment_mode?.toLowerCase();
-    return mode === 'online' || mode === 'upi';
-  });
-  const cardBookings = todayBookings.filter((b) => b.payment_mode?.toLowerCase() === 'card');
+  const calcRevenue = (bkgs: DashboardBooking[], subs: DashboardSubscription[]) => {
+    const bkgTotal = bkgs.reduce((s, b) => s + (b.total_amount || 0), 0);
+    const subTotal = subs.reduce((s, sub) => {
+      const amt = typeof sub.amount_paid === 'number' ? sub.amount_paid : parseFloat(sub.amount_paid ?? '0') || 0;
+      return s + amt;
+    }, 0);
+    return bkgTotal + subTotal;
+  };
 
-  const cashTotal = cashBookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
-  const onlineTotal = onlineBookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
-  const cardTotal = cardBookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
+  const totalRevenue = calcRevenue(todayBookings, todaySubscriptions);
 
-  const membershipRevenue = todaySubscriptions.reduce(
-    (sum, sub) => {
-      const amountPaid =
-        typeof sub.amount_paid === 'number'
-          ? sub.amount_paid
-          : parseFloat(sub.amount_paid ?? '0') || 0;
+  // Yesterday's stats for trend
+  const yesterdayBookings = bookings.filter(b => b.booking_date === yesterdayStr && b.status !== 'cancelled' && b.payment_mode !== 'owner');
+  const yesterdaySessions = yesterdayBookings.length;
+  const yesterdaySubscriptions = subscriptions.filter(sub => sub.purchase_date && getLocalDateString(new Date(sub.purchase_date)) === yesterdayStr);
+  const yesterdayRevenue = calcRevenue(yesterdayBookings, yesterdaySubscriptions);
 
-      return sum + amountPaid;
-    },
-    0
-  );
-
-  const totalRevenue = cashTotal + onlineTotal + cardTotal + membershipRevenue;
-
-  const snacksRevenue = todayBookings.reduce((sum, b) => {
-    const orderSum = b.booking_orders?.reduce((s, order) => s + (order.total_price || 0), 0) || 0;
-    return sum + orderSum;
+  // Revenue breakdown
+  const cashTotal = todayBookings.filter(b => b.payment_mode?.toLowerCase() === 'cash').reduce((s, b) => s + (b.total_amount || 0), 0);
+  const onlineTotal = todayBookings.filter(b => ['online', 'upi'].includes(b.payment_mode?.toLowerCase() || '')).reduce((s, b) => s + (b.total_amount || 0), 0);
+  const cardTotal = todayBookings.filter(b => b.payment_mode?.toLowerCase() === 'card').reduce((s, b) => s + (b.total_amount || 0), 0);
+  const membershipRevenue = todaySubscriptions.reduce((s, sub) => {
+    const amt = typeof sub.amount_paid === 'number' ? sub.amount_paid : parseFloat(sub.amount_paid ?? '0') || 0;
+    return s + amt;
   }, 0);
+  const snacksRevenue = todayBookings.reduce((s, b) => s + (b.booking_orders?.reduce((ss, o) => ss + (o.total_price || 0), 0) || 0), 0);
 
-  const cashSnacks = cashBookings.reduce((sum, b) => sum + (b.booking_orders?.reduce((s, o) => s + (o.total_price || 0), 0) || 0), 0);
-  const onlineSnacks = onlineBookings.reduce((sum, b) => sum + (b.booking_orders?.reduce((s, o) => s + (o.total_price || 0), 0) || 0), 0);
-  const cardSnacks = cardBookings.reduce((sum, b) => sum + (b.booking_orders?.reduce((s, o) => s + (o.total_price || 0), 0) || 0), 0);
-
-  const displayCash = cashTotal - cashSnacks;
-  const displayOnline = onlineTotal - onlineSnacks;
-  const displayCard = cardTotal - cardSnacks;
-  
   const revenueVisible = loadedPreference && showRevenue;
 
-  const todaySessions = bookings.filter(
-    (b) => b.booking_date === todayStr && b.status !== 'cancelled' && b.payment_mode !== 'owner'
-  ).length;
-
-  const snacksSoldToday = todayBookings.reduce((sum, b) => {
-    const qtySum = b.booking_orders?.reduce((s, order) => s + (order.quantity || 0), 0) || 0;
-    return sum + qtySum;
-  }, 0);
+  const cardBase = `relative overflow-hidden rounded-2xl border p-5 flex flex-col justify-between min-h-[120px]`;
 
   return (
-    <div className="grid grid-cols-1 gap-4 mb-8 md:grid-cols-2 lg:grid-cols-3 md:gap-6">
-      <StatCard
-        title="Active Now"
-        value={loadingData ? '...' : activeNow}
-        icon="▶️"
-        gradient="radial-gradient(circle at top right, rgba(239, 68, 68, 0.15), transparent 70%), linear-gradient(135deg, rgba(30, 41, 59, 0.4), rgba(15, 23, 42, 0.6))"
-        color="#ef4444"
-        isMobile={isMobile}
-      />
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
 
+      {/* Active Now */}
+      <div className={cardBase} style={{ background: 'radial-gradient(circle at top right, rgba(239,68,68,0.15), transparent 70%), linear-gradient(135deg, rgba(30,41,59,0.4), rgba(15,23,42,0.6))', borderColor: '#ef444440' }}>
+        <div className="absolute -top-3 right-8 text-5xl opacity-10">▶️</div>
+        <p className="text-[10px] uppercase tracking-widest font-bold text-red-400/80 mb-1">Active Now</p>
+        <p className="text-4xl font-bold text-red-400 leading-none">{loadingData ? '—' : activeNow}</p>
+        <p className="text-[11px] text-slate-500 mt-2">sessions in progress</p>
+      </div>
+
+      {/* Today's Revenue */}
       <div
-        onClick={toggleBreakdown}
-        className={`
-          relative overflow-hidden rounded-2xl border transition-all duration-300
-          ${isMobile ? 'p-4' : 'p-6'}
-          ${revenueVisible ? 'cursor-pointer hover:border-emerald-500/50 hover:bg-emerald-500/5' : ''}
-        `}
-        style={{
-          background:
-            'radial-gradient(circle at top right, rgba(34, 197, 94, 0.15), transparent 70%), linear-gradient(135deg, rgba(30, 41, 59, 0.4), rgba(15, 23, 42, 0.6))',
-          borderColor: '#22c55e40',
-        }}
+        onClick={() => revenueVisible && setShowBreakdown(p => !p)}
+        className={`${cardBase} ${revenueVisible ? 'cursor-pointer hover:border-emerald-500/40' : ''}`}
+        style={{ background: 'radial-gradient(circle at top right, rgba(34,197,94,0.15), transparent 70%), linear-gradient(135deg, rgba(30,41,59,0.4), rgba(15,23,42,0.6))', borderColor: '#22c55e40' }}
       >
-        <div
-          className="absolute -top-5 right-12 opacity-10"
-          style={{ fontSize: isMobile ? 60 : 80 }}
-        >
-          ₹
+        <div className="absolute -top-3 right-8 text-5xl opacity-10">₹</div>
+        <div className="flex items-start justify-between">
+          <p className="text-[10px] uppercase tracking-widest font-bold text-emerald-400/80">Today's Revenue</p>
+          <button type="button" onClick={toggleRevenueVisibility} className="p-1 rounded-full text-emerald-400 hover:bg-emerald-500/10 transition-colors z-10" aria-label="toggle revenue">
+            {revenueVisible ? <EyeOff size={14} /> : <Eye size={14} />}
+          </button>
         </div>
-
-        <button
-          type="button"
-          onClick={toggleRevenueVisibility}
-          className={`
-            absolute right-3 top-3 z-20 inline-flex items-center justify-center rounded-full
-            border border-emerald-500/30 bg-slate-950/70 text-emerald-400 transition-colors
-            hover:bg-slate-900
-            ${isMobile ? 'h-9 w-9' : 'h-10 w-10'}
-          `}
-          aria-label={revenueVisible ? 'Hide today revenue' : 'Show today revenue'}
-          aria-pressed={revenueVisible}
-          title={revenueVisible ? 'Hide today revenue' : 'Show today revenue'}
-        >
-          {revenueVisible ? <EyeOff size={isMobile ? 16 : 18} /> : <Eye size={isMobile ? 16 : 18} />}
-        </button>
-
-        <div className="relative z-10">
-          <p
-            className={`
-              uppercase tracking-wider font-semibold
-              ${isMobile ? 'text-[9px] mb-1.5' : 'text-[11px] mb-2'}
-            `}
-            style={{ color: '#22c55eE6' }}
-          >
-            Today&apos;s Revenue
-          </p>
-          <div className="flex items-center gap-2">
-            <p
-              className={`
-                font-bold leading-none
-                ${isMobile ? 'text-2xl my-1.5' : 'text-4xl my-2'}
-              `}
-              style={{ color: '#22c55e' }}
-            >
-              {loadingData
-                ? '...'
-                : revenueVisible
-                  ? `₹${totalRevenue}`
-                  : '••••••'}
-            </p>
-            {revenueVisible && !showBreakdown && (
-              <span className="text-[10px] text-emerald-400/50 font-medium bg-emerald-500/10 px-1.5 py-0.5 rounded animate-pulse">
-                TAP TO SEE BREAKDOWN
-              </span>
-            )}
+        <p className="text-4xl font-bold text-emerald-400 leading-none my-1">
+          {loadingData ? '—' : revenueVisible ? `₹${totalRevenue.toLocaleString('en-IN')}` : '••••••'}
+        </p>
+        {revenueVisible && (
+          <div className="flex items-center justify-between mt-1">
+            <Trend today={totalRevenue} yesterday={yesterdayRevenue} />
+            {!showBreakdown && <span className="text-[9px] text-emerald-400/40 animate-pulse">tap for breakdown</span>}
           </div>
-          
-          <div 
-            className={`
-              overflow-hidden transition-all duration-300 ease-in-out
-              ${showBreakdown && revenueVisible ? 'max-h-20 opacity-100 mt-2' : 'max-h-0 opacity-0 mt-0'}
-            `}
-          >
-            <p
-              className={`${isMobile ? 'text-[11px]' : 'text-[13px]'}`}
-              style={{ color: '#22c55eB3' }}
-            >
-              {loadingData
-                ? 'Loading revenue...'
-                : revenueVisible
-                  ? [
-                      `Cash: ₹${displayCash}`,
-                      `Online: ₹${displayOnline}`,
-                      displayCard > 0 ? `Card: ₹${displayCard}` : null,
-                      membershipRevenue > 0 ? `Memberships: ₹${membershipRevenue}` : null,
-                      snacksRevenue > 0 ? `Snacks: ₹${snacksRevenue}` : null,
-                    ].filter(Boolean).join(' • ')
-                  : ''}
-            </p>
+        )}
+        {showBreakdown && revenueVisible && (
+          <div className="mt-2 pt-2 border-t border-emerald-500/10 grid grid-cols-2 gap-x-3 gap-y-0.5">
+            {([['Cash', cashTotal], ['Online/UPI', onlineTotal], ...(cardTotal > 0 ? [['Card', cardTotal]] : []), ...(membershipRevenue > 0 ? [['Memberships', membershipRevenue]] : []), ...(snacksRevenue > 0 ? [['Snacks', snacksRevenue]] : [])] as [string, number][]).map(([label, val]) => (
+              <div key={label} className="flex justify-between text-[10px]">
+                <span className="text-slate-400">{label}</span>
+                <span className="text-emerald-400 font-semibold">₹{val.toLocaleString('en-IN')}</span>
+              </div>
+            ))}
           </div>
-          
-          {!revenueVisible && (
-            <p
-              className={`${isMobile ? 'text-[11px] mt-1.5' : 'text-[13px] mt-2'}`}
-              style={{ color: '#22c55eB3' }}
-            >
-              Hidden. Tap the eye icon to reveal.
-            </p>
-          )}
+        )}
+      </div>
+
+      {/* Today's Sessions */}
+      <div className={cardBase} style={{ background: 'radial-gradient(circle at top right, rgba(249,115,22,0.15), transparent 70%), linear-gradient(135deg, rgba(30,41,59,0.4), rgba(15,23,42,0.6))', borderColor: '#f9731640' }}>
+        <div className="absolute -top-3 right-8 text-5xl opacity-10">🕐</div>
+        <p className="text-[10px] uppercase tracking-widest font-bold text-orange-400/80 mb-1">Today's Sessions</p>
+        <p className="text-4xl font-bold text-orange-400 leading-none">{loadingData ? '—' : todaySessions}</p>
+        <div className="flex items-center justify-between mt-2">
+          <Trend today={todaySessions} yesterday={yesterdaySessions} />
         </div>
       </div>
 
-      <StatCard
-        title="Today's Sessions"
-        value={loadingData ? '...' : todaySessions}
-        icon="🕐"
-        gradient="radial-gradient(circle at top right, rgba(249, 115, 22, 0.15), transparent 70%), linear-gradient(135deg, rgba(30, 41, 59, 0.4), rgba(15, 23, 42, 0.6))"
-        color="#f97316"
-        isMobile={isMobile}
-      />
+      {/* Pending */}
+      <div className={cardBase} style={{ background: 'radial-gradient(circle at top right, rgba(139,92,246,0.15), transparent 70%), linear-gradient(135deg, rgba(30,41,59,0.4), rgba(15,23,42,0.6))', borderColor: '#8b5cf640' }}>
+        <div className="absolute -top-3 right-8 text-5xl opacity-10">📋</div>
+        <p className="text-[10px] uppercase tracking-widest font-bold text-violet-400/80 mb-1">Pending Today</p>
+        <p className="text-4xl font-bold text-violet-400 leading-none">{loadingData ? '—' : pendingBookings}</p>
+        <p className="text-[11px] text-slate-500 mt-2">bookings awaiting start</p>
+      </div>
+
     </div>
   );
 }
