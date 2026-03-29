@@ -221,6 +221,7 @@ export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateS
             {/* Table */}
             <BookingsTable
                 bookings={bookings}
+                limit={bookings.length}
                 showFilters={false}
                 onStatusChange={onUpdateStatus}
                 onEdit={onEdit}
