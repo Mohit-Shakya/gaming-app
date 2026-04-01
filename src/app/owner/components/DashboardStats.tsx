@@ -104,12 +104,15 @@ export function DashboardStats({ bookings, subscriptions, activeTimers, loadingD
     const amt = typeof sub.amount_paid === 'number' ? sub.amount_paid : parseFloat(sub.amount_paid ?? '0') || 0;
     return s + amt;
   }, 0);
-  // Only count F&B from snack-only bookings (no console items).
-  // Gaming sessions that also have F&B already include the F&B in total_amount,
-  // which is already counted inside cashTotal/onlineTotal — counting again would double it.
-  const snacksRevenue = todayBookings
-    .filter(b => !b.booking_items || b.booking_items.length === 0)
-    .reduce((s, b) => s + (b.booking_orders?.reduce((ss, o) => ss + (o.total_price || 0), 0) || 0), 0);
+  // Snack-only bookings have no console items. Use total_amount directly (reliable).
+  // Gaming+snack mixed bookings: F&B is bundled in total_amount, already in cashTotal/onlineTotal.
+  const snackOnlyBookings = todayBookings.filter(b => !b.booking_items || b.booking_items.length === 0);
+  const snacksRevenue = snackOnlyBookings.reduce((s, b) => s + (b.total_amount || 0), 0);
+  // Deduct snack-only amounts from cash/online to avoid double-counting in gaming totals
+  const snackCash = snackOnlyBookings.filter(b => b.payment_mode?.toLowerCase() === 'cash').reduce((s, b) => s + (b.total_amount || 0), 0);
+  const snackOnline = snackOnlyBookings.filter(b => ONLINE_MODES.includes(b.payment_mode?.toLowerCase() || '')).reduce((s, b) => s + (b.total_amount || 0), 0);
+  const gamingCash = cashTotal - snackCash;
+  const gamingOnline = onlineTotal - snackOnline;
 
   const revenueVisible = loadedPreference && showRevenue;
 
@@ -150,7 +153,7 @@ export function DashboardStats({ bookings, subscriptions, activeTimers, loadingD
         )}
         {showBreakdown && revenueVisible && (
           <div className="mt-2 pt-2 border-t border-emerald-500/10 grid grid-cols-2 gap-x-3 gap-y-0.5">
-            {([['Cash', cashTotal], ['Online/UPI', onlineTotal], ...(cardTotal > 0 ? [['Card', cardTotal]] : []), ...(membershipRevenue > 0 ? [['Memberships', membershipRevenue]] : []), ...(snacksRevenue > 0 ? [['Snacks', snacksRevenue]] : [])] as [string, number][]).map(([label, val]) => (
+            {([...(gamingCash > 0 ? [['Cash', gamingCash]] : []), ...(gamingOnline > 0 ? [['Online/UPI', gamingOnline]] : []), ...(membershipRevenue > 0 ? [['Memberships', membershipRevenue]] : []), ...(snacksRevenue > 0 ? [['Snacks', snacksRevenue]] : [])] as [string, number][]).map(([label, val]) => (
               <div key={label} className="flex justify-between text-[10px]">
                 <span className="text-slate-400">{label}</span>
                 <span className="text-emerald-400 font-semibold">₹{val.toLocaleString('en-IN')}</span>
