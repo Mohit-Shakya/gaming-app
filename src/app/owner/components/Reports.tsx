@@ -292,11 +292,23 @@ export function Reports({ cafeId, cafeName, isMobile, openingHours }: ReportsPro
 
     const stats = useMemo(() => {
         const totalRevenue = billableBookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
-        // Gaming = bookings with console items; Snacks = bookings with no items
-        const gamingRevenue = billableBookings
-            .filter(b => b.booking_items && b.booking_items.length > 0)
-            .reduce((sum, b) => sum + (b.total_amount || 0), 0);
-        const snackRevenue = totalRevenue - gamingRevenue;
+
+        // For bookings with console items, the total_amount may include F&B orders added
+        // during the session. Deduct those to get the true gaming-only revenue.
+        let gamingRevenue = 0;
+        let snackRevenue = 0;
+        billableBookings.forEach(b => {
+            const hasGaming = b.booking_items && b.booking_items.length > 0;
+            const fbTotal = (b.booking_orders || []).reduce(
+                (s: number, o: BookingOrder) => s + (o.total_price || 0), 0
+            );
+            if (hasGaming) {
+                snackRevenue += fbTotal;
+                gamingRevenue += Math.max(0, (b.total_amount || 0) - fbTotal);
+            } else {
+                snackRevenue += b.total_amount || 0;
+            }
+        });
 
         const totalBookings = billableBookings.length;
         const avgOrderValue = totalBookings > 0 ? totalRevenue / totalBookings : 0;
@@ -352,18 +364,20 @@ export function Reports({ cafeId, cafeName, isMobile, openingHours }: ReportsPro
 
         const months: Record<string, { gaming: number; snacks: number; bookings: number }> = {};
 
-        // Split by whether booking has console items.
-        // total_amount already includes any F&B orders attached to that booking,
-        // so we must NOT add snackOrders separately (would double-count).
+        // Split by whether booking has console items. For gaming bookings that also
+        // have F&B orders, deduct the F&B total from gaming and add to snacks.
         billableBookings.forEach(b => {
             const [y, m] = b.booking_date.split('-');
             const key = `${y}-${m}`;
             if (!months[key]) months[key] = { gaming: 0, snacks: 0, bookings: 0 };
             months[key].bookings += 1;
+            const fbTotal = (b.booking_orders || []).reduce(
+                (s: number, o: any) => s + (o.total_price || 0), 0
+            );
             if (b.booking_items && b.booking_items.length > 0) {
-                months[key].gaming += b.total_amount || 0;
+                months[key].snacks += fbTotal;
+                months[key].gaming += Math.max(0, (b.total_amount || 0) - fbTotal);
             } else {
-                // Standalone snack sale or membership-session — classify as snacks
                 months[key].snacks += b.total_amount || 0;
             }
         });

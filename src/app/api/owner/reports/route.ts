@@ -57,19 +57,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: currentError.message }, { status: 500 });
     }
 
-    // Fetch booking_orders separately for snack-only bookings (no booking_items).
-    // Inline PostgREST join from bookings→booking_orders is unreliable — fetching
-    // directly by booking_id is guaranteed to work.
-    const snackBookingIds = (currentData || [])
-      .filter((b: any) => !b.booking_items || b.booking_items.length === 0)
-      .map((b: any) => b.id);
+    // Fetch booking_orders for ALL bookings in the period — not just snack-only ones.
+    // A gaming session can also have F&B orders; we need those to correctly split
+    // gaming vs snack revenue (total_amount includes both on such bookings).
+    const allBookingIds = (currentData || []).map((b: any) => b.id);
 
     let snackOrdersMap: Record<string, any[]> = {};
-    if (snackBookingIds.length > 0) {
+    if (allBookingIds.length > 0) {
       const { data: ordersData } = await supabase
         .from('booking_orders')
         .select('booking_id, item_name, quantity, unit_price, total_price')
-        .in('booking_id', snackBookingIds);
+        .in('booking_id', allBookingIds);
 
       (ordersData || []).forEach((o: any) => {
         if (!snackOrdersMap[o.booking_id]) snackOrdersMap[o.booking_id] = [];
