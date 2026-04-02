@@ -129,7 +129,6 @@ export async function POST(request: NextRequest) {
               booking_orders (id, item_name, quantity, total_price)
             `, { count: 'exact' })
             .in("cafe_id", cafeIds)
-            .neq("source", "membership")
             .order("created_at", { ascending: false })
             .limit(FULL_BOOKING_LIMIT)
         : supabase
@@ -141,7 +140,6 @@ export async function POST(request: NextRequest) {
               booking_orders (id, item_name, quantity, total_price)
             `)
             .in("cafe_id", cafeIds)
-            .neq("source", "membership")
             .gte("booking_date", dashboardStartDate)
             .order("created_at", { ascending: false })
             .limit(DASHBOARD_BOOKING_LIMIT);

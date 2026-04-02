@@ -328,21 +328,30 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess, onMembersh
         setMemSubmitting(true);
         try {
             const now = new Date();
+            const hours = now.getHours();
+            const mins = now.getMinutes();
+            const period = hours >= 12 ? 'pm' : 'am';
+            const h12 = hours % 12 || 12;
+            const startTime12h = `${h12}:${mins.toString().padStart(2, '0')} ${period}`;
+            const todayStr = getLocalDateString();
+
             // Create all subscriptions sequentially (one per item × quantity)
             for (const mi of memItems) {
                 const plan = membershipPlans.find(p => p.id === mi.planId);
                 if (!plan) continue;
-                // Spread total amount proportionally across items
                 const itemTotal = plan.price * mi.quantity;
                 const amountPerUnit = memItems.length === 1
                     ? memTotalAmount / mi.quantity
                     : itemTotal / mi.quantity;
 
+                const isDayPass = plan.plan_type === 'day_pass';
+
                 for (let q = 0; q < mi.quantity; q++) {
                     const expiryDate = new Date(now);
                     expiryDate.setDate(expiryDate.getDate() + (plan.validity_days || 30));
 
-                    const res = await fetch('/api/owner/subscriptions', {
+                    // Create subscription — day passes auto-start the timer
+                    const subRes = await fetch('/api/owner/subscriptions', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
@@ -357,10 +366,41 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess, onMembersh
                             purchase_date: now.toISOString(),
                             expiry_date: expiryDate.toISOString(),
                             status: 'active',
+                            timer_active: isDayPass,
+                            timer_start_time: isDayPass ? now.toISOString() : null,
                         }),
                     });
-                    const result = await res.json();
-                    if (!res.ok) throw new Error(result.error || 'Failed to create subscription');
+                    const subResult = await subRes.json();
+                    if (!subRes.ok) throw new Error(subResult.error || 'Failed to create subscription');
+
+                    // Create companion booking record so it shows in the Bookings tab
+                    const duration = isDayPass ? 1440 : (plan.hours || 1) * 60;
+                    await fetch('/api/owner/billing', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            booking: {
+                                cafe_id: cafeId,
+                                customer_name: customerName.trim(),
+                                customer_phone: customerPhone.trim() || null,
+                                booking_date: todayStr,
+                                start_time: startTime12h,
+                                duration,
+                                total_amount: amountPerUnit,
+                                status: isDayPass ? 'in-progress' : 'completed',
+                                source: 'membership',
+                                payment_mode: memPaymentMode,
+                            },
+                            items: [{
+                                id: Math.random().toString(36).substr(2, 9),
+                                console: plan.console_type || 'pc',
+                                quantity: 1,
+                                duration,
+                                price: amountPerUnit,
+                                title: plan.name,
+                            }],
+                        }),
+                    });
                 }
             }
 

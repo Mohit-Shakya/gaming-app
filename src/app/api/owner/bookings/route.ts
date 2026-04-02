@@ -49,8 +49,7 @@ export async function GET(request: NextRequest) {
         booking_orders (id, item_name, quantity, total_price)
       `, { count: "exact" })
       .in("cafe_id", targetCafeIds)
-      .is("deleted_at", null)
-      .neq("source", "membership");
+      .is("deleted_at", null);
 
     if (status !== "all") {
       query = query.eq("status", status);

@@ -208,14 +208,22 @@ export function BookingsTable({
                                     </td>
                                     <td className="px-4 py-1.5">
                                         <div className="text-slate-300">
-                                            {booking.booking_items?.map((item: any, idx: number) => (
-                                                <span key={idx} className="block">
-                                                    {item.quantity}x {item.console}
-                                                </span>
-                                            )) || <span className="text-slate-500">No items</span>}
+                                            {booking.source === 'membership'
+                                                ? <span className="inline-flex items-center gap-1 text-purple-400 font-medium">
+                                                    ★ {booking.booking_items?.[0]?.console || 'Membership'}
+                                                  </span>
+                                                : booking.booking_items?.map((item: any, idx: number) => (
+                                                    <span key={idx} className="block">
+                                                        {item.quantity}x {item.console}
+                                                    </span>
+                                                )) || <span className="text-slate-500">No items</span>
+                                            }
                                         </div>
-                                        <div className="text-xs text-slate-500 mt-0.5 capitalize">
-                                            {booking.source?.replace('_', ' ') || 'Online'}
+                                        <div className="text-xs mt-0.5 capitalize">
+                                            {booking.source === 'membership'
+                                                ? <span className="text-purple-500">Membership</span>
+                                                : <span className="text-slate-500">{booking.source?.replace('_', ' ') || 'Online'}</span>
+                                            }
                                         </div>
                                     </td>
                                     <td className="px-4 py-1.5">
