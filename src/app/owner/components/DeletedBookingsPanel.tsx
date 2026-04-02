@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
-import { Trash2, RotateCcw, AlertTriangle, ChevronDown, ChevronUp, Loader2, Lock, AlertCircle, Check } from 'lucide-react';
+import { useState, useCallback } from 'react';
+import { Trash2, RotateCcw, AlertTriangle, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import { Card, Button } from './ui';
 
 type DeletedBooking = {
@@ -38,18 +38,6 @@ export function DeletedBookingsPanel() {
   const [hasMore, setHasMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [actionId, setActionId] = useState<string | null>(null);
-
-  // PIN modal state
-  const [pinTargetId, setPinTargetId] = useState<string | null>(null);
-  const [pin, setPin] = useState(['', '', '', '']);
-  const [pinError, setPinError] = useState('');
-  const [pinSaving, setPinSaving] = useState(false);
-  const pinRefs = [
-    useRef<HTMLInputElement>(null),
-    useRef<HTMLInputElement>(null),
-    useRef<HTMLInputElement>(null),
-    useRef<HTMLInputElement>(null),
-  ];
 
   const fetchDeleted = useCallback(async (offset = 0) => {
     if (offset === 0) { setLoading(true); setError(null); } else { setLoadingMore(true); }
@@ -99,66 +87,6 @@ export function DeletedBookingsPanel() {
     }
   };
 
-  const openPinModal = (bookingId: string) => {
-    setPinTargetId(bookingId);
-    setPin(['', '', '', '']);
-    setPinError('');
-    setTimeout(() => pinRefs[0].current?.focus(), 50);
-  };
-
-  const closePinModal = () => {
-    setPinTargetId(null);
-    setPinError('');
-    setPin(['', '', '', '']);
-  };
-
-  const handlePinChange = (index: number, value: string) => {
-    if (!/^\d?$/.test(value)) return;
-    const next = [...pin];
-    next[index] = value;
-    setPin(next);
-    setPinError('');
-    if (value && index < 3) pinRefs[index + 1].current?.focus();
-  };
-
-  const handlePinKeyDown = (index: number, e: React.KeyboardEvent) => {
-    if (e.key === 'Backspace' && !pin[index] && index > 0) {
-      pinRefs[index - 1].current?.focus();
-    }
-  };
-
-  const confirmDelete = async () => {
-    const entered = pin.join('');
-    if (entered.length < 4) { setPinError('Enter all 4 digits.'); return; }
-    if (!pinTargetId) return;
-
-    setPinSaving(true);
-    try {
-      const res = await fetch('/api/owner/deleted-bookings', {
-        method: 'DELETE',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bookingId: pinTargetId, ownerPin: entered }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        if (data.error === 'Invalid PIN') {
-          setPinError('Incorrect PIN. Try again.');
-          setPin(['', '', '', '']);
-          setTimeout(() => pinRefs[0].current?.focus(), 50);
-          return;
-        }
-        throw new Error(data.error);
-      }
-      setBookings(prev => prev.filter(b => b.id !== pinTargetId));
-      closePinModal();
-    } catch (err: any) {
-      alert(`Failed to delete: ${err.message}`);
-    } finally {
-      setPinSaving(false);
-    }
-  };
-
   return (
     <>
       <div className="mt-6">
@@ -173,7 +101,7 @@ export function DeletedBookingsPanel() {
             </div>
             <div className="text-left">
               <div className="text-sm font-semibold text-slate-200">Deleted Bookings</div>
-              <div className="text-xs text-slate-500">Bookings removed by you — restore or permanently delete</div>
+              <div className="text-xs text-slate-500">Bookings removed by you — restore within 60 days</div>
             </div>
             {bookings.length > 0 && (
               <span className="ml-2 px-2 py-0.5 rounded-full text-xs font-semibold bg-red-500/15 text-red-400">
@@ -195,7 +123,7 @@ export function DeletedBookingsPanel() {
               <div className="p-4 border-b border-slate-800 flex items-center justify-between">
                 <div className="flex items-center gap-2 text-sm text-slate-400">
                   <AlertTriangle size={14} className="text-amber-400" />
-                  <span>Deleted bookings are kept for 30 days before being auto-purged</span>
+                  <span>Deleted bookings are kept for 60 days before being auto-purged</span>
                 </div>
                 <button
                   onClick={() => fetchDeleted()}
@@ -287,15 +215,6 @@ export function DeletedBookingsPanel() {
                             )}
                             Restore
                           </button>
-                          <button
-                            onClick={() => openPinModal(b.id)}
-                            disabled={isProcessing}
-                            title="Permanently delete"
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-50"
-                          >
-                            <Lock size={13} />
-                            Delete
-                          </button>
                         </div>
                       </div>
                     );
@@ -319,67 +238,6 @@ export function DeletedBookingsPanel() {
         )}
       </div>
 
-      {/* PIN modal for permanent delete */}
-      {pinTargetId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-          <div className="w-full max-w-xs rounded-2xl bg-slate-900 border border-red-500/30 shadow-2xl p-6">
-            <div className="flex flex-col items-center text-center mb-5">
-              <div className="w-12 h-12 rounded-full bg-red-500/15 flex items-center justify-center mb-3">
-                <Trash2 size={20} className="text-red-400" />
-              </div>
-              <h3 className="text-base font-semibold text-slate-100">Confirm Permanent Delete</h3>
-              <p className="text-xs text-slate-500 mt-1">This cannot be undone. Enter your owner PIN to proceed.</p>
-            </div>
-
-            <div className="flex justify-center gap-3 mb-4">
-              {pin.map((digit, i) => (
-                <input
-                  key={i}
-                  ref={pinRefs[i]}
-                  type="password"
-                  inputMode="numeric"
-                  maxLength={1}
-                  value={digit}
-                  onChange={e => handlePinChange(i, e.target.value)}
-                  onKeyDown={e => handlePinKeyDown(i, e)}
-                  className={`w-12 h-12 text-center text-xl font-bold rounded-xl border bg-slate-800 text-slate-100 focus:outline-none transition-all ${
-                    pinError
-                      ? 'border-red-500/60 focus:border-red-500'
-                      : digit
-                      ? 'border-red-500/60'
-                      : 'border-slate-600/50 focus:border-red-500/60'
-                  }`}
-                />
-              ))}
-            </div>
-
-            {pinError && (
-              <div className="flex items-center justify-center gap-1.5 mb-4 text-xs text-red-400">
-                <AlertCircle size={12} />
-                {pinError}
-              </div>
-            )}
-
-            <div className="flex gap-2">
-              <button
-                onClick={closePinModal}
-                disabled={pinSaving}
-                className="flex-1 py-2.5 rounded-xl bg-slate-800 border border-slate-600/40 text-sm text-slate-400 hover:text-slate-200 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={confirmDelete}
-                disabled={pinSaving || pin.join('').length < 4}
-                className="flex-1 py-2.5 rounded-xl bg-red-500 hover:bg-red-400 text-white text-sm font-semibold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                {pinSaving ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }
