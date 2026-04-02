@@ -5,7 +5,7 @@ import { getLocalDateString } from '../utils';
 
 type OwnerDataScope = 'dashboard' | 'full';
 
-const FULL_BOOKING_TABS = new Set<NavTab>(['bookings', 'customers', 'stations']);
+const FULL_BOOKING_TABS = new Set<NavTab>(['bookings', 'customers', 'stations', 'memberships']);
 const PRICING_ONLY_TABS = new Set<NavTab>(['billing']);
 const AUTO_REFRESH_TABS = new Set<NavTab>(['dashboard']);
 

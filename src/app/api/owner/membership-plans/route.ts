@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
       return accessResponse;
     }
 
-    const insertPayload = sanitizeMembershipPlanPayload(payload, payload.cafe_id);
+    const insertPayload = { ...sanitizeMembershipPlanPayload(payload, payload.cafe_id), is_active: true };
     const { error } = await supabase.from('membership_plans').insert([insertPayload]);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   }
