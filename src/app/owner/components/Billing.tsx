@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { CONSOLE_LABELS } from '@/lib/constants';
 import { Card, Button, Input, Select, StatusBadge, LoadingSpinner } from './ui';
 import {
-    User, Smartphone, Calendar, Clock, Plus, Trash2,
+    User, Smartphone, Calendar, Clock, Plus, Trash2, X,
     CreditCard, Banknote, CheckCircle, AlertCircle, Search, Star
 } from 'lucide-react';
 import { CafeRow } from '@/types/database';
@@ -669,49 +669,70 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess, pricingDat
                                     <Button size="sm" onClick={addMemItem}>Add First Plan</Button>
                                 </div>
                             ) : (
-                                <div className="space-y-3">
+                                <div className="space-y-2">
                                     {memItems.map((mi) => {
                                         const plan = membershipPlans.find(p => p.id === mi.planId);
+                                        const lineTotal = plan ? plan.price * mi.quantity : 0;
                                         return (
-                                            <div key={mi.id} className="p-4 bg-slate-900/50 border border-slate-800 rounded-xl relative group transition-all hover:border-slate-700">
+                                            <div key={mi.id} className="flex items-center gap-3 p-3 bg-slate-900/60 border border-slate-800 rounded-xl group hover:border-purple-500/40 transition-all">
+                                                {/* Icon */}
+                                                <div className="w-9 h-9 rounded-lg bg-purple-600/20 border border-purple-500/20 flex items-center justify-center flex-shrink-0">
+                                                    <Star size={15} className="text-purple-400" />
+                                                </div>
+
+                                                {/* Plan selector + meta */}
+                                                <div className="flex-1 min-w-0">
+                                                    <select
+                                                        value={mi.planId}
+                                                        onChange={(e) => updateMemItem(mi.id, 'planId', e.target.value)}
+                                                        className="bg-transparent text-white font-semibold text-sm w-full outline-none cursor-pointer appearance-none truncate"
+                                                    >
+                                                        {membershipPlans.map(p => (
+                                                            <option key={p.id} value={p.id} className="bg-slate-800 text-white">
+                                                                {p.name}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                    {plan && (
+                                                        <div className="flex items-center gap-1.5 mt-0.5">
+                                                            <span className="text-xs bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded font-medium">
+                                                                {plan.console_type?.toUpperCase()}
+                                                            </span>
+                                                            <span className="text-xs text-slate-500">
+                                                                {plan.plan_type === 'day_pass' ? 'Day Pass' : `${plan.hours}h`} · {plan.validity_days}d
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {/* Qty +/− */}
+                                                <div className="flex items-center gap-1.5 flex-shrink-0">
+                                                    <button
+                                                        onClick={() => updateMemItem(mi.id, 'quantity', Math.max(1, mi.quantity - 1))}
+                                                        className="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-400 hover:text-white transition-colors font-bold text-base leading-none"
+                                                    >−</button>
+                                                    <span className="text-white font-semibold w-6 text-center text-sm">{mi.quantity}</span>
+                                                    <button
+                                                        onClick={() => updateMemItem(mi.id, 'quantity', Math.min(20, mi.quantity + 1))}
+                                                        className="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-400 hover:text-white transition-colors font-bold text-base leading-none"
+                                                    >+</button>
+                                                </div>
+
+                                                {/* Price */}
+                                                <div className="text-right flex-shrink-0 min-w-[56px]">
+                                                    <div className="text-emerald-400 font-bold font-mono">₹{lineTotal}</div>
+                                                    {mi.quantity > 1 && plan && (
+                                                        <div className="text-xs text-slate-600">₹{plan.price} ea</div>
+                                                    )}
+                                                </div>
+
+                                                {/* Remove */}
                                                 <button
                                                     onClick={() => removeMemItem(mi.id)}
-                                                    className="absolute -top-2 -right-2 w-6 h-6 bg-slate-800 text-slate-400 hover:text-red-400 rounded-full flex items-center justify-center border border-slate-700 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                                                    className="text-slate-700 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0 ml-1"
                                                 >
-                                                    <Trash2 size={12} />
+                                                    <X size={15} />
                                                 </button>
-                                                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 items-end">
-                                                    <div className="md:col-span-2">
-                                                        <Select
-                                                            label="Plan"
-                                                            value={mi.planId}
-                                                            options={membershipPlans.map(p => ({
-                                                                value: p.id,
-                                                                label: `${p.name} — ₹${p.price}`,
-                                                            }))}
-                                                            onChange={(val) => updateMemItem(mi.id, 'planId', val)}
-                                                        />
-                                                        {plan && (
-                                                            <div className="text-xs text-slate-500 mt-1 ml-1">
-                                                                {plan.console_type?.toUpperCase()} ·{' '}
-                                                                {plan.plan_type === 'day_pass' ? 'Day Pass' : `${plan.hours}h`} ·{' '}
-                                                                {plan.validity_days}d validity
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                    <div className="flex gap-3 items-end">
-                                                        <Select
-                                                            label="Qty"
-                                                            value={String(mi.quantity)}
-                                                            options={[1, 2, 3, 4, 5, 6, 8, 10].map(n => ({ value: String(n), label: String(n) }))}
-                                                            onChange={(val) => updateMemItem(mi.id, 'quantity', parseInt(val))}
-                                                        />
-                                                        <div className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-right min-w-[80px]">
-                                                            <div className="text-xs text-slate-500 mb-0.5">Price</div>
-                                                            <div className="text-emerald-400 font-bold font-mono">₹{plan ? plan.price * mi.quantity : 0}</div>
-                                                        </div>
-                                                    </div>
-                                                </div>
                                             </div>
                                         );
                                     })}
