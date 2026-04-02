@@ -50,9 +50,10 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess, pricingDat
     // Mode: 'gaming' | 'membership'
     const [mode, setMode] = useState<'gaming' | 'membership'>('gaming');
 
-    // Membership form state
-    const [memPlanId, setMemPlanId] = useState('');
-    const [memAmountPaid, setMemAmountPaid] = useState('');
+    // Membership cart state
+    type MemItem = { id: string; planId: string; quantity: number };
+    const [memItems, setMemItems] = useState<MemItem[]>([]);
+    const [memManualAmount, setMemManualAmount] = useState<number | null>(null);
     const [memPaymentMode, setMemPaymentMode] = useState<'cash' | 'upi'>('cash');
     const [memSubmitting, setMemSubmitting] = useState(false);
 
@@ -302,43 +303,70 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess, pricingDat
         }
     };
 
-    const selectedMemPlan = membershipPlans.find(p => p.id === memPlanId);
+    // Membership cart helpers
+    const addMemItem = () => {
+        if (membershipPlans.length === 0) return;
+        setMemItems(prev => [...prev, { id: Math.random().toString(36).substr(2, 9), planId: membershipPlans[0].id, quantity: 1 }]);
+    };
+    const updateMemItem = (id: string, field: 'planId' | 'quantity', value: any) => {
+        setMemItems(prev => prev.map(mi => mi.id === id ? { ...mi, [field]: value } : mi));
+    };
+    const removeMemItem = (id: string) => setMemItems(prev => prev.filter(mi => mi.id !== id));
+
+    const memCalculatedTotal = memItems.reduce((sum, mi) => {
+        const plan = membershipPlans.find(p => p.id === mi.planId);
+        return sum + (plan ? plan.price * mi.quantity : 0);
+    }, 0);
+    const memTotalAmount = memManualAmount !== null ? memManualAmount : memCalculatedTotal;
 
     const handleMemSubmit = async () => {
         if (!customerName.trim()) { alert('Customer name is required'); return; }
         if (!customerPhone.trim()) { alert('Phone number is required'); return; }
-        if (!memPlanId || !selectedMemPlan) { alert('Please select a membership plan'); return; }
+        if (memItems.length === 0) { alert('Please add at least one membership plan'); return; }
 
         setMemSubmitting(true);
         try {
             const now = new Date();
-            const expiryDate = new Date(now);
-            expiryDate.setDate(expiryDate.getDate() + (selectedMemPlan.validity_days || 30));
+            // Create all subscriptions sequentially (one per item × quantity)
+            for (const mi of memItems) {
+                const plan = membershipPlans.find(p => p.id === mi.planId);
+                if (!plan) continue;
+                // Spread total amount proportionally across items
+                const itemTotal = plan.price * mi.quantity;
+                const amountPerUnit = memItems.length === 1
+                    ? memTotalAmount / mi.quantity
+                    : itemTotal / mi.quantity;
 
-            const res = await fetch('/api/owner/subscriptions', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    cafe_id: cafeId,
-                    customer_name: customerName.trim(),
-                    customer_phone: customerPhone.trim(),
-                    membership_plan_id: memPlanId,
-                    hours_purchased: selectedMemPlan.hours || 24,
-                    hours_remaining: selectedMemPlan.hours || 24,
-                    amount_paid: parseFloat(memAmountPaid) || selectedMemPlan.price,
-                    payment_mode: memPaymentMode,
-                    purchase_date: now.toISOString(),
-                    expiry_date: expiryDate.toISOString(),
-                    status: 'active',
-                }),
-            });
-            const result = await res.json();
-            if (!res.ok) throw new Error(result.error || 'Failed to create subscription');
+                for (let q = 0; q < mi.quantity; q++) {
+                    const expiryDate = new Date(now);
+                    expiryDate.setDate(expiryDate.getDate() + (plan.validity_days || 30));
+
+                    const res = await fetch('/api/owner/subscriptions', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            cafe_id: cafeId,
+                            customer_name: customerName.trim(),
+                            customer_phone: customerPhone.trim(),
+                            membership_plan_id: plan.id,
+                            hours_purchased: plan.hours || 24,
+                            hours_remaining: plan.hours || 24,
+                            amount_paid: amountPerUnit,
+                            payment_mode: memPaymentMode,
+                            purchase_date: now.toISOString(),
+                            expiry_date: expiryDate.toISOString(),
+                            status: 'active',
+                        }),
+                    });
+                    const result = await res.json();
+                    if (!res.ok) throw new Error(result.error || 'Failed to create subscription');
+                }
+            }
 
             setCustomerName('');
             setCustomerPhone('');
-            setMemPlanId('');
-            setMemAmountPaid('');
+            setMemItems([]);
+            setMemManualAmount(null);
             setMemPaymentMode('cash');
             if (onSuccess) onSuccess();
             alert('Membership added successfully!');
@@ -618,40 +646,75 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess, pricingDat
                     <div className="lg:col-span-2 space-y-6">
                         {customerInfoCard}
 
-                        {/* Plan Selection */}
+                        {/* Membership Cart */}
                         <Card className="space-y-4">
-                            <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                                <Star className="text-purple-400" size={20} /> Select Plan
-                            </h3>
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                                    <Star className="text-purple-400" size={20} /> Plans
+                                </h3>
+                                {memItems.length > 0 && (
+                                    <Button size="sm" variant="secondary" onClick={addMemItem}>
+                                        <Plus size={16} className="mr-1" /> Add Plan
+                                    </Button>
+                                )}
+                            </div>
                             {membershipPlans.length === 0 ? (
                                 <div className="py-8 text-center border-2 border-dashed border-slate-800 rounded-xl">
                                     <p className="text-slate-500">No membership plans configured.</p>
                                     <p className="text-slate-600 text-sm mt-1">Add plans in the Memberships tab first.</p>
                                 </div>
+                            ) : memItems.length === 0 ? (
+                                <div className="py-8 text-center border-2 border-dashed border-slate-800 rounded-xl">
+                                    <p className="text-slate-500 mb-4">No plans added yet</p>
+                                    <Button size="sm" onClick={addMemItem}>Add First Plan</Button>
+                                </div>
                             ) : (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    {membershipPlans.map((plan) => (
-                                        <button
-                                            key={plan.id}
-                                            onClick={() => {
-                                                setMemPlanId(plan.id);
-                                                setMemAmountPaid(String(plan.price));
-                                            }}
-                                            className={`p-4 rounded-xl border text-left transition-all ${
-                                                memPlanId === plan.id
-                                                    ? 'bg-purple-600/15 border-purple-500 text-white'
-                                                    : 'bg-slate-900/50 border-slate-800 text-slate-300 hover:border-slate-700'
-                                            }`}
-                                        >
-                                            <div className="font-semibold">{plan.name}</div>
-                                            <div className="text-xs text-slate-400 mt-1">
-                                                {plan.console_type?.toUpperCase()} ·{' '}
-                                                {plan.plan_type === 'day_pass' ? 'Day Pass' : `${plan.hours}h`} ·{' '}
-                                                {plan.validity_days}d validity
+                                <div className="space-y-3">
+                                    {memItems.map((mi) => {
+                                        const plan = membershipPlans.find(p => p.id === mi.planId);
+                                        return (
+                                            <div key={mi.id} className="p-4 bg-slate-900/50 border border-slate-800 rounded-xl relative group transition-all hover:border-slate-700">
+                                                <button
+                                                    onClick={() => removeMemItem(mi.id)}
+                                                    className="absolute -top-2 -right-2 w-6 h-6 bg-slate-800 text-slate-400 hover:text-red-400 rounded-full flex items-center justify-center border border-slate-700 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                                                >
+                                                    <Trash2 size={12} />
+                                                </button>
+                                                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 items-end">
+                                                    <div className="md:col-span-2">
+                                                        <Select
+                                                            label="Plan"
+                                                            value={mi.planId}
+                                                            options={membershipPlans.map(p => ({
+                                                                value: p.id,
+                                                                label: `${p.name} — ₹${p.price}`,
+                                                            }))}
+                                                            onChange={(val) => updateMemItem(mi.id, 'planId', val)}
+                                                        />
+                                                        {plan && (
+                                                            <div className="text-xs text-slate-500 mt-1 ml-1">
+                                                                {plan.console_type?.toUpperCase()} ·{' '}
+                                                                {plan.plan_type === 'day_pass' ? 'Day Pass' : `${plan.hours}h`} ·{' '}
+                                                                {plan.validity_days}d validity
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex gap-3 items-end">
+                                                        <Select
+                                                            label="Qty"
+                                                            value={String(mi.quantity)}
+                                                            options={[1, 2, 3, 4, 5, 6, 8, 10].map(n => ({ value: String(n), label: String(n) }))}
+                                                            onChange={(val) => updateMemItem(mi.id, 'quantity', parseInt(val))}
+                                                        />
+                                                        <div className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-right min-w-[80px]">
+                                                            <div className="text-xs text-slate-500 mb-0.5">Price</div>
+                                                            <div className="text-emerald-400 font-bold font-mono">₹{plan ? plan.price * mi.quantity : 0}</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
-                                            <div className="text-emerald-400 font-bold font-mono mt-2">₹{plan.price}</div>
-                                        </button>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             )}
                         </Card>
@@ -664,30 +727,44 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess, pricingDat
                                 <CreditCard className="text-purple-400" size={20} /> Payment
                             </h3>
 
-                            {selectedMemPlan && (
-                                <div className="bg-purple-600/10 border border-purple-500/30 rounded-xl p-4 space-y-1">
-                                    <div className="text-white font-medium">{selectedMemPlan.name}</div>
-                                    <div className="text-xs text-slate-400">
-                                        {selectedMemPlan.console_type?.toUpperCase()} ·{' '}
-                                        {selectedMemPlan.plan_type === 'day_pass' ? 'Day Pass' : `${selectedMemPlan.hours}h`} ·{' '}
-                                        {selectedMemPlan.validity_days} days
+                            <div className="bg-slate-900/50 rounded-xl p-4 space-y-3">
+                                {memItems.map((mi) => {
+                                    const plan = membershipPlans.find(p => p.id === mi.planId);
+                                    if (!plan) return null;
+                                    return (
+                                        <div key={mi.id} className="flex items-center justify-between text-sm">
+                                            <span className="text-slate-400">{plan.name} × {mi.quantity}</span>
+                                            <span className="text-white font-mono">₹{plan.price * mi.quantity}</span>
+                                        </div>
+                                    );
+                                })}
+                                {memItems.length > 0 && <div className="border-t border-slate-800 pt-2" />}
+                                <div className="flex items-center justify-between">
+                                    <span className="text-slate-400 text-sm">Calculated</span>
+                                    <span className="text-slate-500 font-mono text-sm">₹{memCalculatedTotal}</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-slate-400 text-sm">Final Amount</span>
+                                    <div className="flex items-center gap-1">
+                                        <span className="text-white">₹</span>
+                                        <input
+                                            type="number"
+                                            className="w-24 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xl font-bold text-white text-right outline-none focus:border-purple-500 transition-colors"
+                                            value={memManualAmount !== null ? memManualAmount : memCalculatedTotal}
+                                            onChange={(e) => {
+                                                const val = parseInt(e.target.value) || 0;
+                                                setMemManualAmount(val === memCalculatedTotal ? null : val);
+                                            }}
+                                            min={0}
+                                        />
                                     </div>
                                 </div>
-                            )}
-
-                            <div className="flex items-center justify-between">
-                                <span className="text-slate-400 text-sm">Amount Paid</span>
-                                <div className="flex items-center gap-1">
-                                    <span className="text-white">₹</span>
-                                    <input
-                                        type="number"
-                                        className="w-24 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xl font-bold text-white text-right outline-none focus:border-purple-500 transition-colors"
-                                        value={memAmountPaid}
-                                        onChange={(e) => setMemAmountPaid(e.target.value)}
-                                        min={0}
-                                        placeholder="0"
-                                    />
-                                </div>
+                                {memManualAmount !== null && memManualAmount !== memCalculatedTotal && (
+                                    <div className="flex items-center justify-between text-xs">
+                                        <span className="text-amber-400">Manual override applied</span>
+                                        <button onClick={() => setMemManualAmount(null)} className="text-slate-400 hover:text-white underline">Reset</button>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="grid grid-cols-2 gap-3">
@@ -719,7 +796,7 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess, pricingDat
                                 className="w-full py-4 text-lg"
                                 onClick={handleMemSubmit}
                                 loading={memSubmitting}
-                                disabled={!memPlanId || !customerName.trim() || !customerPhone.trim()}
+                                disabled={memItems.length === 0 || !customerName.trim() || !customerPhone.trim()}
                             >
                                 Add Membership
                             </Button>
