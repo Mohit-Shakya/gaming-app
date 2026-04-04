@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { OwnerStats, CafeRow, BookingRow, NavTab } from '../types';
 import { getLocalDateString } from '../utils';
 
@@ -97,13 +97,16 @@ export function useOwnerData(canFetch: boolean, canAutoRefresh: boolean, activeT
     };
   }, [bookings, cafes, totalBookingsCount]);
 
-  // Auto-refresh bookings based on timer
+  // Auto-refresh bookings based on timer (60s — fast enough to catch new walk-ins)
+  const lastFetchTimeRef = useRef(0);
   useEffect(() => {
     if (!canAutoRefresh || !shouldAutoRefresh) return;
 
     const interval = setInterval(() => {
+      // Skip if a manual refresh happened less than 20s ago
+      if (Date.now() - lastFetchTimeRef.current < 20_000) return;
       setRefreshTrigger(prev => prev + 1);
-    }, 10000); // 10 seconds
+    }, 60_000);
 
     return () => clearInterval(interval);
   }, [canAutoRefresh, shouldAutoRefresh]);
@@ -147,6 +150,7 @@ export function useOwnerData(canFetch: boolean, canAutoRefresh: boolean, activeT
         setCafeConsoles(data.cafeConsoles);
         setAvailableConsoleTypes(data.availableConsoleTypes);
         setMembershipPlans(data.membershipPlans);
+        lastFetchTimeRef.current = Date.now();
         setHasLoadedData(true);
         setLoadingData(false);
       } catch (err: any) {

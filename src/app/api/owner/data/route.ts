@@ -8,7 +8,8 @@ type OwnerDataScope = "dashboard" | "full";
 
 const DASHBOARD_BOOKING_LOOKBACK_DAYS = 7;
 const DASHBOARD_BOOKING_LIMIT = 300;
-const FULL_BOOKING_LIMIT = 2000;
+const FULL_BOOKING_LIMIT = 500;
+const FULL_BOOKING_LOOKBACK_DAYS = 90;
 const DASHBOARD_RECENT_BOOKINGS_PREVIEW = 10;
 
 function getIndiaDateString(date: Date = new Date()): string {
@@ -129,6 +130,7 @@ export async function POST(request: NextRequest) {
               booking_orders (id, item_name, quantity, total_price)
             `, { count: 'exact' })
             .in("cafe_id", cafeIds)
+            .gte("booking_date", getIndiaDateDaysAgo(FULL_BOOKING_LOOKBACK_DAYS))
             .order("created_at", { ascending: false })
             .limit(FULL_BOOKING_LIMIT)
         : supabase

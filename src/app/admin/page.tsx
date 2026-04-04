@@ -75,7 +75,7 @@ type BookingRow = {
   user_name?: string;
 };
 
-type NavTab = 'overview' | 'cafes' | 'users' | 'bookings' | 'revenue' | 'reports' | 'settings' | 'announcements' | 'audit-logs' | 'coupons';
+type NavTab = 'overview' | 'cafes' | 'users' | 'bookings' | 'revenue' | 'reports' | 'settings' | 'announcements' | 'audit-logs' | 'coupons' | 'owner-access';
 
 type AnnouncementRow = {
   id: string;
@@ -129,6 +129,13 @@ export default function AdminDashboardPage() {
   const [announcements, setAnnouncements] = useState<AnnouncementRow[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLogRow[]>([]);
   const [coupons, setCoupons] = useState<CouponRow[]>([]);
+
+  // Owner access state
+  const [ownerEmails, setOwnerEmails] = useState<any[]>([]);
+  const [ownerEmailsLoading, setOwnerEmailsLoading] = useState(false);
+  const [newOwnerEmail, setNewOwnerEmail] = useState('');
+  const [newOwnerCafeId, setNewOwnerCafeId] = useState('');
+  const [ownerEmailMsg, setOwnerEmailMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const [loadingData, setLoadingData] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -207,6 +214,7 @@ export default function AdminDashboardPage() {
     { id: 'announcements', label: 'Announcements', icon: '📢' },
     { id: 'audit-logs', label: 'Audit Logs', icon: '📋' },
     { id: 'reports', label: 'Reports', icon: '📈' },
+    { id: 'owner-access', label: 'Owner Access', icon: '🔑' },
     { id: 'settings', label: 'Settings', icon: '⚙️' },
   ];
 
@@ -260,6 +268,11 @@ export default function AdminDashboardPage() {
       title: "Offer Engine",
       subtitle: "Track discount programs, café-level promotions, and redemption pressure points.",
       eyebrow: "Growth",
+    },
+    'owner-access': {
+      title: "Owner Access",
+      subtitle: "Manage which Google accounts can sign in to the owner dashboard.",
+      eyebrow: "Access Control",
     },
   };
 
@@ -698,6 +711,55 @@ export default function AdminDashboardPage() {
 
     loadCoupons();
   }, [isAdmin, activeTab]);
+
+  // Load owner emails when tab is active
+  useEffect(() => {
+    if (!isAdmin || activeTab !== 'owner-access') return;
+    async function loadOwnerEmails() {
+      setOwnerEmailsLoading(true);
+      try {
+        const res = await fetch('/api/admin/owner-emails', { credentials: 'include' });
+        const data = await res.json();
+        if (res.ok) setOwnerEmails(data.emails || []);
+      } catch {}
+      finally { setOwnerEmailsLoading(false); }
+    }
+    loadOwnerEmails();
+  }, [isAdmin, activeTab]);
+
+  async function handleAddOwnerEmail(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newOwnerEmail || !newOwnerCafeId) return;
+    setOwnerEmailMsg(null);
+    try {
+      const res = await fetch('/api/admin/owner-emails', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: newOwnerEmail, cafe_id: newOwnerCafeId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed');
+      setNewOwnerEmail('');
+      setNewOwnerCafeId('');
+      setOwnerEmailMsg({ type: 'success', text: 'Email added successfully' });
+      // Refresh list
+      const r2 = await fetch('/api/admin/owner-emails', { credentials: 'include' });
+      const d2 = await r2.json();
+      if (r2.ok) setOwnerEmails(d2.emails || []);
+    } catch (err: any) {
+      setOwnerEmailMsg({ type: 'error', text: err.message });
+    }
+  }
+
+  async function handleDeleteOwnerEmail(id: string) {
+    if (!confirm('Remove this email from the allowed list?')) return;
+    try {
+      const res = await fetch(`/api/admin/owner-emails?id=${id}`, { method: 'DELETE', credentials: 'include' });
+      if (!res.ok) throw new Error('Failed');
+      setOwnerEmails(prev => prev.filter(e => e.id !== id));
+    } catch { alert('Failed to remove email'); }
+  }
 
   // Toggle cafe active status
   async function toggleCafeStatus(cafeId: string, currentStatus: boolean, cafeName: string) {
@@ -3426,6 +3488,105 @@ export default function AdminDashboardPage() {
                   * Current password is required to make changes
                 </p>
               </div>
+            </div>
+          )}
+
+          {/* Owner Access Tab */}
+          {activeTab === 'owner-access' && (
+            <div style={{ padding: "40px", borderRadius: 16, background: theme.cardBackground, border: `1px solid ${theme.border}` }}>
+              <div style={{ marginBottom: 32 }}>
+                <h2 style={{ fontFamily: fonts.heading, fontSize: 24, marginBottom: 8, color: theme.textPrimary, display: "flex", alignItems: "center", gap: 12 }}>
+                  🔑 Owner Access — Gmail Login
+                </h2>
+                <p style={{ fontSize: 14, color: theme.textSecondary }}>
+                  Add Gmail addresses that can sign in to the owner dashboard. Each email must be linked to a café.
+                </p>
+              </div>
+
+              {/* Add new email form */}
+              <form onSubmit={handleAddOwnerEmail} style={{ marginBottom: 32, padding: 24, borderRadius: 12, background: "rgba(255,255,255,0.03)", border: `1px solid ${theme.border}` }}>
+                <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.textPrimary, marginBottom: 16 }}>Add Authorized Email</h3>
+                <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                  <input
+                    type="email"
+                    value={newOwnerEmail}
+                    onChange={e => setNewOwnerEmail(e.target.value)}
+                    placeholder="owner@gmail.com"
+                    required
+                    style={{ flex: "1 1 220px", padding: "10px 14px", borderRadius: 8, border: `1px solid ${theme.border}`, background: "rgba(15,23,42,0.8)", color: theme.textPrimary, fontSize: 14, outline: "none" }}
+                  />
+                  <select
+                    value={newOwnerCafeId}
+                    onChange={e => setNewOwnerCafeId(e.target.value)}
+                    required
+                    style={{ flex: "1 1 200px", padding: "10px 14px", borderRadius: 8, border: `1px solid ${theme.border}`, background: "rgba(15,23,42,0.8)", color: theme.textPrimary, fontSize: 14, outline: "none" }}
+                  >
+                    <option value="">— Select Café —</option>
+                    {cafes.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                  <button type="submit" style={{ padding: "10px 20px", borderRadius: 8, border: "none", background: "linear-gradient(135deg, #8b5cf6, #6366f1)", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
+                    + Add Email
+                  </button>
+                </div>
+                {ownerEmailMsg && (
+                  <div style={{ marginTop: 12, fontSize: 13, color: ownerEmailMsg.type === 'success' ? '#22c55e' : '#ef4444' }}>
+                    {ownerEmailMsg.type === 'success' ? '✓' : '⚠'} {ownerEmailMsg.text}
+                  </div>
+                )}
+              </form>
+
+              {/* Allowed emails list */}
+              {ownerEmailsLoading ? (
+                <div style={{ textAlign: "center", padding: 40, color: theme.textMuted }}>Loading…</div>
+              ) : ownerEmails.length === 0 ? (
+                <div style={{ textAlign: "center", padding: 40, color: theme.textMuted }}>
+                  No authorized emails yet. Add one above.
+                </div>
+              ) : (
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr style={{ borderBottom: `1px solid ${theme.border}` }}>
+                      {["Gmail Address", "Café", "Added By", "Status", ""].map(h => (
+                        <th key={h} style={{ padding: "10px 12px", textAlign: "left", fontSize: 12, fontWeight: 600, color: theme.textMuted, textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {ownerEmails.map(row => (
+                      <tr key={row.id} style={{ borderBottom: `1px solid rgba(51,65,85,0.3)` }}>
+                        <td style={{ padding: "12px", color: theme.textPrimary, fontSize: 14 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
+                              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                            </svg>
+                            {row.email}
+                          </div>
+                        </td>
+                        <td style={{ padding: "12px", color: theme.textSecondary, fontSize: 14 }}>{(row as any).cafes?.name || row.cafe_id}</td>
+                        <td style={{ padding: "12px", color: theme.textMuted, fontSize: 13 }}>{row.added_by || '—'}</td>
+                        <td style={{ padding: "12px" }}>
+                          <span style={{ padding: "2px 8px", borderRadius: 99, fontSize: 12, fontWeight: 600, background: row.active ? "rgba(34,197,94,0.15)" : "rgba(239,68,68,0.15)", color: row.active ? "#22c55e" : "#ef4444" }}>
+                            {row.active ? "Active" : "Disabled"}
+                          </span>
+                        </td>
+                        <td style={{ padding: "12px", textAlign: "right" }}>
+                          <button
+                            onClick={() => handleDeleteOwnerEmail(row.id)}
+                            style={{ padding: "4px 12px", borderRadius: 6, border: "1px solid rgba(239,68,68,0.3)", background: "rgba(239,68,68,0.1)", color: "#ef4444", fontSize: 12, cursor: "pointer" }}
+                          >
+                            Remove
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </div>
           )}
         </div>
