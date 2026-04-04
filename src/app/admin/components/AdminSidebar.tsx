@@ -15,6 +15,7 @@ import {
   X,
   Menu,
   LayoutGrid,
+  KeyRound,
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -27,6 +28,7 @@ const NAV_ITEMS = [
   { id: 'announcements', label: 'Announcements', icon: Megaphone },
   { id: 'audit-logs', label: 'Audit Logs', icon: Shield },
   { id: 'reports', label: 'Reports', icon: BarChart3 },
+  { id: 'owner-access', label: 'Owner Access', icon: KeyRound },
   { id: 'settings', label: 'Settings', icon: Settings },
 ] as const;
 
