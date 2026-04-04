@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
     const supabase = getSupabaseAdmin();
 
     // Check if this email is authorized
-    const { data: allowed } = await supabase
+    const { data: allowed, error: dbError } = await supabase
       .from("owner_allowed_emails")
       .select("cafe_id, active")
       .eq("email", email)
@@ -61,7 +61,10 @@ export async function GET(request: NextRequest) {
       .maybeSingle();
 
     if (!allowed?.cafe_id) {
-      return loginRedirect("not_authorized");
+      // Redirect with debug info so we can diagnose
+      return NextResponse.redirect(
+        `${siteUrl}/owner/login?error=not_authorized&debug_email=${encodeURIComponent(email)}&db_error=${encodeURIComponent(dbError?.message || 'no_match')}`
+      );
     }
 
     // Get the cafe's owner_id — session uses that so existing auth middleware works unchanged
