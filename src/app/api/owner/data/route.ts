@@ -10,7 +10,6 @@ const DASHBOARD_BOOKING_LOOKBACK_DAYS = 7;
 const DASHBOARD_BOOKING_LIMIT = 300;
 const FULL_BOOKING_LIMIT = 500;
 const FULL_BOOKING_LOOKBACK_DAYS = 90;
-const DASHBOARD_RECENT_BOOKINGS_PREVIEW = 10;
 
 function getIndiaDateString(date: Date = new Date()): string {
   const parts = new Intl.DateTimeFormat("en-US", {
@@ -125,11 +124,12 @@ export async function POST(request: NextRequest) {
             .from("bookings")
             .select(`
               id, cafe_id, user_id, booking_date, start_time, duration, total_amount, status,
-              source, payment_mode, created_at, customer_name, customer_phone, deleted_at,
+              source, payment_mode, created_at, customer_name, customer_phone,
               booking_items (id, console, quantity, price),
               booking_orders (id, item_name, quantity, total_price)
             `, { count: 'exact' })
             .in("cafe_id", cafeIds)
+            .is("deleted_at", null)
             .gte("booking_date", getIndiaDateDaysAgo(FULL_BOOKING_LOOKBACK_DAYS))
             .order("created_at", { ascending: false })
             .limit(FULL_BOOKING_LIMIT)
@@ -137,11 +137,12 @@ export async function POST(request: NextRequest) {
             .from("bookings")
             .select(`
               id, cafe_id, user_id, booking_date, start_time, duration, total_amount, status,
-              source, payment_mode, created_at, customer_name, customer_phone, deleted_at,
+              source, payment_mode, created_at, customer_name, customer_phone,
               booking_items (id, console, quantity, price),
               booking_orders (id, item_name, quantity, total_price)
             `)
             .in("cafe_id", cafeIds)
+            .is("deleted_at", null)
             .gte("booking_date", dashboardStartDate)
             .order("created_at", { ascending: false })
             .limit(DASHBOARD_BOOKING_LIMIT);
@@ -163,6 +164,7 @@ export async function POST(request: NextRequest) {
             .from('subscriptions')
             .select('*, membership_plans(*)')
             .in('cafe_id', cafeIds)
+            .gte('purchase_date', `${getIndiaDateDaysAgo(FULL_BOOKING_LOOKBACK_DAYS)}T00:00:00+05:30`)
             .order('created_at', { ascending: false })
         : supabase
             .from('subscriptions')
@@ -216,9 +218,8 @@ export async function POST(request: NextRequest) {
       consolePricingMap[item.cafe_id][item.console_type][key] = item.price;
     });
 
-    // Process bookings and auto-complete in memory
-    // Filter soft-deleted bookings in-process (avoids slow DB index scan)
-    let ownerBookings = (bookingsRes.data || []).filter((b: any) => !b.deleted_at);
+    // deleted_at now filtered in DB query — no need to filter in-process
+    let ownerBookings = bookingsRes.data || [];
     
     // Auto-complete logic for bookings — use India timezone to match booking_date/start_time
     const now = new Date();
@@ -261,20 +262,12 @@ export async function POST(request: NextRequest) {
           .then(({ error }) => { if (error) console.error('Auto-complete bookings failed:', error.message); });
     }
 
-    // Process User Profiles — skip for bookings/customers tabs (customer_name already on row)
+    // Profiles enrichment: only for full scope (dashboard uses customer_name directly)
+    // Skipping this sequential DB call on dashboard shaves ~100-300ms per refresh
     const userProfiles = new Map();
 
-    if (!isBookingsOnlyTab && !isPricingOnlyTab) {
-      const profileBookingSource =
-        scope === "full"
-          ? ownerBookings
-          : [
-              ...ownerBookings.filter((b: any) => b.booking_date === todayStr),
-              ...ownerBookings.slice(0, DASHBOARD_RECENT_BOOKINGS_PREVIEW),
-            ];
-
-      const userIds = [...new Set(profileBookingSource.map((b: any) => b.user_id).filter(Boolean))];
-
+    if (scope === "full" && !isBookingsOnlyTab && !isPricingOnlyTab) {
+      const userIds = [...new Set(ownerBookings.map((b: any) => b.user_id).filter(Boolean))];
       if (userIds.length > 0) {
         const { data: profiles } = await supabase
           .from("profiles")
@@ -293,7 +286,7 @@ export async function POST(request: NextRequest) {
       const userProfile = booking.user_id ? userProfiles.get(booking.user_id) : null;
       return {
         ...booking,
-        user_name: userProfile?.name || booking.customer_name || (booking.user_id ? `User ${booking.user_id.slice(0, 8)}` : null),
+        user_name: userProfile?.name || booking.customer_name || null,
         user_email: null,
         user_phone: userProfile?.phone || booking.customer_phone || null,
         cafe_name: cafe?.name || null,
