@@ -388,7 +388,7 @@ export default function AdminDashboardPage() {
 
   // Load cafes data
   useEffect(() => {
-    if (!isAdmin || activeTab !== 'cafes') return;
+    if (!isAdmin || (activeTab !== 'cafes' && activeTab !== 'owner-access')) return;
 
     async function loadCafes() {
       try {
