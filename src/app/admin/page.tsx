@@ -157,6 +157,18 @@ export default function AdminDashboardPage() {
   const [savingCoupon, setSavingCoupon] = useState(false);
   const [couponMsg, setCouponMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // Global coupons tab state
+  const [showGlobalCouponForm, setShowGlobalCouponForm] = useState(false);
+  const [globalCouponCafeId, setGlobalCouponCafeId] = useState('');
+  const [globalCouponForm, setGlobalCouponForm] = useState({ code: '', discount_type: 'percentage', discount_value: '', bonus_minutes: '0', max_uses: '', valid_until: '' });
+  const [savingGlobalCoupon, setSavingGlobalCoupon] = useState(false);
+  const [globalCouponMsg, setGlobalCouponMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // User management panel
+  const [managedUserId, setManagedUserId] = useState<string | null>(null);
+  const [userBookings, setUserBookings] = useState<BookingRow[]>([]);
+  const [loadingUserBookings, setLoadingUserBookings] = useState(false);
+
   const [loadingData, setLoadingData] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -1453,6 +1465,109 @@ export default function AdminDashboardPage() {
     }
   }
 
+  // Global coupons tab handlers
+  async function toggleCouponActive(id: string, currentStatus: boolean) {
+    try {
+      const { error } = await supabase.from('coupons').update({ is_active: !currentStatus }).eq('id', id);
+      if (error) throw error;
+      setCoupons(prev => prev.map(c => c.id === id ? { ...c, is_active: !currentStatus } : c));
+    } catch (err: any) {
+      alert(err.message || 'Failed to update coupon');
+    }
+  }
+
+  async function deleteGlobalCoupon(id: string, code: string) {
+    if (!confirm(`Delete coupon "${code}"?`)) return;
+    try {
+      const { error } = await supabase.from('coupons').delete().eq('id', id);
+      if (error) throw error;
+      setCoupons(prev => prev.filter(c => c.id !== id));
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete coupon');
+    }
+  }
+
+  async function saveGlobalCoupon() {
+    if (!globalCouponCafeId) { setGlobalCouponMsg({ type: 'error', text: 'Select a café' }); return; }
+    setSavingGlobalCoupon(true);
+    setGlobalCouponMsg(null);
+    try {
+      const payload = {
+        cafe_id: globalCouponCafeId,
+        code: globalCouponForm.code.trim().toUpperCase(),
+        discount_type: globalCouponForm.discount_type,
+        discount_value: Number(globalCouponForm.discount_value) || 0,
+        bonus_minutes: Number(globalCouponForm.bonus_minutes) || 0,
+        max_uses: globalCouponForm.max_uses ? Number(globalCouponForm.max_uses) : null,
+        valid_from: new Date().toISOString(),
+        valid_until: globalCouponForm.valid_until || null,
+        is_active: true,
+        uses_count: 0,
+      };
+      const { error } = await supabase.from('coupons').insert([payload]);
+      if (error) throw error;
+      setGlobalCouponMsg({ type: 'success', text: 'Coupon created' });
+      setGlobalCouponForm({ code: '', discount_type: 'percentage', discount_value: '', bonus_minutes: '0', max_uses: '', valid_until: '' });
+      setGlobalCouponCafeId('');
+      setShowGlobalCouponForm(false);
+      // Reload coupons list
+      const { data } = await supabase.from('coupons').select('*').order('created_at', { ascending: false });
+      const enriched = await Promise.all((data || []).map(async (c) => {
+        const { data: cafe } = await supabase.from('cafes').select('name').eq('id', c.cafe_id).maybeSingle();
+        return { ...c, cafe_name: cafe?.name || 'Unknown Café' };
+      }));
+      setCoupons(enriched);
+    } catch (err: any) {
+      setGlobalCouponMsg({ type: 'error', text: err.message || 'Failed to create coupon' });
+    } finally {
+      setSavingGlobalCoupon(false);
+    }
+  }
+
+  // Booking status change + delete (admin)
+  async function updateBookingStatus(bookingId: string, newStatus: string) {
+    try {
+      const { error } = await supabase.from('bookings').update({ status: newStatus }).eq('id', bookingId);
+      if (error) throw error;
+      setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, status: newStatus } : b));
+    } catch (err: any) {
+      alert(err.message || 'Failed to update status');
+    }
+  }
+
+  async function deleteBookingAdmin(bookingId: string, cafeName: string) {
+    if (!confirm(`Delete booking from "${cafeName}"? This cannot be undone.`)) return;
+    try {
+      await supabase.from('booking_items').delete().eq('booking_id', bookingId);
+      const { error } = await supabase.from('bookings').delete().eq('id', bookingId);
+      if (error) throw error;
+      setBookings(prev => prev.filter(b => b.id !== bookingId));
+      await logAdminAction({ action: 'delete', entityType: 'booking', entityId: bookingId, details: { cafeName } });
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete booking');
+    }
+  }
+
+  // User management panel
+  async function openUserManage(userId: string) {
+    setManagedUserId(userId);
+    setLoadingUserBookings(true);
+    try {
+      const { data } = await supabase
+        .from('bookings')
+        .select('id, cafe_id, booking_date, start_time, duration, total_amount, status, source, customer_name, customer_phone, created_at')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      const enriched = await Promise.all((data || []).map(async (b) => {
+        const { data: cafe } = await supabase.from('cafes').select('name').eq('id', b.cafe_id).maybeSingle();
+        return { ...b, cafe_name: cafe?.name || 'Unknown', user_name: '', user_id: userId };
+      }));
+      setUserBookings(enriched);
+    } catch { setUserBookings([]); }
+    finally { setLoadingUserBookings(false); }
+  }
+
   if (isChecking) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
@@ -2370,7 +2485,91 @@ export default function AdminDashboardPage() {
           })()}
 
           {/* ─── USERS TAB ─── */}
-          {activeTab === 'users' && (
+          {activeTab === 'users' && managedUserId && (() => {
+            const mu = users.find(u => u.id === managedUserId);
+            if (!mu) return null;
+            return (
+              <div className="space-y-4">
+                <div className="flex items-center gap-4">
+                  <button onClick={() => { setManagedUserId(null); setUserBookings([]); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-400 bg-slate-800 hover:bg-slate-700 transition-colors">← Back to Users</button>
+                  <div>
+                    <h2 className="text-base font-bold text-white">{mu.name}</h2>
+                    <p className="text-xs text-slate-500">{mu.phone || 'No phone'} · {mu.role}</p>
+                  </div>
+                  <div className="ml-auto flex items-center gap-2">
+                    <select value={mu.role} onChange={e => updateUserRole(mu.id, e.target.value, mu.name)} className="px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-xs text-white outline-none">
+                      <option value="user">User</option>
+                      <option value="owner">Owner</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                    <button onClick={() => deleteUser(mu.id, mu.name)} className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-red-500/15 text-red-400 hover:bg-red-500/25 transition-colors">Delete User</button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  {[
+                    { label: 'Total Bookings', value: mu.total_bookings || 0, color: 'text-blue-400' },
+                    { label: 'Total Spent', value: formatCurrency(mu.total_spent || 0), color: 'text-emerald-400' },
+                    { label: 'Role', value: mu.role, color: 'text-violet-400' },
+                    { label: 'Joined', value: formatDate(mu.created_at), color: 'text-amber-400' },
+                  ].map(s => (
+                    <div key={s.label} className="rounded-2xl bg-slate-900 border border-slate-800 p-4">
+                      <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-1">{s.label}</p>
+                      <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden">
+                  <div className="px-5 py-4 border-b border-slate-800">
+                    <h3 className="text-sm font-semibold text-white">Booking History</h3>
+                  </div>
+                  {loadingUserBookings ? (
+                    <div className="py-10 text-center text-sm text-slate-500">Loading…</div>
+                  ) : userBookings.length === 0 ? (
+                    <div className="py-10 text-center text-sm text-slate-500">No bookings for this user.</div>
+                  ) : (
+                    <table className="w-full text-sm">
+                      <thead className="bg-slate-800/40 border-b border-slate-800">
+                        <tr>
+                          <th className={thCls}>Café</th>
+                          <th className={thCls}>Date</th>
+                          <th className={thCls}>Time</th>
+                          <th className={thCls}>Duration</th>
+                          <th className={thCls}>Amount</th>
+                          <th className={thCls}>Source</th>
+                          <th className={thCls}>Status</th>
+                          <th className={`${thCls} text-right`}>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800/50">
+                        {userBookings.map(b => (
+                          <tr key={b.id} className="hover:bg-slate-800/30 transition-colors">
+                            <td className={`${tdCls} font-semibold text-white`}>{b.cafe_name}</td>
+                            <td className={tdCls}>{formatDate(b.booking_date)}</td>
+                            <td className={tdCls}>{b.start_time}</td>
+                            <td className={tdCls}>{b.duration} min</td>
+                            <td className={`${tdCls} font-semibold text-emerald-400`}>{formatCurrency(b.total_amount)}</td>
+                            <td className={tdCls}>{b.source}</td>
+                            <td className={tdCls}>
+                              <select value={b.status} onChange={e => updateBookingStatus(b.id, e.target.value)} className="px-2 py-1 rounded-lg bg-slate-800 border border-slate-700 text-xs text-white outline-none">
+                                {['pending','confirmed','in-progress','completed','cancelled'].map(s => <option key={s} value={s}>{s}</option>)}
+                              </select>
+                            </td>
+                            <td className={`${tdCls} text-right`}>
+                              <button onClick={() => deleteBookingAdmin(b.id, b.cafe_name || '')} className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors">Delete</button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+
+          {activeTab === 'users' && !managedUserId && (
             <div className="space-y-4">
               <div className="flex flex-wrap gap-3 p-4 rounded-2xl bg-slate-900 border border-slate-800">
                 <input
@@ -2442,7 +2641,10 @@ export default function AdminDashboardPage() {
                           <td className="px-4 py-3.5 text-sm font-semibold text-emerald-400">{formatCurrency(u.total_spent || 0)}</td>
                           <td className="px-4 py-3.5 text-sm text-slate-400">{formatDate(u.created_at)}</td>
                           <td className="px-4 py-3.5 text-sm">
-                            <button onClick={() => deleteUser(u.id, u.name)} className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors">Delete</button>
+                            <div className="flex items-center gap-1.5">
+                              <button onClick={() => openUserManage(u.id)} className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-violet-500/15 text-violet-400 hover:bg-violet-500/25 transition-colors">⚙ Manage</button>
+                              <button onClick={() => deleteUser(u.id, u.name)} className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors">Delete</button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -2509,13 +2711,14 @@ export default function AdminDashboardPage() {
                         <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Amount</th>
                         <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Source</th>
                         <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Status</th>
+                        <th className="px-4 py-3 text-right text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800/50">
                       {loadingData ? (
-                        <tr><td colSpan={8} className="px-4 py-12 text-center text-slate-500">Loading bookings…</td></tr>
+                        <tr><td colSpan={9} className="px-4 py-12 text-center text-slate-500">Loading bookings…</td></tr>
                       ) : paginatedBookings.length === 0 ? (
-                        <tr><td colSpan={8} className="px-4 py-12 text-center text-slate-500">No bookings found</td></tr>
+                        <tr><td colSpan={9} className="px-4 py-12 text-center text-slate-500">No bookings found</td></tr>
                       ) : paginatedBookings.map(b => (
                         <tr key={b.id} className="hover:bg-slate-800/30 transition-colors">
                           <td className="px-4 py-3.5 text-sm font-semibold text-white">{b.cafe_name}</td>
@@ -2535,15 +2738,12 @@ export default function AdminDashboardPage() {
                               : <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-700/50 text-slate-400">Walk-in</span>}
                           </td>
                           <td className="px-4 py-3.5 text-sm">
-                            {b.status === 'confirmed'
-                              ? <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-400">Confirmed</span>
-                              : b.status === 'in-progress'
-                              ? <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-500/15 text-blue-400">In Progress</span>
-                              : b.status === 'completed'
-                              ? <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-700/50 text-slate-400">Completed</span>
-                              : b.status === 'pending'
-                              ? <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-400">Pending</span>
-                              : <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-500/15 text-red-400">Cancelled</span>}
+                            <select value={b.status} onChange={e => updateBookingStatus(b.id, e.target.value)} className="px-2 py-1 rounded-lg bg-slate-800 border border-slate-700 text-xs text-white outline-none">
+                              {['pending','confirmed','in-progress','completed','cancelled'].map(s => <option key={s} value={s}>{s}</option>)}
+                            </select>
+                          </td>
+                          <td className="px-4 py-3.5 text-right">
+                            <button onClick={() => deleteBookingAdmin(b.id, b.cafe_name || '')} className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors">Delete</button>
                           </td>
                         </tr>
                       ))}
@@ -2826,50 +3026,113 @@ export default function AdminDashboardPage() {
 
           {/* ─── COUPONS TAB ─── */}
           {activeTab === 'coupons' && (
-            <div className="rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-slate-800/60 border-b border-slate-800">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Code</th>
-                      <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Café</th>
-                      <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Discount</th>
-                      <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Usage</th>
-                      <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Valid Until</th>
-                      <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800/50">
-                    {loadingData ? (
-                      <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-500">Loading coupons…</td></tr>
-                    ) : coupons.length === 0 ? (
-                      <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-500">No coupons found across any café</td></tr>
-                    ) : coupons.map(coupon => {
-                      const isExpired = coupon.valid_until && new Date(coupon.valid_until) < new Date();
-                      const discountDisplay = coupon.discount_type === 'percentage' ? `${coupon.discount_value}% OFF` : coupon.bonus_minutes > 0 ? `${coupon.bonus_minutes} mins FREE` : `₹${coupon.discount_value} OFF`;
-                      return (
-                        <tr key={coupon.id} className="hover:bg-slate-800/30 transition-colors">
-                          <td className="px-4 py-3.5 font-mono text-sm font-semibold text-white">{coupon.code}</td>
-                          <td className="px-4 py-3.5 text-sm text-slate-400">{coupon.cafe_name}</td>
-                          <td className="px-4 py-3.5 text-sm">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${coupon.discount_type === 'percentage' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-blue-500/15 text-blue-400'}`}>
-                              {discountDisplay}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3.5 text-sm text-slate-400">{coupon.uses_count} / {coupon.max_uses || '∞'}</td>
-                          <td className="px-4 py-3.5 text-sm text-slate-400">{coupon.valid_until ? formatDate(coupon.valid_until) : 'No expiry'}</td>
-                          <td className="px-4 py-3.5 text-sm">
-                            {isExpired
-                              ? <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-500/15 text-red-400">Expired</span>
-                              : coupon.is_active
-                              ? <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-400">Active</span>
-                              : <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-700/50 text-slate-400">Inactive</span>}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <div className="text-xs text-slate-500">{coupons.length} coupon{coupons.length !== 1 ? 's' : ''} across all cafés</div>
+                <button onClick={() => setShowGlobalCouponForm(v => !v)} className="px-4 py-2 rounded-xl text-sm font-semibold bg-blue-500 hover:bg-blue-400 text-white transition-colors">
+                  {showGlobalCouponForm ? '✕ Cancel' : '+ New Coupon'}
+                </button>
+              </div>
+
+              {showGlobalCouponForm && (
+                <div className="rounded-2xl bg-slate-900 border border-slate-800 p-5 space-y-4">
+                  <h4 className="text-sm font-semibold text-white">Create New Coupon</h4>
+                  {globalCouponMsg && (
+                    <div className={`px-3 py-2 rounded-xl text-xs border ${globalCouponMsg.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-red-500/10 border-red-500/30 text-red-400'}`}>{globalCouponMsg.text}</div>
+                  )}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-1">Café</label>
+                      <select value={globalCouponCafeId} onChange={e => setGlobalCouponCafeId(e.target.value)} className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-white outline-none">
+                        <option value="">— Select Café —</option>
+                        {cafes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-1">Coupon Code</label>
+                      <input type="text" placeholder="SAVE20" value={globalCouponForm.code} onChange={e => setGlobalCouponForm(p => ({...p, code: e.target.value.toUpperCase()}))} className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-white font-mono outline-none" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-1">Discount Type</label>
+                      <select value={globalCouponForm.discount_type} onChange={e => setGlobalCouponForm(p => ({...p, discount_type: e.target.value}))} className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-white outline-none">
+                        <option value="percentage">Percentage %</option>
+                        <option value="fixed">Fixed ₹</option>
+                        <option value="bonus_minutes">Bonus Minutes</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-1">Discount Value</label>
+                      <input type="number" placeholder="20" value={globalCouponForm.discount_value} onChange={e => setGlobalCouponForm(p => ({...p, discount_value: e.target.value}))} className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-white outline-none" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-1">Max Uses (blank = ∞)</label>
+                      <input type="number" placeholder="∞" value={globalCouponForm.max_uses} onChange={e => setGlobalCouponForm(p => ({...p, max_uses: e.target.value}))} className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-white outline-none" />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-1">Valid Until (optional)</label>
+                      <input type="date" value={globalCouponForm.valid_until} onChange={e => setGlobalCouponForm(p => ({...p, valid_until: e.target.value}))} className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-white outline-none" />
+                    </div>
+                  </div>
+                  <button onClick={saveGlobalCoupon} disabled={savingGlobalCoupon || !globalCouponForm.code || !globalCouponCafeId} className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-emerald-500 hover:bg-emerald-400 text-white transition-colors disabled:opacity-50">
+                    {savingGlobalCoupon ? 'Saving…' : '+ Create Coupon'}
+                  </button>
+                </div>
+              )}
+
+              <div className="rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-slate-800/60 border-b border-slate-800">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Code</th>
+                        <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Café</th>
+                        <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Discount</th>
+                        <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Usage</th>
+                        <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Valid Until</th>
+                        <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Status</th>
+                        <th className="px-4 py-3 text-right text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/50">
+                      {loadingData ? (
+                        <tr><td colSpan={7} className="px-4 py-12 text-center text-slate-500">Loading coupons…</td></tr>
+                      ) : coupons.length === 0 ? (
+                        <tr><td colSpan={7} className="px-4 py-12 text-center text-slate-500">No coupons found across any café</td></tr>
+                      ) : coupons.map(coupon => {
+                        const isExpired = coupon.valid_until && new Date(coupon.valid_until) < new Date();
+                        const discountDisplay = coupon.discount_type === 'percentage' ? `${coupon.discount_value}% OFF` : coupon.bonus_minutes > 0 ? `${coupon.bonus_minutes} mins FREE` : `₹${coupon.discount_value} OFF`;
+                        return (
+                          <tr key={coupon.id} className="hover:bg-slate-800/30 transition-colors">
+                            <td className="px-4 py-3.5 font-mono text-sm font-semibold text-white">{coupon.code}</td>
+                            <td className="px-4 py-3.5 text-sm text-slate-400">{coupon.cafe_name}</td>
+                            <td className="px-4 py-3.5 text-sm">
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${coupon.discount_type === 'percentage' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-blue-500/15 text-blue-400'}`}>
+                                {discountDisplay}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3.5 text-sm text-slate-400">{coupon.uses_count} / {coupon.max_uses || '∞'}</td>
+                            <td className="px-4 py-3.5 text-sm text-slate-400">{coupon.valid_until ? formatDate(coupon.valid_until) : 'No expiry'}</td>
+                            <td className="px-4 py-3.5 text-sm">
+                              {isExpired
+                                ? <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-500/15 text-red-400">Expired</span>
+                                : coupon.is_active
+                                ? <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-400">Active</span>
+                                : <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-700/50 text-slate-400">Inactive</span>}
+                            </td>
+                            <td className="px-4 py-3.5 text-right">
+                              <div className="flex items-center justify-end gap-1.5">
+                                <button onClick={() => toggleCouponActive(coupon.id, coupon.is_active)} className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors ${coupon.is_active ? 'bg-amber-500/15 text-amber-400 hover:bg-amber-500/25' : 'bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25'}`}>
+                                  {coupon.is_active ? 'Disable' : 'Enable'}
+                                </button>
+                                <button onClick={() => deleteGlobalCoupon(coupon.id, coupon.code)} className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors">Delete</button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}
