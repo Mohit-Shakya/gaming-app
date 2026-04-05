@@ -137,6 +137,26 @@ export default function AdminDashboardPage() {
   const [newOwnerCafeId, setNewOwnerCafeId] = useState('');
   const [ownerEmailMsg, setOwnerEmailMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // Cafe management panel
+  const [managedCafeId, setManagedCafeId] = useState<string | null>(null);
+  const [cafeManageSubTab, setCafeManageSubTab] = useState<'info' | 'stations' | 'memberships' | 'coupons'>('info');
+  const [editCafeForm, setEditCafeForm] = useState<Record<string, string>>({});
+  const [savingCafeInfo, setSavingCafeInfo] = useState(false);
+  const [cafeInfoMsg, setCafeInfoMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [addStationType, setAddStationType] = useState('ps5');
+  const [addStationCount, setAddStationCount] = useState(1);
+  const [savingStation, setSavingStation] = useState(false);
+  const [cafeMembershipPlans, setCafeMembershipPlans] = useState<any[]>([]);
+  const [loadingMemberships, setLoadingMemberships] = useState(false);
+  const [membershipForm, setMembershipForm] = useState({ name: '', price: '', hours: '', validity_days: '30', plan_type: 'hourly_package', console_type: 'ps5', player_count: 'single' });
+  const [savingMembership, setSavingMembership] = useState(false);
+  const [membershipMsg, setMembershipMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [cafeCoupons, setCafeCoupons] = useState<any[]>([]);
+  const [loadingCoupons, setLoadingCoupons] = useState(false);
+  const [couponForm, setCouponForm] = useState({ code: '', discount_type: 'percentage', discount_value: '', bonus_minutes: '0', max_uses: '', valid_until: '' });
+  const [savingCoupon, setSavingCoupon] = useState(false);
+  const [couponMsg, setCouponMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
   const [loadingData, setLoadingData] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -1256,6 +1276,183 @@ export default function AdminDashboardPage() {
     return date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
   };
 
+  // ─── Cafe management handlers ───────────────────────────────────────────────
+
+  function openCafeManage(cafe: CafeRow) {
+    setManagedCafeId(cafe.id);
+    setCafeManageSubTab('info');
+    setCafeInfoMsg(null);
+    setEditCafeForm({
+      name: cafe.name || '',
+      address: cafe.address || '',
+      phone: cafe.phone || '',
+      email: cafe.email || '',
+      price_starts_from: cafe.price_starts_from?.toString() || '',
+      hourly_price: cafe.hourly_price?.toString() || '',
+      ps5_count: cafe.ps5_count?.toString() || '0',
+      ps4_count: cafe.ps4_count?.toString() || '0',
+      xbox_count: cafe.xbox_count?.toString() || '0',
+      pc_count: cafe.pc_count?.toString() || '0',
+    });
+    setCafeMembershipPlans([]);
+    setCafeCoupons([]);
+  }
+
+  async function saveCafeInfoAdmin() {
+    if (!managedCafeId) return;
+    setSavingCafeInfo(true);
+    setCafeInfoMsg(null);
+    try {
+      const updates: Record<string, string | number | null> = {
+        name: editCafeForm.name,
+        address: editCafeForm.address,
+        phone: editCafeForm.phone || null,
+        email: editCafeForm.email || null,
+        price_starts_from: editCafeForm.price_starts_from ? Number(editCafeForm.price_starts_from) : null,
+        hourly_price: editCafeForm.hourly_price ? Number(editCafeForm.hourly_price) : null,
+      };
+      const { error } = await supabase.from('cafes').update(updates).eq('id', managedCafeId);
+      if (error) throw error;
+      setCafes(prev => prev.map(c => c.id === managedCafeId ? { ...c, ...updates } as CafeRow : c));
+      setCafeInfoMsg({ type: 'success', text: 'Café info updated successfully' });
+    } catch (err: any) {
+      setCafeInfoMsg({ type: 'error', text: err.message || 'Failed to save' });
+    } finally {
+      setSavingCafeInfo(false);
+    }
+  }
+
+  async function updateStationCount(type: string, delta: number) {
+    if (!managedCafeId) return;
+    const cafe = cafes.find(c => c.id === managedCafeId);
+    if (!cafe) return;
+    setSavingStation(true);
+    try {
+      const key = `${type}_count` as keyof CafeRow;
+      const current = (cafe[key] as number) || 0;
+      const newCount = Math.max(0, current + delta);
+      const { error } = await supabase.from('cafes').update({ [key]: newCount }).eq('id', managedCafeId);
+      if (error) throw error;
+      setCafes(prev => prev.map(c => c.id === managedCafeId ? { ...c, [key]: newCount } : c));
+    } catch (err: any) {
+      alert(err.message || 'Failed to update station count');
+    } finally {
+      setSavingStation(false);
+    }
+  }
+
+  async function loadCafeMemberships(cafeId: string) {
+    setLoadingMemberships(true);
+    try {
+      const { data, error } = await supabase
+        .from('membership_plans')
+        .select('*')
+        .eq('cafe_id', cafeId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      setCafeMembershipPlans(data || []);
+    } catch (err: any) {
+      console.error(err);
+    } finally {
+      setLoadingMemberships(false);
+    }
+  }
+
+  async function saveMembershipPlan(cafeId: string) {
+    setSavingMembership(true);
+    setMembershipMsg(null);
+    try {
+      const plan_type = membershipForm.plan_type === 'day_pass' ? 'day_pass' : 'hourly_package';
+      const payload = {
+        cafe_id: cafeId,
+        name: membershipForm.name.trim(),
+        price: Number(membershipForm.price),
+        hours: plan_type === 'day_pass' ? null : (membershipForm.hours ? Number(membershipForm.hours) : null),
+        validity_days: Number(membershipForm.validity_days) || 30,
+        plan_type,
+        console_type: membershipForm.console_type,
+        player_count: membershipForm.player_count,
+        is_active: true,
+      };
+      const { error } = await supabase.from('membership_plans').insert([payload]);
+      if (error) throw error;
+      setMembershipMsg({ type: 'success', text: 'Plan added' });
+      setMembershipForm({ name: '', price: '', hours: '', validity_days: '30', plan_type: 'hourly_package', console_type: 'ps5', player_count: 'single' });
+      await loadCafeMemberships(cafeId);
+    } catch (err: any) {
+      setMembershipMsg({ type: 'error', text: err.message || 'Failed to add plan' });
+    } finally {
+      setSavingMembership(false);
+    }
+  }
+
+  async function deleteMembershipPlan(id: string, cafeId: string) {
+    if (!confirm('Delete this membership plan?')) return;
+    try {
+      const { error } = await supabase.from('membership_plans').delete().eq('id', id);
+      if (error) throw error;
+      await loadCafeMemberships(cafeId);
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete plan');
+    }
+  }
+
+  async function loadCafeCoupons(cafeId: string) {
+    setLoadingCoupons(true);
+    try {
+      const { data, error } = await supabase
+        .from('coupons')
+        .select('*')
+        .eq('cafe_id', cafeId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      setCafeCoupons(data || []);
+    } catch (err: any) {
+      console.error(err);
+    } finally {
+      setLoadingCoupons(false);
+    }
+  }
+
+  async function saveCoupon(cafeId: string) {
+    setSavingCoupon(true);
+    setCouponMsg(null);
+    try {
+      const payload = {
+        cafe_id: cafeId,
+        code: couponForm.code.trim().toUpperCase(),
+        discount_type: couponForm.discount_type,
+        discount_value: Number(couponForm.discount_value) || 0,
+        bonus_minutes: Number(couponForm.bonus_minutes) || 0,
+        max_uses: couponForm.max_uses ? Number(couponForm.max_uses) : null,
+        valid_from: new Date().toISOString(),
+        valid_until: couponForm.valid_until || null,
+        is_active: true,
+        uses_count: 0,
+      };
+      const { error } = await supabase.from('coupons').insert([payload]);
+      if (error) throw error;
+      setCouponMsg({ type: 'success', text: 'Coupon created' });
+      setCouponForm({ code: '', discount_type: 'percentage', discount_value: '', bonus_minutes: '0', max_uses: '', valid_until: '' });
+      await loadCafeCoupons(cafeId);
+    } catch (err: any) {
+      setCouponMsg({ type: 'error', text: err.message || 'Failed to create coupon' });
+    } finally {
+      setSavingCoupon(false);
+    }
+  }
+
+  async function deleteCoupon(id: string, cafeId: string) {
+    if (!confirm('Delete this coupon?')) return;
+    try {
+      const { error } = await supabase.from('coupons').delete().eq('id', id);
+      if (error) throw error;
+      await loadCafeCoupons(cafeId);
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete coupon');
+    }
+  }
+
   if (isChecking) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center">
@@ -1692,7 +1889,7 @@ export default function AdminDashboardPage() {
 
 
           {/* ─── CAFES TAB ─── */}
-          {activeTab === 'cafes' && (
+          {activeTab === 'cafes' && !managedCafeId && (
             <div className="space-y-4">
               <div className="flex flex-wrap gap-3 p-4 rounded-2xl bg-slate-900 border border-slate-800">
                 <input
@@ -1763,6 +1960,7 @@ export default function AdminDashboardPage() {
                           </td>
                           <td className="px-4 py-3.5">
                             <div className="flex items-center gap-1.5 flex-wrap">
+                              <button onClick={() => openCafeManage(cafe)} className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-violet-500/15 text-violet-400 hover:bg-violet-500/25 transition-colors">⚙ Manage</button>
                               <button onClick={() => router.push(`/cafes/${cafe.slug}`)} className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 transition-colors">View</button>
                               <button onClick={() => toggleCafeStatus(cafe.id, cafe.is_active, cafe.name)} className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors ${cafe.is_active ? 'bg-red-500/15 text-red-400 hover:bg-red-500/25' : 'bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25'}`}>
                                 {cafe.is_active ? 'Deactivate' : 'Activate'}
@@ -1791,6 +1989,385 @@ export default function AdminDashboardPage() {
               </div>
             </div>
           )}
+
+          {/* ─── CAFE MANAGE PANEL ─── */}
+          {activeTab === 'cafes' && managedCafeId && (() => {
+            const mc = cafes.find(c => c.id === managedCafeId);
+            if (!mc) return null;
+            const STATION_TYPES = [
+              { id: 'ps5', label: 'PS5', key: 'ps5_count' },
+              { id: 'ps4', label: 'PS4', key: 'ps4_count' },
+              { id: 'xbox', label: 'Xbox', key: 'xbox_count' },
+              { id: 'pc', label: 'PC', key: 'pc_count' },
+              { id: 'vr', label: 'VR', key: 'vr_count' },
+              { id: 'pool', label: 'Pool', key: 'pool_count' },
+              { id: 'snooker', label: 'Snooker', key: 'snooker_count' },
+              { id: 'arcade', label: 'Arcade', key: 'arcade_count' },
+              { id: 'steering', label: 'Steering Wheel', key: 'steering_wheel_count' },
+              { id: 'racing_sim', label: 'Racing Sim', key: 'racing_sim_count' },
+            ];
+            return (
+              <div className="space-y-4">
+                {/* Back + header */}
+                <div className="flex items-center gap-4">
+                  <button onClick={() => setManagedCafeId(null)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-400 bg-slate-800 hover:bg-slate-700 transition-colors">
+                    ← Back to Cafés
+                  </button>
+                  <div>
+                    <h2 className="text-base font-bold text-white">{mc.name}</h2>
+                    <p className="text-xs text-slate-500">{mc.address}</p>
+                  </div>
+                  <div className="ml-auto flex items-center gap-2">
+                    {mc.is_active
+                      ? <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-400">Active</span>
+                      : <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-500/15 text-red-400">Inactive</span>}
+                    <button onClick={() => router.push(`/cafes/${mc.slug}`)} className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 transition-colors">View Live Page</button>
+                  </div>
+                </div>
+
+                {/* Sub-tabs */}
+                <div className="flex gap-1 p-1 rounded-2xl bg-slate-900 border border-slate-800 w-fit">
+                  {(['info', 'stations', 'memberships', 'coupons'] as const).map(tab => (
+                    <button
+                      key={tab}
+                      onClick={() => {
+                        setCafeManageSubTab(tab);
+                        if (tab === 'memberships' && cafeMembershipPlans.length === 0) loadCafeMemberships(managedCafeId);
+                        if (tab === 'coupons' && cafeCoupons.length === 0) loadCafeCoupons(managedCafeId);
+                      }}
+                      className={`px-4 py-2 rounded-xl text-xs font-semibold capitalize transition-colors ${cafeManageSubTab === tab ? 'bg-blue-500 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+                    >
+                      {tab === 'info' ? '🏪 Info' : tab === 'stations' ? '🎮 Stations' : tab === 'memberships' ? '👑 Memberships' : '🎟️ Coupons'}
+                    </button>
+                  ))}
+                </div>
+
+                {/* ── INFO SUB-TAB ── */}
+                {cafeManageSubTab === 'info' && (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div className="rounded-2xl bg-slate-900 border border-slate-800 p-5 space-y-4">
+                      <h3 className="text-sm font-semibold text-white">Basic Info</h3>
+                      {cafeInfoMsg && (
+                        <div className={`px-3 py-2 rounded-xl text-xs border ${cafeInfoMsg.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-red-500/10 border-red-500/30 text-red-400'}`}>{cafeInfoMsg.text}</div>
+                      )}
+                      {[
+                        { label: 'Café Name', key: 'name' },
+                        { label: 'Address', key: 'address' },
+                        { label: 'Phone', key: 'phone' },
+                        { label: 'Email', key: 'email' },
+                        { label: 'Starting Price (₹)', key: 'price_starts_from' },
+                        { label: 'Hourly Price (₹)', key: 'hourly_price' },
+                      ].map(f => (
+                        <div key={f.key}>
+                          <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-1">{f.label}</label>
+                          <input
+                            type={f.key.includes('price') ? 'number' : 'text'}
+                            value={editCafeForm[f.key] || ''}
+                            onChange={e => setEditCafeForm(prev => ({ ...prev, [f.key]: e.target.value }))}
+                            className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-white placeholder-slate-500 outline-none focus:border-blue-500/50"
+                          />
+                        </div>
+                      ))}
+                      <button
+                        onClick={saveCafeInfoAdmin}
+                        disabled={savingCafeInfo}
+                        className="w-full py-2.5 rounded-xl text-sm font-semibold bg-blue-500 hover:bg-blue-400 text-white transition-colors disabled:opacity-50"
+                      >
+                        {savingCafeInfo ? 'Saving…' : 'Save Info'}
+                      </button>
+                    </div>
+
+                    {/* Quick stats card */}
+                    <div className="rounded-2xl bg-slate-900 border border-slate-800 p-5 space-y-3">
+                      <h3 className="text-sm font-semibold text-white">Café Overview</h3>
+                      {[
+                        { label: 'Total Bookings', value: mc.total_bookings || 0 },
+                        { label: 'Total Revenue', value: formatCurrency(mc.total_revenue || 0) },
+                        { label: 'Owner', value: mc.owner_name || '—' },
+                      ].map(r => (
+                        <div key={r.label} className="flex justify-between items-center py-2.5 border-b border-slate-800/50">
+                          <span className="text-xs text-slate-500">{r.label}</span>
+                          <span className="text-sm font-semibold text-white">{r.value}</span>
+                        </div>
+                      ))}
+                      <div className="pt-2 space-y-2">
+                        <button onClick={() => toggleCafeStatus(mc.id, mc.is_active, mc.name!)} className={`w-full py-2 rounded-xl text-xs font-semibold transition-colors ${mc.is_active ? 'bg-red-500/15 text-red-400 hover:bg-red-500/25' : 'bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25'}`}>
+                          {mc.is_active ? 'Deactivate Café' : 'Activate Café'}
+                        </button>
+                        <button onClick={() => toggleFeaturedCafe(mc.id, mc.is_featured || false, mc.name!)} className={`w-full py-2 rounded-xl text-xs font-semibold transition-colors ${mc.is_featured ? 'bg-amber-500/15 text-amber-400 hover:bg-amber-500/25' : 'bg-slate-700/50 text-slate-400 hover:bg-slate-700'}`}>
+                          {mc.is_featured ? '⭐ Remove Featured' : '☆ Mark as Featured'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* ── STATIONS SUB-TAB ── */}
+                {cafeManageSubTab === 'stations' && (
+                  <div className="space-y-4">
+                    {/* Current station counts */}
+                    <div className="rounded-2xl bg-slate-900 border border-slate-800 p-5">
+                      <h3 className="text-sm font-semibold text-white mb-4">Station Inventory</h3>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                        {STATION_TYPES.map(st => {
+                          const count = (mc as any)[st.key] || 0;
+                          return (
+                            <div key={st.id} className="rounded-xl bg-slate-800/60 border border-slate-700/50 p-3">
+                              <p className="text-[10px] text-slate-500 uppercase tracking-widest mb-1">{st.label}</p>
+                              <div className="flex items-center justify-between">
+                                <span className="text-xl font-bold text-white">{count}</span>
+                                <div className="flex gap-1">
+                                  <button
+                                    onClick={() => updateStationCount(st.id, -1)}
+                                    disabled={savingStation || count === 0}
+                                    className="w-6 h-6 rounded-lg bg-slate-700 text-slate-300 hover:bg-slate-600 text-xs font-bold disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center"
+                                  >−</button>
+                                  <button
+                                    onClick={() => updateStationCount(st.id, 1)}
+                                    disabled={savingStation}
+                                    className="w-6 h-6 rounded-lg bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 text-xs font-bold disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center"
+                                  >+</button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Add stations in bulk */}
+                    <div className="rounded-2xl bg-slate-900 border border-slate-800 p-5">
+                      <h3 className="text-sm font-semibold text-white mb-3">Add Stations in Bulk</h3>
+                      <div className="flex flex-wrap gap-3">
+                        <select
+                          value={addStationType}
+                          onChange={e => setAddStationType(e.target.value)}
+                          className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-white outline-none"
+                        >
+                          {STATION_TYPES.map(st => <option key={st.id} value={st.id}>{st.label}</option>)}
+                        </select>
+                        <input
+                          type="number"
+                          min={1}
+                          max={50}
+                          value={addStationCount}
+                          onChange={e => setAddStationCount(Math.max(1, Number(e.target.value)))}
+                          className="w-20 px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-white outline-none"
+                        />
+                        <button
+                          onClick={() => updateStationCount(addStationType, addStationCount)}
+                          disabled={savingStation}
+                          className="px-4 py-2 rounded-xl text-sm font-semibold bg-blue-500 hover:bg-blue-400 text-white transition-colors disabled:opacity-50"
+                        >
+                          {savingStation ? 'Saving…' : `+ Add ${addStationCount}`}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* ── MEMBERSHIPS SUB-TAB ── */}
+                {cafeManageSubTab === 'memberships' && (
+                  <div className="space-y-4">
+                    {/* Add plan form */}
+                    <div className="rounded-2xl bg-slate-900 border border-slate-800 p-5 space-y-4">
+                      <h3 className="text-sm font-semibold text-white">Add Membership Plan</h3>
+                      {membershipMsg && (
+                        <div className={`px-3 py-2 rounded-xl text-xs border ${membershipMsg.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-red-500/10 border-red-500/30 text-red-400'}`}>{membershipMsg.text}</div>
+                      )}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        <div>
+                          <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-1">Plan Name</label>
+                          <input type="text" placeholder="e.g. PS5 Day Pass" value={membershipForm.name} onChange={e => setMembershipForm(p => ({...p, name: e.target.value}))} className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-white outline-none" />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-1">Type</label>
+                          <select value={membershipForm.plan_type} onChange={e => setMembershipForm(p => ({...p, plan_type: e.target.value}))} className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-white outline-none">
+                            <option value="hourly_package">Hourly Package</option>
+                            <option value="day_pass">Day Pass</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-1">Console</label>
+                          <select value={membershipForm.console_type} onChange={e => setMembershipForm(p => ({...p, console_type: e.target.value}))} className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-white outline-none">
+                            {['ps5','ps4','xbox','pc','vr','pool','snooker','arcade'].map(c => <option key={c} value={c}>{c.toUpperCase()}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-1">Price (₹)</label>
+                          <input type="number" placeholder="500" value={membershipForm.price} onChange={e => setMembershipForm(p => ({...p, price: e.target.value}))} className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-white outline-none" />
+                        </div>
+                        {membershipForm.plan_type !== 'day_pass' && (
+                          <div>
+                            <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-1">Hours</label>
+                            <input type="number" placeholder="10" value={membershipForm.hours} onChange={e => setMembershipForm(p => ({...p, hours: e.target.value}))} className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-white outline-none" />
+                          </div>
+                        )}
+                        <div>
+                          <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-1">Validity (days)</label>
+                          <input type="number" placeholder="30" value={membershipForm.validity_days} onChange={e => setMembershipForm(p => ({...p, validity_days: e.target.value}))} className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-white outline-none" />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-1">Players</label>
+                          <select value={membershipForm.player_count} onChange={e => setMembershipForm(p => ({...p, player_count: e.target.value}))} className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-white outline-none">
+                            <option value="single">Single</option>
+                            <option value="double">Double</option>
+                          </select>
+                        </div>
+                      </div>
+                      <button onClick={() => saveMembershipPlan(managedCafeId)} disabled={savingMembership || !membershipForm.name || !membershipForm.price} className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-violet-500 hover:bg-violet-400 text-white transition-colors disabled:opacity-50">
+                        {savingMembership ? 'Saving…' : '+ Add Plan'}
+                      </button>
+                    </div>
+
+                    {/* Plans list */}
+                    <div className="rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden">
+                      <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
+                        <h3 className="text-sm font-semibold text-white">Existing Plans</h3>
+                        <button onClick={() => loadCafeMemberships(managedCafeId)} className="text-xs text-slate-500 hover:text-white transition-colors">↻ Refresh</button>
+                      </div>
+                      {loadingMemberships ? (
+                        <div className="py-10 text-center text-sm text-slate-500">Loading…</div>
+                      ) : cafeMembershipPlans.length === 0 ? (
+                        <div className="py-10 text-center text-sm text-slate-500">No membership plans yet.</div>
+                      ) : (
+                        <table className="w-full text-sm">
+                          <thead className="bg-slate-800/40 border-b border-slate-800">
+                            <tr>
+                              <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Name</th>
+                              <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Type</th>
+                              <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Console</th>
+                              <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Price</th>
+                              <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Hours</th>
+                              <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Validity</th>
+                              <th className="px-4 py-3 text-right text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-800/50">
+                            {cafeMembershipPlans.map(plan => (
+                              <tr key={plan.id} className="hover:bg-slate-800/30 transition-colors">
+                                <td className="px-4 py-3 text-sm font-semibold text-white">{plan.name}</td>
+                                <td className="px-4 py-3 text-sm">
+                                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${plan.plan_type === 'day_pass' ? 'bg-amber-500/15 text-amber-400' : 'bg-violet-500/15 text-violet-400'}`}>
+                                    {plan.plan_type === 'day_pass' ? 'Day Pass' : 'Hourly'}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-sm text-slate-400 uppercase">{plan.console_type}</td>
+                                <td className="px-4 py-3 text-sm font-semibold text-emerald-400">{formatCurrency(plan.price)}</td>
+                                <td className="px-4 py-3 text-sm text-slate-400">{plan.hours ? `${plan.hours}h` : '—'}</td>
+                                <td className="px-4 py-3 text-sm text-slate-400">{plan.validity_days}d</td>
+                                <td className="px-4 py-3 text-right">
+                                  <button onClick={() => deleteMembershipPlan(plan.id, managedCafeId)} className="px-3 py-1 rounded-lg text-xs font-semibold bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors">Delete</button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* ── COUPONS SUB-TAB ── */}
+                {cafeManageSubTab === 'coupons' && (
+                  <div className="space-y-4">
+                    {/* Add coupon form */}
+                    <div className="rounded-2xl bg-slate-900 border border-slate-800 p-5 space-y-4">
+                      <h3 className="text-sm font-semibold text-white">Create Coupon</h3>
+                      {couponMsg && (
+                        <div className={`px-3 py-2 rounded-xl text-xs border ${couponMsg.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-red-500/10 border-red-500/30 text-red-400'}`}>{couponMsg.text}</div>
+                      )}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        <div>
+                          <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-1">Coupon Code</label>
+                          <input type="text" placeholder="SAVE20" value={couponForm.code} onChange={e => setCouponForm(p => ({...p, code: e.target.value.toUpperCase()}))} className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-white font-mono outline-none" />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-1">Discount Type</label>
+                          <select value={couponForm.discount_type} onChange={e => setCouponForm(p => ({...p, discount_type: e.target.value}))} className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-white outline-none">
+                            <option value="percentage">Percentage %</option>
+                            <option value="fixed">Fixed ₹</option>
+                            <option value="bonus_minutes">Bonus Minutes</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-1">Discount Value</label>
+                          <input type="number" placeholder={couponForm.discount_type === 'percentage' ? '20' : couponForm.discount_type === 'fixed' ? '100' : '30'} value={couponForm.discount_value} onChange={e => setCouponForm(p => ({...p, discount_value: e.target.value}))} className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-white outline-none" />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-1">Bonus Minutes</label>
+                          <input type="number" placeholder="0" value={couponForm.bonus_minutes} onChange={e => setCouponForm(p => ({...p, bonus_minutes: e.target.value}))} className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-white outline-none" />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-1">Max Uses (blank = ∞)</label>
+                          <input type="number" placeholder="∞" value={couponForm.max_uses} onChange={e => setCouponForm(p => ({...p, max_uses: e.target.value}))} className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-white outline-none" />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-1">Valid Until (optional)</label>
+                          <input type="date" value={couponForm.valid_until} onChange={e => setCouponForm(p => ({...p, valid_until: e.target.value}))} className="w-full px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-sm text-white outline-none" />
+                        </div>
+                      </div>
+                      <button onClick={() => saveCoupon(managedCafeId)} disabled={savingCoupon || !couponForm.code} className="px-5 py-2.5 rounded-xl text-sm font-semibold bg-emerald-500 hover:bg-emerald-400 text-white transition-colors disabled:opacity-50">
+                        {savingCoupon ? 'Saving…' : '+ Create Coupon'}
+                      </button>
+                    </div>
+
+                    {/* Coupons list */}
+                    <div className="rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden">
+                      <div className="px-5 py-4 border-b border-slate-800 flex items-center justify-between">
+                        <h3 className="text-sm font-semibold text-white">Existing Coupons</h3>
+                        <button onClick={() => loadCafeCoupons(managedCafeId)} className="text-xs text-slate-500 hover:text-white transition-colors">↻ Refresh</button>
+                      </div>
+                      {loadingCoupons ? (
+                        <div className="py-10 text-center text-sm text-slate-500">Loading…</div>
+                      ) : cafeCoupons.length === 0 ? (
+                        <div className="py-10 text-center text-sm text-slate-500">No coupons for this café yet.</div>
+                      ) : (
+                        <table className="w-full text-sm">
+                          <thead className="bg-slate-800/40 border-b border-slate-800">
+                            <tr>
+                              <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Code</th>
+                              <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Discount</th>
+                              <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Usage</th>
+                              <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Valid Until</th>
+                              <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Status</th>
+                              <th className="px-4 py-3 text-right text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-800/50">
+                            {cafeCoupons.map(coupon => {
+                              const expired = coupon.valid_until && new Date(coupon.valid_until) < new Date();
+                              const display = coupon.discount_type === 'percentage' ? `${coupon.discount_value}% OFF` : coupon.bonus_minutes > 0 ? `${coupon.bonus_minutes} mins FREE` : `₹${coupon.discount_value} OFF`;
+                              return (
+                                <tr key={coupon.id} className="hover:bg-slate-800/30 transition-colors">
+                                  <td className="px-4 py-3 font-mono text-sm font-semibold text-white">{coupon.code}</td>
+                                  <td className="px-4 py-3 text-sm">
+                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${coupon.discount_type === 'percentage' ? 'bg-emerald-500/15 text-emerald-400' : 'bg-blue-500/15 text-blue-400'}`}>{display}</span>
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-slate-400">{coupon.uses_count} / {coupon.max_uses || '∞'}</td>
+                                  <td className="px-4 py-3 text-sm text-slate-400">{coupon.valid_until ? formatDate(coupon.valid_until) : 'No expiry'}</td>
+                                  <td className="px-4 py-3 text-sm">
+                                    {expired
+                                      ? <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-red-500/15 text-red-400">Expired</span>
+                                      : coupon.is_active
+                                      ? <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-400">Active</span>
+                                      : <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-slate-700/50 text-slate-400">Inactive</span>}
+                                  </td>
+                                  <td className="px-4 py-3 text-right">
+                                    <button onClick={() => deleteCoupon(coupon.id, managedCafeId)} className="px-3 py-1 rounded-lg text-xs font-semibold bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors">Delete</button>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* ─── USERS TAB ─── */}
           {activeTab === 'users' && (
