@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { CONSOLE_LABELS } from '@/lib/constants';
 import { Card, Button, Input, Select, StatusBadge, LoadingSpinner } from './ui';
 import {
@@ -10,6 +10,7 @@ import {
 import { CafeRow } from '@/types/database';
 
 import { getLocalDateString } from '../utils';
+import { calcBillingPrice } from '../utils/pricing';
 
 interface MembershipPlan {
     id: string;
@@ -133,6 +134,16 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess, onMembersh
         if (stationPricingList) setStationPricingData(stationPricingList);
     }, [stationPricingList]);
 
+    const stationPricingMap = useMemo(
+        () => Object.fromEntries((stationPricingData || []).map((station: any) => [station.station_name, station])),
+        [stationPricingData]
+    );
+
+    const consolePricingMap = useMemo(
+        () => ({ [cafeId]: pricing || {} }),
+        [cafeId, pricing]
+    );
+
     // Customer Autocomplete — debounced server-side search (no load-all)
     const searchCustomers = (query: string, field: 'name' | 'phone') => {
         if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
@@ -149,68 +160,8 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess, onMembersh
     };
 
     // Pricing Helper
-    const calculatePrice = (type: string, qty: number, duration: number) => {
-        // Map app console types to DB types if needed (e.g. steering -> steering_wheel)
-        const dbType = type === 'steering' ? 'steering_wheel' : type;
-        const tier = pricing?.[dbType];
-
-        // Per-station console types (pricing is per station, not per controller group)
-        const perStationTypes = ['pc', 'vr', 'steering_wheel', 'steering', 'racing_sim', 'arcade'];
-        const isPerStation = perStationTypes.includes(type.toLowerCase()) || perStationTypes.includes(dbType.toLowerCase());
-
-        // Try console_pricing first (tier-based)
-        if (tier) {
-            if (duration === 90) {
-                const p60 = tier[`qty${qty}_60min`] || (isPerStation ? (tier['qty1_60min'] || 0) * qty : 0);
-                const p30 = tier[`qty${qty}_30min`] || (isPerStation ? (tier['qty1_30min'] || 0) * qty : 0);
-                return p60 + p30;
-            }
-
-            const exactKey = `qty${qty}_${duration}min`;
-            if (tier[exactKey]) return tier[exactKey];
-
-            if (isPerStation && qty > 1) {
-                const baseKey = `qty1_${duration}min`;
-                if (tier[baseKey]) return tier[baseKey] * qty;
-            }
-
-            if (duration === 120) {
-                const base = tier[`qty${qty}_60min`] || (isPerStation ? (tier['qty1_60min'] || 0) * qty : 0);
-                if (base > 0) return base * 2;
-            }
-            if (duration === 180) {
-                const base = tier[`qty${qty}_60min`] || (isPerStation ? (tier['qty1_60min'] || 0) * qty : 0);
-                if (base > 0) return base * 3;
-            }
-
-            // If tier exists and has a value, return it
-            const anyKey = Object.keys(tier).find(k => tier[k] > 0);
-            if (anyKey) return 0; // tier exists but no matching duration
-        }
-
-        // Fallback: try station_pricing
-        const stationTypeMap: Record<string, string> = {
-            'ps5': 'PS5', 'ps4': 'PS4', 'xbox': 'Xbox', 'pc': 'PC',
-            'pool': 'Pool', 'snooker': 'Snooker', 'arcade': 'Arcade',
-            'vr': 'VR', 'steering': 'Steering Wheel', 'steering_wheel': 'Steering Wheel',
-            'racing_sim': 'Racing Sim',
-        };
-        const stationType = stationTypeMap[type] || type;
-        const station = stationPricingData.find((sp: any) => sp.station_type === stationType);
-
-        if (station) {
-            const halfHour = station.half_hour_rate || 0;
-            const fullHour = station.hourly_rate || 0;
-
-            if (duration === 30) return halfHour * qty;
-            if (duration === 60) return fullHour * qty;
-            if (duration === 90) return (halfHour + fullHour) * qty;
-            if (duration === 120) return fullHour * 2 * qty;
-            if (duration === 180) return fullHour * 3 * qty;
-        }
-
-        return 0;
-    };
+    const calculatePrice = (type: string, qty: number, duration: number, stationName?: string) =>
+        calcBillingPrice(type, qty, duration, cafeId, consolePricingMap, stationPricingMap, { stationName });
 
     // Item Management
     const addItem = () => {
@@ -233,8 +184,13 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess, onMembersh
         setItems(items.map(item => {
             if (item.id === id) {
                 const updated = { ...item, [field]: value };
-                if (['console', 'quantity', 'duration'].includes(field)) {
-                    updated.price = calculatePrice(updated.console, updated.quantity, updated.duration);
+
+                if (field === 'console' && updated.station && !stationOptions(String(value)).includes(updated.station)) {
+                    updated.station = undefined;
+                }
+
+                if (['console', 'quantity', 'duration', 'station'].includes(field)) {
+                    updated.price = calculatePrice(updated.console, updated.quantity, updated.duration, updated.station);
                 }
                 return updated;
             }
