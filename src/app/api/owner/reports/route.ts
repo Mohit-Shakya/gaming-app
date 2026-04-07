@@ -27,6 +27,8 @@ type BookingOrderRow = {
   total_price: number;
 };
 
+type BookingOrderSummary = Omit<BookingOrderRow, "booking_id">;
+
 type SubscriptionRow = {
   id: string;
   amount_paid: number | string;
@@ -45,6 +47,19 @@ const getIndiaDateString = (date: Date = new Date()): string => {
   });
 
   return formatter.format(date);
+};
+
+const parseAmount = (amount: number | string | null | undefined): number => {
+  if (typeof amount === "number") {
+    return amount;
+  }
+
+  if (typeof amount === "string") {
+    const parsed = Number.parseFloat(amount);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
+  return 0;
 };
 
 // POST /api/owner/reports — fetch booking data for reports
@@ -92,7 +107,7 @@ export async function POST(request: NextRequest) {
     // gaming vs snack revenue (total_amount includes both on such bookings).
     const allBookingIds = ((currentData || []) as BookingRow[]).map((b) => b.id);
 
-    const snackOrdersMap: Record<string, BookingOrderRow[]> = {};
+    const snackOrdersMap: Record<string, BookingOrderSummary[]> = {};
     if (allBookingIds.length > 0) {
       const { data: ordersData } = await supabase
         .from('booking_orders')
@@ -156,7 +171,7 @@ export async function POST(request: NextRequest) {
     // Map subscriptions to look like bookings
     const formattedCurrentSubscriptions = ((currentSubscriptions || []) as SubscriptionRow[]).map((sub) => ({
       id: `sub_${sub.id}`,
-      total_amount: sub.amount_paid ? parseFloat(sub.amount_paid) : 0,
+      total_amount: parseAmount(sub.amount_paid),
       created_at: sub.purchase_date,
       booking_date: sub.purchase_date.split('T')[0],
       status: 'completed', // For reporting purposes, a paid subscription is completed revenue
@@ -167,14 +182,14 @@ export async function POST(request: NextRequest) {
       booking_items: [{
         console: 'Membership',
         quantity: 1,
-        price: sub.amount_paid ? parseFloat(sub.amount_paid) : 0,
+        price: parseAmount(sub.amount_paid),
         name: sub.membership_plans?.name || 'Membership'
       }]
     }));
 
     const formattedPrevSubscriptions = ((prevSubscriptions || []) as SubscriptionRow[]).map((sub) => ({
       id: `sub_${sub.id}`,
-      total_amount: sub.amount_paid ? parseFloat(sub.amount_paid) : 0,
+      total_amount: parseAmount(sub.amount_paid),
       booking_date: sub.purchase_date.split('T')[0],
       status: 'completed',
       payment_mode: sub.payment_mode || 'cash'
