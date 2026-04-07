@@ -2447,8 +2447,8 @@ export default function OwnerDashboardPage() {
                 cafeId={currentCafeId}
                 cafes={cafes}
                 isMobile={isMobile}
-                pricingData={consolePricing[currentCafeId]}
-                stationPricingList={Object.values(stationPricing)}
+                pricingData={consolePricing[currentCafeId] || {}}
+                stationPricingList={Object.values(stationPricing).filter((station: any) => !currentCafeId || station?.cafe_id === currentCafeId)}
                 membershipPlans={membershipPlans.filter((p: any) => p.cafe_id === currentCafeId)}
                 onSuccess={() => {
                   refreshData();

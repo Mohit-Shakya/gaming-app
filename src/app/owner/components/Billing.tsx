@@ -127,11 +127,11 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess, onMembersh
 
     // Sync pricing from props when they change (e.g. cafe switch)
     useEffect(() => {
-        if (pricingData) setPricing(pricingData);
+        setPricing(pricingData || null);
     }, [pricingData]);
 
     useEffect(() => {
-        if (stationPricingList) setStationPricingData(stationPricingList);
+        setStationPricingData(stationPricingList || []);
     }, [stationPricingList]);
 
     const stationPricingMap = useMemo(
@@ -143,6 +143,22 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess, onMembersh
         () => ({ [cafeId]: pricing || {} }),
         [cafeId, pricing]
     );
+
+    useEffect(() => {
+        setItems(prevItems => prevItems.map(item => {
+            const nextPrice = calcBillingPrice(
+                item.console,
+                item.quantity,
+                item.duration,
+                cafeId,
+                consolePricingMap,
+                stationPricingMap,
+                { stationName: item.station }
+            );
+
+            return nextPrice === item.price ? item : { ...item, price: nextPrice };
+        }));
+    }, [cafeId, consolePricingMap, stationPricingMap]);
 
     // Customer Autocomplete — debounced server-side search (no load-all)
     const searchCustomers = (query: string, field: 'name' | 'phone') => {
