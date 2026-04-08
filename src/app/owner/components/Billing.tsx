@@ -182,6 +182,11 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess, onMembersh
         return stationOptions(consoleType)[0];
     };
 
+    const canPickSingleStation = (consoleType: string, quantity: number) => {
+        const normalizedConsoleType = normaliseConsoleType(consoleType);
+        return quantity <= 1 || ['ps5', 'ps4', 'xbox'].includes(normalizedConsoleType);
+    };
+
     const calculatePrice = (type: string, qty: number, duration: number, stationName?: string) =>
         calcBillingPrice(type, qty, duration, cafeId, consolePricingMap, stationPricingMap, {
             stationName: getEffectiveStationName(type, stationName),
@@ -233,6 +238,14 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess, onMembersh
                 const updated = { ...item, [field]: value };
 
                 if (field === 'console' && updated.station && !stationOptions(String(value)).includes(updated.station)) {
+                    updated.station = undefined;
+                }
+
+                if (
+                    ['console', 'quantity'].includes(field) &&
+                    updated.station &&
+                    !canPickSingleStation(updated.console, updated.quantity)
+                ) {
                     updated.station = undefined;
                 }
 
@@ -298,6 +311,8 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess, onMembersh
             setCustomerName('');
             setCustomerPhone('');
             setItems([]);
+            setManualAmount(null);
+            setPaymentMode('cash');
             if (onSuccess) onSuccess();
             alert('Booking created successfully!');
 
@@ -328,92 +343,29 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess, onMembersh
     const handleMemSubmit = async () => {
         if (!customerName.trim()) { alert('Customer name is required'); return; }
         if (!customerPhone.trim()) { alert('Phone number is required'); return; }
+        if (!/^\+?\d[\d\s\-()]{7,14}$/.test(customerPhone.trim())) { alert('Invalid phone number'); return; }
         if (memItems.length === 0) { alert('Please add at least one membership plan'); return; }
 
         setMemSubmitting(true);
         try {
-            const now = new Date();
-            const hours = now.getHours();
-            const mins = now.getMinutes();
-            const period = hours >= 12 ? 'pm' : 'am';
-            const h12 = hours % 12 || 12;
-            const startTime12h = `${h12}:${mins.toString().padStart(2, '0')} ${period}`;
-            const todayStr = getLocalDateString();
-
-            // Create all subscriptions sequentially (one per item × quantity)
-            for (const mi of memItems) {
-                const plan = membershipPlans.find(p => p.id === mi.planId);
-                if (!plan) continue;
-                const itemTotal = plan.price * mi.quantity;
-                const amountPerUnit = memItems.length === 1
-                    ? memTotalAmount / mi.quantity
-                    : itemTotal / mi.quantity;
-
-                const isDayPass = plan.plan_type === 'day_pass';
-
-                for (let q = 0; q < mi.quantity; q++) {
-                    const expiryDate = new Date(now);
-                    expiryDate.setDate(expiryDate.getDate() + (plan.validity_days || 30));
-
-                    // Create subscription — day passes auto-start the timer
-                    const subRes = await fetch('/api/owner/subscriptions', {
-                        method: 'POST',
-                        credentials: 'include',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            cafe_id: cafeId,
-                            customer_name: customerName.trim(),
-                            customer_phone: customerPhone.trim(),
-                            membership_plan_id: plan.id,
-                            hours_purchased: plan.hours || 24,
-                            hours_remaining: plan.hours || 24,
-                            amount_paid: amountPerUnit,
-                            payment_mode: memPaymentMode,
-                            purchase_date: now.toISOString(),
-                            expiry_date: expiryDate.toISOString(),
-                            status: 'active',
-                            timer_active: isDayPass,
-                            timer_start_time: isDayPass ? now.toISOString() : null,
-                        }),
-                    });
-                    const subResult = await subRes.json();
-                    if (!subRes.ok) throw new Error(subResult.error || 'Failed to create subscription');
-
-                    // Create companion booking record so it shows in the Bookings tab
-                    const duration = isDayPass ? 1440 : (plan.hours || 1) * 60;
-                    const bookingRes = await fetch('/api/owner/billing', {
-                        method: 'POST',
-                        credentials: 'include',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            booking: {
-                                cafe_id: cafeId,
-                                customer_name: customerName.trim(),
-                                customer_phone: customerPhone.trim() || null,
-                                booking_date: todayStr,
-                                start_time: startTime12h,
-                                duration,
-                                total_amount: amountPerUnit,
-                                status: isDayPass ? 'in-progress' : 'completed',
-                                source: 'membership',
-                                payment_mode: memPaymentMode,
-                            },
-                            items: [{
-                                id: Math.random().toString(36).substr(2, 9),
-                                console: plan.console_type || 'pc',
-                                quantity: 1,
-                                duration,
-                                price: amountPerUnit,
-                                title: String(duration),
-                            }],
-                        }),
-                    });
-                    if (!bookingRes.ok) {
-                        const bookingErr = await bookingRes.json().catch(() => ({}));
-                        throw new Error(bookingErr.error || 'Failed to create membership booking record');
-                    }
-                }
-            }
+            const res = await fetch('/api/owner/membership-checkout', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    cafe_id: cafeId,
+                    customer_name: customerName.trim(),
+                    customer_phone: customerPhone.trim(),
+                    items: memItems.map((item) => ({
+                        planId: item.planId,
+                        quantity: item.quantity,
+                    })),
+                    final_amount: memTotalAmount,
+                    payment_mode: memPaymentMode,
+                }),
+            });
+            const result = await res.json();
+            if (!res.ok) throw new Error(result.error || 'Failed to add membership');
 
             setCustomerName('');
             setCustomerPhone('');
@@ -553,6 +505,7 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess, onMembersh
                                                     value={item.station || ''}
                                                     options={[{ value: '', label: 'Any' }, ...stationOptions(item.console).map(s => ({ value: s, label: s.toUpperCase() }))]}
                                                     onChange={(val) => updateItem(item.id, 'station', val)}
+                                                    disabled={!canPickSingleStation(item.console, item.quantity)}
                                                 />
                                                 <Select
                                                     label="Players"
@@ -584,6 +537,11 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess, onMembersh
                                                     </div>
                                                 </div>
                                             </div>
+                                            {!canPickSingleStation(item.console, item.quantity) && (
+                                                <p className="mt-2 text-xs text-slate-500">
+                                                    Multiple units will be auto-assigned to separate stations.
+                                                </p>
+                                            )}
                                         </div>
                                     ))}
                                 </div>
@@ -632,7 +590,7 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess, onMembersh
                                                 className="w-24 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xl font-bold text-white text-right outline-none focus:border-emerald-500 transition-colors"
                                                 value={manualAmount !== null ? manualAmount : calculatedTotal}
                                                 onChange={(e) => {
-                                                    const val = parseInt(e.target.value) || 0;
+                                                    const val = parseFloat(e.target.value) || 0;
                                                     setManualAmount(val === calculatedTotal ? null : val);
                                                 }}
                                                 min={0}
@@ -826,7 +784,7 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess, onMembersh
                                             className="w-24 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xl font-bold text-white text-right outline-none focus:border-purple-500 transition-colors"
                                             value={memManualAmount !== null ? memManualAmount : memCalculatedTotal}
                                             onChange={(e) => {
-                                                const val = parseInt(e.target.value) || 0;
+                                                const val = parseFloat(e.target.value) || 0;
                                                 setMemManualAmount(val === memCalculatedTotal ? null : val);
                                             }}
                                             min={0}

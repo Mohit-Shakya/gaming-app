@@ -67,15 +67,26 @@ export function DashboardStats({ bookings, subscriptions, activeTimers, loadingD
   yesterday.setDate(yesterday.getDate() - 1);
   const yesterdayStr = getLocalDateString(yesterday);
 
+  const billableSessionBookings = bookings.filter(
+    (booking) =>
+      booking.payment_mode !== 'owner' &&
+      booking.status !== 'cancelled' &&
+      booking.source !== 'membership'
+  );
+
   // Today's stats
-  const activeBookingsCount = bookings.filter(b => b.status === 'in-progress' && b.booking_date === todayStr).length;
+  const activeBookingsCount = billableSessionBookings.filter(
+    (booking) => booking.status === 'in-progress' && booking.booking_date === todayStr
+  ).length;
   const activeSubscriptionsCount = subscriptions.filter(sub => activeTimers.has(sub.id)).length;
   const activeNow = activeBookingsCount + activeSubscriptionsCount;
 
-  const todayBookings = bookings.filter(b => b.booking_date === todayStr && b.status !== 'cancelled' && b.payment_mode !== 'owner');
+  const todayBookings = billableSessionBookings.filter((booking) => booking.booking_date === todayStr);
   // Only count gaming sessions (bookings with console items), not standalone snack sales
   const todaySessions = todayBookings.filter(b => b.booking_items && b.booking_items.length > 0).length;
-  const pendingBookings = bookings.filter(b => b.booking_date === todayStr && b.status === 'confirmed').length;
+  const pendingBookings = billableSessionBookings.filter(
+    (booking) => booking.booking_date === todayStr && booking.status === 'confirmed'
+  ).length;
 
   const todaySubscriptions = subscriptions.filter(sub => sub.purchase_date && getLocalDateString(new Date(sub.purchase_date)) === todayStr);
 
@@ -91,7 +102,7 @@ export function DashboardStats({ bookings, subscriptions, activeTimers, loadingD
   const totalRevenue = calcRevenue(todayBookings, todaySubscriptions);
 
   // Yesterday's stats for trend
-  const yesterdayBookings = bookings.filter(b => b.booking_date === yesterdayStr && b.status !== 'cancelled' && b.payment_mode !== 'owner');
+  const yesterdayBookings = billableSessionBookings.filter((booking) => booking.booking_date === yesterdayStr);
   const yesterdaySessions = yesterdayBookings.filter(b => b.booking_items && b.booking_items.length > 0).length;
   const yesterdaySubscriptions = subscriptions.filter(sub => sub.purchase_date && getLocalDateString(new Date(sub.purchase_date)) === yesterdayStr);
   const yesterdayRevenue = calcRevenue(yesterdayBookings, yesterdaySubscriptions);

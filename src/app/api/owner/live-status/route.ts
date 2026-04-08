@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
       .from("bookings")
       .select(`
         id, start_time, duration, customer_name, user_id, booking_date, status, source,
-        booking_items (console, quantity)
+        booking_items (console, quantity, title)
       `)
       .eq("cafe_id", cafeId)
       .eq("booking_date", todayStr)

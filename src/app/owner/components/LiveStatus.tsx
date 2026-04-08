@@ -16,7 +16,7 @@ type CafeConsoleCounts = {
 type BookingData = {
     id: string; start_time: string; duration: number; customer_name: string | null;
     user_id: string | null;
-    booking_items: Array<{ console: ConsoleId; quantity: number }>;
+    booking_items: Array<{ console: ConsoleId; quantity: number; title?: string | null }>;
     profile?: { name: string } | null;
 };
 
@@ -44,6 +44,24 @@ function formatMinutes(mins: number) {
     const h = Math.floor(mins / 60);
     const m = mins % 60;
     return `${h}h  ${m}m`;
+}
+
+function parseAssignedStations(title: string | null | undefined): string[] {
+    const stationPart = title?.split('|')[1]?.trim();
+    if (!stationPart) return [];
+
+    return stationPart
+        .split(',')
+        .map((station) => station.trim().toLowerCase())
+        .filter(Boolean);
+}
+
+function getOccupiedUnits(consoleType: ConsoleId, quantity: number | null | undefined): number {
+    if (consoleType === 'ps5' || consoleType === 'ps4' || consoleType === 'xbox') {
+        return 1;
+    }
+
+    return Math.max(1, quantity || 1);
 }
 
 export function LiveStatus({ cafeId, isMobile = false }: LiveStatusProps) {
@@ -114,7 +132,8 @@ export function LiveStatus({ cafeId, isMobile = false }: LiveStatusProps) {
             const total = cafe[key as keyof CafeConsoleCounts] || 0;
             if (total === 0) return;
 
-            const consoleBookings: Array<BookingData & { quantity: number; controllerCount: number }> = [];
+            const explicitStationBookings = new Map<string, BookingData & { quantity: number; controllerCount: number }>();
+            const fallbackBookings: Array<BookingData & { quantity: number; controllerCount: number }> = [];
             activeBookings.forEach(b => {
                 const matchingItems = b.booking_items?.filter(item => {
                     const rawConsole = (item.console as string || '').toLowerCase();
@@ -122,7 +141,21 @@ export function LiveStatus({ cafeId, isMobile = false }: LiveStatusProps) {
                     return itemConsole === id;
                 }) || [];
                 matchingItems.forEach(item => {
-                    consoleBookings.push({ ...b, quantity: 1, controllerCount: item.quantity || 1 });
+                    const controllerCount = item.quantity || 1;
+                    const assignedStations = parseAssignedStations(item.title);
+
+                    if (assignedStations.length > 0) {
+                        assignedStations.forEach((stationId) => {
+                            explicitStationBookings.set(stationId, { ...b, quantity: 1, controllerCount });
+                        });
+                        return;
+                    }
+
+                    fallbackBookings.push({
+                        ...b,
+                        quantity: getOccupiedUnits(id, item.quantity || 1),
+                        controllerCount,
+                    });
                 });
             });
 
@@ -133,6 +166,33 @@ export function LiveStatus({ cafeId, isMobile = false }: LiveStatusProps) {
 
             const statuses: ConsoleStatus[] = [];
             let busyCount = 0;
+            let fallbackIndex = 0;
+            let fallbackRemaining = fallbackBookings[0]?.quantity || 0;
+
+            const buildBookingStatus = (
+                stationId: string,
+                consoleNumber: number,
+                booking: BookingData & { controllerCount: number }
+            ): ConsoleStatus => {
+                const startMinutes = parseTimeToMinutes(booking.start_time);
+                const endMinutes = startMinutes + booking.duration;
+                const timeRemaining = endMinutes - currentMinutes;
+                const hasStarted = currentMinutes >= startMinutes;
+
+                return {
+                    id: stationId,
+                    consoleNumber,
+                    status: timeRemaining <= 15 ? 'ending_soon' : 'busy',
+                    booking: {
+                        customerName: booking.customer_name || booking.profile?.name || 'Guest',
+                        startTime: booking.start_time,
+                        endTime: formatEndTime(startMinutes, booking.duration),
+                        timeRemaining: hasStarted ? timeRemaining : (startMinutes - currentMinutes),
+                        duration: booking.duration,
+                        controllerCount: booking.controllerCount
+                    }
+                };
+            };
 
             for (let unit = 1; unit <= total; unit++) {
                 const stationId = `${id}-${unit.toString().padStart(2, '0')}`;
@@ -158,27 +218,26 @@ export function LiveStatus({ cafeId, isMobile = false }: LiveStatusProps) {
                     });
                     busyCount++;
                 } else {
-                    const booking = findBookingForUnit(unit, consoleBookings);
-                    if (booking) {
-                        const startMinutes = parseTimeToMinutes(booking.start_time);
-                        const endMinutes = startMinutes + booking.duration;
-                        const timeRemaining = endMinutes - currentMinutes;
-                        const hasStarted = currentMinutes >= startMinutes;
-                        statuses.push({
-                            id: stationId, consoleNumber: unit,
-                            status: timeRemaining <= 15 ? 'ending_soon' : 'busy',
-                            booking: {
-                                customerName: booking.customer_name || booking.profile?.name || 'Guest',
-                                startTime: booking.start_time,
-                                endTime: formatEndTime(startMinutes, booking.duration),
-                                timeRemaining: hasStarted ? timeRemaining : (startMinutes - currentMinutes),
-                                duration: booking.duration,
-                                controllerCount: booking.controllerCount
-                            }
-                        });
+                    const explicitBooking = explicitStationBookings.get(stationId);
+                    if (explicitBooking) {
+                        statuses.push(buildBookingStatus(stationId, unit, explicitBooking));
                         busyCount++;
                     } else {
-                        statuses.push({ id: stationId, consoleNumber: unit, status: 'free' });
+                        while (fallbackIndex < fallbackBookings.length && fallbackRemaining <= 0) {
+                            fallbackIndex += 1;
+                            fallbackRemaining = fallbackBookings[fallbackIndex]?.quantity || 0;
+                        }
+
+                        const fallbackBooking =
+                            fallbackIndex < fallbackBookings.length ? fallbackBookings[fallbackIndex] : null;
+
+                        if (fallbackBooking) {
+                            statuses.push(buildBookingStatus(stationId, unit, fallbackBooking));
+                            fallbackRemaining -= 1;
+                            busyCount++;
+                        } else {
+                            statuses.push({ id: stationId, consoleNumber: unit, status: 'free' });
+                        }
                     }
                 }
             }
@@ -190,16 +249,6 @@ export function LiveStatus({ cafeId, isMobile = false }: LiveStatusProps) {
         });
 
         return summaries;
-    };
-
-    const findBookingForUnit = (unit: number, bookings: any[]) => {
-        let current = 1;
-        for (const b of bookings) {
-            const end = current + b.quantity - 1;
-            if (unit >= current && unit <= end) return b;
-            current += b.quantity;
-        }
-        return null;
     };
 
     useEffect(() => {

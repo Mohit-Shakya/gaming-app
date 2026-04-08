@@ -141,6 +141,10 @@ export default function CustomersTab({
     const customerMap = new Map<string, Customer>();
 
     bookings.forEach((booking) => {
+      if (booking.source === 'membership') {
+        return;
+      }
+
       const customerId = getCustomerKey({
         userId: booking.user_id,
         phone: booking.customer_phone || booking.user_phone,

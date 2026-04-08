@@ -5,6 +5,13 @@ import {
   requireOwnerCafeAccess,
   requireOwnerContext,
 } from "@/lib/ownerAuth";
+import {
+  encodeAssignedStationsTitle,
+  getItemDurationFromPayload,
+  loadStationReservationState,
+  parseAssignedStationsFromTitle,
+  reserveStations,
+} from "@/lib/ownerStationAssignments";
 
 export const dynamic = 'force-dynamic';
 
@@ -284,7 +291,38 @@ export async function POST(request: NextRequest) {
     return accessResponse;
   }
 
-  const resolvedDuration = deriveBookingDuration(items, booking.duration);
+  let resolvedItems: BookingItemPayload[] = Array.isArray(items) ? items : [];
+
+  if (resolvedItems.length > 0) {
+    try {
+      const reservationState = await loadStationReservationState(
+        supabase,
+        booking.cafe_id,
+        booking.booking_date
+      );
+
+      resolvedItems = resolvedItems.map((item) => {
+        const duration = getItemDurationFromPayload(item);
+        const requestedStations = parseAssignedStationsFromTitle(item.title);
+        const assignedStations = reserveStations(
+          reservationState,
+          item.console,
+          item.quantity,
+          requestedStations
+        );
+
+        return {
+          ...item,
+          title: encodeAssignedStationsTitle(duration, assignedStations),
+        };
+      });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to assign stations";
+      return NextResponse.json({ error: message }, { status: 409 });
+    }
+  }
+
+  const resolvedDuration = deriveBookingDuration(resolvedItems, booking.duration);
 
   const { data: newBooking, error: bookingError } = await supabase
     .from('bookings')
@@ -294,8 +332,8 @@ export async function POST(request: NextRequest) {
 
   if (bookingError) return NextResponse.json({ error: bookingError.message }, { status: 500 });
 
-  if (items && items.length > 0) {
-    const itemsToInsert = items.map((item: BookingItemPayload) => ({
+  if (resolvedItems.length > 0) {
+    const itemsToInsert = resolvedItems.map((item: BookingItemPayload) => ({
       booking_id: newBooking.id,
       console: item.console,
       quantity: item.quantity,

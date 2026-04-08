@@ -38,6 +38,25 @@ function formatEndTime(startMin: number, duration: number): string {
     return `${h12}:${m.toString().padStart(2, '0')} ${p}`;
 }
 
+function getAssignedStations(title: string | null | undefined): string[] {
+    const stationPart = title?.split('|')[1]?.trim();
+    if (!stationPart) return [];
+
+    return stationPart
+        .split(',')
+        .map((station) => station.trim().toLowerCase())
+        .filter(Boolean);
+}
+
+function getOccupiedUnits(consoleType: string, quantity: number | null | undefined): number {
+    const normalized = consoleType.toLowerCase();
+    if (normalized === 'ps5' || normalized === 'ps4' || normalized === 'xbox') {
+        return 1;
+    }
+
+    return Math.max(1, quantity || 1);
+}
+
 export function StationsTab({
     currentCafe,
     bookings,
@@ -75,6 +94,7 @@ export function StationsTab({
     // based on today's in-progress bookings only
     const todayStr = getLocalDateString();
     const activeByConsole = new Map<string, { customerName: string; endTime: string }[]>();
+    const stationOccupancy = new Map<string, { customerName: string; endTime: string }>();
 
     bookings
         .filter(b => b.status === 'in-progress' && b.booking_date === todayStr)
@@ -88,7 +108,16 @@ export function StationsTab({
             (b.booking_items || []).forEach(item => {
                 if (!item.console) return;
                 const ct = item.console.toLowerCase();
-                const qty = item.quantity || 1;
+
+                const assignedStations = getAssignedStations(item.title);
+                if (assignedStations.length > 0) {
+                    assignedStations.forEach((stationName) => {
+                        stationOccupancy.set(stationName, { customerName, endTime: endTimeStr });
+                    });
+                    return;
+                }
+
+                const qty = getOccupiedUnits(ct, item.quantity);
                 const existing = activeByConsole.get(ct) || [];
                 for (let i = 0; i < qty; i++) {
                     existing.push({ customerName, endTime: endTimeStr });
@@ -98,11 +127,18 @@ export function StationsTab({
         });
 
     // Map stationId (e.g. "ps5-01") → session info
-    const stationOccupancy = new Map<string, { customerName: string; endTime: string }>();
     activeByConsole.forEach((sessions, consoleType) => {
-        sessions.forEach((session, idx) => {
-            stationOccupancy.set(`${consoleType}-${String(idx + 1).padStart(2, '0')}`, session);
-        });
+        const consoleMeta = consoleTypes.find((entry) => entry.id === consoleType);
+        const totalStationsForType = consoleMeta ? ((currentCafe as any)[consoleMeta.key] || 0) : 0;
+        let sessionIndex = 0;
+
+        for (let index = 1; index <= totalStationsForType && sessionIndex < sessions.length; index += 1) {
+            const stationId = `${consoleType}-${String(index).padStart(2, '0')}`;
+            if (stationOccupancy.has(stationId)) continue;
+
+            stationOccupancy.set(stationId, sessions[sessionIndex]);
+            sessionIndex += 1;
+        }
     });
 
     // Summary counts for header

@@ -70,9 +70,14 @@ function normaliseOwnerPaymentMode(mode: string | null | undefined): string {
   return DIGITAL_PAYMENT_MODES.has(normalized) ? 'upi' : 'cash';
 }
 
-function getAssignedStationFromItemTitle(title: string | null | undefined): string | null {
-  const station = title?.split('|')[1]?.trim();
-  return station ? station.toLowerCase() : null;
+function getAssignedStationsFromItemTitle(title: string | null | undefined): string[] {
+  const stationPart = title?.split('|')[1]?.trim();
+  if (!stationPart) return [];
+
+  return stationPart
+    .split(',')
+    .map((station) => station.trim().toLowerCase())
+    .filter(Boolean);
 }
 
 function getPreferredConsoleForCafe(cafe: CafeRow | null | undefined): ConsoleId {
@@ -1698,7 +1703,7 @@ export default function OwnerDashboardPage() {
     if (!isCurrentlyOff) {
       const hasActiveSession = bookings.some(
         b => b.status === 'in-progress' && b.booking_items?.some(
-          (bi: any) => getAssignedStationFromItemTitle(bi.title) === stationName.toLowerCase()
+          (bi: any) => getAssignedStationsFromItemTitle(bi.title).includes(stationName.toLowerCase())
         )
       );
       if (hasActiveSession) {
