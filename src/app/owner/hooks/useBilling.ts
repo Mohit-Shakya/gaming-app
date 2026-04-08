@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, useRef } from "react";
 import { ConsoleId } from "@/lib/constants";
+import { BOOKING_SOURCE_WALK_IN } from "@/lib/bookingFields";
 import { BillingItem, PricingTier } from "../types";
 import { getLocalDateString } from "../utils";
 import { calcBillingPrice } from "../utils/pricing";
@@ -125,7 +126,7 @@ export function useBilling({
             duration: Math.max(...items.map(i => i.duration)),
             total_amount: totalAmount,
             status: 'in-progress',
-            source: 'walk-in',
+            source: BOOKING_SOURCE_WALK_IN,
             payment_mode: paymentMode,
           },
           items: items.map((item) => ({

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Timer, Zap, ChevronRight, Gamepad2, Clock } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { isWalkInSource } from "@/lib/bookingFields";
 import useUser from "@/hooks/useUser";
 
 // Demo mode allows testing the UI without a real booking
@@ -235,7 +236,7 @@ export default function ActiveSessionTimer() {
                                     <span className="w-1.5 h-1.5 rounded-full bg-[#00f0ff] animate-pulse"></span>
                                     Live Session
                                 </span>
-                                {activeBooking.source === 'walk_in' && (
+                                {isWalkInSource(activeBooking.source) && (
                                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-purple-500/10 text-purple-400 border border-purple-500/20">
                                         Walk-in
                                     </span>

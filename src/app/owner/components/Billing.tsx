@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { CONSOLE_LABELS } from '@/lib/constants';
+import { BOOKING_SOURCE_WALK_IN } from '@/lib/bookingFields';
 import { dedupeStationPricingRows, formatStationOptionLabel, normaliseStationName } from '@/lib/stationNames';
 import { Card, Button, Input, Select, StatusBadge, LoadingSpinner } from './ui';
 import {
@@ -308,7 +309,7 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess, onMembersh
                         duration: bookingDuration,
                         total_amount: totalAmount,
                         status: 'in-progress',
-                        source: 'walk-in',
+                        source: BOOKING_SOURCE_WALK_IN,
                         payment_mode: paymentMode,
                     },
                     items: items.map(it => ({

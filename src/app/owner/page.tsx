@@ -10,7 +10,7 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { fonts, CONSOLE_LABELS, CONSOLE_ICONS, type ConsoleId } from "@/lib/constants";
-import { buildStationPricingMap } from "@/lib/stationNames";
+import { buildStationPricingMap, normaliseStationName } from "@/lib/stationNames";
 import { getEndTime } from "@/lib/timeUtils";
 import {
   CafeRow,
@@ -77,8 +77,43 @@ function getAssignedStationsFromItemTitle(title: string | null | undefined): str
 
   return stationPart
     .split(',')
-    .map((station) => station.trim().toLowerCase())
+    .map((station) => normaliseStationName(station))
     .filter(Boolean);
+}
+
+function getOccupiedStationUnits(consoleType: string | null | undefined, quantity: number | null | undefined): number {
+  const normalizedConsole = normaliseConsoleType(consoleType || "");
+  if (normalizedConsole === 'ps5' || normalizedConsole === 'ps4' || normalizedConsole === 'xbox') {
+    return 1;
+  }
+
+  return Math.max(1, Number(quantity || 1));
+}
+
+function buildEditedItemTitle(
+  originalItem: { console?: string | null; quantity?: number | null; title?: string | null } | undefined,
+  nextItem: { console: string; quantity: number; duration?: number | null }
+): string {
+  const requestedDuration = nextItem.duration || 60;
+  if (!originalItem) {
+    return String(requestedDuration);
+  }
+
+  const previousStations = getAssignedStationsFromItemTitle(originalItem.title);
+  if (previousStations.length === 0) {
+    return String(requestedDuration);
+  }
+
+  const originalConsole = normaliseConsoleType(originalItem.console || "");
+  const nextConsole = normaliseConsoleType(nextItem.console || "");
+  const sameConsoleType = originalConsole === nextConsole;
+  const sameStationUnits =
+    getOccupiedStationUnits(originalConsole, originalItem.quantity) ===
+    getOccupiedStationUnits(nextConsole, nextItem.quantity);
+
+  return sameConsoleType && sameStationUnits
+    ? `${requestedDuration}|${previousStations.join(',')}`
+    : String(requestedDuration);
 }
 
 function getPreferredConsoleForCafe(cafe: CafeRow | null | undefined): ConsoleId {
@@ -407,7 +442,9 @@ export default function OwnerDashboardPage() {
         const defaults: Record<string, { half: number, full: number }> = {
           'PC': { half: 50, full: 100 },
           'VR': { half: 100, full: 200 },
+          'Steering Wheel': { half: 75, full: 150 },
           'Steering': { half: 75, full: 150 },
+          'Racing Sim': { half: 75, full: 150 },
           'Pool': { half: 40, full: 80 },
           'Snooker': { half: 40, full: 80 },
           'Arcade': { half: 40, full: 80 },
@@ -951,18 +988,12 @@ export default function OwnerDashboardPage() {
             duration: editItems.reduce((max, item) => Math.max(max, item.duration || 60), 0),
           },
           items: editItems.map(item => {
-            // Preserve existing station assignment from title (format: "duration|station")
             const originalItem = editingBooking.booking_items?.find((oi: any) => oi.id === item.id);
-            const existingTitleParts = originalItem?.title?.split('|');
-            const existingStation = existingTitleParts && existingTitleParts.length > 1 ? existingTitleParts[1] : null;
-            const titleValue = existingStation
-              ? `${item.duration || 60}|${existingStation}`
-              : (item.duration || 60).toString();
             return {
               id: item.id,
               console: item.console,
               quantity: item.quantity,
-              title: titleValue,
+              title: buildEditedItemTitle(originalItem, item),
               price: getBillingPrice(item.console as ConsoleId, item.quantity, item.duration || 60) || 0
             };
           }),
@@ -998,17 +1029,12 @@ export default function OwnerDashboardPage() {
               duration: editItems.reduce((max, item) => Math.max(max, item.duration || 60), 0),
               booking_items: editItems.map((item, idx) => {
                 const originalItem = editingBooking.booking_items?.find((oi: any) => oi.id === item.id);
-                const existingTitleParts = originalItem?.title?.split('|');
-                const existingStation = existingTitleParts && existingTitleParts.length > 1 ? existingTitleParts[1] : null;
-                const titleValue = existingStation
-                  ? `${item.duration || 60}|${existingStation}`
-                  : (item.duration || 60).toString();
                 return {
                   id: item.id || `temp-item-${idx}`,
                   booking_id: b.id,
                   console: item.console,
                   quantity: item.quantity,
-                  title: titleValue,
+                  title: buildEditedItemTitle(originalItem, item),
                   price: getBillingPrice(item.console as ConsoleId, item.quantity, item.duration || 60) || 0
                 };
               }),
@@ -1699,12 +1725,13 @@ export default function OwnerDashboardPage() {
   // Handle toggle station power
   const handleTogglePower = async (stationName: string) => {
     const isCurrentlyOff = poweredOffStations.has(stationName);
+    const normalizedStationName = normaliseStationName(stationName);
 
     // Warn if powering off a station with an active session
     if (!isCurrentlyOff) {
       const hasActiveSession = bookings.some(
         b => b.status === 'in-progress' && b.booking_items?.some(
-          (bi: any) => getAssignedStationsFromItemTitle(bi.title).includes(stationName.toLowerCase())
+          (bi: any) => getAssignedStationsFromItemTitle(bi.title).includes(normalizedStationName)
         )
       );
       if (hasActiveSession) {

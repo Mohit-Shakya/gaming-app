@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { isWalkInSource } from "@/lib/bookingFields";
 import { colors, fonts } from "@/lib/constants";
 
 type CafeRow = {
@@ -557,7 +558,7 @@ export default function AdminCafeDetailPage() {
                         color: colors.textSecondary,
                       }}
                     >
-                      {source === "walk_in" ? "Walk-in" : "Online"}
+                      {isWalkInSource(source) ? "Walk-in" : "Online"}
                     </span>
                     <span
                       style={{

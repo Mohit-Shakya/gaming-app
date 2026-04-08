@@ -5,6 +5,7 @@ import {
   requireOwnerCafeAccess,
   requireOwnerContext,
 } from "@/lib/ownerAuth";
+import { isMembershipSource, isWalkInSource } from "@/lib/bookingFields";
 import {
   encodeAssignedStationsTitle,
   getItemDurationFromPayload,
@@ -83,6 +84,20 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Booking not found" }, { status: 404 });
     }
 
+    const { data: currentBooking, error: currentBookingError } = await supabase
+      .from("bookings")
+      .select("booking_date, source")
+      .eq("id", bookingId)
+      .maybeSingle();
+
+    if (currentBookingError) {
+      return NextResponse.json({ error: currentBookingError.message }, { status: 500 });
+    }
+
+    if (!currentBooking) {
+      return NextResponse.json({ error: "Booking not found" }, { status: 404 });
+    }
+
     // Conflict detection: if caller provided a base updated_at, verify it hasn't changed
     if (updatedAtCheck) {
       const { data: currentVersionRow, error: versionError } = await supabase
@@ -116,6 +131,44 @@ export async function PUT(request: NextRequest) {
 
     // Support multiple items sync — upsert FIRST, delete AFTER to avoid data loss on failure
     if (items && Array.isArray(items)) {
+      const effectiveBookingDate = booking?.booking_date || currentBooking.booking_date;
+      const shouldManageStations =
+        Boolean(effectiveBookingDate) &&
+        (isWalkInSource(currentBooking.source) ||
+          isMembershipSource(currentBooking.source) ||
+          items.some((it: BookingItemPayload) => parseAssignedStationsFromTitle(it.title).length > 0));
+
+      const normalizedItems = shouldManageStations
+        ? (() => {
+            const reservationStatePromise = loadStationReservationState(
+              supabase,
+              ownedCafeId,
+              effectiveBookingDate,
+              bookingId
+            );
+
+            return reservationStatePromise.then((reservationState) =>
+              items.map((it: BookingItemPayload) => {
+                const duration = getItemDurationFromPayload(it);
+                const requestedStations = parseAssignedStationsFromTitle(it.title);
+                const assignedStations = reserveStations(
+                  reservationState,
+                  it.console,
+                  it.quantity,
+                  requestedStations
+                );
+
+                return {
+                  ...it,
+                  title: encodeAssignedStationsTitle(duration, assignedStations),
+                };
+              })
+            );
+          })()
+        : Promise.resolve(items as BookingItemPayload[]);
+
+      const resolvedItems = await normalizedItems;
+
       // 1. Get current items in DB
       const { data: currentDbItems, error: getError } = await supabase
         .from("booking_items")
@@ -126,12 +179,12 @@ export async function PUT(request: NextRequest) {
         return NextResponse.json({ error: getError.message }, { status: 500 });
       }
 
-      const itemIdsToKeep = items.filter(it => it.id).map(it => it.id);
+      const itemIdsToKeep = resolvedItems.filter(it => it.id).map(it => it.id);
       const dbItemIds = (currentDbItems || []).map(it => it.id);
       const itemIdsToDelete = dbItemIds.filter(id => !itemIdsToKeep.includes(id));
 
       // 2. Upsert (update existing + insert new) BEFORE deleting — if this fails, nothing is lost
-      const itemResults = await Promise.all(items.map((it: BookingItemPayload) => {
+      const itemResults = await Promise.all(resolvedItems.map((it: BookingItemPayload) => {
         if (it.id) {
           return supabase
             .from("booking_items")

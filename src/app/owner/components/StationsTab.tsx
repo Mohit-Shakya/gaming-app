@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { normaliseStationName } from '@/lib/stationNames';
 import { CafeRow, BookingRow } from '../types';
 import { getLocalDateString } from '../utils';
 
@@ -44,7 +45,7 @@ function getAssignedStations(title: string | null | undefined): string[] {
 
     return stationPart
         .split(',')
-        .map((station) => station.trim().toLowerCase())
+        .map((station) => normaliseStationName(station))
         .filter(Boolean);
 }
 

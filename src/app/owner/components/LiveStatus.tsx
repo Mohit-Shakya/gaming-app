@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { CONSOLE_LABELS, CONSOLE_ICONS } from '@/lib/constants';
+import { normaliseConsoleType, normaliseStationName } from '@/lib/stationNames';
 import { Button, LoadingSpinner, EmptyState } from './ui';
 import { MonitorPlay, Clock, User, AlertCircle } from 'lucide-react';
 
@@ -52,7 +53,7 @@ function parseAssignedStations(title: string | null | undefined): string[] {
 
     return stationPart
         .split(',')
-        .map((station) => station.trim().toLowerCase())
+        .map((station) => normaliseStationName(station))
         .filter(Boolean);
 }
 
@@ -122,12 +123,6 @@ export function LiveStatus({ cafeId, isMobile = false }: LiveStatusProps) {
         // Use all in-progress bookings from API (already filtered by status=in-progress)
         const activeBookings = bookings.filter(b => b.start_time && b.duration);
 
-        const consoleTypeMap: Record<string, ConsoleId> = {
-            'PC': 'pc', 'PS5': 'ps5', 'PS4': 'ps4', 'Xbox': 'xbox',
-            'Pool': 'pool', 'Snooker': 'snooker', 'Arcade': 'arcade',
-            'VR': 'vr', 'Steering': 'steering', 'Racing Sim': 'racing_sim'
-        };
-
         consoleTypes.forEach(({ id, key }) => {
             const total = cafe[key as keyof CafeConsoleCounts] || 0;
             if (total === 0) return;
@@ -136,8 +131,7 @@ export function LiveStatus({ cafeId, isMobile = false }: LiveStatusProps) {
             const fallbackBookings: Array<BookingData & { quantity: number; controllerCount: number }> = [];
             activeBookings.forEach(b => {
                 const matchingItems = b.booking_items?.filter(item => {
-                    const rawConsole = (item.console as string || '').toLowerCase();
-                    const itemConsole = rawConsole === 'steering_wheel' ? 'steering' : rawConsole;
+                    const itemConsole = normaliseConsoleType(item.console as string || '') as ConsoleId;
                     return itemConsole === id;
                 }) || [];
                 matchingItems.forEach(item => {
@@ -160,8 +154,8 @@ export function LiveStatus({ cafeId, isMobile = false }: LiveStatusProps) {
             });
 
             const consoleMemberships = memberships.filter(m => {
-                const type = m.membership_plans?.console_type;
-                return type && consoleTypeMap[type] === id;
+                const type = normaliseConsoleType(m.membership_plans?.console_type || '');
+                return type === id;
             });
 
             const statuses: ConsoleStatus[] = [];
@@ -196,7 +190,9 @@ export function LiveStatus({ cafeId, isMobile = false }: LiveStatusProps) {
 
             for (let unit = 1; unit <= total; unit++) {
                 const stationId = `${id}-${unit.toString().padStart(2, '0')}`;
-                const pricingInfo = stationPricing.find((p: any) => p.station_name === stationId);
+                const pricingInfo = stationPricing.find(
+                    (p: any) => normaliseStationName(p.station_name, p.station_type, p.station_number) === stationId
+                );
                 const isInactive = pricingInfo && pricingInfo.is_active === false;
 
                 if (isInactive) {
@@ -204,7 +200,9 @@ export function LiveStatus({ cafeId, isMobile = false }: LiveStatusProps) {
                     continue;
                 }
 
-                const membership = consoleMemberships.find(m => m.assigned_console_station === stationId);
+                const membership = consoleMemberships.find(
+                    m => normaliseStationName(m.assigned_console_station) === stationId
+                );
                 if (membership) {
                     const startTime = new Date(membership.timer_start_time);
                     const elapsed = Math.floor((now.getTime() - startTime.getTime()) / 60000);

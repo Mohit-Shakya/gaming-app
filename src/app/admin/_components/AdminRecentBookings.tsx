@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { isWalkInSource } from "@/lib/bookingFields";
 import { colors, fonts } from "@/lib/constants";
 
 type BookingRow = {
@@ -397,13 +398,13 @@ export default function AdminRecentBookings() {
                           letterSpacing: 0.5,
                           fontWeight: 600,
                           background:
-                            source === "walk_in"
+                            isWalkInSource(source)
                               ? "rgba(245,158,11,0.15)"
                               : "rgba(0,240,255,0.15)",
                           color:
-                            source === "walk_in" ? colors.orange : colors.cyan,
+                            isWalkInSource(source) ? colors.orange : colors.cyan,
                           border: `1px solid ${
-                            source === "walk_in"
+                            isWalkInSource(source)
                               ? "rgba(245,158,11,0.3)"
                               : "rgba(0,240,255,0.3)"
                           }`,

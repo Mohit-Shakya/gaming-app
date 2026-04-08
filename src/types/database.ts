@@ -5,6 +5,7 @@
  */
 
 import { ConsoleId } from "@/lib/constants";
+import type { BookingSource, PaymentMode } from "@/lib/bookingFields";
 
 // ============ CAFE TYPES ============
 
@@ -77,8 +78,8 @@ export interface BookingRow {
   duration: number;
   total_amount: number;
   status: "pending" | "confirmed" | "completed" | "cancelled" | "in-progress";
-  source: "online" | "walk_in";
-  payment_mode?: "cash" | "online" | "upi";
+  source: BookingSource;
+  payment_mode?: PaymentMode;
   customer_name: string | null;
   customer_phone: string | null;
   created_at: string;

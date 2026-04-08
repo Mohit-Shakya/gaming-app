@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { ConsoleId, CONSOLE_ICONS } from '@/lib/constants';
+import { isWalkInSource } from '@/lib/bookingFields';
 import { Plus, MessageCircle, Banknote, Smartphone } from 'lucide-react';
 
 import { getLocalDateString } from '../utils';
@@ -144,7 +145,7 @@ export function ActiveSessions({
             if (timeRemaining <= 0) {
                 const consoleInfo = booking.booking_items?.[0];
                 const consoleType = consoleInfo?.console?.toUpperCase() || 'UNKNOWN';
-                const isWalkIn = booking.source === 'walk-in';
+                const isWalkIn = isWalkInSource(booking.source);
                 const customerName = isWalkIn ? booking.customer_name : (booking.user_name || 'Guest');
                 endedSessionsRef.current.add(bookingId);
                 onSessionEnded({ customerName, stationName: consoleType, duration: booking.duration });
@@ -215,7 +216,7 @@ export function ActiveSessions({
             {/* Regular Booking Sessions */}
             {sortedActiveBookings.map((booking, index) => {
                 const consoleInfo = booking.booking_items?.[0];
-                const isWalkIn = booking.source === 'walk-in';
+                const isWalkIn = isWalkInSource(booking.source);
 
                 // Calculate Time Remaining
                 const currentMinutes =

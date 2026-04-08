@@ -1,4 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  normaliseConsoleType,
+  normaliseStationName,
+} from "@/lib/stationNames";
 
 type CafeConsoleCounts = {
   ps5_count?: number | null;
@@ -49,23 +53,6 @@ const CONSOLE_COUNT_FIELDS: Record<string, keyof CafeConsoleCounts> = {
   racing_sim: "racing_sim_count",
 };
 
-function normaliseConsoleType(raw: string | null | undefined): string {
-  if (!raw) return "";
-
-  const normalized = raw
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, "_")
-    .replace(/-/g, "_");
-
-  if (normalized === "steering_wheel") return "steering";
-  return normalized;
-}
-
-function normaliseStationName(raw: string | null | undefined): string {
-  return raw?.trim().toLowerCase() || "";
-}
-
 function getIndiaDateString(date: Date = new Date()): string {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: "Asia/Kolkata",
@@ -93,7 +80,7 @@ function getGeneratedStationNames(cafe: CafeConsoleCounts, consoleType: string):
 
 function getStationRowsForConsole(rows: StationPricingRecord[], consoleType: string): StationPricingRecord[] {
   return rows.filter((row) => {
-    const stationName = normaliseStationName(row.station_name);
+    const stationName = normaliseStationName(row.station_name, row.station_type, row.station_number);
     const stationType = normaliseConsoleType(row.station_type || stationName.split("-")[0] || "");
     return stationType === consoleType;
   });
@@ -170,8 +157,20 @@ export type StationReservationState = {
 export async function loadStationReservationState(
   supabase: SupabaseClient,
   cafeId: string,
-  bookingDate: string = getIndiaDateString()
+  bookingDate: string = getIndiaDateString(),
+  excludeBookingId?: string
 ): Promise<StationReservationState> {
+  let bookingQuery = supabase
+    .from("bookings")
+    .select("booking_items(console, quantity, title)")
+    .eq("cafe_id", cafeId)
+    .eq("booking_date", bookingDate)
+    .eq("status", "in-progress");
+
+  if (excludeBookingId) {
+    bookingQuery = bookingQuery.neq("id", excludeBookingId);
+  }
+
   const [{ data: cafe, error: cafeError }, { data: stationPricing, error: stationPricingError }, { data: bookings, error: bookingsError }, { data: subscriptions, error: subscriptionsError }] =
     await Promise.all([
       supabase
@@ -183,12 +182,7 @@ export async function loadStationReservationState(
         .from("station_pricing")
         .select("station_name, station_type, station_number, is_active")
         .eq("cafe_id", cafeId),
-      supabase
-        .from("bookings")
-        .select("booking_items(console, quantity, title)")
-        .eq("cafe_id", cafeId)
-        .eq("booking_date", bookingDate)
-        .eq("status", "in-progress"),
+      bookingQuery,
       supabase
         .from("subscriptions")
         .select("assigned_console_station")

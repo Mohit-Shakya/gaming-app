@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireOwnerContext } from "@/lib/ownerAuth";
+import { BOOKING_SOURCE_WALK_IN } from "@/lib/bookingFields";
 
 export const dynamic = "force-dynamic";
 
@@ -43,7 +44,7 @@ export async function POST(request: NextRequest) {
         duration: 30,
         total_amount: totalAmount,
         status: "completed",
-        source: "walk-in",
+        source: BOOKING_SOURCE_WALK_IN,
         payment_mode: isOwnerUse ? "owner" : (paymentMode || "cash"),
       })
       .select("id")
