@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { CONSOLE_LABELS, CONSOLE_ICONS } from '@/lib/constants';
+import { getBookingSessionState, getIndiaTimeString } from '@/lib/ownerBookingTiming';
 import { normaliseConsoleType, normaliseStationName } from '@/lib/stationNames';
 import { Button, LoadingSpinner, EmptyState } from './ui';
 import { MonitorPlay, Clock, User, AlertCircle } from 'lucide-react';
@@ -15,6 +16,7 @@ type CafeConsoleCounts = {
 };
 
 type BookingData = {
+    booking_date: string;
     id: string; start_time: string; duration: number; customer_name: string | null;
     user_id: string | null;
     booking_items: Array<{ console: ConsoleId; quantity: number; title?: string | null }>;
@@ -75,11 +77,8 @@ export function LiveStatus({ cafeId, isMobile = false }: LiveStatusProps) {
             const res = await fetch(`/api/owner/live-status?cafeId=${cafeId}`);
             if (!res.ok) throw new Error('Failed to fetch live status');
             const { cafe, bookings, activeSubscriptions, stationPricing } = await res.json();
-            console.log('[LiveStatus] API response — cafeId:', cafeId, 'bookings:', bookings?.length, 'inProgress:', (bookings||[]).filter((b:any)=>b.status==='in-progress').length, 'subscriptions (timer_active):', activeSubscriptions?.length, 'raw bookings:', bookings, 'raw subs:', activeSubscriptions);
             if (!cafe) { setLoading(false); return; }
             const summaries = buildConsoleSummaries(cafe, bookings || [], activeSubscriptions || [], stationPricing || []);
-            const busy = summaries.flatMap(g => g.statuses).filter(s => s.status === 'busy' || s.status === 'ending_soon');
-            console.log('[LiveStatus] buildConsoleSummaries result — activeSessions:', busy.length, busy);
             setConsoleData(summaries);
             setLastUpdated(new Date());
         } catch (error) {
@@ -100,16 +99,6 @@ export function LiveStatus({ cafeId, isMobile = false }: LiveStatusProps) {
 
         const summaries: ConsoleSummary[] = [];
         const now = new Date();
-        const currentMinutes = now.getHours() * 60 + now.getMinutes();
-
-        const parseTimeToMinutes = (timeStr: string): number => {
-            const [time, period] = timeStr.toLowerCase().split(" ");
-            const [hours, minutes] = time.split(":").map(Number);
-            let totalHours = hours;
-            if (period === "pm" && hours !== 12) totalHours += 12;
-            if (period === "am" && hours === 12) totalHours = 0;
-            return totalHours * 60 + minutes;
-        };
 
         const formatEndTime = (startMinutes: number, duration: number): string => {
             const endMinutes = startMinutes + duration;
@@ -137,16 +126,21 @@ export function LiveStatus({ cafeId, isMobile = false }: LiveStatusProps) {
                 matchingItems.forEach(item => {
                     const controllerCount = item.quantity || 1;
                     const assignedStations = parseAssignedStations(item.title);
+                    const parsedDuration = Number.parseInt(item.title || '', 10);
+                    const itemDuration = Number.isFinite(parsedDuration) && parsedDuration > 0
+                        ? parsedDuration
+                        : b.duration;
 
                     if (assignedStations.length > 0) {
                         assignedStations.forEach((stationId) => {
-                            explicitStationBookings.set(stationId, { ...b, quantity: 1, controllerCount });
+                            explicitStationBookings.set(stationId, { ...b, duration: itemDuration, quantity: 1, controllerCount });
                         });
                         return;
                     }
 
                     fallbackBookings.push({
                         ...b,
+                        duration: itemDuration,
                         quantity: getOccupiedUnits(id, item.quantity || 1),
                         controllerCount,
                     });
@@ -168,23 +162,31 @@ export function LiveStatus({ cafeId, isMobile = false }: LiveStatusProps) {
                 consoleNumber: number,
                 booking: BookingData & { controllerCount: number }
             ): ConsoleStatus => {
-                const startMinutes = parseTimeToMinutes(booking.start_time);
-                const endMinutes = startMinutes + booking.duration;
-                const timeRemaining = endMinutes - currentMinutes;
-                const hasStarted = currentMinutes >= startMinutes;
+                const sessionState = getBookingSessionState({
+                    bookingDate: booking.booking_date,
+                    duration: booking.duration,
+                    now,
+                    startTime: booking.start_time,
+                });
+                const startMinutes = sessionState.startMinutes ?? 0;
+                const currentPosition =
+                    booking.booking_date === sessionState.yesterdayStr && sessionState.crossesMidnight
+                        ? sessionState.currentMinutes + 1440
+                        : sessionState.currentMinutes;
+                const timeRemaining = (sessionState.endMinutes ?? startMinutes) - currentPosition;
 
                 return {
                     id: stationId,
                     consoleNumber,
                     status: timeRemaining <= 15 ? 'ending_soon' : 'busy',
-                    booking: {
-                        customerName: booking.customer_name || booking.profile?.name || 'Guest',
-                        startTime: booking.start_time,
-                        endTime: formatEndTime(startMinutes, booking.duration),
-                        timeRemaining: hasStarted ? timeRemaining : (startMinutes - currentMinutes),
-                        duration: booking.duration,
-                        controllerCount: booking.controllerCount
-                    }
+                        booking: {
+                            customerName: booking.customer_name || booking.profile?.name || 'Guest',
+                            startTime: booking.start_time,
+                            endTime: formatEndTime(startMinutes, booking.duration),
+                            timeRemaining: sessionState.hasStarted ? timeRemaining : (startMinutes - sessionState.currentMinutes),
+                            duration: booking.duration,
+                            controllerCount: booking.controllerCount
+                        }
                 };
             };
 
@@ -210,7 +212,7 @@ export function LiveStatus({ cafeId, isMobile = false }: LiveStatusProps) {
                         id: stationId, consoleNumber: unit, status: 'busy',
                         booking: {
                             customerName: (membership.customer_name || 'Member') + ' (Sub)',
-                            startTime: startTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
+                            startTime: getIndiaTimeString(startTime, { hour: 'numeric', minute: '2-digit', hour12: true }),
                             endTime: 'Ongoing', timeRemaining: elapsed,
                         }
                     });

@@ -3,6 +3,11 @@ import {
   requireOwnerCafeAccess,
   requireOwnerContext,
 } from "@/lib/ownerAuth";
+import {
+  getIndiaDateDaysAgo,
+  getIndiaDateString,
+  isBookingSessionActiveNow,
+} from "@/lib/ownerBookingTiming";
 
 export const dynamic = 'force-dynamic';
 
@@ -27,12 +32,9 @@ export async function GET(request: NextRequest) {
       return accessResponse;
     }
 
-    // Use IST (India) date — booking_date is stored as IST date from the client
-    const indiaDateParts = new Intl.DateTimeFormat('en-US', {
-      timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit',
-    }).formatToParts(new Date());
-    const todayStr = `${indiaDateParts.find(p => p.type === 'year')?.value}-${indiaDateParts.find(p => p.type === 'month')?.value}-${indiaDateParts.find(p => p.type === 'day')?.value}`;
-    console.log('[live-status] cafeId:', cafeId, 'todayStr (IST):', todayStr);
+    const now = new Date();
+    const todayStr = getIndiaDateString(now);
+    const yesterdayStr = getIndiaDateDaysAgo(1, now);
 
     // Fetch cafe console counts
     const { data: cafe, error: cafeError } = await supabase
@@ -45,18 +47,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: cafeError.message }, { status: 500 });
     }
 
-    // DEBUG: diagnose which filter causes 0 results
-    const [{ data: allForCafe }, { data: todayForCafe }, { data: inProgressForCafe }] = await Promise.all([
-      supabase.from("bookings").select("id, booking_date, status").eq("cafe_id", cafeId).limit(5),
-      supabase.from("bookings").select("id, booking_date, status").eq("cafe_id", cafeId).eq("booking_date", todayStr),
-      supabase.from("bookings").select("id, booking_date, status").eq("cafe_id", cafeId).eq("status", "in-progress"),
-    ]);
-    console.log('[live-status DEBUG] cafeId:', cafeId, 'todayStr:', todayStr,
-      '| allForCafe (sample):', allForCafe?.map(b => ({date: b.booking_date, status: b.status})),
-      '| todayForCafe:', todayForCafe?.length, todayForCafe?.map(b => b.status),
-      '| inProgressForCafe:', inProgressForCafe?.length, inProgressForCafe?.map(b => b.booking_date));
-
-    // Fetch today's in-progress bookings
+    // Fetch in-progress bookings that might still be active now, including valid overnight carryovers.
     const { data: bookings, error: bookingsError } = await supabase
       .from("bookings")
       .select(`
@@ -64,16 +55,24 @@ export async function GET(request: NextRequest) {
         booking_items (console, quantity, title)
       `)
       .eq("cafe_id", cafeId)
-      .eq("booking_date", todayStr)
-      .eq("status", "in-progress");
+      .in("booking_date", [yesterdayStr, todayStr])
+      .eq("status", "in-progress")
+      .is("deleted_at", null);
 
     if (bookingsError) {
       return NextResponse.json({ error: bookingsError.message }, { status: 500 });
     }
-    console.log('[live-status] bookings fetched:', bookings?.length, bookings?.map((b:any) => ({ id: b.id, status: b.status, date: b.booking_date, items: b.booking_items?.length })));
+    const activeBookings = (bookings || []).filter((booking) =>
+      isBookingSessionActiveNow({
+        bookingDate: booking.booking_date,
+        duration: booking.duration,
+        now,
+        startTime: booking.start_time,
+      })
+    );
 
     // Fetch profiles for bookings with user_id
-    const userIds = (bookings || []).filter(b => b.user_id).map(b => b.user_id as string);
+    const userIds = activeBookings.filter(b => b.user_id).map(b => b.user_id as string);
     const profilesMap: Record<string, { name: string }> = {};
 
     if (userIds.length > 0) {
@@ -88,7 +87,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Enrich bookings with profiles
-    const enrichedBookings = (bookings || []).map(b => ({
+    const enrichedBookings = activeBookings.map(b => ({
       ...b,
       profile: b.user_id ? (profilesMap[b.user_id] || null) : null,
     }));

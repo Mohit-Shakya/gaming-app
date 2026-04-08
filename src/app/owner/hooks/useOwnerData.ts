@@ -53,6 +53,9 @@ export function useOwnerData(canFetch: boolean, canAutoRefresh: boolean, activeT
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const currentQuarter = Math.floor(now.getMonth() / 3);
     const startOfQuarter = new Date(now.getFullYear(), currentQuarter * 3, 1);
+    const startOfWeekStr = getLocalDateString(startOfWeek);
+    const startOfMonthStr = getLocalDateString(startOfMonth);
+    const startOfQuarterStr = getLocalDateString(startOfQuarter);
 
     // Exclude only cancelled and owner-use bookings from revenue
     // in-progress sessions have amounts set at booking creation time and count as earned revenue
@@ -64,7 +67,7 @@ export function useOwnerData(canFetch: boolean, canAutoRefresh: boolean, activeT
     const bookingsToday = activeBookings.filter(b => b.booking_date === todayStr).length;
     const pendingBookings = bookings.filter(b => b.status?.toLowerCase() === "pending").length;
     const todayRevenue = activeBookings.filter(b => b.booking_date === todayStr).reduce((sum, b) => sum + (b.total_amount || 0), 0);
-    const weekRevenue = activeBookings.filter(b => new Date(b.booking_date || "") >= startOfWeek).reduce((sum, b) => sum + (b.total_amount || 0), 0);
+    const weekRevenue = activeBookings.filter(b => (b.booking_date || "") >= startOfWeekStr).reduce((sum, b) => sum + (b.total_amount || 0), 0);
     const totalRevenue = activeBookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
 
     // Month/quarter revenue is only meaningful if the loaded data covers the full period.
@@ -73,14 +76,14 @@ export function useOwnerData(canFetch: boolean, canAutoRefresh: boolean, activeT
       if (!b.booking_date) return min;
       return !min || b.booking_date < min ? b.booking_date : min;
     }, null);
-    const dataCoversMonth = !oldestLoaded || new Date(oldestLoaded) <= startOfMonth;
-    const dataCoversQuarter = !oldestLoaded || new Date(oldestLoaded) <= startOfQuarter;
+    const dataCoversMonth = !oldestLoaded || oldestLoaded <= startOfMonthStr;
+    const dataCoversQuarter = !oldestLoaded || oldestLoaded <= startOfQuarterStr;
 
     const monthRevenue = dataCoversMonth
-      ? activeBookings.filter(b => new Date(b.booking_date || "") >= startOfMonth).reduce((sum, b) => sum + (b.total_amount || 0), 0)
+      ? activeBookings.filter(b => (b.booking_date || "") >= startOfMonthStr).reduce((sum, b) => sum + (b.total_amount || 0), 0)
       : null;
     const quarterRevenue = dataCoversQuarter
-      ? activeBookings.filter(b => new Date(b.booking_date || "") >= startOfQuarter).reduce((sum, b) => sum + (b.total_amount || 0), 0)
+      ? activeBookings.filter(b => (b.booking_date || "") >= startOfQuarterStr).reduce((sum, b) => sum + (b.total_amount || 0), 0)
       : null;
 
     return {

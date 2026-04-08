@@ -5,6 +5,7 @@ import { Card, Button, Select } from './ui';
 import { RefreshCw, Search, Check, X } from 'lucide-react';
 import { DeletedBookingsPanel } from './DeletedBookingsPanel';
 import { supabase } from '@/lib/supabaseClient';
+import { getLocalDateString } from '../utils';
 
 const PAGE_SIZE_OPTIONS = [10, 30, 50, 100];
 
@@ -28,7 +29,7 @@ interface BookingsManagementProps {
 
 function getDateRange(range: string, customStart: string, customEnd: string): { dateFrom: string; dateTo: string } {
     const today = new Date();
-    const fmt = (d: Date) => d.toISOString().slice(0, 10);
+    const fmt = (d: Date) => getLocalDateString(d);
 
     if (range === 'today') return { dateFrom: fmt(today), dateTo: fmt(today) };
     if (range === 'tomorrow') {

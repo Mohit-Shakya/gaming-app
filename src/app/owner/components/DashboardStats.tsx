@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Eye, EyeOff, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { isBookingSessionActiveNow } from '@/lib/ownerBookingTiming';
 import { getLocalDateString } from '../utils';
 
 const REVENUE_VISIBILITY_KEY = 'owner-dashboard-revenue-visible';
@@ -16,8 +17,10 @@ interface DashboardStatsProps {
 
 interface DashboardBooking {
   booking_date?: string | null;
+  duration?: number | null;
   payment_mode?: string | null;
   status?: string | null;
+  start_time?: string | null;
   source?: string | null;
   total_amount?: number | null;
   booking_items?: Array<{ id: string; console?: string | null }> | null;
@@ -77,7 +80,13 @@ export function DashboardStats({ bookings, subscriptions, activeTimers, loadingD
 
   // Today's stats
   const activeBookingsCount = billableSessionBookings.filter(
-    (booking) => booking.status === 'in-progress' && booking.booking_date === todayStr
+    (booking) =>
+      booking.status === 'in-progress' &&
+      isBookingSessionActiveNow({
+        bookingDate: booking.booking_date,
+        duration: booking.duration,
+        startTime: booking.start_time,
+      })
   ).length;
   const activeSubscriptionsCount = subscriptions.filter(sub => activeTimers.has(sub.id)).length;
   const activeNow = activeBookingsCount + activeSubscriptionsCount;

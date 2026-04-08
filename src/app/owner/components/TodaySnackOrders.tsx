@@ -1,13 +1,16 @@
 'use client';
 
 import { useMemo } from 'react';
+import { getIndiaTimeString } from '@/lib/ownerBookingTiming';
 import { ShoppingBag, Banknote, Smartphone, CreditCard, TrendingUp, Plus, Lock } from 'lucide-react';
+import { getLocalDateString } from '../utils';
 
 interface SnackOrder {
-  id: string;
-  item_name: string;
-  quantity: number;
-  total_price: number;
+    id: string;
+    item_name: string;
+    ordered_at?: string | null;
+    quantity: number;
+    total_price: number;
 }
 
 interface Booking {
@@ -61,8 +64,26 @@ function PaymentBadge({ mode }: { mode?: string | null }) {
 export function TodaySnackOrders({ bookings, todayStr, onNewSale }: TodaySnackOrdersProps) {
   const ordersToday = useMemo(() => {
     return bookings
-      .filter(b => b.booking_date === todayStr && b.booking_orders && b.booking_orders.length > 0)
-      .sort((a, b) => (a.start_time || '').localeCompare(b.start_time || ''));
+      .map((booking) => {
+        const todaysOrders = (booking.booking_orders || []).filter((order) => {
+          if (!order.ordered_at) return booking.booking_date === todayStr;
+          return getLocalDateString(new Date(order.ordered_at)) === todayStr;
+        });
+
+        if (todaysOrders.length === 0) return null;
+
+        const latestOrderedAt = todaysOrders
+          .map((order) => order.ordered_at || '')
+          .sort((left, right) => right.localeCompare(left))[0] || null;
+
+        return {
+          ...booking,
+          booking_orders: todaysOrders,
+          latest_ordered_at: latestOrderedAt,
+        };
+      })
+      .filter((booking): booking is Booking & { booking_orders: SnackOrder[]; latest_ordered_at: string | null } => Boolean(booking))
+      .sort((a, b) => (b.latest_ordered_at || '').localeCompare(a.latest_ordered_at || ''));
   }, [bookings, todayStr]);
 
   const totalRevenue = useMemo(() =>
@@ -129,6 +150,9 @@ export function TodaySnackOrders({ bookings, todayStr, onNewSale }: TodaySnackOr
             const customer = booking.user_name || booking.customer_name || 'Walk-in';
             const phone = booking.user_phone || booking.customer_phone;
             const orderTotal = booking.booking_orders!.reduce((s, o) => s + (o.total_price || 0), 0);
+            const latestOrderTime = booking.latest_ordered_at
+              ? getIndiaTimeString(new Date(booking.latest_ordered_at), { hour: 'numeric', minute: '2-digit', hour12: true })
+              : booking.start_time;
 
             return (
               <div key={booking.id} className={`px-5 py-3.5 transition-colors ${booking.payment_mode === 'owner' ? 'bg-purple-500/5 hover:bg-purple-500/8' : 'hover:bg-slate-700/20'}`}>
@@ -168,8 +192,8 @@ export function TodaySnackOrders({ bookings, todayStr, onNewSale }: TodaySnackOr
                       )}
                     </span>
                   ))}
-                  {booking.start_time && (
-                    <span className="text-[11px] text-slate-600 ml-1 self-center">{booking.start_time}</span>
+                  {latestOrderTime && (
+                    <span className="text-[11px] text-slate-600 ml-1 self-center">{latestOrderTime}</span>
                   )}
                 </div>
               </div>

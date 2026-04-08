@@ -76,6 +76,23 @@ export async function GET(request: NextRequest) {
       : ownedCafeIds;
 
     const offset = (page - 1) * PAGE_SIZE;
+    const matchingProfileIds: string[] = [];
+
+    if (search) {
+      const { data: matchingProfiles, error: profileSearchError } = await supabase
+        .from("profiles")
+        .select("id")
+        .or(`first_name.ilike.%${search}%,last_name.ilike.%${search}%,phone.ilike.%${search}%`)
+        .limit(50);
+
+      if (profileSearchError) {
+        return NextResponse.json({ error: profileSearchError.message }, { status: 500 });
+      }
+
+      (matchingProfiles || []).forEach((profile) => {
+        if (profile.id) matchingProfileIds.push(profile.id);
+      });
+    }
 
     const runBookingQuery = async (includeUpdatedAt: boolean): Promise<BookingQueryResult> => {
       let query = supabase
@@ -98,8 +115,18 @@ export async function GET(request: NextRequest) {
       if (dateTo) query = query.lte("booking_date", dateTo);
 
       if (search) {
+        const orFilters = [
+          `customer_name.ilike.%${search}%`,
+          `customer_phone.ilike.%${search}%`,
+          `id.ilike.${search}%`,
+        ];
+
+        if (matchingProfileIds.length > 0) {
+          orFilters.push(`user_id.in.(${Array.from(new Set(matchingProfileIds)).join(",")})`);
+        }
+
         query = query.or(
-          `customer_name.ilike.%${search}%,customer_phone.ilike.%${search}%,id.ilike.${search}%`
+          orFilters.join(",")
         );
       }
 

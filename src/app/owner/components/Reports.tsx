@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { Card, Button, Select, StatCard } from './ui';
+import { getIndiaTimeString } from '@/lib/ownerBookingTiming';
 import { supabase } from '@/lib/supabaseClient';
-import { getTimezoneOffset } from '../utils';
+import { getLocalDateString, getTimezoneOffset } from '../utils';
 import {
     InventoryItem,
     BookingOrder as InventoryBookingOrder,
@@ -267,9 +268,10 @@ export function Reports({ cafeId, cafeName, isMobile, openingHours }: ReportsPro
             // Step 2: get booking_orders for those item IDs in the date range
             const { data: orders, error } = await supabase
                 .from('booking_orders')
-                .select('*, bookings!inner(id, customer_name, customer_phone, booking_date, start_time, payment_mode, status)')
+                .select('*, bookings!inner(id, customer_name, customer_phone, booking_date, start_time, payment_mode, status, deleted_at)')
                 .in('inventory_item_id', itemIds)
                 .neq('bookings.status', 'cancelled')
+                .is('bookings.deleted_at', null)
                 .gte('ordered_at', `${startDate}T00:00:00.000${getTimezoneOffset(now)}`)
                 .lte('ordered_at', `${endDate}T23:59:59.999${getTimezoneOffset(now)}`)
                 .order('ordered_at', { ascending: false });
@@ -660,12 +662,13 @@ export function Reports({ cafeId, cafeName, isMobile, openingHours }: ReportsPro
         snackOrders.forEach(o => {
             const bk = o.bookings;
             const id = o.booking_id;
+            const orderedAt = o.ordered_at ? new Date(o.ordered_at) : null;
             if (!grouped[id]) grouped[id] = {
                 bookingId: id,
                 customerName: bk?.customer_name || 'Walk-in',
                 customerPhone: bk?.customer_phone || null,
-                date: bk?.booking_date || o.ordered_at.split('T')[0],
-                time: bk?.start_time || null,
+                date: orderedAt ? getLocalDateString(orderedAt) : (bk?.booking_date || String(o.ordered_at || '').split('T')[0]),
+                time: orderedAt ? getIndiaTimeString(orderedAt, { hour: 'numeric', minute: '2-digit', hour12: true }) : (bk?.start_time || null),
                 paymentMode: bk?.payment_mode || 'cash',
                 items: [],
                 totalAmount: 0,
@@ -701,7 +704,7 @@ export function Reports({ cafeId, cafeName, isMobile, openingHours }: ReportsPro
         // F&B orders sheet
         const snackHeaders = ['Date', 'Item', 'Qty', 'Unit Price', 'Total', 'Customer', 'Payment Mode'];
         const snackRows = snackOrders.map(o => [
-            esc(o.ordered_at?.slice(0, 10)),
+            esc(o.ordered_at ? getLocalDateString(new Date(o.ordered_at)) : ''),
             esc(o.item_name),
             esc(o.quantity),
             esc(o.unit_price),

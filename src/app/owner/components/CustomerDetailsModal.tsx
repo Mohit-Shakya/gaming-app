@@ -342,14 +342,15 @@ export default function CustomerDetailsModal({
                                 </thead>
                                 <tbody>
                                     {customerBookings.slice(0, 5).map((booking) => {
-                                        const bookingDate = new Date(booking.booking_date);
+                                        const [year, month, day] = String(booking.booking_date || '').split('-').map(Number);
+                                        const bookingDate = year && month && day ? new Date(year, month - 1, day) : null;
                                         const consoleInfo = booking.booking_items?.[0];
                                         const stationName = consoleInfo?.console?.toUpperCase() || 'N/A';
 
                                         return (
                                             <tr key={booking.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
                                                 <td style={{ padding: '16px', color: 'white', fontSize: 14 }}>
-                                                    <div style={{ fontWeight: 500 }}>{bookingDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}</div>
+                                                    <div style={{ fontWeight: 500 }}>{bookingDate ? bookingDate.toLocaleDateString('en-US', { day: 'numeric', month: 'short' }) : '—'}</div>
                                                     <div style={{ fontSize: 12, color: '#64748b' }}>{convertTo12Hour(booking.start_time)}</div>
                                                 </td>
                                                 <td style={{ padding: '16px', color: 'white', fontSize: 14 }}>

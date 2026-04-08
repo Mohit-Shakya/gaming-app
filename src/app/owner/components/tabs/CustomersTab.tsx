@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
+import { isWalkInSource } from '@/lib/bookingFields';
 import { BookingRow } from '../../types';
 import { getLocalDateString } from '../../utils';
 
@@ -141,7 +142,7 @@ export default function CustomersTab({
     const customerMap = new Map<string, Customer>();
 
     bookings.forEach((booking) => {
-      if (booking.source === 'membership') {
+      if (booking.source === 'membership' || booking.status === 'cancelled') {
         return;
       }
 
@@ -160,13 +161,13 @@ export default function CustomersTab({
         const existing = customerMap.get(customerId)!;
         existing.sessions += 1;
         existing.totalSpent += booking.total_amount || 0;
-        if (bookingDate && new Date(bookingDate) > new Date(existing.lastVisit || 0)) {
+        if (bookingDate && bookingDate > (existing.lastVisit || '')) {
           existing.lastVisit = bookingDate;
         }
         if (!existing.phone && customerPhone) existing.phone = customerPhone;
         if (!existing.email && customerEmail) existing.email = customerEmail;
         if (existing.name === 'Unknown' && customerName !== 'Unknown') existing.name = customerName;
-        if (booking.source === 'walk_in') existing.source = 'walk-in';
+        if (isWalkInSource(booking.source)) existing.source = 'walk-in';
         if (booking.source === 'online' && existing.source === 'membership') existing.source = 'online';
       } else {
         customerMap.set(customerId, {
@@ -179,7 +180,7 @@ export default function CustomersTab({
           name: customerName,
           phone: customerPhone,
           sessions: 1,
-          source: booking.source === 'walk_in' ? 'walk-in' : 'online',
+          source: isWalkInSource(booking.source) ? 'walk-in' : 'online',
           totalSpent: booking.total_amount || 0,
         });
       }

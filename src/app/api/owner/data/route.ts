@@ -1,6 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from "next/server";
 import { requireOwnerContext } from "@/lib/ownerAuth";
+import {
+  getIndiaDateDaysAgo,
+  getIndiaDateString,
+  hasBookingSessionEnded,
+} from "@/lib/ownerBookingTiming";
 import { buildStationPricingMap, dedupeStationPricingRows } from "@/lib/stationNames";
 
 export const dynamic = 'force-dynamic';
@@ -21,7 +26,7 @@ const BOOKING_SELECT_BASE = `
   id, cafe_id, user_id, booking_date, start_time, duration, total_amount, status,
   source, payment_mode, created_at, customer_name, customer_phone,
   booking_items (id, console, quantity, price, title),
-  booking_orders (id, item_name, quantity, total_price)
+  booking_orders (id, item_name, quantity, total_price, ordered_at)
 `;
 
 const BOOKING_SELECT_WITH_UPDATED_AT = `
@@ -29,34 +34,8 @@ const BOOKING_SELECT_WITH_UPDATED_AT = `
   updated_at,
   source, payment_mode, created_at, customer_name, customer_phone,
   booking_items (id, console, quantity, price, title),
-  booking_orders (id, item_name, quantity, total_price)
+  booking_orders (id, item_name, quantity, total_price, ordered_at)
 `;
-
-function getIndiaDateString(date: Date = new Date()): string {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: "Asia/Kolkata",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).formatToParts(date);
-
-  const year = parts.find((part) => part.type === "year")?.value;
-  const month = parts.find((part) => part.type === "month")?.value;
-  const day = parts.find((part) => part.type === "day")?.value;
-
-  if (!year || !month || !day) {
-    throw new Error("Failed to format India date string");
-  }
-
-  return `${year}-${month}-${day}`;
-}
-
-function getIndiaDateDaysAgo(daysAgo: number): string {
-  const date = new Date();
-  date.setUTCHours(12, 0, 0, 0);
-  date.setUTCDate(date.getUTCDate() - daysAgo);
-  return getIndiaDateString(date);
-}
 
 function isMissingBookingsUpdatedAtError(error: { message?: string | null } | null | undefined): boolean {
   const message = error?.message?.toLowerCase() || "";
@@ -261,36 +240,20 @@ export async function POST(request: NextRequest) {
     // deleted_at now filtered in DB query — no need to filter in-process
     let ownerBookings = bookingsResult.data || [];
     
-    // Auto-complete logic for bookings — use India timezone to match booking_date/start_time
+    // Auto-complete logic for bookings — allow yesterday sessions that legitimately cross midnight.
     const now = new Date();
-    const indiaTimeStr = new Intl.DateTimeFormat('en-US', {
-      timeZone: 'Asia/Kolkata',
-      hour: 'numeric',
-      minute: 'numeric',
-      hour12: false,
-    }).format(now);
-    const [indiaHour, indiaMinute] = indiaTimeStr.split(':').map(Number);
-    const currentMinutes = indiaHour * 60 + indiaMinute;
     const endedIds: string[] = [];
 
     ownerBookings = ownerBookings.map((b: any) => {
         if (b.status === 'in-progress' || b.status === 'confirmed') {
-            if (b.booking_date < todayStr) {
+            if (hasBookingSessionEnded({
+              bookingDate: b.booking_date,
+              duration: b.duration,
+              now,
+              startTime: b.start_time,
+            })) {
                 b.status = 'completed'; // Mutate in memory
                 endedIds.push(b.id);
-            } else if (b.booking_date === todayStr && b.start_time && b.duration) {
-                const timeParts = b.start_time.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
-                if (timeParts) {
-                    let hours = parseInt(timeParts[1]);
-                    const minutes = parseInt(timeParts[2]);
-                    const period = timeParts[3]?.toLowerCase();
-                    if (period === 'pm' && hours !== 12) hours += 12;
-                    else if (period === 'am' && hours === 12) hours = 0;
-                    if (currentMinutes > hours * 60 + minutes + b.duration) {
-                        b.status = 'completed';
-                        endedIds.push(b.id);
-                    }
-                }
             }
         }
         return b;

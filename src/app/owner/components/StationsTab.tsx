@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
+import { isBookingSessionActiveNow } from '@/lib/ownerBookingTiming';
 import { normaliseStationName } from '@/lib/stationNames';
 import { CafeRow, BookingRow } from '../types';
-import { getLocalDateString } from '../utils';
 
 interface StationsTabProps {
     currentCafe: CafeRow | null;
@@ -92,23 +92,36 @@ export function StationsTab({
 
     // --- Real-time occupancy ---
     // Build stationOccupancy: stationId → { customerName, endTime }
-    // based on today's in-progress bookings only
-    const todayStr = getLocalDateString();
+    // based on sessions that are actually active right now, including overnight carryovers.
     const activeByConsole = new Map<string, { customerName: string; endTime: string }[]>();
     const stationOccupancy = new Map<string, { customerName: string; endTime: string }>();
 
     bookings
-        .filter(b => b.status === 'in-progress' && b.booking_date === todayStr)
+        .filter(b => b.status === 'in-progress')
         .forEach(b => {
             const customerName = b.customer_name || b.user_name || 'Customer';
-            let endTimeStr = '';
-            if (b.start_time && b.duration) {
-                const startMin = parseStartMinutes(b.start_time);
-                if (startMin !== null) endTimeStr = formatEndTime(startMin, b.duration);
-            }
             (b.booking_items || []).forEach(item => {
                 if (!item.console) return;
                 const ct = item.console.toLowerCase();
+                const parsedDuration = Number.parseInt(item.title || '', 10);
+                const itemDuration = Number.isFinite(parsedDuration) && parsedDuration > 0
+                    ? parsedDuration
+                    : b.duration;
+
+                if (!isBookingSessionActiveNow({
+                    bookingDate: b.booking_date,
+                    duration: itemDuration,
+                    now: new Date(),
+                    startTime: b.start_time,
+                })) {
+                    return;
+                }
+
+                let endTimeStr = '';
+                if (b.start_time && itemDuration) {
+                    const startMin = parseStartMinutes(b.start_time);
+                    if (startMin !== null) endTimeStr = formatEndTime(startMin, itemDuration);
+                }
 
                 const assignedStations = getAssignedStations(item.title);
                 if (assignedStations.length > 0) {

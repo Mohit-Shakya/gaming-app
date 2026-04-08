@@ -1405,11 +1405,11 @@ export default function OwnerDashboardPage() {
     subscriptions.forEach(subscription => {
       // Check if this subscription has an active timer in the database
       if (subscription.timer_active && subscription.timer_start_time && !activeTimers.has(subscription.id) && (subscription.hours_remaining || 0) > 0) {
-        const startDateStr = subscription.timer_start_time.slice(0, 10);
+        const timerStartIndiaDate = getLocalDateString(new Date(subscription.timer_start_time));
         const isDayPass = subscription.membership_plans?.plan_type === 'day_pass';
 
         // Day pass from a previous day — auto-expire instead of restoring
-        if (isDayPass && startDateStr < todayStr) {
+        if (isDayPass && timerStartIndiaDate < todayStr) {
           debugLog('[Timer] Day pass from previous day, auto-expiring:', subscription.id);
           fetch('/api/owner/subscriptions', {
             method: 'PATCH',
@@ -1536,11 +1536,12 @@ export default function OwnerDashboardPage() {
     async function fetchCustomerData() {
       if (!viewingCustomer || !selectedCafeId) {
         setCustomerBookings([]);
+        setLoadingCustomerData(false);
         return;
       }
 
-      if (!viewingCustomer.phone) {
-        debugLog('No phone number for customer:', viewingCustomer);
+      if (!viewingCustomer.phone && !viewingCustomer.id) {
+        debugLog('No customer key available for customer:', viewingCustomer);
         setCustomerBookings([]);
         setLoadingCustomerData(false);
         return;
@@ -1548,19 +1549,26 @@ export default function OwnerDashboardPage() {
 
       setLoadingCustomerData(true);
 
-      debugLog('Fetching bookings for phone:', viewingCustomer.phone, 'cafe:', selectedCafeId);
+      debugLog('Fetching bookings for customer:', viewingCustomer.id || viewingCustomer.phone, 'cafe:', selectedCafeId);
 
-      const response = await fetch(
-        `/api/owner/customers/bookings?cafeId=${selectedCafeId}&phone=${encodeURIComponent(viewingCustomer.phone)}`
-      );
-      const payload = await response.json().catch(() => ({}));
+      try {
+        const params = new URLSearchParams({ cafeId: selectedCafeId });
+        if (viewingCustomer.id) params.set('customerKey', viewingCustomer.id);
+        if (viewingCustomer.phone) params.set('phone', viewingCustomer.phone);
 
-      if (!response.ok) {
-        console.error('Error fetching bookings:', payload);
+        const response = await fetch(`/api/owner/customers/bookings?${params.toString()}`);
+        const payload = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+          console.error('Error fetching bookings:', payload);
+          setCustomerBookings([]);
+        } else {
+          debugLog('Successfully fetched bookings:', payload.bookings?.length || 0, 'bookings');
+          setCustomerBookings(payload.bookings || []);
+        }
+      } catch (error) {
+        console.error('Error fetching customer bookings:', error);
         setCustomerBookings([]);
-      } else {
-        debugLog('Successfully fetched bookings:', payload.bookings?.length || 0, 'bookings');
-        setCustomerBookings(payload.bookings || []);
       }
       setLoadingCustomerData(false);
     }
@@ -1570,6 +1578,7 @@ export default function OwnerDashboardPage() {
   const handleViewCustomer = (customer: {
     activeSubscription?: any;
     email?: string | null;
+    id?: string;
     lastVisit?: string;
     name: string;
     phone?: string | null;

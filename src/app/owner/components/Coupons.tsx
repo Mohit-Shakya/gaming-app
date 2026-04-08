@@ -239,8 +239,8 @@ See you soon! 🎯`;
                 new_customer_only: formData.newCustomerOnly,
                 min_visits: parseInt(formData.minVisits) || 0,
                 inactive_days_required: 0,
-                valid_from: formData.validFrom ? new Date(formData.validFrom).toISOString() : new Date().toISOString(),
-                valid_until: formData.validUntil ? new Date(formData.validUntil).toISOString() : null,
+                valid_from: formData.validFrom ? toIndiaDayStartIso(formData.validFrom) : toIndiaDayStartIso(todayStr),
+                valid_until: formData.validUntil ? toIndiaDayEndIso(formData.validUntil) : null,
                 is_active: formData.isActive,
             };
 
@@ -314,9 +314,19 @@ See you soon! 🎯`;
         setView('details');
     };
 
+    const todayStr = getLocalDateString();
+    const getCouponDateKey = (value?: string | null) => value ? getLocalDateString(new Date(value)) : '';
+    const parseDateKey = (value: string) => {
+        const [year, month, day] = value.split('-').map(Number);
+        return new Date(year, month - 1, day);
+    };
+    const toIndiaDayStartIso = (value: string) => `${value}T00:00:00+05:30`;
+    const toIndiaDayEndIso = (value: string) => `${value}T23:59:59.999+05:30`;
+
     const getCouponStatus = (coupon: Coupon) => {
         if (!coupon.is_active) return 'inactive';
-        if (coupon.valid_until && new Date(coupon.valid_until) < new Date()) return 'expired';
+        const validUntilDate = getCouponDateKey(coupon.valid_until);
+        if (validUntilDate && validUntilDate < todayStr) return 'expired';
         return 'active';
     };
 
@@ -1026,7 +1036,9 @@ See you soon! 🎯`;
     const totalRedemptions = coupons.reduce((sum, c) => sum + (c.uses_count || 0), 0);
     const expiringSoonCount = coupons.filter(c => {
         if (!c.valid_until || !c.is_active) return false;
-        const daysUntil = Math.ceil((new Date(c.valid_until).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+        const validUntilDate = getCouponDateKey(c.valid_until);
+        if (!validUntilDate || validUntilDate < todayStr) return false;
+        const daysUntil = Math.ceil((parseDateKey(validUntilDate).getTime() - parseDateKey(todayStr).getTime()) / (1000 * 60 * 60 * 24));
         return daysUntil > 0 && daysUntil <= 7;
     }).length;
 

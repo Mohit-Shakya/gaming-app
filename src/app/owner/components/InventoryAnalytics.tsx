@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, Button, Select } from './ui';
+import { getIndiaTimeString } from '@/lib/ownerBookingTiming';
 import { supabase } from '@/lib/supabaseClient';
 import {
   TrendingUp,
@@ -28,7 +29,7 @@ import {
   CATEGORY_LABELS,
   ItemSalesData,
 } from '@/types/inventory';
-import { getTimezoneOffset } from '../utils';
+import { getLocalDateString, getTimezoneOffset } from '../utils';
 
 interface InventoryAnalyticsProps {
   cafeId: string;
@@ -177,9 +178,10 @@ export default function InventoryAnalytics({ cafeId }: InventoryAnalyticsProps) 
       // Step 2: Fetch current period orders filtered by this cafe's item IDs
       const { data: currentOrders, error: currentError } = await supabase
         .from('booking_orders')
-        .select('*, bookings!inner(id, cafe_id, customer_name, customer_phone, booking_date, start_time, payment_mode, status)')
+        .select('*, bookings!inner(id, cafe_id, customer_name, customer_phone, booking_date, start_time, payment_mode, status, deleted_at)')
         .in('inventory_item_id', itemIds)
         .neq('bookings.status', 'cancelled')
+        .is('bookings.deleted_at', null)
         .gte('ordered_at', `${startDate}T00:00:00.000${getTimezoneOffset(now)}`)
         .lte('ordered_at', `${endDate}T23:59:59.999${getTimezoneOffset(now)}`)
         .order('ordered_at', { ascending: false });
@@ -190,9 +192,10 @@ export default function InventoryAnalytics({ cafeId }: InventoryAnalyticsProps) 
       // Step 3: Fetch previous period orders
       const { data: prevOrders, error: prevError } = await supabase
         .from('booking_orders')
-        .select('*, bookings!inner(id, cafe_id)')
+        .select('*, bookings!inner(id, cafe_id, status, deleted_at)')
         .in('inventory_item_id', itemIds)
         .neq('bookings.status', 'cancelled')
+        .is('bookings.deleted_at', null)
         .gte('ordered_at', `${prevStartDate}T00:00:00.000${getTimezoneOffset(now)}`)
         .lte('ordered_at', `${prevEndDate}T23:59:59.999${getTimezoneOffset(now)}`);
 
@@ -357,13 +360,14 @@ export default function InventoryAnalytics({ cafeId }: InventoryAnalyticsProps) 
     orders.forEach(order => {
       const bk = order.bookings;
       const bookingId = order.booking_id;
+      const orderedAt = order.ordered_at ? new Date(order.ordered_at) : null;
       if (!grouped[bookingId]) {
         grouped[bookingId] = {
           bookingId,
           customerName: bk?.customer_name || 'Walk-in',
           customerPhone: bk?.customer_phone || null,
-          date: bk?.booking_date || order.ordered_at.split('T')[0],
-          time: bk?.start_time || null,
+          date: orderedAt ? getLocalDateString(orderedAt) : (bk?.booking_date || String(order.ordered_at || '').split('T')[0]),
+          time: orderedAt ? getIndiaTimeString(orderedAt, { hour: 'numeric', minute: '2-digit', hour12: true }) : (bk?.start_time || null),
           paymentMode: bk?.payment_mode || 'cash',
           items: [],
           totalAmount: 0,

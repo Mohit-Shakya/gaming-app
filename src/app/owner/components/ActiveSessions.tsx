@@ -3,9 +3,8 @@
 import { useEffect, useRef } from 'react';
 import { ConsoleId, CONSOLE_ICONS } from '@/lib/constants';
 import { isWalkInSource } from '@/lib/bookingFields';
+import { getBookingSessionState, hasBookingSessionEnded, isBookingSessionActiveNow } from '@/lib/ownerBookingTiming';
 import { Plus, MessageCircle, Banknote, Smartphone } from 'lucide-react';
-
-import { getLocalDateString } from '../utils';
 
 interface SessionEndedInfo {
     customerName: string;
@@ -37,19 +36,27 @@ export function ActiveSessions({
     // Track sessions that have already triggered the ended callback
     const endedSessionsRef = useRef<Set<string>>(new Set());
 
-    // 1. Filter and Flatten Bookings
-    const activeBookings = bookings.filter(
-        (b) =>
-            b.status === 'in-progress' &&
-            b.booking_date === getLocalDateString()
-    );
+    const getItemDuration = (booking: any) => {
+        const item = booking.booking_items?.[0];
+        const parsedDuration = Number.parseInt(item?.title || '', 10);
+        return Number.isFinite(parsedDuration) && parsedDuration > 0 ? parsedDuration : booking.duration;
+    };
+
+    const getAssignedStation = (booking: any) => {
+        const title = booking.booking_items?.[0]?.title;
+        const stationPart = title?.split('|')[1]?.trim();
+        if (!stationPart) return null;
+        return stationPart.split(',')[0]?.trim().toUpperCase() || null;
+    };
 
     const activeMemberships = subscriptions.filter((sub) =>
         activeTimers.has(sub.id)
     );
 
     // Flatten bookings so each booking_item appears as a separate session
-    const flattenedBookings = activeBookings.flatMap((booking) => {
+    const flattenedBookings = bookings
+        .filter((booking) => booking.status === 'in-progress')
+        .flatMap((booking) => {
         const items = booking.booking_items || [];
         if (items.length <= 1) {
             return [booking];
@@ -63,49 +70,34 @@ export function ActiveSessions({
         }));
     });
 
-    // Parse booking start_time string to total minutes since midnight (0-1439)
-    const parseStartMinutes = (startTime: string): number | null => {
-        const timeParts = startTime.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
-        if (!timeParts) return null;
-        let hours = parseInt(timeParts[1]);
-        const minutes = parseInt(timeParts[2]);
-        const period = timeParts[3];
-        if (period) {
-            if (period.toLowerCase() === 'pm' && hours !== 12) hours += 12;
-            else if (period.toLowerCase() === 'am' && hours === 12) hours = 0;
-        }
-        return hours * 60 + minutes;
-    };
-
-    // Time remaining in minutes — handles midnight wrap-around
-    const calcTimeRemaining = (startMinutes: number, duration: number, currentMinutes: number): number => {
-        const endMinutes = startMinutes + duration;
-        if (endMinutes > 1440) {
-            // Session spans midnight
-            // If we're past midnight (currentMinutes < startMinutes), session is still running
-            const remaining = currentMinutes < startMinutes
-                ? (endMinutes - 1440) - currentMinutes   // past midnight
-                : endMinutes - currentMinutes;            // not yet midnight
-            return remaining;
-        }
-        return endMinutes - currentMinutes;
-    };
+    const activeSessionBookings = flattenedBookings.filter((booking) =>
+        isBookingSessionActiveNow({
+            bookingDate: booking.booking_date,
+            duration: getItemDuration(booking),
+            now: currentTime,
+            startTime: booking.start_time,
+        })
+    );
 
     // 2. Sort Active Bookings by Time Remaining
-    const sortedActiveBookings = [...flattenedBookings].sort((a, b) => {
-        const currentMinutes =
-            currentTime.getHours() * 60 + currentTime.getMinutes();
-
+    const sortedActiveBookings = [...activeSessionBookings].sort((a, b) => {
         const getTimeRemaining = (booking: typeof a) => {
-            if (!booking.start_time) return 999;
-            // Use per-item duration from title (format: "duration|station") if available
-            const bi = booking.booking_items?.[0];
-            const parsedTitle = parseInt(bi?.title || '');
-            const duration = !isNaN(parsedTitle) && parsedTitle > 0 ? parsedTitle : booking.duration;
-            if (!duration) return 999;
-            const startMinutes = parseStartMinutes(booking.start_time);
-            if (startMinutes === null) return 999;
-            return Math.max(0, calcTimeRemaining(startMinutes, duration, currentMinutes));
+            const duration = getItemDuration(booking);
+            const sessionState = getBookingSessionState({
+                bookingDate: booking.booking_date,
+                duration,
+                now: currentTime,
+                startTime: booking.start_time,
+            });
+
+            if (!sessionState.endMinutes) return 999;
+
+            const currentPosition =
+                booking.booking_date === sessionState.yesterdayStr && sessionState.crossesMidnight
+                    ? sessionState.currentMinutes + 1440
+                    : sessionState.currentMinutes;
+
+            return Math.max(0, sessionState.endMinutes - currentPosition);
         };
 
 
@@ -124,34 +116,27 @@ export function ActiveSessions({
     useEffect(() => {
         if (!onSessionEnded) return;
 
-        const currentMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
+        flattenedBookings.forEach((booking) => {
+            if (endedSessionsRef.current.has(booking.id)) return;
 
-        sortedActiveBookings.forEach((booking) => {
-            const bookingId = booking.originalBookingId || booking.id;
-            if (endedSessionsRef.current.has(bookingId)) return;
-            if (!booking.start_time) return;
-
-            const bi = booking.booking_items?.[0];
-            const parsedTitle = parseInt(bi?.title || '');
-            const duration = !isNaN(parsedTitle) && parsedTitle > 0 ? parsedTitle : booking.duration;
+            const duration = getItemDuration(booking);
             if (!duration) return;
 
-            const startMinutes = parseStartMinutes(booking.start_time);
-            if (startMinutes === null) return;
-
-            const timeRemaining = calcTimeRemaining(startMinutes, duration, currentMinutes);
-
-            // Fire when session is over (use <= -1 buffer to avoid missing the exact minute)
-            if (timeRemaining <= 0) {
+            if (hasBookingSessionEnded({
+                bookingDate: booking.booking_date,
+                duration,
+                now: currentTime,
+                startTime: booking.start_time,
+            })) {
                 const consoleInfo = booking.booking_items?.[0];
-                const consoleType = consoleInfo?.console?.toUpperCase() || 'UNKNOWN';
+                const stationName = getAssignedStation(booking) || consoleInfo?.console?.toUpperCase() || 'UNKNOWN';
                 const isWalkIn = isWalkInSource(booking.source);
                 const customerName = isWalkIn ? booking.customer_name : (booking.user_name || 'Guest');
-                endedSessionsRef.current.add(bookingId);
-                onSessionEnded({ customerName, stationName: consoleType, duration: booking.duration });
+                endedSessionsRef.current.add(booking.id);
+                onSessionEnded({ customerName, stationName, duration });
             }
         });
-    }, [currentTime, sortedActiveBookings, onSessionEnded]);
+    }, [currentTime, flattenedBookings, onSessionEnded]);
 
     if (sortedActiveBookings.length === 0 && activeMemberships.length === 0) {
         return (
@@ -219,20 +204,25 @@ export function ActiveSessions({
                 const isWalkIn = isWalkInSource(booking.source);
 
                 // Calculate Time Remaining
-                const currentMinutes =
-                    currentTime.getHours() * 60 + currentTime.getMinutes();
-
                 let timeRemaining = 0;
                 let endTime = '';
 
-                // Use per-item duration from title (format: "duration|station") if available
-                const parsedItemDuration = parseInt(consoleInfo?.title || '');
-                const itemDuration = !isNaN(parsedItemDuration) && parsedItemDuration > 0 ? parsedItemDuration : booking.duration;
+                const itemDuration = getItemDuration(booking);
 
                 if (booking.start_time && itemDuration) {
-                    const startMinutes = parseStartMinutes(booking.start_time);
-                    if (startMinutes !== null) {
-                        timeRemaining = Math.max(0, calcTimeRemaining(startMinutes, itemDuration, currentMinutes));
+                    const sessionState = getBookingSessionState({
+                        bookingDate: booking.booking_date,
+                        duration: itemDuration,
+                        now: currentTime,
+                        startTime: booking.start_time,
+                    });
+                    const startMinutes = sessionState.startMinutes;
+                    if (startMinutes !== null && sessionState.endMinutes !== null) {
+                        const currentPosition =
+                            booking.booking_date === sessionState.yesterdayStr && sessionState.crossesMidnight
+                                ? sessionState.currentMinutes + 1440
+                                : sessionState.currentMinutes;
+                        timeRemaining = Math.max(0, sessionState.endMinutes - currentPosition);
                         const endTotalMinutes = (startMinutes + itemDuration) % 1440;
                         const endHours = Math.floor(endTotalMinutes / 60);
                         const endMins = endTotalMinutes % 60;
@@ -244,8 +234,7 @@ export function ActiveSessions({
 
                 // Station Name Logic — prefer assigned station from title (format: "60|PS5-02")
                 const consoleType = consoleInfo?.console?.toUpperCase() || 'UNKNOWN';
-                const titleParts = consoleInfo?.title?.split('|');
-                const assignedStation = titleParts && titleParts.length > 1 ? titleParts[1].trim().toUpperCase() : null;
+                const assignedStation = getAssignedStation(booking);
                 const sameTypeBookings = sortedActiveBookings.filter(
                     (b, i) => i <= index && b.booking_items?.[0]?.console === consoleInfo?.console
                 );

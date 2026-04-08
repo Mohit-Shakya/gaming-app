@@ -33,6 +33,7 @@ export async function GET(request: NextRequest) {
       .select('customer_name, customer_phone')
       .eq('cafe_id', cafeId)
       .neq('status', 'cancelled')
+      .is('deleted_at', null)
       .or(`customer_name.ilike.%${search}%,customer_phone.ilike.%${search}%`)
       .not('customer_phone', 'is', null)
       .not('customer_name', 'is', null)
@@ -57,7 +58,8 @@ export async function GET(request: NextRequest) {
   const { data: bookings, error: bookingsError } = await supabase
     .from('bookings')
     .select('id, user_id, customer_name, customer_phone, total_amount, booking_date, created_at, status, source')
-    .eq('cafe_id', cafeId);
+    .eq('cafe_id', cafeId)
+    .is('deleted_at', null);
 
   if (bookingsError) return NextResponse.json({ error: bookingsError.message }, { status: 500 });
 
@@ -92,7 +94,7 @@ export async function GET(request: NextRequest) {
       existing.visits += 1;
       existing.total_spent += booking.total_amount || 0;
       const bookingDate = booking.booking_date || booking.created_at;
-      if (bookingDate && new Date(bookingDate) > new Date(existing.last_visit)) {
+      if (bookingDate && bookingDate > existing.last_visit) {
         existing.last_visit = bookingDate;
         existing.name = customerName;
       }
