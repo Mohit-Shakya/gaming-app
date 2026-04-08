@@ -291,9 +291,9 @@ export function reserveStations(
 
   const freeStations = availableStations.filter((stationName) => !state.occupiedStations.has(stationName));
   if (freeStations.length < requiredUnits) {
-    throw new Error(
-      `Only ${freeStations.length} ${normalizedConsoleType.toUpperCase()} station${freeStations.length === 1 ? "" : "s"} available right now`
-    );
+    // All stations appear occupied — don't block the booking.
+    // The owner knows their cafe; skip auto-assignment and proceed without a station.
+    return [];
   }
 
   const assignedStations = freeStations.slice(0, requiredUnits);
