@@ -77,11 +77,11 @@ function NavItem({
                 ${collapsed ? 'justify-center px-0 py-2.5' : 'px-3 py-2.5'}
                 ${isBilling
                     ? isActive
-                        ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
-                        : 'text-blue-400 hover:bg-blue-500/10 border border-blue-500/20'
+                        ? 'bg-blue-500/10 text-blue-300 border border-blue-500/20'
+                        : 'text-blue-400/70 hover:bg-blue-500/8 border border-blue-500/15'
                     : isActive
-                        ? 'bg-white/8 text-white'
-                        : 'text-slate-500 hover:text-white hover:bg-white/5'
+                        ? 'bg-white/[0.06] text-white'
+                        : 'text-slate-500 hover:text-slate-200 hover:bg-white/[0.04]'
                 }
             `}
         >
@@ -89,8 +89,8 @@ function NavItem({
                 <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-blue-500 rounded-r-full" />
             )}
             <Icon
-                size={18}
-                className={`shrink-0 ${isActive ? (isBilling ? 'text-blue-400' : 'text-white') : isBilling ? 'text-blue-400' : 'text-slate-500 group-hover:text-white'}`}
+                size={17}
+                className={`shrink-0 ${isActive ? (isBilling ? 'text-blue-400' : 'text-white') : isBilling ? 'text-blue-400/70' : 'text-slate-500 group-hover:text-slate-200'}`}
             />
             {!collapsed && (
                 <span className="font-medium text-sm truncate">{item.label}</span>

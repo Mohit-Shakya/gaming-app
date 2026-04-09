@@ -183,12 +183,12 @@ export function BookingsTable({
                                     />
                                 </th>
                             )}
-                            <th className="px-4 py-3 font-semibold w-[18%]">Customer</th>
-                            <th className="px-4 py-3 font-semibold w-[18%]">Details</th>
-                            <th className="px-4 py-3 font-semibold w-[18%]">Date & Time</th>
-                            <th className="px-4 py-3 font-semibold w-[12%]">Amount</th>
-                            <th className="px-4 py-3 font-semibold w-[14%]">Status</th>
-                            {showActions && <th className="px-4 py-3 font-semibold text-right w-[20%]">Actions</th>}
+                            <th className="px-4 py-2 font-semibold w-[18%]">Customer</th>
+                            <th className="px-4 py-2 font-semibold w-[18%]">Details</th>
+                            <th className="px-4 py-2 font-semibold w-[18%]">Date & Time</th>
+                            <th className="px-4 py-2 font-semibold w-[12%]">Amount</th>
+                            <th className="px-4 py-2 font-semibold w-[14%]">Status</th>
+                            {showActions && <th className="px-4 py-2 font-semibold text-right w-[20%]">Actions</th>}
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
@@ -196,18 +196,18 @@ export function BookingsTable({
                             Array.from({ length: 5 }).map((_, i) => (
                                 <tr key={i} className="animate-pulse">
                                     {selectable && <td className="px-3 py-3"><div className="w-4 h-4 rounded bg-slate-800" /></td>}
-                                    <td className="px-4 py-3">
+                                    <td className="px-4 py-2">
                                         <div className="h-3.5 w-28 rounded bg-slate-800 mb-2" />
                                         <div className="h-2.5 w-20 rounded bg-slate-800/60" />
                                     </td>
-                                    <td className="px-4 py-3"><div className="h-3.5 w-20 rounded bg-slate-800" /></td>
-                                    <td className="px-4 py-3">
+                                    <td className="px-4 py-2"><div className="h-3.5 w-20 rounded bg-slate-800" /></td>
+                                    <td className="px-4 py-2">
                                         <div className="h-3.5 w-20 rounded bg-slate-800 mb-2" />
                                         <div className="h-2.5 w-14 rounded bg-slate-800/60" />
                                     </td>
-                                    <td className="px-4 py-3"><div className="h-3.5 w-14 rounded bg-slate-800" /></td>
-                                    <td className="px-4 py-3"><div className="h-5 w-20 rounded-full bg-slate-800" /></td>
-                                    {showActions && <td className="px-4 py-3"><div className="h-7 w-24 rounded bg-slate-800 ml-auto" /></td>}
+                                    <td className="px-4 py-2"><div className="h-3.5 w-14 rounded bg-slate-800" /></td>
+                                    <td className="px-4 py-2"><div className="h-5 w-20 rounded-full bg-slate-800" /></td>
+                                    {showActions && <td className="px-4 py-2"><div className="h-7 w-24 rounded bg-slate-800 ml-auto" /></td>}
                                 </tr>
                             ))
                         ) : paginatedBookings.length === 0 ? (

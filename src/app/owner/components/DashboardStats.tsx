@@ -45,11 +45,11 @@ function Trend({ today, yesterday }: { today: number; yesterday: number }) {
 }
 
 const SkeletonCard = () => (
-  <div className="relative rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5 flex flex-col gap-3 min-h-[120px] animate-pulse overflow-hidden">
-    <div className="absolute top-0 left-0 right-0 h-px bg-white/[0.06]" />
-    <div className="h-2.5 w-20 rounded-full bg-white/[0.06]" />
-    <div className="h-8 w-14 rounded-lg bg-white/[0.06]" />
-    <div className="h-2 w-28 rounded-full bg-white/[0.04]" />
+  <div className="relative rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3.5 flex flex-col gap-2 animate-pulse overflow-hidden">
+    <div className="absolute top-0 left-0 right-0 h-[2px] bg-white/[0.06]" />
+    <div className="h-2 w-20 rounded-full bg-white/[0.06]" />
+    <div className="h-7 w-12 rounded-lg bg-white/[0.06]" />
+    <div className="h-2 w-24 rounded-full bg-white/[0.04]" />
   </div>
 );
 
@@ -200,51 +200,50 @@ export function DashboardStats({ bookings, subscriptions, activeTimers, loadingD
   ];
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+    <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 mb-6">
       {cards.map((card) => (
         <div
           key={card.key}
           onClick={card.key === 'revenue' && revenueVisible ? () => setShowBreakdown(p => !p) : undefined}
           className={`
-            relative rounded-2xl border border-white/[0.06] bg-white/[0.02] p-5 flex flex-col gap-3 min-h-[120px] overflow-hidden
+            relative rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-3.5 flex flex-col gap-2 overflow-hidden
             ${card.key === 'revenue' && revenueVisible ? 'cursor-pointer hover:bg-white/[0.04] transition-colors' : ''}
           `}
         >
           {/* Colored top accent line */}
-          <div className={`absolute top-0 left-0 right-0 h-px ${card.accentClass} opacity-60`} />
+          <div className={`absolute top-0 left-0 right-0 h-[2px] ${card.accentClass} opacity-50`} />
 
           {/* Header row */}
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className={`w-6 h-6 rounded-lg ${card.iconBg} flex items-center justify-center`}>
+            <div className="flex items-center gap-1.5">
+              <div className={`w-5 h-5 rounded-md ${card.iconBg} flex items-center justify-center`}>
                 {card.icon}
               </div>
-              <p className="text-[10px] uppercase tracking-widest font-semibold text-slate-500">{card.label}</p>
+              <p className="text-[10px] uppercase tracking-widest font-semibold text-slate-500 truncate">{card.label}</p>
             </div>
             {card.key === 'revenue' && (
               <button
                 type="button"
                 onClick={toggleRevenueVisibility}
-                className="p-1 rounded-lg text-slate-600 hover:text-slate-400 hover:bg-white/5 transition-colors z-10"
+                className="p-0.5 rounded text-slate-600 hover:text-slate-400 transition-colors z-10 shrink-0"
               >
-                {revenueVisible ? <EyeOff size={13} /> : <Eye size={13} />}
+                {revenueVisible ? <EyeOff size={12} /> : <Eye size={12} />}
               </button>
             )}
           </div>
 
           {/* Value */}
-          <p className="text-3xl font-bold text-white leading-none tracking-tight">
+          <p className="text-2xl font-bold text-white leading-none tracking-tight">
             {card.value}
           </p>
 
           {/* Footer */}
-          <div className="flex items-center justify-between mt-auto">
-            {card.sub && <p className="text-[11px] text-slate-600">{card.sub}</p>}
+          <div className="flex items-center justify-between">
+            {card.sub && <p className="text-[10px] text-slate-600">{card.sub}</p>}
             {card.trend && card.trend}
             {!card.sub && !card.trend && <div />}
-
             {card.key === 'revenue' && revenueVisible && !showBreakdown && (
-              <span className="text-[9px] text-slate-700 animate-pulse">tap for breakdown</span>
+              <span className="text-[9px] text-slate-700 animate-pulse">tap</span>
             )}
           </div>
 
