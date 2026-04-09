@@ -6,6 +6,7 @@
 // are used for flexibility. These can be refactored incrementally with proper typing.
 
 import { useEffect, useState } from "react";
+import { AlarmClock, Zap, CalendarDays, ShoppingBag, BarChart3, ChevronRight } from 'lucide-react';
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
@@ -2033,7 +2034,8 @@ export default function OwnerDashboardPage() {
           {/* Dashboard Tab - New Design */}
           {!loadingData && activeTab === 'dashboard' && (
             <ErrorBoundary>
-            <div>
+            <div className="space-y-6">
+
               {/* Ending Soon Alert Banner */}
               {(() => {
                 const now = new Date();
@@ -2056,27 +2058,29 @@ export default function OwnerDashboardPage() {
                 });
                 if (endingSoon.length === 0) return null;
                 return (
-                  <div className="mb-5 rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 flex items-center gap-3">
-                    <span className="text-lg">⏰</span>
-                    <div className="flex-1">
+                  <div className="rounded-xl border border-amber-500/30 bg-amber-500/8 px-4 py-3 flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-amber-500/15 flex items-center justify-center shrink-0">
+                      <AlarmClock size={16} className="text-amber-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
                       <span className="text-amber-400 font-semibold text-sm">
-                        {endingSoon.length} session{endingSoon.length > 1 ? 's' : ''} ending in under 15 minutes
+                        {endingSoon.length} session{endingSoon.length > 1 ? 's' : ''} ending in under 15 min
                       </span>
-                      <span className="text-amber-400/60 text-xs ml-2">
+                      <span className="text-amber-400/60 text-xs ml-2 truncate">
                         {endingSoon.map((b: any) => b.customer_name || 'Guest').join(', ')}
                       </span>
                     </div>
                     <button
-                      onClick={() => setActiveTab('dashboard')}
-                      className="text-[11px] font-semibold text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 px-2.5 py-1 rounded-lg transition-colors whitespace-nowrap"
+                      onClick={() => setActiveTab('bookings')}
+                      className="flex items-center gap-1 text-[11px] font-semibold text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 px-2.5 py-1.5 rounded-lg transition-colors whitespace-nowrap"
                     >
-                      View Live →
+                      View <ChevronRight size={12} />
                     </button>
                   </div>
                 );
               })()}
 
-              {/* Top Stats Cards */}
+              {/* KPI Stats */}
               <DashboardStats
                 bookings={bookings}
                 subscriptions={subscriptions}
@@ -2085,22 +2089,22 @@ export default function OwnerDashboardPage() {
                 isMobile={isMobile}
               />
 
-              {/* Active Consoles Section - Only show occupied consoles */}
-              <div style={{ marginTop: isMobile ? 20 : 24 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-                  <h2
-                    style={{
-                      fontSize: 20,
-                      fontWeight: 600,
-                      color: theme.textPrimary,
-                      margin: 0,
-                    }}
-                  >
-                    Active Sessions
-                  </h2>
+              {/* Active Sessions */}
+              <section>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-red-500/15 flex items-center justify-center">
+                      <Zap size={14} className="text-red-400" />
+                    </div>
+                    <h2 className="text-base font-semibold text-white">Active Sessions</h2>
+                    {(() => {
+                      const count = bookings.filter((b: any) => b.status === 'in-progress' && b.booking_date === getLocalDateString()).length;
+                      return count > 0 ? (
+                        <span className="px-2 py-0.5 rounded-full bg-red-500/15 text-red-400 text-[11px] font-bold">{count}</span>
+                      ) : null;
+                    })()}
+                  </div>
                 </div>
-
-                {/* Show only in-progress bookings and active memberships */}
                 <ActiveSessions
                   bookings={bookings}
                   subscriptions={subscriptions}
@@ -2116,18 +2120,37 @@ export default function OwnerDashboardPage() {
                   onSessionEnded={(info) => {
                     setSessionEndedInfo(info);
                     setSessionEndedPopupOpen(true);
-                    // Refresh data so the server auto-completes the session status
                     refreshData();
                   }}
                 />
-              </div>
+              </section>
 
-              <div style={{ marginTop: isMobile ? 20 : 24 }}>
+              {/* Today's Bookings */}
+              <section>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-blue-500/15 flex items-center justify-center">
+                      <CalendarDays size={14} className="text-blue-400" />
+                    </div>
+                    <h2 className="text-base font-semibold text-white">Today's Bookings</h2>
+                    {(() => {
+                      const count = bookings.filter((b: any) => b.booking_date === getLocalDateString()).length;
+                      return count > 0 ? (
+                        <span className="px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-400 text-[11px] font-bold">{count}</span>
+                      ) : null;
+                    })()}
+                  </div>
+                  <button
+                    onClick={() => setActiveTab('bookings')}
+                    className="flex items-center gap-1 text-[11px] font-medium text-slate-400 hover:text-white transition-colors"
+                  >
+                    View all <ChevronRight size={12} />
+                  </button>
+                </div>
                 <BookingsTable
-                  title="Today's Bookings"
+                  title=""
                   bookings={bookings.filter((b: any) => b.booking_date === getLocalDateString())}
                   loading={loadingData}
-                  onViewAll={() => setActiveTab('bookings')}
                   onStatusChange={handleBookingStatusChange}
                   onPaymentModeChange={handlePaymentModeChange}
                   onEdit={handleEditBooking}
@@ -2137,47 +2160,71 @@ export default function OwnerDashboardPage() {
                     setViewOrdersModalOpen(true);
                   }}
                 />
-              </div>
+              </section>
 
               {/* Today's Snack Orders */}
-              <div style={{ marginTop: isMobile ? 20 : 24 }}>
+              <section>
+                <div className="flex items-center gap-2.5 mb-4">
+                  <div className="w-7 h-7 rounded-lg bg-orange-500/15 flex items-center justify-center">
+                    <ShoppingBag size={14} className="text-orange-400" />
+                  </div>
+                  <h2 className="text-base font-semibold text-white">Snack Sales</h2>
+                </div>
                 <TodaySnackOrders
                   bookings={bookings as any[]}
                   todayStr={getLocalDateString()}
                   onNewSale={() => setSnackSaleModalOpen(true)}
                 />
-              </div>
+              </section>
 
-              {/* Weekly Bookings Section */}
-              <div style={{ marginTop: isMobile ? 24 : 40 }}>
-                {(() => {
-                  const today = new Date();
-                  const lastWeek = new Date(today);
-                  lastWeek.setDate(today.getDate() - 7);
-                  const lastWeekStr = getLocalDateString(lastWeek);
-                  const todayStr = getLocalDateString(today);
+              {/* Last 7 Days */}
+              {(() => {
+                const today = new Date();
+                const lastWeek = new Date(today);
+                lastWeek.setDate(today.getDate() - 7);
+                const lastWeekStr = getLocalDateString(lastWeek);
+                const todayStr = getLocalDateString(today);
 
-                  const weeklyBookings = bookings.filter((b: any) => {
-                    const bDate = b.booking_date;
-                    return bDate >= lastWeekStr && bDate <= todayStr;
-                  });
+                const weeklyBookings = bookings.filter((b: any) => {
+                  const bDate = b.booking_date;
+                  return bDate >= lastWeekStr && bDate <= todayStr;
+                });
 
-                  const weeklyRevenue = weeklyBookings
-                    .filter((b: any) => b.status !== 'cancelled' && b.status !== 'in-progress' && b.payment_mode !== 'owner')
-                    .reduce((sum: number, b: any) => sum + (b.total_amount || 0), 0);
+                const weeklyRevenue = weeklyBookings
+                  .filter((b: any) => b.status !== 'cancelled' && b.status !== 'in-progress' && b.payment_mode !== 'owner')
+                  .reduce((sum: number, b: any) => sum + (b.total_amount || 0), 0);
 
-                  return (
+                return (
+                  <section>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-7 h-7 rounded-lg bg-violet-500/15 flex items-center justify-center">
+                          <BarChart3 size={14} className="text-violet-400" />
+                        </div>
+                        <h2 className="text-base font-semibold text-white">Last 7 Days</h2>
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 text-[11px] font-bold">
+                          Rs.{weeklyRevenue.toLocaleString('en-IN')}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => setActiveTab('bookings')}
+                        className="flex items-center gap-1 text-[11px] font-medium text-slate-400 hover:text-white transition-colors"
+                      >
+                        View all <ChevronRight size={12} />
+                      </button>
+                    </div>
                     <BookingsTable
-                      title={`Last 7 Days (₹${weeklyRevenue})`}
+                      title=""
                       bookings={weeklyBookings}
                       loading={loadingData}
                       limit={10}
                       showActions={false}
                       onViewAll={() => setActiveTab('bookings')}
                     />
-                  );
-                })()}
-              </div>
+                  </section>
+                );
+              })()}
+
             </div>
             </ErrorBoundary>
           )}

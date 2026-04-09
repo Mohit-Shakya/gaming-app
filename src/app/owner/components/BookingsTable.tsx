@@ -129,10 +129,13 @@ export function BookingsTable({
 
     return (
         <Card className="w-full overflow-hidden" padding="none">
+            {(title || showFilters) && (
             <div className="p-4 md:p-6 border-b border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                {title && (
                 <h2 className="text-lg font-semibold text-white flex items-center gap-2">
                     {title}
                 </h2>
+                )}
 
                 {showFilters && (
                     <div className="flex flex-col sm:flex-row gap-3">
@@ -160,6 +163,7 @@ export function BookingsTable({
                     </div>
                 )}
             </div>
+            )}
 
             <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-sm text-left table-fixed">
