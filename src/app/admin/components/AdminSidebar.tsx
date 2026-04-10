@@ -16,12 +16,14 @@ import {
   Menu,
   LayoutGrid,
   KeyRound,
+  UserX,
 } from 'lucide-react';
 
 const NAV_ITEMS = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
   { id: 'cafes', label: 'Cafés', icon: Store },
   { id: 'users', label: 'Users', icon: Users },
+  { id: 'offline-customers', label: 'Offline Customers', icon: UserX },
   { id: 'bookings', label: 'Bookings', icon: CalendarCheck },
   { id: 'coupons', label: 'Coupons', icon: Ticket },
   { id: 'revenue', label: 'Revenue', icon: TrendingUp },

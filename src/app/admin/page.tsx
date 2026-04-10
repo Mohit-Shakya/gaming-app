@@ -79,7 +79,17 @@ type BookingRow = {
   user_name?: string;
 };
 
-type NavTab = 'overview' | 'cafes' | 'users' | 'bookings' | 'revenue' | 'reports' | 'settings' | 'announcements' | 'audit-logs' | 'coupons' | 'owner-access';
+type OfflineCustomer = {
+  phone: string;
+  name: string;
+  cafe_name: string;
+  cafe_id: string;
+  total_bookings: number;
+  total_spent: number;
+  last_visit: string;
+};
+
+type NavTab = 'overview' | 'cafes' | 'users' | 'offline-customers' | 'bookings' | 'revenue' | 'reports' | 'settings' | 'announcements' | 'audit-logs' | 'coupons' | 'owner-access';
 
 type AnnouncementRow = {
   id: string;
@@ -199,6 +209,10 @@ export default function AdminDashboardPage() {
   const [cafeSearch, setCafeSearch] = useState<string>("");
   const [userRoleFilter, setUserRoleFilter] = useState<string>("all");
   const [userSearch, setUserSearch] = useState<string>("");
+  const [offlineCustomers, setOfflineCustomers] = useState<OfflineCustomer[]>([]);
+  const [offlineCustomersLoading, setOfflineCustomersLoading] = useState(false);
+  const [offlineSearch, setOfflineSearch] = useState("");
+  const [offlineCafeFilter, setOfflineCafeFilter] = useState("all");
   const [bookingStatusFilter, setBookingStatusFilter] = useState<string>("all");
   const [bookingDateFilter, setBookingDateFilter] = useState<string>("");
   const [bookingSearch, setBookingSearch] = useState<string>("");
@@ -229,6 +243,11 @@ export default function AdminDashboardPage() {
       title: "Account Roster",
       subtitle: "Track customers, owners, and admin role changes across the network.",
       eyebrow: "Identity",
+    },
+    'offline-customers': {
+      title: "Offline Customers",
+      subtitle: "Walk-in customers entered manually by owners — grouped by phone number.",
+      eyebrow: "Walk-ins",
     },
     bookings: {
       title: "Booking Traffic",
@@ -589,6 +608,57 @@ export default function AdminDashboardPage() {
     }
 
     loadBookings();
+  }, [isAdmin, activeTab]);
+
+  // Load offline customers data
+  useEffect(() => {
+    if (!isAdmin || activeTab !== 'offline-customers') return;
+    async function loadOfflineCustomers() {
+      try {
+        setOfflineCustomersLoading(true);
+        const { data, error } = await supabase
+          .from("bookings")
+          .select("customer_name, customer_phone, cafe_id, total_amount, booking_date, cafes(name)")
+          .not("customer_phone", "is", null)
+          .not("customer_name", "is", null)
+          .neq("customer_name", "")
+          .is("deleted_at", null)
+          .order("booking_date", { ascending: false });
+        if (error) throw error;
+        // Group by phone number
+        const map = new Map<string, OfflineCustomer>();
+        for (const b of data || []) {
+          const phone = b.customer_phone as string;
+          const cafeName = (b.cafes as any)?.name || "Unknown";
+          if (map.has(phone)) {
+            const existing = map.get(phone)!;
+            existing.total_bookings += 1;
+            existing.total_spent += b.total_amount || 0;
+            if (b.booking_date > existing.last_visit) {
+              existing.last_visit = b.booking_date;
+              existing.cafe_name = cafeName;
+              existing.cafe_id = b.cafe_id;
+            }
+          } else {
+            map.set(phone, {
+              phone,
+              name: b.customer_name as string,
+              cafe_name: cafeName,
+              cafe_id: b.cafe_id,
+              total_bookings: 1,
+              total_spent: b.total_amount || 0,
+              last_visit: b.booking_date,
+            });
+          }
+        }
+        setOfflineCustomers(Array.from(map.values()).sort((a, b) => b.last_visit.localeCompare(a.last_visit)));
+      } catch (err) {
+        console.error("Error loading offline customers:", err);
+      } finally {
+        setOfflineCustomersLoading(false);
+      }
+    }
+    loadOfflineCustomers();
   }, [isAdmin, activeTab]);
 
   // Load announcements data
@@ -1242,6 +1312,14 @@ export default function AdminDashboardPage() {
   const totalCafePages = Math.ceil(filteredCafes.length / itemsPerPage);
   const totalUserPages = Math.ceil(filteredUsers.length / itemsPerPage);
   const totalBookingPages = Math.ceil(filteredBookings.length / itemsPerPage);
+
+  // Offline customers filtered list
+  const filteredOfflineCustomers = offlineCustomers.filter(c => {
+    const q = offlineSearch.toLowerCase();
+    const matchSearch = !q || c.name.toLowerCase().includes(q) || c.phone.includes(q);
+    const matchCafe = offlineCafeFilter === 'all' || c.cafe_id === offlineCafeFilter;
+    return matchSearch && matchCafe;
+  });
 
   // Format currency
   const formatCurrency = (amount: number) => `₹${amount.toLocaleString()}`;
@@ -2397,6 +2475,93 @@ export default function AdminDashboardPage() {
                     </div>
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* ─── OFFLINE CUSTOMERS TAB ─── */}
+          {activeTab === 'offline-customers' && (
+            <div className="space-y-4">
+              {/* Stats strip */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {[
+                  { label: 'Unique Customers', value: offlineCustomers.length, color: 'text-blue-400' },
+                  { label: 'Filtered Results', value: filteredOfflineCustomers.length, color: 'text-violet-400' },
+                  { label: 'Total Walk-in Bookings', value: offlineCustomers.reduce((s, c) => s + c.total_bookings, 0), color: 'text-emerald-400' },
+                  { label: 'Total Walk-in Revenue', value: formatCurrency(offlineCustomers.reduce((s, c) => s + c.total_spent, 0)), color: 'text-amber-400' },
+                ].map(s => (
+                  <div key={s.label} className="rounded-2xl bg-[#0d0d14] border border-white/[0.08] p-4">
+                    <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-1">{s.label}</p>
+                    <p className={`text-xl font-bold ${s.color}`}>{offlineCustomersLoading ? '…' : s.value}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Filters */}
+              <div className="flex flex-wrap gap-3 p-4 rounded-2xl bg-[#0d0d14] border border-white/[0.08]">
+                <input
+                  type="text"
+                  placeholder="Search by name or phone…"
+                  value={offlineSearch}
+                  onChange={e => setOfflineSearch(e.target.value)}
+                  className="flex-1 min-w-[200px] px-4 py-2.5 rounded-xl bg-white/[0.06] border border-white/[0.09] text-sm text-white placeholder-slate-500 outline-none focus:border-violet-500/50"
+                />
+                <select
+                  value={offlineCafeFilter}
+                  onChange={e => setOfflineCafeFilter(e.target.value)}
+                  className="px-4 py-2.5 rounded-xl bg-white/[0.06] border border-white/[0.09] text-sm text-white outline-none"
+                >
+                  <option value="all">All Cafés</option>
+                  {cafes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+                <div className="flex items-center px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.06] text-xs text-slate-500">
+                  {filteredOfflineCustomers.length} result{filteredOfflineCustomers.length !== 1 ? 's' : ''}
+                </div>
+              </div>
+
+              {/* Table */}
+              <div className="rounded-2xl bg-[#0d0d14] border border-white/[0.08] overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-white/[0.04] border-b border-white/[0.08]">
+                      <tr>
+                        <th className={thCls}>Customer</th>
+                        <th className={thCls}>Phone</th>
+                        <th className={thCls}>Last Café</th>
+                        <th className={thCls}>Bookings</th>
+                        <th className={thCls}>Total Spent</th>
+                        <th className={thCls}>Last Visit</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/[0.06]">
+                      {offlineCustomersLoading ? (
+                        <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-500">Loading offline customers…</td></tr>
+                      ) : filteredOfflineCustomers.length === 0 ? (
+                        <tr><td colSpan={6} className="px-4 py-12 text-center text-slate-500">No offline customers found</td></tr>
+                      ) : filteredOfflineCustomers.map(c => (
+                        <tr key={c.phone} className="hover:bg-white/[0.03] transition-colors">
+                          <td className="px-4 py-3.5">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-8 h-8 rounded-full bg-violet-500/15 flex items-center justify-center text-violet-400 text-xs font-bold shrink-0">
+                                {c.name.charAt(0).toUpperCase()}
+                              </div>
+                              <span className="text-sm font-semibold text-white">{c.name}</span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3.5 text-sm font-mono text-slate-300">{c.phone}</td>
+                          <td className="px-4 py-3.5 text-sm text-slate-400">{c.cafe_name}</td>
+                          <td className="px-4 py-3.5">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-500/15 text-blue-400">
+                              {c.total_bookings} {c.total_bookings === 1 ? 'visit' : 'visits'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3.5 text-sm font-semibold text-emerald-400">{formatCurrency(c.total_spent)}</td>
+                          <td className="px-4 py-3.5 text-sm text-slate-400">{formatDate(c.last_visit)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}
