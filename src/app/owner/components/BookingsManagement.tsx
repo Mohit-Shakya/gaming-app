@@ -318,48 +318,52 @@ export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateS
             ) : (
                 <>
                     {/* Filters */}
-                    <Card padding="md" className="space-y-4">
-                        <div className="flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center">
-                            <div className="flex-1 w-full lg:w-auto">
-                                <div className="relative">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                                    <input
-                                        type="text"
-                                        placeholder="Search by name, phone, or ID..."
-                                        value={searchTerm}
-                                        onChange={(e) => handleSearchChange(e.target.value)}
-                                        className="w-full lg:max-w-md pl-10 pr-4 py-2 bg-white/[0.04] border border-white/[0.09] rounded-xl focus:outline-none focus:border-blue-500/60 focus:ring-1 focus:ring-blue-500/30 text-white placeholder-slate-600 text-sm"
-                                    />
-                                </div>
-                            </div>
-                            <div className="flex flex-wrap gap-2 w-full lg:w-auto">
-                                <Select
-                                    value={statusFilter}
-                                    onChange={handleFilterChange(setStatusFilter)}
-                                    options={[
-                                        { value: 'all', label: 'All Status' },
-                                        { value: 'pending', label: 'Pending' },
-                                        { value: 'confirmed', label: 'Confirmed' },
-                                        { value: 'in-progress', label: 'In Progress' },
-                                        { value: 'completed', label: 'Completed' },
-                                        { value: 'cancelled', label: 'Cancelled' },
-                                    ]}
-                                />
-                                <Select
-                                    value={dateRange}
-                                    onChange={handleFilterChange(setDateRange)}
-                                    options={[
-                                        { value: 'all', label: 'All Time' },
-                                        { value: 'today', label: 'Today' },
-                                        { value: 'tomorrow', label: 'Tomorrow' },
-                                        { value: 'week', label: 'This Week' },
-                                        { value: 'custom', label: 'Custom' },
-                                    ]}
-                                />
-                                <Button variant="secondary" onClick={() => { fetchBookings(debouncedSearch); onRefresh?.(); }} title="Refresh">
-                                    <RefreshCw size={18} />
-                                </Button>
-                            </div>
+                    <Card padding="md" className="space-y-3">
+                        {/* Search */}
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={15} />
+                            <input
+                                type="text"
+                                placeholder="Search by name, phone, or ID..."
+                                value={searchTerm}
+                                onChange={(e) => handleSearchChange(e.target.value)}
+                                className="w-full lg:max-w-md pl-9 pr-4 py-2 bg-white/[0.04] border border-white/[0.09] rounded-lg focus:outline-none focus:border-blue-500/60 focus:ring-1 focus:ring-blue-500/30 text-white placeholder-slate-600 text-sm"
+                            />
+                        </div>
+                        {/* Filter row */}
+                        <div className="flex gap-2 items-center">
+                            <Select
+                                value={statusFilter}
+                                onChange={handleFilterChange(setStatusFilter)}
+                                className="flex-1"
+                                options={[
+                                    { value: 'all', label: 'All Status' },
+                                    { value: 'pending', label: 'Pending' },
+                                    { value: 'confirmed', label: 'Confirmed' },
+                                    { value: 'in-progress', label: 'In Progress' },
+                                    { value: 'completed', label: 'Completed' },
+                                    { value: 'cancelled', label: 'Cancelled' },
+                                ]}
+                            />
+                            <Select
+                                value={dateRange}
+                                onChange={handleFilterChange(setDateRange)}
+                                className="flex-1"
+                                options={[
+                                    { value: 'all', label: 'All Time' },
+                                    { value: 'today', label: 'Today' },
+                                    { value: 'tomorrow', label: 'Tomorrow' },
+                                    { value: 'week', label: 'This Week' },
+                                    { value: 'custom', label: 'Custom' },
+                                ]}
+                            />
+                            <button
+                                onClick={() => { fetchBookings(debouncedSearch); onRefresh?.(); }}
+                                title="Refresh"
+                                className="w-9 h-9 flex items-center justify-center rounded-lg border border-white/[0.09] bg-white/[0.04] text-slate-400 hover:text-white hover:border-white/20 transition-colors shrink-0"
+                            >
+                                <RefreshCw size={15} />
+                            </button>
                         </div>
                         {dateRange === 'custom' && (
                             <div className="flex flex-wrap gap-4 pt-2 border-t border-white/[0.06]">
