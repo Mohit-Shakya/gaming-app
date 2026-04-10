@@ -206,6 +206,16 @@ export default function AdminDashboardPage() {
 
   // Filters
   const [cafeFilter, setCafeFilter] = useState<string>("all");
+  const [showCreateCafe, setShowCreateCafe] = useState(false);
+  const [createCafeForm, setCreateCafeForm] = useState({
+    name: '', address: '', phone: '', email: '', owner_email: '',
+    price_starts_from: '', hourly_price: '',
+    ps5_count: '0', ps4_count: '0', xbox_count: '0', pc_count: '0',
+    vr_count: '0', pool_count: '0', snooker_count: '0', arcade_count: '0',
+    steering_wheel_count: '0', racing_sim_count: '0',
+  });
+  const [createCafeLoading, setCreateCafeLoading] = useState(false);
+  const [createCafeMsg, setCreateCafeMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [cafeSearch, setCafeSearch] = useState<string>("");
   const [userRoleFilter, setUserRoleFilter] = useState<string>("all");
   const [userSearch, setUserSearch] = useState<string>("");
@@ -1383,6 +1393,37 @@ export default function AdminDashboardPage() {
     setCafeCoupons([]);
   }
 
+  async function handleCreateCafe(e: React.FormEvent) {
+    e.preventDefault();
+    setCreateCafeLoading(true);
+    setCreateCafeMsg(null);
+    try {
+      const res = await fetch('/api/admin/cafes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(createCafeForm),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to create café');
+      setCreateCafeMsg({ type: 'success', text: `✓ "${data.cafe.name}" created! Slug: /${data.cafe.slug} — activate it from the café list.` });
+      setCreateCafeForm({
+        name: '', address: '', phone: '', email: '', owner_email: '',
+        price_starts_from: '', hourly_price: '',
+        ps5_count: '0', ps4_count: '0', xbox_count: '0', pc_count: '0',
+        vr_count: '0', pool_count: '0', snooker_count: '0', arcade_count: '0',
+        steering_wheel_count: '0', racing_sim_count: '0',
+      });
+      // Reload cafes list
+      const { data: newCafes } = await supabase.from('cafes').select('id, name, slug, address, phone, email, owner_id, is_active, is_featured, created_at, price_starts_from, hourly_price, ps5_count, ps4_count, xbox_count, pc_count').order('created_at', { ascending: false });
+      if (newCafes) setCafes(newCafes as any);
+    } catch (err: any) {
+      setCreateCafeMsg({ type: 'error', text: err.message });
+    } finally {
+      setCreateCafeLoading(false);
+    }
+  }
+
   async function saveCafeInfoAdmin() {
     if (!managedCafeId) return;
     setSavingCafeInfo(true);
@@ -1862,7 +1903,139 @@ export default function AdminDashboardPage() {
                 <div className="flex items-center px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.06] text-xs text-slate-500">
                   {filteredCafes.length} result{filteredCafes.length !== 1 ? 's' : ''}
                 </div>
+                <button
+                  onClick={() => { setShowCreateCafe(true); setCreateCafeMsg(null); }}
+                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold bg-violet-600 hover:bg-violet-500 text-white transition-colors"
+                >
+                  + New Café
+                </button>
               </div>
+
+              {/* ── CREATE CAFÉ MODAL ── */}
+              {showCreateCafe && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={e => { if (e.target === e.currentTarget) setShowCreateCafe(false); }}>
+                  <div className="w-full max-w-2xl bg-[#0d0d12] border border-white/[0.09] rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+                    {/* Modal header */}
+                    <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.08]">
+                      <div>
+                        <h2 className="text-base font-bold text-white">Create New Café</h2>
+                        <p className="text-xs text-slate-500 mt-0.5">New café is created inactive — activate it from the list after setup</p>
+                      </div>
+                      <button onClick={() => setShowCreateCafe(false)} className="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.06] transition-colors">✕</button>
+                    </div>
+
+                    {/* Modal body */}
+                    <form onSubmit={handleCreateCafe} className="overflow-y-auto p-6 space-y-5">
+                      {createCafeMsg && (
+                        <div className={`px-4 py-3 rounded-xl text-sm border ${createCafeMsg.type === 'success' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : 'bg-red-500/10 border-red-500/30 text-red-400'}`}>
+                          {createCafeMsg.text}
+                        </div>
+                      )}
+
+                      {/* Core info */}
+                      <div>
+                        <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">Basic Info</h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {[
+                            { label: 'Café Name *', key: 'name', placeholder: 'e.g. GameZone PS5 Lounge', required: true },
+                            { label: 'Address *', key: 'address', placeholder: 'Full address', required: true },
+                            { label: 'Phone', key: 'phone', placeholder: '+91 XXXXX XXXXX', required: false },
+                            { label: 'Café Email', key: 'email', placeholder: 'cafe@example.com', required: false },
+                          ].map(f => (
+                            <div key={f.key} className={f.key === 'address' ? 'sm:col-span-2' : ''}>
+                              <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-1">{f.label}</label>
+                              <input
+                                type="text"
+                                value={(createCafeForm as any)[f.key]}
+                                onChange={e => setCreateCafeForm(p => ({ ...p, [f.key]: e.target.value }))}
+                                placeholder={f.placeholder}
+                                required={f.required}
+                                className="w-full px-3 py-2.5 rounded-xl bg-white/[0.06] border border-white/[0.09] text-sm text-white placeholder-slate-600 outline-none focus:border-violet-500/60 focus:ring-1 focus:ring-violet-500/30"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Owner link */}
+                      <div>
+                        <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-1">Owner Gmail *</h3>
+                        <p className="text-[11px] text-slate-600 mb-2">This Gmail will be able to log in to the owner dashboard. A profile is created automatically if the owner hasn't signed up yet.</p>
+                        <input
+                          type="email"
+                          value={createCafeForm.owner_email}
+                          onChange={e => setCreateCafeForm(p => ({ ...p, owner_email: e.target.value }))}
+                          placeholder="owner@gmail.com"
+                          required
+                          className="w-full px-3 py-2.5 rounded-xl bg-white/[0.06] border border-white/[0.09] text-sm text-white placeholder-slate-600 outline-none focus:border-violet-500/60 focus:ring-1 focus:ring-violet-500/30"
+                        />
+                      </div>
+
+                      {/* Pricing */}
+                      <div>
+                        <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">Pricing</h3>
+                        <div className="grid grid-cols-2 gap-3">
+                          {[
+                            { label: 'Starting Price (₹)', key: 'price_starts_from' },
+                            { label: 'Hourly Price (₹)', key: 'hourly_price' },
+                          ].map(f => (
+                            <div key={f.key}>
+                              <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-1">{f.label}</label>
+                              <input
+                                type="number"
+                                min="0"
+                                value={(createCafeForm as any)[f.key]}
+                                onChange={e => setCreateCafeForm(p => ({ ...p, [f.key]: e.target.value }))}
+                                className="w-full px-3 py-2.5 rounded-xl bg-white/[0.06] border border-white/[0.09] text-sm text-white outline-none focus:border-violet-500/60"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Stations */}
+                      <div>
+                        <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">Station Counts</h3>
+                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                          {[
+                            { label: 'PS5', key: 'ps5_count' },
+                            { label: 'PS4', key: 'ps4_count' },
+                            { label: 'Xbox', key: 'xbox_count' },
+                            { label: 'PC', key: 'pc_count' },
+                            { label: 'VR', key: 'vr_count' },
+                            { label: 'Pool', key: 'pool_count' },
+                            { label: 'Snooker', key: 'snooker_count' },
+                            { label: 'Arcade', key: 'arcade_count' },
+                            { label: 'Steering', key: 'steering_wheel_count' },
+                            { label: 'Racing Sim', key: 'racing_sim_count' },
+                          ].map(f => (
+                            <div key={f.key}>
+                              <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-1">{f.label}</label>
+                              <input
+                                type="number"
+                                min="0"
+                                value={(createCafeForm as any)[f.key]}
+                                onChange={e => setCreateCafeForm(p => ({ ...p, [f.key]: e.target.value }))}
+                                className="w-full px-3 py-2 rounded-xl bg-white/[0.06] border border-white/[0.09] text-sm text-white text-center outline-none focus:border-violet-500/60"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Footer buttons */}
+                      <div className="flex gap-3 pt-2">
+                        <button type="button" onClick={() => setShowCreateCafe(false)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-white/[0.06] text-slate-300 hover:bg-white/[0.09] transition-colors">
+                          Cancel
+                        </button>
+                        <button type="submit" disabled={createCafeLoading} className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-violet-600 hover:bg-violet-500 disabled:opacity-50 disabled:cursor-not-allowed text-white transition-colors">
+                          {createCafeLoading ? 'Creating…' : 'Create Café'}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
 
               <div className="rounded-2xl bg-[#0d0d14] border border-white/[0.08] overflow-hidden">
                 <div className="overflow-x-auto">
