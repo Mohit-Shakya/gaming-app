@@ -80,9 +80,9 @@ export function TodaySnackOrders({ bookings, todayStr, onNewSale }: TodaySnackOr
   );
 
   return (
-    <div className="rounded-2xl border border-slate-700/50 bg-slate-800/40 overflow-hidden">
+    <div className="rounded-2xl border border-white/[0.06] bg-white/[0.06]/40 overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-4 border-b border-slate-700/40">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.09]/40">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-orange-500/15 flex items-center justify-center">
             <ShoppingBag size={16} className="text-orange-400" />
@@ -103,10 +103,10 @@ export function TodaySnackOrders({ bookings, todayStr, onNewSale }: TodaySnackOr
               <Plus size={11} /> New Sale
             </button>
           )}
-          <span className="text-[11px] px-2.5 py-1 rounded-full bg-slate-700/60 text-slate-400 border border-slate-600/40">
+          <span className="text-[11px] px-2.5 py-1 rounded-full bg-white/[0.08]/60 text-slate-400 border border-slate-600/40">
             {ordersToday.length} {ordersToday.length === 1 ? 'booking' : 'bookings'}
           </span>
-          <span className="text-[11px] px-2.5 py-1 rounded-full bg-slate-700/60 text-slate-400 border border-slate-600/40">
+          <span className="text-[11px] px-2.5 py-1 rounded-full bg-white/[0.08]/60 text-slate-400 border border-slate-600/40">
             {totalItems} items
           </span>
           {totalRevenue > 0 && (
@@ -124,18 +124,18 @@ export function TodaySnackOrders({ bookings, todayStr, onNewSale }: TodaySnackOr
           <p className="text-sm text-slate-500">No snack orders today</p>
         </div>
       ) : (
-        <div className="divide-y divide-slate-700/30">
+        <div className="divide-y divide-white/[0.09]/30">
           {ordersToday.map(booking => {
             const customer = booking.user_name || booking.customer_name || 'Walk-in';
             const phone = booking.user_phone || booking.customer_phone;
             const orderTotal = booking.booking_orders!.reduce((s, o) => s + (o.total_price || 0), 0);
 
             return (
-              <div key={booking.id} className={`px-5 py-3.5 transition-colors ${booking.payment_mode === 'owner' ? 'bg-purple-500/5 hover:bg-purple-500/8' : 'hover:bg-slate-700/20'}`}>
+              <div key={booking.id} className={`px-5 py-3.5 transition-colors ${booking.payment_mode === 'owner' ? 'bg-purple-500/5 hover:bg-purple-500/8' : 'hover:bg-white/[0.08]/20'}`}>
                 {/* Row top: customer + payment + total */}
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2 min-w-0">
-                    <div className="w-7 h-7 rounded-full bg-slate-700 flex items-center justify-center shrink-0">
+                    <div className="w-7 h-7 rounded-full bg-white/[0.08] flex items-center justify-center shrink-0">
                       <span className="text-xs font-semibold text-slate-300">
                         {customer.charAt(0).toUpperCase()}
                       </span>
@@ -159,7 +159,7 @@ export function TodaySnackOrders({ bookings, todayStr, onNewSale }: TodaySnackOr
                   {booking.booking_orders!.map((order, idx) => (
                     <span
                       key={order.id || idx}
-                      className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md bg-slate-700/60 text-slate-300 border border-slate-600/30"
+                      className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md bg-white/[0.08]/60 text-slate-300 border border-slate-600/30"
                     >
                       <span className="text-orange-400 font-medium">×{order.quantity}</span>
                       {order.item_name || 'Item'}

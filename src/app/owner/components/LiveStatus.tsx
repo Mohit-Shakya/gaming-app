@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { CONSOLE_LABELS, CONSOLE_ICONS } from '@/lib/constants';
 import { Button, LoadingSpinner, EmptyState } from './ui';
-import { MonitorPlay, Clock, User, AlertCircle } from 'lucide-react';
+import { MonitorPlay, Clock, User, AlertCircle, Gamepad2 } from 'lucide-react';
 
 type ConsoleId = "ps5" | "ps4" | "xbox" | "pc" | "pool" | "arcade" | "snooker" | "vr" | "steering" | "racing_sim";
 
@@ -262,7 +262,7 @@ export function LiveStatus({ cafeId, isMobile = false }: LiveStatusProps) {
     if (consoleData.length === 0) {
         return (
             <EmptyState
-                icon="🎮"
+                icon={<Gamepad2 size={24} />}
                 title="No Stations Found"
                 description="Configure your cafe stations in Settings to see them here."
                 action={<Button variant="primary">Go to Settings</Button>}
@@ -314,9 +314,11 @@ export function LiveStatus({ cafeId, isMobile = false }: LiveStatusProps) {
 
                                     {/* Header */}
                                     <div className="flex items-center gap-2.5 mb-4">
-                                        <div className="text-3xl">{session.groupIcon}</div>
+                                        <div className="w-9 h-9 rounded-xl bg-white/[0.08] flex items-center justify-center shrink-0">
+                                            <Gamepad2 size={18} className="text-slate-300" />
+                                        </div>
                                         <div>
-                                            <div className="text-xs text-[#6b7280] font-semibold uppercase tracking-wide">
+                                            <div className="text-xs text-slate-500 font-semibold uppercase tracking-wide">
                                                 {session.groupLabel}-{String(session.consoleNumber).padStart(2, '0')}
                                             </div>
                                             <div className="text-base font-bold text-white">
@@ -355,7 +357,7 @@ export function LiveStatus({ cafeId, isMobile = false }: LiveStatusProps) {
             )}
 
             {/* Header — stat chips */}
-            <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-5">
+            <div className="bg-white/[0.03] border border-white/[0.08] rounded-xl p-5">
                 <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
                     <div className="flex items-center gap-3">
                         <div className="relative flex h-3 w-3">
@@ -394,9 +396,9 @@ export function LiveStatus({ cafeId, isMobile = false }: LiveStatusProps) {
                 <div key={group.type}>
                     <div className="flex items-center justify-between mb-3 px-1">
                         <div className="flex items-center gap-2">
-                            <span className="text-xl">{group.icon}</span>
+                            <Gamepad2 size={16} className="text-slate-500 shrink-0" />
                             <span className="text-base font-bold text-white">{group.label}</span>
-                            <span className="px-2 py-0.5 rounded-full bg-slate-800 text-xs text-slate-400 font-medium">{group.total}</span>
+                            <span className="px-2 py-0.5 rounded-full bg-white/[0.06] text-xs text-slate-400 font-medium">{group.total}</span>
                         </div>
                         <div className="flex items-center gap-3 text-sm font-medium">
                             <span className="flex items-center gap-1.5">
@@ -441,9 +443,11 @@ export function LiveStatus({ cafeId, isMobile = false }: LiveStatusProps) {
 
                                     {/* Header */}
                                     <div className="flex items-center gap-2.5 mb-3">
-                                        <div className="text-2xl">{group.icon}</div>
+                                        <div className="w-8 h-8 rounded-lg bg-white/[0.08] flex items-center justify-center shrink-0">
+                                            <Gamepad2 size={15} className="text-slate-400" />
+                                        </div>
                                         <div>
-                                            <div className="text-xs text-[#6b7280] font-semibold uppercase tracking-wide">{group.label}</div>
+                                            <div className="text-xs text-slate-500 font-semibold uppercase tracking-wide">{group.label}</div>
                                             <div className="text-base font-bold text-white">#{String(station.consoleNumber).padStart(2, '0')}</div>
                                         </div>
                                     </div>

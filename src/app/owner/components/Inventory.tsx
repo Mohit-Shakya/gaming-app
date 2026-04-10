@@ -321,13 +321,13 @@ export default function Inventory({ cafeId }: InventoryProps) {
       </div>
 
       {/* Tab Navigation */}
-      <div className="flex gap-2 border-b border-slate-700 pb-2">
+      <div className="flex gap-2 border-b border-white/[0.09] pb-2">
         <button
           onClick={() => setActiveTab('items')}
           className={`flex items-center gap-2 px-4 py-2 rounded-t-lg font-medium transition ${
             activeTab === 'items'
               ? 'bg-cyan-500/20 text-cyan-400 border-b-2 border-cyan-500'
-              : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
+              : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
           }`}
         >
           <Package className="w-4 h-4" />
@@ -338,7 +338,7 @@ export default function Inventory({ cafeId }: InventoryProps) {
           className={`flex items-center gap-2 px-4 py-2 rounded-t-lg font-medium transition ${
             activeTab === 'analytics'
               ? 'bg-cyan-500/20 text-cyan-400 border-b-2 border-cyan-500'
-              : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
+              : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
           }`}
         >
           <BarChart3 className="w-4 h-4" />
@@ -365,13 +365,13 @@ export default function Inventory({ cafeId }: InventoryProps) {
             placeholder="Search items..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-slate-800/50 border border-slate-700 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-cyan-500"
+            className="w-full pl-10 pr-4 py-2.5 bg-white/[0.04] border border-white/[0.09] rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-cyan-500"
           />
         </div>
         <select
           value={filterCategory}
           onChange={(e) => setFilterCategory(e.target.value as InventoryCategory | "all")}
-          className="px-4 py-2.5 bg-slate-800/50 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-cyan-500"
+          className="px-4 py-2.5 bg-white/[0.04] border border-white/[0.09] rounded-xl text-white focus:outline-none focus:border-cyan-500"
         >
           <option value="all">All Categories</option>
           {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
@@ -382,23 +382,23 @@ export default function Inventory({ cafeId }: InventoryProps) {
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
+        <div className="bg-white/[0.04] border border-white/[0.09] rounded-xl p-4">
           <div className="text-2xl font-bold text-white">{items.length}</div>
           <div className="text-sm text-slate-400">Total Items</div>
         </div>
-        <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
+        <div className="bg-white/[0.04] border border-white/[0.09] rounded-xl p-4">
           <div className="text-2xl font-bold text-green-400">
             {items.filter(i => i.is_available).length}
           </div>
           <div className="text-sm text-slate-400">Available</div>
         </div>
-        <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
+        <div className="bg-white/[0.04] border border-white/[0.09] rounded-xl p-4">
           <div className="text-2xl font-bold text-amber-400">
             {items.filter(i => i.stock_quantity > 0 && i.stock_quantity <= 5).length}
           </div>
           <div className="text-sm text-slate-400">Low Stock</div>
         </div>
-        <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-4">
+        <div className="bg-white/[0.04] border border-white/[0.09] rounded-xl p-4">
           <div className="text-2xl font-bold text-red-400">
             {items.filter(i => i.stock_quantity === 0).length}
           </div>
@@ -408,7 +408,7 @@ export default function Inventory({ cafeId }: InventoryProps) {
 
       {/* Items List */}
       {filteredItems.length === 0 ? (
-        <div className="text-center py-12 bg-slate-800/30 rounded-2xl border border-slate-700">
+        <div className="text-center py-12 bg-white/[0.03] rounded-2xl border border-white/[0.09]">
           <Package className="w-12 h-12 text-slate-600 mx-auto mb-3" />
           <p className="text-slate-400">
             {items.length === 0 ? "No items yet. Add your first item!" : "No items match your search."}
@@ -437,8 +437,8 @@ export default function Inventory({ cafeId }: InventoryProps) {
                   {categoryItems.map((item) => (
                     <div
                       key={item.id}
-                      className={`bg-slate-800/50 border rounded-xl p-4 flex items-center justify-between gap-4 ${
-                        item.is_available ? "border-slate-700" : "border-red-500/30 opacity-60"
+                      className={`bg-white/[0.04] border rounded-xl p-4 flex items-center justify-between gap-4 ${
+                        item.is_available ? "border-white/[0.09]" : "border-red-500/30 opacity-60"
                       }`}
                     >
                       <div className="flex-1 min-w-0">
@@ -470,7 +470,7 @@ export default function Inventory({ cafeId }: InventoryProps) {
                         <button
                           onClick={() => updateStock(item, -1)}
                           disabled={item.stock_quantity === 0}
-                          className="w-8 h-8 flex items-center justify-center bg-slate-700 hover:bg-slate-600 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="w-8 h-8 flex items-center justify-center bg-white/[0.08] hover:bg-slate-600 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           -
                         </button>
@@ -479,7 +479,7 @@ export default function Inventory({ cafeId }: InventoryProps) {
                         </span>
                         <button
                           onClick={() => updateStock(item, 1)}
-                          className="w-8 h-8 flex items-center justify-center bg-slate-700 hover:bg-slate-600 text-white rounded-lg"
+                          className="w-8 h-8 flex items-center justify-center bg-white/[0.08] hover:bg-slate-600 text-white rounded-lg"
                         >
                           +
                         </button>
@@ -492,7 +492,7 @@ export default function Inventory({ cafeId }: InventoryProps) {
                           className={`p-2 rounded-lg transition ${
                             item.is_available
                               ? "bg-green-500/20 text-green-400 hover:bg-green-500/30"
-                              : "bg-slate-700 text-slate-400 hover:bg-slate-600"
+                              : "bg-white/[0.08] text-slate-400 hover:bg-slate-600"
                           }`}
                           title={item.is_available ? "Mark unavailable" : "Mark available"}
                         >
@@ -500,7 +500,7 @@ export default function Inventory({ cafeId }: InventoryProps) {
                         </button>
                         <button
                           onClick={() => openEditModal(item)}
-                          className="p-2 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg transition"
+                          className="p-2 bg-white/[0.08] hover:bg-slate-600 text-slate-300 rounded-lg transition"
                           title="Edit"
                         >
                           <Pencil className="w-4 h-4" />
@@ -527,14 +527,14 @@ export default function Inventory({ cafeId }: InventoryProps) {
       {/* Add/Edit Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md p-6">
+          <div className="bg-white/[0.03] border border-white/[0.09] rounded-2xl w-full max-w-md p-6">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-bold text-white">
                 {editingItem ? "Edit Item" : "Add New Item"}
               </h3>
               <button
                 onClick={() => setShowModal(false)}
-                className="p-2 hover:bg-slate-800 rounded-lg transition"
+                className="p-2 hover:bg-white/[0.06] rounded-lg transition"
               >
                 <X className="w-5 h-5 text-slate-400" />
               </button>
@@ -557,7 +557,7 @@ export default function Inventory({ cafeId }: InventoryProps) {
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   placeholder="e.g., Coca Cola"
-                  className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-cyan-500"
+                  className="w-full px-4 py-2.5 bg-white/[0.06] border border-white/[0.09] rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-cyan-500"
                 />
               </div>
 
@@ -568,7 +568,7 @@ export default function Inventory({ cafeId }: InventoryProps) {
                 <select
                   value={formData.category}
                   onChange={(e) => setFormData({ ...formData, category: e.target.value as InventoryCategory })}
-                  className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-cyan-500"
+                  className="w-full px-4 py-2.5 bg-white/[0.06] border border-white/[0.09] rounded-xl text-white focus:outline-none focus:border-cyan-500"
                 >
                   {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
                     <option key={key} value={key}>{label}</option>
@@ -588,7 +588,7 @@ export default function Inventory({ cafeId }: InventoryProps) {
                     placeholder="0"
                     min="0"
                     step="1"
-                    className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-cyan-500"
+                    className="w-full px-4 py-2.5 bg-white/[0.06] border border-white/[0.09] rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-cyan-500"
                   />
                 </div>
                 <div>
@@ -602,7 +602,7 @@ export default function Inventory({ cafeId }: InventoryProps) {
                     placeholder="Optional"
                     min="0"
                     step="1"
-                    className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-cyan-500"
+                    className="w-full px-4 py-2.5 bg-white/[0.06] border border-white/[0.09] rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-cyan-500"
                   />
                 </div>
               </div>
@@ -617,7 +617,7 @@ export default function Inventory({ cafeId }: InventoryProps) {
                   onChange={(e) => setFormData({ ...formData, stock_quantity: e.target.value })}
                   placeholder="0"
                   min="0"
-                  className="w-full px-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-cyan-500"
+                  className="w-full px-4 py-2.5 bg-white/[0.06] border border-white/[0.09] rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-cyan-500"
                 />
               </div>
 
@@ -626,7 +626,7 @@ export default function Inventory({ cafeId }: InventoryProps) {
                   type="button"
                   onClick={() => setFormData({ ...formData, is_available: !formData.is_available })}
                   className={`relative w-12 h-6 rounded-full transition ${
-                    formData.is_available ? "bg-cyan-500" : "bg-slate-700"
+                    formData.is_available ? "bg-cyan-500" : "bg-white/[0.08]"
                   }`}
                 >
                   <div
@@ -642,7 +642,7 @@ export default function Inventory({ cafeId }: InventoryProps) {
             <div className="flex gap-3 mt-6">
               <button
                 onClick={() => setShowModal(false)}
-                className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-medium transition"
+                className="flex-1 py-2.5 bg-white/[0.06] hover:bg-white/[0.08] text-white rounded-xl font-medium transition"
               >
                 Cancel
               </button>

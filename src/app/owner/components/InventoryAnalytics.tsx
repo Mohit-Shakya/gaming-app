@@ -440,7 +440,7 @@ export default function InventoryAnalytics({ cafeId }: InventoryAnalyticsProps) 
         </div>
 
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2 bg-slate-900/50 p-1 rounded-xl border border-slate-800">
+          <div className="flex items-center gap-2 bg-white/[0.03] p-1 rounded-xl border border-white/[0.08]">
             <Select
               value={dateRange}
               onChange={(val) => {
@@ -462,7 +462,7 @@ export default function InventoryAnalytics({ cafeId }: InventoryAnalyticsProps) 
             />
             <Button
               variant="ghost"
-              className="h-9 w-9 p-0 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+              className="h-9 w-9 p-0 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.06]"
               onClick={exportToCSV}
               title="Export to CSV"
             >
@@ -477,7 +477,7 @@ export default function InventoryAnalytics({ cafeId }: InventoryAnalyticsProps) 
         <Card className="relative animate-in slide-in-from-top-2 duration-200">
           <button
             onClick={() => setShowCustomPicker(false)}
-            className="absolute top-4 right-4 p-1 hover:bg-slate-800 rounded-lg transition-colors"
+            className="absolute top-4 right-4 p-1 hover:bg-white/[0.06] rounded-lg transition-colors"
           >
             <X size={18} className="text-slate-400" />
           </button>
@@ -492,7 +492,7 @@ export default function InventoryAnalytics({ cafeId }: InventoryAnalyticsProps) 
                 type="date"
                 value={customStart}
                 onChange={(e) => setCustomStart(e.target.value)}
-                className="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-white focus:border-cyan-500 focus:outline-none"
+                className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.09] rounded-lg text-white focus:border-cyan-500 focus:outline-none"
               />
             </div>
             <div className="flex-1">
@@ -501,7 +501,7 @@ export default function InventoryAnalytics({ cafeId }: InventoryAnalyticsProps) 
                 type="date"
                 value={customEnd}
                 onChange={(e) => setCustomEnd(e.target.value)}
-                className="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-white focus:border-cyan-500 focus:outline-none"
+                className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.09] rounded-lg text-white focus:border-cyan-500 focus:outline-none"
               />
             </div>
             <div className="flex items-end">
@@ -515,7 +515,7 @@ export default function InventoryAnalytics({ cafeId }: InventoryAnalyticsProps) 
 
       {/* Key Metrics */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card padding="lg" className="bg-gradient-to-br from-slate-900 to-slate-900/50 border-slate-800">
+        <Card padding="lg" className="bg-gradient-to-br from-slate-900 to-slate-900/50 border-white/[0.08]">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-sm font-medium text-slate-400 mb-1">F&B Revenue</p>
@@ -531,7 +531,7 @@ export default function InventoryAnalytics({ cafeId }: InventoryAnalyticsProps) 
           </div>
         </Card>
 
-        <Card padding="lg" className="bg-gradient-to-br from-slate-900 to-slate-900/50 border-slate-800">
+        <Card padding="lg" className="bg-gradient-to-br from-slate-900 to-slate-900/50 border-white/[0.08]">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-sm font-medium text-slate-400 mb-1">Total Profit</p>
@@ -547,7 +547,7 @@ export default function InventoryAnalytics({ cafeId }: InventoryAnalyticsProps) 
           </div>
         </Card>
 
-        <Card padding="lg" className="bg-gradient-to-br from-slate-900 to-slate-900/50 border-slate-800">
+        <Card padding="lg" className="bg-gradient-to-br from-slate-900 to-slate-900/50 border-white/[0.08]">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-sm font-medium text-slate-400 mb-1">Items Sold</p>
@@ -563,7 +563,7 @@ export default function InventoryAnalytics({ cafeId }: InventoryAnalyticsProps) 
           </div>
         </Card>
 
-        <Card padding="lg" className="bg-gradient-to-br from-slate-900 to-slate-900/50 border-slate-800">
+        <Card padding="lg" className="bg-gradient-to-br from-slate-900 to-slate-900/50 border-white/[0.08]">
           <div className="flex items-start justify-between">
             <div>
               <p className="text-sm font-medium text-slate-400 mb-1">Avg Order</p>
@@ -611,7 +611,7 @@ export default function InventoryAnalytics({ cafeId }: InventoryAnalyticsProps) 
                         <span className="text-sm font-medium text-white truncate max-w-[150px]">{item.itemName}</span>
                         <span className="text-sm text-slate-400">{item.quantitySold} sold</span>
                       </div>
-                      <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+                      <div className="h-2 bg-white/[0.06] rounded-full overflow-hidden">
                         <div
                           className={`h-full ${colors.bar} rounded-full transition-all duration-500`}
                           style={{ width: `${widthPercent}%` }}
@@ -662,7 +662,7 @@ export default function InventoryAnalytics({ cafeId }: InventoryAnalyticsProps) 
                           ₹{cat.revenue.toLocaleString()} ({cat.percentage.toFixed(0)}%)
                         </span>
                       </div>
-                      <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+                      <div className="h-2 bg-white/[0.06] rounded-full overflow-hidden">
                         <div
                           className={`h-full ${colors.bar} rounded-full transition-all duration-500`}
                           style={{ width: `${cat.percentage}%` }}
@@ -735,7 +735,7 @@ export default function InventoryAnalytics({ cafeId }: InventoryAnalyticsProps) 
       {/* Sale Transactions with Customer Details */}
       {saleTransactions.length > 0 && (
         <Card padding="none" className="overflow-hidden">
-          <div className="p-5 border-b border-slate-800 flex items-center justify-between">
+          <div className="p-5 border-b border-white/[0.08] flex items-center justify-between">
             <div>
               <h3 className="text-lg font-semibold text-white flex items-center gap-2">
                 <Receipt size={20} className="text-cyan-500" />
@@ -745,7 +745,7 @@ export default function InventoryAnalytics({ cafeId }: InventoryAnalyticsProps) 
             </div>
           </div>
 
-          <div className="divide-y divide-slate-800/60">
+          <div className="divide-y divide-white/[0.08]/60">
             {saleTransactions.map(tx => {
               const payMode = (tx.paymentMode || 'cash').toLowerCase();
               const isOwner = tx.isOwnerUse;
@@ -757,7 +757,7 @@ export default function InventoryAnalytics({ cafeId }: InventoryAnalyticsProps) 
               return (
                 <div
                   key={tx.bookingId}
-                  className={`px-5 py-4 hover:bg-slate-800/20 transition-colors ${isOwner ? 'opacity-60' : ''}`}
+                  className={`px-5 py-4 hover:bg-white/[0.02] transition-colors ${isOwner ? 'opacity-60' : ''}`}
                 >
                   <div className="flex items-start justify-between gap-4">
                     {/* Left: customer + date */}
@@ -785,7 +785,7 @@ export default function InventoryAnalytics({ cafeId }: InventoryAnalyticsProps) 
                             <CreditCard size={10} />UPI
                           </span>
                         ) : (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-700 text-slate-400 capitalize">{tx.paymentMode}</span>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-white/[0.08] text-slate-400 capitalize">{tx.paymentMode}</span>
                         )}
                       </div>
 
@@ -794,7 +794,7 @@ export default function InventoryAnalytics({ cafeId }: InventoryAnalyticsProps) 
                         {tx.items.map((item, idx) => (
                           <span
                             key={idx}
-                            className="text-[11px] px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 border border-slate-700"
+                            className="text-[11px] px-2 py-0.5 rounded-md bg-white/[0.06] text-slate-400 border border-white/[0.09]"
                           >
                             {item.name} ×{item.quantity} · ₹{item.price.toLocaleString()}
                           </span>
@@ -863,7 +863,7 @@ export default function InventoryAnalytics({ cafeId }: InventoryAnalyticsProps) 
 
       {/* Empty State */}
       {!loading && orders.length === 0 && (
-        <div className="text-center py-12 bg-slate-800/30 rounded-2xl border border-slate-700">
+        <div className="text-center py-12 bg-white/[0.03] rounded-2xl border border-white/[0.09]">
           <Package className="w-12 h-12 text-slate-600 mx-auto mb-3" />
           <p className="text-slate-400">No F&B sales data for this period.</p>
           <p className="text-slate-500 text-sm mt-1">Try selecting a different date range.</p>

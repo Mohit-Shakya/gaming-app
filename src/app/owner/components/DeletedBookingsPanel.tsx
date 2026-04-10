@@ -94,7 +94,7 @@ export function DeletedBookingsPanel() {
         {/* Toggle header */}
         <button
           onClick={handleToggle}
-          className="w-full flex items-center justify-between px-5 py-3.5 rounded-xl bg-slate-800/60 border border-slate-700/50 hover:bg-slate-800 transition-colors group"
+          className="w-full flex items-center justify-between px-5 py-3.5 rounded-xl bg-white/[0.04] border border-white/[0.06] hover:bg-white/[0.06] transition-colors group"
         >
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center">
@@ -121,7 +121,7 @@ export function DeletedBookingsPanel() {
         {open && (
           <div className="mt-3">
             <Card padding="none">
-              <div className="p-4 border-b border-slate-800 flex items-center justify-between">
+              <div className="p-4 border-b border-white/[0.08] flex items-center justify-between">
                 <div className="flex items-center gap-2 text-sm text-slate-400">
                   <AlertTriangle size={14} className="text-amber-400" />
                   <span>Deleted bookings stay hidden from the main list until you restore or permanently remove them.</span>
@@ -148,14 +148,14 @@ export function DeletedBookingsPanel() {
                   <p className="text-slate-500 text-sm">No deleted bookings</p>
                 </div>
               ) : (
-                <div className="divide-y divide-slate-800">
+                <div className="divide-y divide-white/[0.08]">
                   {bookings.map((b) => {
                     const isProcessing = actionId === b.id;
                     const customerLabel = b.user_name || b.customer_name || 'Walk-in';
                     return (
                       <div
                         key={b.id}
-                        className="flex items-start justify-between gap-4 px-5 py-4 hover:bg-slate-800/30 transition-colors"
+                        className="flex items-start justify-between gap-4 px-5 py-4 hover:bg-white/[0.03] transition-colors"
                       >
                         <div className="flex-1 min-w-0">
                           <div className="flex flex-wrap items-center gap-2 mb-1">
@@ -163,14 +163,14 @@ export function DeletedBookingsPanel() {
                             {b.user_phone && (
                               <span className="text-xs text-slate-400">{b.user_phone}</span>
                             )}
-                            <span className="text-xs px-2 py-0.5 rounded-full bg-slate-700 text-slate-400">
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-white/[0.08] text-slate-400">
                               {b.cafe_name}
                             </span>
                             <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                               b.status === 'completed' ? 'bg-emerald-500/15 text-emerald-400' :
                               b.status === 'confirmed' ? 'bg-blue-500/15 text-blue-400' :
                               b.status === 'cancelled' ? 'bg-red-500/15 text-red-400' :
-                              'bg-slate-700 text-slate-400'
+                              'bg-white/[0.08] text-slate-400'
                             }`}>
                               {b.status}
                             </span>
@@ -188,7 +188,7 @@ export function DeletedBookingsPanel() {
                               {b.booking_items.map((item) => (
                                 <span
                                   key={item.id}
-                                  className="text-[11px] px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 border border-slate-700"
+                                  className="text-[11px] px-2 py-0.5 rounded-md bg-white/[0.06] text-slate-400 border border-white/[0.09]"
                                 >
                                   {item.console} ×{item.quantity} · {formatCurrency(item.price)}
                                 </span>
@@ -221,11 +221,11 @@ export function DeletedBookingsPanel() {
                     );
                   })}
                   {hasMore && (
-                    <div className="py-4 text-center border-t border-slate-800">
+                    <div className="py-4 text-center border-t border-white/[0.08]">
                       <button
                         onClick={() => fetchDeleted(bookings.length)}
                         disabled={loadingMore}
-                        className="flex items-center gap-2 mx-auto px-4 py-2 rounded-lg text-xs font-medium bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-300 transition-colors disabled:opacity-50"
+                        className="flex items-center gap-2 mx-auto px-4 py-2 rounded-lg text-xs font-medium bg-white/[0.06] text-slate-400 hover:bg-white/[0.08] hover:text-slate-300 transition-colors disabled:opacity-50"
                       >
                         {loadingMore ? <Loader2 size={13} className="animate-spin" /> : null}
                         Load more

@@ -358,7 +358,7 @@ See you soon! 🎯`;
                     <div className="flex items-center gap-3">
                         <button
                             onClick={() => { setView('list'); setSelectedCoupon(null); resetForm(); }}
-                            className="p-2 hover:bg-white/5 rounded-lg transition-colors border border-transparent hover:border-slate-800"
+                            className="p-2 hover:bg-white/5 rounded-lg transition-colors border border-transparent hover:border-white/[0.08]"
                         >
                             <ChevronLeft className="w-5 h-5 text-slate-400" />
                         </button>
@@ -376,7 +376,7 @@ See you soon! 🎯`;
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
                     {/* Left Column: Form */}
                     <div className="lg:col-span-2 space-y-6">
-                        <Card padding="lg" className="space-y-8 bg-slate-900/50 border-slate-800">
+                        <Card padding="lg" className="space-y-8 bg-white/[0.03] border-white/[0.08]">
                             {/* Coupon Code Section */}
                             <div>
                                 <h3 className="text-lg font-medium text-white mb-4 flex items-center gap-2">
@@ -393,9 +393,9 @@ See you soon! 🎯`;
                                                 placeholder="e.g., SUMMER50 (Auto-generated if empty)"
                                                 value={formData.code}
                                                 onChange={e => setFormData({ ...formData, code: e.target.value.toUpperCase() })}
-                                                className="w-full pl-4 pr-12 py-3 bg-slate-950 border border-slate-700 rounded-xl text-white font-mono text-lg tracking-wider placeholder-slate-600 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
+                                                className="w-full pl-4 pr-12 py-3 bg-slate-950 border border-white/[0.09] rounded-xl text-white font-mono text-lg tracking-wider placeholder-slate-600 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all"
                                             />
-                                            <div className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 bg-slate-800 text-slate-400 rounded-md text-xs font-mono border border-slate-700">
+                                            <div className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 bg-white/[0.06] text-slate-400 rounded-md text-xs font-mono border border-white/[0.09]">
                                                 CODE
                                             </div>
                                         </div>
@@ -410,10 +410,10 @@ See you soon! 🎯`;
                                                 onClick={() => setFormData({ ...formData, discountType: 'percentage' })}
                                                 className={`group relative p-4 rounded-xl border-2 text-left transition-all ${formData.discountType === 'percentage'
                                                         ? 'border-emerald-500 bg-emerald-500/5'
-                                                        : 'border-slate-800 hover:border-slate-700 bg-slate-900/50'
+                                                        : 'border-white/[0.08] hover:border-white/[0.09] bg-white/[0.03]'
                                                     }`}
                                             >
-                                                <div className={`p-2 w-fit rounded-lg mb-3 ${formData.discountType === 'percentage' ? 'bg-emerald-500 text-white' : 'bg-slate-800 text-slate-400 group-hover:bg-slate-700'}`}>
+                                                <div className={`p-2 w-fit rounded-lg mb-3 ${formData.discountType === 'percentage' ? 'bg-emerald-500 text-white' : 'bg-white/[0.06] text-slate-400 group-hover:bg-white/[0.08]'}`}>
                                                     <div className="text-xl font-bold">%</div>
                                                 </div>
                                                 <div className="text-sm font-medium text-white mb-0.5">Percentage Off</div>
@@ -425,10 +425,10 @@ See you soon! 🎯`;
                                                 onClick={() => setFormData({ ...formData, discountType: 'minutes' })}
                                                 className={`group relative p-4 rounded-xl border-2 text-left transition-all ${formData.discountType === 'minutes'
                                                         ? 'border-blue-500 bg-blue-500/5'
-                                                        : 'border-slate-800 hover:border-slate-700 bg-slate-900/50'
+                                                        : 'border-white/[0.08] hover:border-white/[0.09] bg-white/[0.03]'
                                                     }`}
                                             >
-                                                <div className={`p-2 w-fit rounded-lg mb-3 ${formData.discountType === 'minutes' ? 'bg-blue-500 text-white' : 'bg-slate-800 text-slate-400 group-hover:bg-slate-700'}`}>
+                                                <div className={`p-2 w-fit rounded-lg mb-3 ${formData.discountType === 'minutes' ? 'bg-blue-500 text-white' : 'bg-white/[0.06] text-slate-400 group-hover:bg-white/[0.08]'}`}>
                                                     <Clock size={20} />
                                                 </div>
                                                 <div className="text-sm font-medium text-white mb-0.5">Free Game Time</div>
@@ -438,7 +438,7 @@ See you soon! 🎯`;
                                     </div>
 
                                     {/* Value Inputs */}
-                                    <div className="p-5 rounded-xl bg-slate-950 border border-slate-800">
+                                    <div className="p-5 rounded-xl bg-slate-950 border border-white/[0.08]">
                                         {formData.discountType === 'percentage' ? (
                                             <div className="grid grid-cols-2 gap-6">
                                                 <div>
@@ -448,7 +448,7 @@ See you soon! 🎯`;
                                                             type="number"
                                                             value={formData.discountValue}
                                                             onChange={e => setFormData({ ...formData, discountValue: e.target.value })}
-                                                            className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white text-xl font-semibold pr-10 focus:border-emerald-500 focus:outline-none transition-colors"
+                                                            className="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.09] rounded-lg text-white text-xl font-semibold pr-10 focus:border-emerald-500 focus:outline-none transition-colors"
                                                             placeholder="0"
                                                             max="100"
                                                         />
@@ -462,7 +462,7 @@ See you soon! 🎯`;
                                                             type="number"
                                                             value={formData.bonusMinutes}
                                                             onChange={e => setFormData({ ...formData, bonusMinutes: e.target.value })}
-                                                            className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white text-xl font-semibold pr-16 focus:border-emerald-500 focus:outline-none transition-colors"
+                                                            className="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.09] rounded-lg text-white text-xl font-semibold pr-16 focus:border-emerald-500 focus:outline-none transition-colors"
                                                             placeholder="0"
                                                         />
                                                         <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 text-sm">mins</span>
@@ -477,7 +477,7 @@ See you soon! 🎯`;
                                                         type="number"
                                                         value={formData.bonusMinutes}
                                                         onChange={e => setFormData({ ...formData, bonusMinutes: e.target.value })}
-                                                        className="w-full px-4 py-3 bg-slate-900 border border-slate-700 rounded-lg text-white text-xl font-semibold pr-16 focus:border-blue-500 focus:outline-none transition-colors"
+                                                        className="w-full px-4 py-3 bg-white/[0.03] border border-white/[0.09] rounded-lg text-white text-xl font-semibold pr-16 focus:border-blue-500 focus:outline-none transition-colors"
                                                         placeholder="30"
                                                     />
                                                     <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 text-sm">mins</span>
@@ -489,7 +489,7 @@ See you soon! 🎯`;
                             </div>
 
                             {/* Rules & Limits */}
-                            <div className="pt-6 border-t border-slate-800">
+                            <div className="pt-6 border-t border-white/[0.08]">
                                 <h3 className="text-lg font-medium text-white mb-4 flex items-center gap-2">
                                     <Filter size={18} className="text-blue-500" />
                                     Rules & Validity
@@ -503,7 +503,7 @@ See you soon! 🎯`;
                                                 type="date"
                                                 value={formData.validFrom}
                                                 onChange={e => setFormData({ ...formData, validFrom: e.target.value })}
-                                                className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white focus:border-emerald-500 focus:outline-none"
+                                                className="w-full px-3 py-2 bg-slate-950 border border-white/[0.09] rounded-lg text-white focus:border-emerald-500 focus:outline-none"
                                             />
                                         </div>
                                         <div>
@@ -512,7 +512,7 @@ See you soon! 🎯`;
                                                 type="date"
                                                 value={formData.validUntil}
                                                 onChange={e => setFormData({ ...formData, validUntil: e.target.value })}
-                                                className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white focus:border-emerald-500 focus:outline-none"
+                                                className="w-full px-3 py-2 bg-slate-950 border border-white/[0.09] rounded-lg text-white focus:border-emerald-500 focus:outline-none"
                                             />
                                         </div>
                                     </div>
@@ -524,7 +524,7 @@ See you soon! 🎯`;
                                                 type="number"
                                                 value={formData.minOrderAmount}
                                                 onChange={e => setFormData({ ...formData, minOrderAmount: e.target.value })}
-                                                className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white focus:border-emerald-500 focus:outline-none"
+                                                className="w-full px-3 py-2 bg-slate-950 border border-white/[0.09] rounded-lg text-white focus:border-emerald-500 focus:outline-none"
                                                 placeholder="0"
                                             />
                                         </div>
@@ -534,7 +534,7 @@ See you soon! 🎯`;
                                                 type="number"
                                                 value={formData.maxUses}
                                                 onChange={e => setFormData({ ...formData, maxUses: e.target.value })}
-                                                className="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-white focus:border-emerald-500 focus:outline-none"
+                                                className="w-full px-3 py-2 bg-slate-950 border border-white/[0.09] rounded-lg text-white focus:border-emerald-500 focus:outline-none"
                                                 placeholder="Unlimited"
                                             />
                                         </div>
@@ -544,7 +544,7 @@ See you soon! 🎯`;
                                 <div className="mt-6 flex flex-wrap gap-3">
                                     <label className={`flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-all ${formData.newCustomerOnly
                                             ? 'bg-blue-500/10 border-blue-500 text-blue-400'
-                                            : 'bg-slate-900 border-slate-700 text-slate-400 hover:border-slate-600'
+                                            : 'bg-white/[0.03] border-white/[0.09] text-slate-400 hover:border-slate-600'
                                         }`}>
                                         <input
                                             type="checkbox"
@@ -558,7 +558,7 @@ See you soon! 🎯`;
 
                                     <label className={`flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-all ${formData.isActive
                                             ? 'bg-emerald-500/10 border-emerald-500 text-emerald-400'
-                                            : 'bg-slate-900 border-slate-700 text-slate-400 hover:border-slate-600'
+                                            : 'bg-white/[0.03] border-white/[0.09] text-slate-400 hover:border-slate-600'
                                         }`}>
                                         <input
                                             type="checkbox"
@@ -599,7 +599,7 @@ See you soon! 🎯`;
                         <div className="space-y-4">
                             <h3 className="text-sm font-medium text-slate-400 uppercase tracking-widest pl-1">Live Preview</h3>
 
-                            <div className="relative bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl shadow-black/50 overflow-hidden">
+                            <div className="relative bg-white/[0.03] border border-white/[0.08] rounded-2xl p-6 shadow-2xl shadow-black/50 overflow-hidden">
                                 <div className="absolute top-0 right-0 p-4 opacity-50">
                                     <div className="w-20 h-20 bg-emerald-500/10 rounded-full blur-2xl"></div>
                                 </div>
@@ -633,12 +633,12 @@ See you soon! 🎯`;
                                         <span>Redemptions</span>
                                         <span>0 / {formData.maxUses || '∞'}</span>
                                     </div>
-                                    <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                                    <div className="h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
                                         <div className="h-full bg-emerald-500 rounded-full w-0" />
                                     </div>
                                 </div>
 
-                                <div className="space-y-3 pt-6 border-t border-slate-800/50">
+                                <div className="space-y-3 pt-6 border-t border-white/[0.06]">
                                     <div className="flex items-center justify-between text-sm">
                                         <span className="text-slate-500 flex items-center gap-2"><Calendar size={14} /> Valid Until</span>
                                         <span className="text-slate-300">{formData.validUntil ? formatDate(formData.validUntil) : 'Forever'}</span>
@@ -738,7 +738,7 @@ See you soon! 🎯`;
                     </div>
 
                     {/* Stats Row */}
-                    <div className="grid grid-cols-4 gap-4 mt-6 pt-6 border-t border-slate-800">
+                    <div className="grid grid-cols-4 gap-4 mt-6 pt-6 border-t border-white/[0.08]">
                         <div>
                             <div className="text-xs text-slate-500 mb-1">Usage</div>
                             <div className="text-lg font-semibold text-white">
@@ -765,7 +765,7 @@ See you soon! 🎯`;
                 </Card>
 
                 {/* Tabs */}
-                <div className="flex border-b border-slate-800">
+                <div className="flex border-b border-white/[0.08]">
                     <button
                         onClick={() => setActiveTab('details')}
                         className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-colors ${activeTab === 'details'
@@ -783,7 +783,7 @@ See you soon! 🎯`;
                             }`}
                     >
                         <UserCheck size={16} /> Eligible Customers
-                        <span className="ml-1 px-2 py-0.5 text-xs bg-slate-800 rounded-full">{eligibleCount}</span>
+                        <span className="ml-1 px-2 py-0.5 text-xs bg-white/[0.06] rounded-full">{eligibleCount}</span>
                     </button>
                 </div>
 
@@ -822,19 +822,19 @@ See you soon! 🎯`;
                             <Card padding="lg">
                                 <h3 className="font-semibold text-white mb-4">Conditions</h3>
                                 <div className="space-y-3">
-                                    <div className="flex justify-between py-2 border-b border-slate-800">
+                                    <div className="flex justify-between py-2 border-b border-white/[0.08]">
                                         <span className="text-slate-400">Minimum Spent</span>
                                         <span className="text-white">₹{selectedCoupon.min_order_amount}</span>
                                     </div>
-                                    <div className="flex justify-between py-2 border-b border-slate-800">
+                                    <div className="flex justify-between py-2 border-b border-white/[0.08]">
                                         <span className="text-slate-400">Minimum Visits</span>
                                         <span className="text-white">{selectedCoupon.min_visits || 'None'}</span>
                                     </div>
-                                    <div className="flex justify-between py-2 border-b border-slate-800">
+                                    <div className="flex justify-between py-2 border-b border-white/[0.08]">
                                         <span className="text-slate-400">Inactive Days Required</span>
                                         <span className="text-white">{selectedCoupon.inactive_days_required || 'None'}</span>
                                     </div>
-                                    <div className="flex justify-between py-2 border-b border-slate-800">
+                                    <div className="flex justify-between py-2 border-b border-white/[0.08]">
                                         <span className="text-slate-400">For New Customers Only</span>
                                         <span className="text-white">{selectedCoupon.new_customer_only ? 'Yes' : 'No'}</span>
                                     </div>
@@ -855,7 +855,7 @@ See you soon! 🎯`;
                                 ) : (
                                     <table className="w-full">
                                         <thead>
-                                            <tr className="text-xs text-slate-500 uppercase border-b border-slate-800">
+                                            <tr className="text-xs text-slate-500 uppercase border-b border-white/[0.08]">
                                                 <th className="text-left py-2">Date</th>
                                                 <th className="text-left py-2">Customer</th>
                                                 <th className="text-right py-2">Discount Applied</th>
@@ -863,7 +863,7 @@ See you soon! 🎯`;
                                         </thead>
                                         <tbody>
                                             {usageHistory.map(usage => (
-                                                <tr key={usage.id} className="border-b border-slate-800/50">
+                                                <tr key={usage.id} className="border-b border-white/[0.06]">
                                                     <td className="py-3 text-slate-300">{formatDate(usage.used_at)}</td>
                                                     <td className="py-3 text-white">{usage.user_phone}</td>
                                                     <td className="py-3 text-right text-emerald-400">₹{usage.discount_applied}</td>
@@ -961,7 +961,7 @@ See you soon! 🎯`;
                             ) : (
                                 <table className="w-full">
                                     <thead>
-                                        <tr className="text-xs text-slate-500 uppercase border-b border-slate-800 bg-slate-900/50">
+                                        <tr className="text-xs text-slate-500 uppercase border-b border-white/[0.08] bg-white/[0.03]">
                                             <th className="text-left p-4">Customer</th>
                                             <th className="text-center p-4">Visits</th>
                                             <th className="text-center p-4">Total Spent</th>
@@ -970,12 +970,12 @@ See you soon! 🎯`;
                                             <th className="text-right p-4">Action</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-slate-800/50">
+                                    <tbody className="divide-y divide-white/[0.08]/50">
                                         {eligibleCustomers.map(customer => (
                                             <tr key={customer.id} className="hover:bg-white/5">
                                                 <td className="p-4">
                                                     <div className="flex items-center gap-3">
-                                                        <div className="w-9 h-9 rounded-full bg-slate-700 flex items-center justify-center text-white font-medium">
+                                                        <div className="w-9 h-9 rounded-full bg-white/[0.08] flex items-center justify-center text-white font-medium">
                                                             {customer.name.charAt(0).toUpperCase()}
                                                         </div>
                                                         <div>
@@ -1050,7 +1050,7 @@ See you soon! 🎯`;
 
                 {/* Stats Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <Card padding="md" className="bg-gradient-to-br from-slate-900 to-slate-900 border-slate-800">
+                    <Card padding="md" className="bg-gradient-to-br from-slate-900 to-slate-900 border-white/[0.08]">
                         <div className="flex items-center gap-4">
                             <div className="p-3 rounded-xl bg-emerald-500/10 text-emerald-500">
                                 <Ticket size={24} />
@@ -1061,7 +1061,7 @@ See you soon! 🎯`;
                             </div>
                         </div>
                     </Card>
-                    <Card padding="md" className="bg-gradient-to-br from-slate-900 to-slate-900 border-slate-800">
+                    <Card padding="md" className="bg-gradient-to-br from-slate-900 to-slate-900 border-white/[0.08]">
                         <div className="flex items-center gap-4">
                             <div className="p-3 rounded-xl bg-blue-500/10 text-blue-500">
                                 <Users size={24} />
@@ -1072,7 +1072,7 @@ See you soon! 🎯`;
                             </div>
                         </div>
                     </Card>
-                    <Card padding="md" className="bg-gradient-to-br from-slate-900 to-slate-900 border-slate-800">
+                    <Card padding="md" className="bg-gradient-to-br from-slate-900 to-slate-900 border-white/[0.08]">
                         <div className="flex items-center gap-4">
                             <div className="p-3 rounded-xl bg-amber-500/10 text-amber-500">
                                 <Clock size={24} />
@@ -1095,7 +1095,7 @@ See you soon! 🎯`;
                         placeholder="Search coupons..."
                         value={search}
                         onChange={e => setSearch(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2.5 bg-slate-900 border border-slate-800 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all shadow-sm"
+                        className="w-full pl-10 pr-4 py-2.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all shadow-sm"
                     />
                 </div>
                 <Select
@@ -1125,12 +1125,12 @@ See you soon! 🎯`;
             {loading ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {[1, 2, 3].map(i => (
-                        <div key={i} className="h-48 rounded-2xl bg-slate-900/50 animate-pulse border border-slate-800" />
+                        <div key={i} className="h-48 rounded-2xl bg-white/[0.03] animate-pulse border border-white/[0.08]" />
                     ))}
                 </div>
             ) : filteredCoupons.length === 0 ? (
-                <div className="text-center py-20 bg-slate-900/30 rounded-3xl border border-dashed border-slate-800">
-                    <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-800 flex items-center justify-center">
+                <div className="text-center py-20 bg-white/[0.03]/30 rounded-3xl border border-dashed border-white/[0.08]">
+                    <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-white/[0.06] flex items-center justify-center">
                         <Ticket className="w-8 h-8 text-slate-600" />
                     </div>
                     <h3 className="text-lg font-medium text-white mb-1">No coupons found</h3>
@@ -1157,19 +1157,19 @@ See you soon! 🎯`;
                             <div
                                 key={coupon.id}
                                 onClick={() => viewCouponDetails(coupon)}
-                                className="group relative bg-slate-900 border border-slate-800 rounded-2xl p-5 hover:border-slate-700 transition-all cursor-pointer hover:shadow-xl hover:shadow-black/20 hover:-translate-y-1"
+                                className="group relative bg-white/[0.03] border border-white/[0.08] rounded-2xl p-5 hover:border-white/[0.09] transition-all cursor-pointer hover:shadow-xl hover:shadow-black/20 hover:-translate-y-1"
                             >
                                 <div className="absolute top-5 right-5 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                     <button
                                         onClick={(e) => copyCode(coupon.code, e)}
-                                        className="p-2 bg-slate-800 text-slate-300 rounded-lg hover:bg-slate-700 hover:text-white"
+                                        className="p-2 bg-white/[0.06] text-slate-300 rounded-lg hover:bg-white/[0.08] hover:text-white"
                                         title="Copy Code"
                                     >
                                         {copiedCode === coupon.code ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
                                     </button>
                                     <button
                                         onClick={(e) => handleEdit(coupon, e)}
-                                        className="p-2 bg-slate-800 text-slate-300 rounded-lg hover:bg-slate-700 hover:text-white"
+                                        className="p-2 bg-white/[0.06] text-slate-300 rounded-lg hover:bg-white/[0.08] hover:text-white"
                                         title="Edit"
                                     >
                                         <Edit2 size={14} />
@@ -1212,7 +1212,7 @@ See you soon! 🎯`;
                                             {coupon.max_uses ? ` / ${coupon.max_uses}` : ''}
                                         </span>
                                     </div>
-                                    <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                                    <div className="h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
                                         <div
                                             className="h-full bg-emerald-500 rounded-full"
                                             style={{
@@ -1224,7 +1224,7 @@ See you soon! 🎯`;
                                     </div>
                                 </div>
 
-                                <div className="flex items-center justify-between text-xs text-slate-500 pt-4 border-t border-slate-800/50">
+                                <div className="flex items-center justify-between text-xs text-slate-500 pt-4 border-t border-white/[0.06]">
                                     <div className="flex items-center gap-1.5">
                                         <Calendar size={12} />
                                         {isExpired

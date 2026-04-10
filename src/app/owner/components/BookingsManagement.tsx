@@ -198,16 +198,16 @@ export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateS
     return (
         <div className="space-y-4">
             {/* Sub-tabs */}
-            <div className="flex gap-1 p-1 rounded-2xl bg-slate-900 border border-slate-800 w-fit">
+            <div className="flex gap-1 p-1 rounded-xl bg-white/[0.04] border border-white/[0.08] w-fit">
                 {([
-                    { id: 'all', label: '📋 All Bookings' },
-                    { id: 'normal', label: '🎮 Normal' },
-                    { id: 'membership', label: '👑 Membership' },
+                    { id: 'all', label: 'All Bookings' },
+                    { id: 'normal', label: 'Normal' },
+                    { id: 'membership', label: 'Membership' },
                 ] as const).map(tab => (
                     <button
                         key={tab.id}
                         onClick={() => setBookingSubTab(tab.id)}
-                        className={`px-4 py-2 rounded-xl text-xs font-semibold transition-colors ${bookingSubTab === tab.id ? 'bg-blue-500 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+                        className={`px-4 py-2 rounded-lg text-xs font-semibold transition-colors ${bookingSubTab === tab.id ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white hover:bg-white/[0.06]'}`}
                     >
                         {tab.label}
                     </button>
@@ -227,7 +227,7 @@ export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateS
                                     placeholder="Search by name or phone…"
                                     value={subSearch}
                                     onChange={e => setSubSearch(e.target.value)}
-                                    className="w-full pl-9 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm text-white focus:outline-none focus:border-blue-500"
+                                    className="w-full pl-9 pr-4 py-2 bg-white/[0.04] border border-white/[0.09] rounded-xl text-sm text-white placeholder-slate-600 focus:outline-none focus:border-blue-500/60 focus:ring-1 focus:ring-blue-500/30"
                                 />
                             </div>
                             <Button variant="secondary" onClick={fetchSubscriptions} title="Refresh">
@@ -237,10 +237,10 @@ export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateS
                         </div>
                     </Card>
 
-                    <div className="rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden">
+                    <div className="rounded-xl bg-white/[0.03] border border-white/[0.08] overflow-hidden">
                         <div className="overflow-x-auto">
                             <table className="w-full text-sm">
-                                <thead className="bg-slate-800/60 border-b border-slate-800">
+                                <thead className="bg-white/[0.03] border-b border-white/[0.06]">
                                     <tr>
                                         <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Customer</th>
                                         <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Plan</th>
@@ -253,7 +253,7 @@ export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateS
                                         <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-800/50">
+                                <tbody className="divide-y divide-white/[0.05]">
                                     {subsLoading ? (
                                         <tr><td colSpan={9} className="px-4 py-12 text-center text-slate-500">Loading…</td></tr>
                                     ) : filteredSubs.length === 0 ? (
@@ -265,7 +265,7 @@ export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateS
                                         const displayMins = Math.floor((elapsed % 3600) / 60);
                                         const displaySecs = elapsed % 60;
                                         return (
-                                        <tr key={s.id} className="hover:bg-slate-800/30 transition-colors">
+                                        <tr key={s.id} className="hover:bg-white/[0.03] transition-colors">
                                             <td className="px-4 py-3.5">
                                                 <div className="font-semibold text-white">{s.customer_name || '—'}</div>
                                                 {s.customer_phone && <div className="text-xs text-slate-500 mt-0.5">{s.customer_phone}</div>}
@@ -328,7 +328,7 @@ export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateS
                                         placeholder="Search by name, phone, or ID..."
                                         value={searchTerm}
                                         onChange={(e) => handleSearchChange(e.target.value)}
-                                        className="w-full lg:max-w-md pl-10 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-xl focus:outline-none focus:border-blue-500 text-white"
+                                        className="w-full lg:max-w-md pl-10 pr-4 py-2 bg-white/[0.04] border border-white/[0.09] rounded-xl focus:outline-none focus:border-blue-500/60 focus:ring-1 focus:ring-blue-500/30 text-white placeholder-slate-600 text-sm"
                                     />
                                 </div>
                             </div>
@@ -362,16 +362,16 @@ export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateS
                             </div>
                         </div>
                         {dateRange === 'custom' && (
-                            <div className="flex flex-wrap gap-4 pt-2 border-t border-slate-800">
+                            <div className="flex flex-wrap gap-4 pt-2 border-t border-white/[0.06]">
                                 <div className="space-y-1">
                                     <label className="text-xs text-slate-400">Start Date</label>
                                     <input type="date" value={customStart} onChange={(e) => { setCustomStart(e.target.value); }}
-                                        className="block px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm" />
+                                        className="block px-3 py-2 bg-white/[0.04] border border-white/[0.09] rounded-lg text-white text-sm focus:outline-none focus:border-blue-500/60" />
                                 </div>
                                 <div className="space-y-1">
                                     <label className="text-xs text-slate-400">End Date</label>
                                     <input type="date" value={customEnd} onChange={(e) => { setCustomEnd(e.target.value); }}
-                                        className="block px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm" />
+                                        className="block px-3 py-2 bg-white/[0.04] border border-white/[0.09] rounded-lg text-white text-sm focus:outline-none focus:border-blue-500/60" />
                                 </div>
                             </div>
                         )}
@@ -420,7 +420,7 @@ export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateS
                                 <span className="text-xs text-slate-500 mr-1">Show</span>
                                 {PAGE_SIZE_OPTIONS.map(size => (
                                     <button key={size} onClick={() => setLimit(size)}
-                                        className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${limit === size ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
+                                        className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${limit === size ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white hover:bg-white/[0.06]'}`}>
                                         {size}
                                     </button>
                                 ))}

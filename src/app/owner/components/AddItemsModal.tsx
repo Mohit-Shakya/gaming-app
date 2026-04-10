@@ -224,9 +224,9 @@ export default function AddItemsModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80">
-      <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+      <div className="bg-white/[0.03] border border-white/[0.09] rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-slate-700">
+        <div className="flex items-center justify-between p-4 border-b border-white/[0.09]">
           <div>
             <h3 className="text-xl font-bold text-white flex items-center gap-2">
               <ShoppingCart className="w-5 h-5 text-cyan-500" />
@@ -238,14 +238,14 @@ export default function AddItemsModal({
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-slate-800 rounded-lg transition"
+            className="p-2 hover:bg-white/[0.06] rounded-lg transition"
           >
             <X className="w-5 h-5 text-slate-400" />
           </button>
         </div>
 
         {/* Search & Filter */}
-        <div className="p-4 border-b border-slate-700 space-y-3">
+        <div className="p-4 border-b border-white/[0.09] space-y-3">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
             <input
@@ -253,7 +253,7 @@ export default function AddItemsModal({
               placeholder="Search items..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-cyan-500"
+              className="w-full pl-10 pr-4 py-2.5 bg-white/[0.06] border border-white/[0.09] rounded-xl text-white placeholder-slate-400 focus:outline-none focus:border-cyan-500"
             />
           </div>
 
@@ -263,7 +263,7 @@ export default function AddItemsModal({
               className={`px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition ${
                 selectedCategory === "all"
                   ? "bg-cyan-500 text-white"
-                  : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                  : "bg-white/[0.06] text-slate-300 hover:bg-white/[0.08]"
               }`}
             >
               All
@@ -277,7 +277,7 @@ export default function AddItemsModal({
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition ${
                     selectedCategory === key
                       ? "text-white"
-                      : "bg-slate-800 text-slate-300 hover:bg-slate-700"
+                      : "bg-white/[0.06] text-slate-300 hover:bg-white/[0.08]"
                   }`}
                   style={selectedCategory === key ? { backgroundColor: config.color } : {}}
                 >
@@ -329,7 +329,7 @@ export default function AddItemsModal({
                             className={`flex items-center justify-between p-3 rounded-xl border transition ${
                               qty > 0
                                 ? "bg-cyan-500/10 border-cyan-500/30"
-                                : "bg-slate-800/50 border-slate-700 hover:border-slate-600"
+                                : "bg-white/[0.04] border-white/[0.09] hover:border-slate-600"
                             }`}
                           >
                             <div className="flex-1 min-w-0">
@@ -349,7 +349,7 @@ export default function AddItemsModal({
                                 <>
                                   <button
                                     onClick={() => removeFromCart(item.id)}
-                                    className="w-8 h-8 flex items-center justify-center bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition"
+                                    className="w-8 h-8 flex items-center justify-center bg-white/[0.08] hover:bg-slate-600 text-white rounded-lg transition"
                                   >
                                     <Minus className="w-4 h-4" />
                                   </button>
@@ -385,7 +385,7 @@ export default function AddItemsModal({
         </div>
 
         {/* Cart Summary & Actions */}
-        <div className="border-t border-slate-700 p-4">
+        <div className="border-t border-white/[0.09] p-4">
           {cart.length > 0 && (
             <div className="mb-4 space-y-2">
               <div className="text-sm text-slate-400">Cart Items:</div>
@@ -393,7 +393,7 @@ export default function AddItemsModal({
                 {cart.map((item) => (
                   <div
                     key={item.inventory_item_id}
-                    className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 rounded-lg text-sm"
+                    className="flex items-center gap-2 px-3 py-1.5 bg-white/[0.06] rounded-lg text-sm"
                   >
                     <span className="text-white">{item.name}</span>
                     <span className="text-slate-400">x{item.quantity}</span>
@@ -413,7 +413,7 @@ export default function AddItemsModal({
             <div className="flex gap-3">
               <button
                 onClick={onClose}
-                className="px-6 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-medium transition"
+                className="px-6 py-2.5 bg-white/[0.06] hover:bg-white/[0.08] text-white rounded-xl font-medium transition"
               >
                 Cancel
               </button>

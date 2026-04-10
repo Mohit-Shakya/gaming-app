@@ -337,7 +337,7 @@ export function Memberships({
     return (
         <div className="space-y-6">
             {/* Tabs */}
-            <div className="border-b border-slate-800 flex gap-6">
+            <div className="border-b border-white/[0.08] flex gap-6">
                 <button
                     onClick={() => setSubTab('subscriptions')}
                     className={`pb-3 text-sm font-semibold transition-colors relative ${subTab === 'subscriptions' ? 'text-white' : 'text-slate-500 hover:text-slate-300'
@@ -354,7 +354,7 @@ export function Memberships({
                         }`}
                 >
                     Plans
-                    <span className="bg-slate-800 text-slate-400 text-[10px] px-1.5 py-0.5 rounded-md">
+                    <span className="bg-white/[0.06] text-slate-400 text-[10px] px-1.5 py-0.5 rounded-md">
                         {cafeMembershipPlans.length}
                     </span>
                     {subTab === 'plans' && (
@@ -367,7 +367,7 @@ export function Memberships({
             {subTab === 'subscriptions' && (
                 <div className="space-y-4">
                     {/* Filters */}
-                    <Card padding="sm" className="bg-slate-900/40 border-slate-800/60">
+                    <Card padding="sm" className="bg-white/[0.02] border-white/[0.06]">
                         <div className="flex flex-col md:flex-row gap-4">
                             <div className="flex-1 relative">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
@@ -376,7 +376,7 @@ export function Memberships({
                                     placeholder="Search customer..."
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
-                                    className="w-full pl-9 pr-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500"
+                                    className="w-full pl-9 pr-4 py-2 bg-white/[0.03] border border-white/[0.09] rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500"
                                 />
                             </div>
                             <div className="flex gap-2 items-center">
@@ -449,7 +449,7 @@ export function Memberships({
                                     const isAlmostEmpty = sub.status === 'active' && currentRem < 0.25;
 
                                     return (
-                                        <Card key={sub.id} padding="sm" className={`hover:border-slate-600 transition-colors ${isAlmostEmpty ? 'border-red-500/50' : isLowHours ? 'border-amber-500/40' : ''}`}>
+                                        <Card key={sub.id} padding="sm" className={`hover:border-white/[0.15] transition-colors ${isAlmostEmpty ? 'border-red-500/50' : isLowHours ? 'border-amber-500/40' : ''}`}>
                                             {isLowHours && (
                                                 <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-t-sm -mx-3 -mt-2 mb-2 text-xs font-medium ${isAlmostEmpty ? 'bg-red-500/15 text-red-400' : 'bg-amber-500/15 text-amber-400'}`}>
                                                     <span>{isAlmostEmpty ? '🔴' : '⚠️'}</span>
@@ -498,7 +498,7 @@ export function Memberships({
                                                             </span>
                                                         </div>
                                                     )}
-                                                    <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                                                    <div className="h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
                                                         <div
                                                             className={`h-full rounded-full transition-all duration-1000 ${percent < 10 ? 'bg-red-500' : percent < 30 ? 'bg-amber-500' : 'bg-emerald-500'
                                                                 }`}
@@ -556,11 +556,11 @@ export function Memberships({
                                 <Card
                                     key={plan.id}
                                     padding="none"
-                                    className={`relative overflow-hidden group hover:border-slate-600 transition-all ${colors.bg} ${colors.border} border`}
+                                    className={`relative overflow-hidden group hover:border-white/[0.15] transition-all ${colors.bg} ${colors.border} border`}
                                 >
                                     <div className="p-5">
                                         <div className="flex justify-between items-start mb-4">
-                                            <div className={`p-2 rounded-lg bg-slate-900/50 ${colors.text}`}>
+                                            <div className={`p-2 rounded-lg bg-white/[0.03] ${colors.text}`}>
                                                 {plan.console_type === 'PC' ? <Monitor size={20} /> : <Smartphone size={20} />}
                                             </div>
                                             <div className="text-2xl opacity-20 filter grayscale">{colors.icon}</div>
@@ -579,10 +579,10 @@ export function Memberships({
                                         </div>
 
                                         <div className="flex flex-wrap gap-2 mb-6">
-                                            <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded bg-slate-900/40 text-slate-400">
+                                            <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded bg-white/[0.02] text-slate-400">
                                                 {plan.validity_days} Day{plan.validity_days === 1 ? '' : 's'}
                                             </span>
-                                            <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded bg-slate-900/40 text-slate-400 flex items-center gap-1">
+                                            <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded bg-white/[0.02] text-slate-400 flex items-center gap-1">
                                                 {plan.player_count === 'single' ? <User size={10} /> : <Users size={10} />}
                                                 {plan.player_count}
                                             </span>
@@ -618,9 +618,9 @@ export function Memberships({
                                 setEditingPlan(null);
                                 setShowPlanModal(true);
                             }}
-                            className="group flex flex-col items-center justify-center p-6 border-2 border-dashed border-slate-800 rounded-2xl hover:border-emerald-500/50 hover:bg-emerald-500/5 transition-all text-slate-500 hover:text-emerald-500"
+                            className="group flex flex-col items-center justify-center p-6 border-2 border-dashed border-white/[0.08] rounded-2xl hover:border-emerald-500/50 hover:bg-emerald-500/5 transition-all text-slate-500 hover:text-emerald-500"
                         >
-                            <div className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform group-hover:bg-emerald-500/20">
+                            <div className="w-12 h-12 rounded-full bg-white/[0.06] flex items-center justify-center mb-3 group-hover:scale-110 transition-transform group-hover:bg-emerald-500/20">
                                 <Plus size={24} />
                             </div>
                             <span className="font-semibold text-sm">Create New Plan</span>
@@ -632,7 +632,7 @@ export function Memberships({
             {/* Add/Edit Plan Modal */}
             {showPlanModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                    <Card className="w-full max-w-lg bg-slate-900 border-slate-700" padding="md">
+                    <Card className="w-full max-w-lg bg-white/[0.03] border-white/[0.09]" padding="md">
                         <div className="flex justify-between items-center mb-6">
                             <h3 className="text-lg font-bold text-white">
                                 {editingPlan ? 'Edit Plan' : 'Create New Plan'}
@@ -655,7 +655,7 @@ export function Memberships({
                                     <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase">Price (₹)</label>
                                     <input
                                         type="number"
-                                        className="w-full bg-slate-800 border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+                                        className="w-full bg-white/[0.06] border-white/[0.09] rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
                                         value={newPlanPrice}
                                         onChange={e => setNewPlanPrice(e.target.value)}
                                     />
@@ -664,7 +664,7 @@ export function Memberships({
                                     <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase">Validity (Days)</label>
                                     <input
                                         type="number"
-                                        className={`w-full bg-slate-800 border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500 ${newPlanType === 'day_pass' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                        className={`w-full bg-white/[0.06] border-white/[0.09] rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500 ${newPlanType === 'day_pass' ? 'opacity-50 cursor-not-allowed' : ''}`}
                                         value={newPlanType === 'day_pass' ? '1' : newPlanValidity}
                                         disabled={newPlanType === 'day_pass'}
                                         onChange={e => setNewPlanValidity(e.target.value)}
@@ -691,7 +691,7 @@ export function Memberships({
                                         <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase">Hours</label>
                                         <input
                                             type="number"
-                                            className="w-full bg-slate-800 border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+                                            className="w-full bg-white/[0.06] border-white/[0.09] rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
                                             value={newPlanHours}
                                             onChange={e => setNewPlanHours(e.target.value)}
                                         />
@@ -731,7 +731,7 @@ export function Memberships({
                             <div>
                                 <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase">Description</label>
                                 <textarea
-                                    className="w-full bg-slate-800 border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500 h-20 text-sm resize-none"
+                                    className="w-full bg-white/[0.06] border-white/[0.09] rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500 h-20 text-sm resize-none"
                                     placeholder="Optional details..."
                                     value={newPlanDescription}
                                     onChange={e => setNewPlanDescription(e.target.value)}
@@ -739,7 +739,7 @@ export function Memberships({
                             </div>
                         </div>
 
-                        <div className="flex gap-3 mt-8 pt-4 border-t border-slate-800">
+                        <div className="flex gap-3 mt-8 pt-4 border-t border-white/[0.08]">
                             <Button
                                 variant="secondary"
                                 onClick={() => setShowPlanModal(false)}
@@ -763,7 +763,7 @@ export function Memberships({
             {/* Adjust Hours Modal */}
             {adjustHoursSub && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                    <Card className="w-full max-w-sm bg-slate-900 border-slate-700" padding="md">
+                    <Card className="w-full max-w-sm bg-white/[0.03] border-white/[0.09]" padding="md">
                         <h3 className="text-base font-semibold text-white mb-1">Adjust Hours</h3>
                         <p className="text-xs text-slate-400 mb-4">{adjustHoursSub.name} · Current: <span className="text-white font-medium">{adjustHoursSub.current.toFixed(2)}h</span></p>
                         <div className="space-y-3">
@@ -775,7 +775,7 @@ export function Memberships({
                                     placeholder="e.g. 2 or -1.5"
                                     value={adjustHoursDelta}
                                     onChange={e => setAdjustHoursDelta(e.target.value)}
-                                    className="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white text-sm focus:outline-none focus:border-indigo-500"
+                                    className="w-full px-3 py-2 rounded-lg bg-white/[0.06] border border-white/[0.09] text-white text-sm focus:outline-none focus:border-indigo-500"
                                     autoFocus
                                 />
                                 {adjustHoursDelta && !isNaN(parseFloat(adjustHoursDelta)) && (
@@ -798,7 +798,7 @@ export function Memberships({
             {/* Add Subscription Modal */}
             {showAddSubModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                    <Card className="w-full max-w-lg bg-slate-900 border-slate-700" padding="md">
+                    <Card className="w-full max-w-lg bg-white/[0.03] border-white/[0.09]" padding="md">
                         <div className="flex justify-between items-center mb-6">
                             <h3 className="text-lg font-bold text-white">Add New Subscription</h3>
                             <button onClick={() => setShowAddSubModal(false)} className="text-slate-400 hover:text-white">
@@ -833,10 +833,10 @@ export function Memberships({
                                     onFocus={() => {
                                         if (suggestions.length > 0) setShowSuggestions(true);
                                     }}
-                                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 text-sm"
+                                    className="w-full px-3 py-2 bg-white/[0.06] border border-white/[0.09] rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 text-sm"
                                 />
                                 {showSuggestions && suggestions.length > 0 && (
-                                    <div className="absolute z-50 w-full mt-1 bg-slate-800 border border-slate-700 rounded-lg shadow-xl overflow-hidden">
+                                    <div className="absolute z-50 w-full mt-1 bg-white/[0.06] border border-white/[0.09] rounded-lg shadow-xl overflow-hidden">
                                         {suggestions.map((c, i) => (
                                             <button
                                                 key={i}
@@ -847,7 +847,7 @@ export function Memberships({
                                                     setSuggestions([]);
                                                     setShowSuggestions(false);
                                                 }}
-                                                className="w-full px-3 py-2.5 text-left hover:bg-slate-700 flex justify-between items-center"
+                                                className="w-full px-3 py-2.5 text-left hover:bg-white/[0.08] flex justify-between items-center"
                                             >
                                                 <span className="text-white text-sm font-medium">{c.name}</span>
                                                 <span className="text-slate-400 text-xs">{c.phone}</span>
@@ -884,7 +884,7 @@ export function Memberships({
                                     <label className="block text-xs font-semibold text-slate-400 mb-1.5 uppercase">Amount Paid (₹)</label>
                                     <input
                                         type="number"
-                                        className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
+                                        className="w-full bg-white/[0.06] border border-white/[0.09] rounded-lg px-3 py-2 text-white focus:outline-none focus:border-emerald-500"
                                         value={subAmountPaid}
                                         onChange={e => setSubAmountPaid(e.target.value)}
                                     />
@@ -904,7 +904,7 @@ export function Memberships({
                                 const plan = cafeMembershipPlans.find(p => p.id === subSelectedPlanId);
                                 if (!plan) return null;
                                 return (
-                                    <div className="bg-slate-800/50 rounded-lg p-3 border border-slate-700/50">
+                                    <div className="bg-white/[0.04] rounded-lg p-3 border border-white/[0.06]">
                                         <div className="text-xs text-slate-400 mb-2 font-semibold uppercase">Plan Summary</div>
                                         <div className="grid grid-cols-3 gap-2 text-sm">
                                             <div>
@@ -925,7 +925,7 @@ export function Memberships({
                             })()}
                         </div>
 
-                        <div className="flex gap-3 mt-8 pt-4 border-t border-slate-800">
+                        <div className="flex gap-3 mt-8 pt-4 border-t border-white/[0.08]">
                             <Button
                                 variant="secondary"
                                 onClick={() => setShowAddSubModal(false)}

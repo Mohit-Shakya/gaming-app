@@ -781,7 +781,7 @@ export function Reports({ cafeId, cafeName, isMobile, openingHours }: ReportsPro
                 </div>
 
                 <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-2 bg-slate-900/50 p-1 rounded-xl border border-slate-800">
+                    <div className="flex items-center gap-2 bg-white/[0.03] p-1 rounded-xl border border-white/[0.08]">
                         <Select
                             value={dateRange}
                             onChange={(val) => {
@@ -804,7 +804,7 @@ export function Reports({ cafeId, cafeName, isMobile, openingHours }: ReportsPro
                         />
                         <Button
                             variant="ghost"
-                            className="h-9 w-9 p-0 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
+                            className="h-9 w-9 p-0 rounded-lg text-slate-400 hover:text-white hover:bg-white/[0.06]"
                             onClick={exportToCSV}
                             title="Export to CSV"
                         >
@@ -819,7 +819,7 @@ export function Reports({ cafeId, cafeName, isMobile, openingHours }: ReportsPro
                 <Card className="relative animate-in slide-in-from-top-2 duration-200">
                     <button
                         onClick={() => setShowCustomPicker(false)}
-                        className="absolute top-4 right-4 p-1 hover:bg-slate-800 rounded-lg transition-colors"
+                        className="absolute top-4 right-4 p-1 hover:bg-white/[0.06] rounded-lg transition-colors"
                     >
                         <X size={18} className="text-slate-400" />
                     </button>
@@ -834,7 +834,7 @@ export function Reports({ cafeId, cafeName, isMobile, openingHours }: ReportsPro
                                 type="date"
                                 value={customStart}
                                 onChange={(e) => setCustomStart(e.target.value)}
-                                className="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-white focus:border-emerald-500 focus:outline-none"
+                                className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.09] rounded-lg text-white focus:border-emerald-500 focus:outline-none"
                             />
                         </div>
                         <div className="flex-1">
@@ -843,7 +843,7 @@ export function Reports({ cafeId, cafeName, isMobile, openingHours }: ReportsPro
                                 type="date"
                                 value={customEnd}
                                 onChange={(e) => setCustomEnd(e.target.value)}
-                                className="w-full px-4 py-2.5 bg-slate-900 border border-slate-700 rounded-lg text-white focus:border-emerald-500 focus:outline-none"
+                                className="w-full px-4 py-2.5 bg-white/[0.03] border border-white/[0.09] rounded-lg text-white focus:border-emerald-500 focus:outline-none"
                             />
                         </div>
                         <div className="flex items-end">
@@ -857,7 +857,7 @@ export function Reports({ cafeId, cafeName, isMobile, openingHours }: ReportsPro
 
             {/* Key Metrics Grid with Growth Indicators */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <Card padding="lg" className="bg-gradient-to-br from-slate-900 to-slate-900/50 border-slate-800">
+                <Card padding="lg" className="bg-gradient-to-br from-slate-900 to-slate-900/50 border-white/[0.08]">
                     <div className="flex items-start justify-between">
                         <div className="flex-1">
                             <p className="text-sm font-medium text-slate-400 mb-1">Total Revenue</p>
@@ -888,7 +888,7 @@ export function Reports({ cafeId, cafeName, isMobile, openingHours }: ReportsPro
                     </div>
                 </Card>
 
-                <Card padding="lg" className="bg-gradient-to-br from-slate-900 to-slate-900/50 border-slate-800">
+                <Card padding="lg" className="bg-gradient-to-br from-slate-900 to-slate-900/50 border-white/[0.08]">
                     <div className="flex items-start justify-between">
                         <div>
                             <p className="text-sm font-medium text-slate-400 mb-1">Total Bookings</p>
@@ -904,7 +904,7 @@ export function Reports({ cafeId, cafeName, isMobile, openingHours }: ReportsPro
                     </div>
                 </Card>
 
-                <Card padding="lg" className="bg-gradient-to-br from-slate-900 to-slate-900/50 border-slate-800">
+                <Card padding="lg" className="bg-gradient-to-br from-slate-900 to-slate-900/50 border-white/[0.08]">
                     <div className="flex items-start justify-between">
                         <div>
                             <p className="text-sm font-medium text-slate-400 mb-1">Avg. Order Value</p>
@@ -938,7 +938,7 @@ export function Reports({ cafeId, cafeName, isMobile, openingHours }: ReportsPro
                                 <p className="text-sm text-slate-400">Daily earnings based on service date</p>
                             </div>
                             {revenueTrendData.length > 7 && (
-                                <span className="text-xs text-slate-500 bg-slate-800 px-2 py-1 rounded">Click to expand</span>
+                                <span className="text-xs text-slate-500 bg-white/[0.06] px-2 py-1 rounded">Click to expand</span>
                             )}
                         </div>
 
@@ -992,10 +992,10 @@ export function Reports({ cafeId, cafeName, isMobile, openingHours }: ReportsPro
                         onClick={() => setExpandedChart(false)}
                     >
                         <div
-                            className="bg-slate-900 rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden border border-slate-800"
+                            className="bg-white/[0.03] rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-hidden border border-white/[0.08]"
                             onClick={e => e.stopPropagation()}
                         >
-                            <div className="flex items-center justify-between p-6 border-b border-slate-800">
+                            <div className="flex items-center justify-between p-6 border-b border-white/[0.08]">
                                 <div>
                                     <h3 className="text-xl font-semibold text-white flex items-center gap-2">
                                         <TrendingUp size={24} className="text-emerald-500" />
@@ -1005,7 +1005,7 @@ export function Reports({ cafeId, cafeName, isMobile, openingHours }: ReportsPro
                                 </div>
                                 <button
                                     onClick={() => setExpandedChart(false)}
-                                    className="p-2 hover:bg-slate-800 rounded-lg transition-colors"
+                                    className="p-2 hover:bg-white/[0.06] rounded-lg transition-colors"
                                 >
                                     <X size={24} className="text-slate-400" />
                                 </button>
@@ -1062,7 +1062,7 @@ export function Reports({ cafeId, cafeName, isMobile, openingHours }: ReportsPro
                                 return (
                                     <div key={idx} className="flex-1 flex flex-col items-center group h-full justify-end">
                                         <div
-                                            className={`w-full rounded-t-sm transition-all relative ${isBusy ? 'bg-blue-500' : 'bg-slate-700'}`}
+                                            className={`w-full rounded-t-sm transition-all relative ${isBusy ? 'bg-blue-500' : 'bg-white/[0.08]'}`}
                                             style={{ height: `${Math.max(heightPercent, 5)}%`, opacity: isBusy ? 0.8 : 0.3 }}
                                         >
                                             <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 text-[10px] text-white opacity-0 group-hover:opacity-100">
@@ -1078,7 +1078,7 @@ export function Reports({ cafeId, cafeName, isMobile, openingHours }: ReportsPro
                                 )
                             })
                         )}
-                        <div className="absolute bottom-0 w-full border-t border-slate-800"></div>
+                        <div className="absolute bottom-0 w-full border-t border-white/[0.08]"></div>
                     </div>
                     <p className="text-center text-xs text-slate-500 mt-4">
                         Operating Hours ({cafeHours.openHour > 12 ? `${cafeHours.openHour - 12}PM` : `${cafeHours.openHour}AM`} - {cafeHours.closeHour > 12 ? `${cafeHours.closeHour - 12}PM` : `${cafeHours.closeHour}AM`})
@@ -1089,7 +1089,7 @@ export function Reports({ cafeId, cafeName, isMobile, openingHours }: ReportsPro
             {/* Monthly Breakdown — only for All Time / Custom ranges */}
             {monthlyData.length > 0 && (
                 <Card padding="none" className="overflow-hidden">
-                    <div className="p-5 border-b border-slate-800 flex items-center justify-between">
+                    <div className="p-5 border-b border-white/[0.08] flex items-center justify-between">
                         <div>
                             <h3 className="text-lg font-semibold text-white flex items-center gap-2">
                                 <Calendar size={20} className="text-blue-400" />
@@ -1107,7 +1107,7 @@ export function Reports({ cafeId, cafeName, isMobile, openingHours }: ReportsPro
                     <div className="overflow-x-auto">
                         <table className="w-full text-left">
                             <thead>
-                                <tr className="bg-slate-900/50 text-slate-400 text-xs uppercase tracking-wider border-b border-slate-800">
+                                <tr className="bg-white/[0.03] text-slate-400 text-xs uppercase tracking-wider border-b border-white/[0.08]">
                                     <th className="px-5 py-3 font-medium">Month</th>
                                     <th className="px-5 py-3 font-medium text-right">Gaming</th>
                                     <th className="px-5 py-3 font-medium text-right">F&B</th>
@@ -1116,18 +1116,18 @@ export function Reports({ cafeId, cafeName, isMobile, openingHours }: ReportsPro
                                     <th className="px-5 py-3 font-medium min-w-[160px]"></th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-800/50">
+                            <tbody className="divide-y divide-white/[0.08]/50">
                                 {(() => {
                                     const maxTotal = Math.max(...monthlyData.map(m => m.total), 1);
                                     return monthlyData.slice().reverse().map(m => (
-                                        <tr key={m.key} className="hover:bg-slate-800/20 transition-colors">
+                                        <tr key={m.key} className="hover:bg-white/[0.02] transition-colors">
                                             <td className="px-5 py-3 text-sm font-medium text-white">{m.label}</td>
                                             <td className="px-5 py-3 text-sm text-right text-emerald-400">₹{Math.round(m.gaming).toLocaleString('en-IN')}</td>
                                             <td className="px-5 py-3 text-sm text-right text-orange-400">₹{Math.round(m.snacks).toLocaleString('en-IN')}</td>
                                             <td className="px-5 py-3 text-sm text-right font-semibold text-white">₹{Math.round(m.total).toLocaleString('en-IN')}</td>
                                             <td className="px-5 py-3 text-sm text-right text-slate-400">{m.bookings}</td>
                                             <td className="px-5 py-3">
-                                                <div className="h-2 bg-slate-800 rounded-full overflow-hidden flex">
+                                                <div className="h-2 bg-white/[0.06] rounded-full overflow-hidden flex">
                                                     <div className="h-full bg-emerald-500 transition-all duration-500" style={{ width: `${(m.gaming / maxTotal) * 100}%` }} />
                                                     <div className="h-full bg-orange-500 transition-all duration-500" style={{ width: `${(m.snacks / maxTotal) * 100}%` }} />
                                                 </div>
@@ -1184,7 +1184,7 @@ export function Reports({ cafeId, cafeName, isMobile, openingHours }: ReportsPro
                                                 <span className="text-sm font-medium text-white">{formatConsoleName(console.name)}</span>
                                                 <span className="text-sm text-slate-400">{console.count} bookings</span>
                                             </div>
-                                            <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+                                            <div className="h-2 bg-white/[0.06] rounded-full overflow-hidden">
                                                 <div
                                                     className={`h-full ${colors[index % 6]} rounded-full transition-all duration-500`}
                                                     style={{ width: `${widthPercent}%` }}
@@ -1229,7 +1229,7 @@ export function Reports({ cafeId, cafeName, isMobile, openingHours }: ReportsPro
                                             {paymentData.cash.count} ({paymentData.cash.percent.toFixed(0)}%)
                                         </span>
                                     </div>
-                                    <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+                                    <div className="h-2 bg-white/[0.06] rounded-full overflow-hidden">
                                         <div
                                             className="h-full bg-green-500 rounded-full transition-all duration-500"
                                             style={{ width: `${paymentData.cash.percent}%` }}
@@ -1251,7 +1251,7 @@ export function Reports({ cafeId, cafeName, isMobile, openingHours }: ReportsPro
                                             {paymentData.online.count} ({paymentData.online.percent.toFixed(0)}%)
                                         </span>
                                     </div>
-                                    <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+                                    <div className="h-2 bg-white/[0.06] rounded-full overflow-hidden">
                                         <div
                                             className="h-full bg-purple-500 rounded-full transition-all duration-500"
                                             style={{ width: `${paymentData.online.percent}%` }}
@@ -1318,7 +1318,7 @@ export function Reports({ cafeId, cafeName, isMobile, openingHours }: ReportsPro
                                                         {sourceStats.online} ({onlinePercent.toFixed(0)}%)
                                                     </span>
                                                 </div>
-                                                <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+                                                <div className="h-2 bg-white/[0.06] rounded-full overflow-hidden">
                                                     <div
                                                         className="h-full bg-indigo-500 rounded-full transition-all duration-500"
                                                         style={{ width: `${onlinePercent}%` }}
@@ -1339,7 +1339,7 @@ export function Reports({ cafeId, cafeName, isMobile, openingHours }: ReportsPro
                                                         {sourceStats.walkIn} ({walkInPercent.toFixed(0)}%)
                                                     </span>
                                                 </div>
-                                                <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+                                                <div className="h-2 bg-white/[0.06] rounded-full overflow-hidden">
                                                     <div
                                                         className="h-full bg-orange-500 rounded-full transition-all duration-500"
                                                         style={{ width: `${walkInPercent}%` }}
@@ -1367,13 +1367,13 @@ export function Reports({ cafeId, cafeName, isMobile, openingHours }: ReportsPro
                         <p className="text-slate-400 text-sm mt-0.5">Snack & drink sales for this period</p>
                     </div>
                     {snackOrders.length > 0 && (
-                        <div className="hidden sm:flex items-center gap-4 bg-slate-800/60 border border-slate-700/50 rounded-xl px-4 py-2">
+                        <div className="hidden sm:flex items-center gap-4 bg-white/[0.04] border border-white/[0.06] rounded-xl px-4 py-2">
                             <div className="flex items-center gap-1.5">
                                 <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
                                 <span className="text-xs text-slate-400">Gaming</span>
                                 <span className="text-xs font-semibold text-emerald-400 ml-1">₹{Math.round(stats.gamingRevenue).toLocaleString('en-IN')}</span>
                             </div>
-                            <div className="w-px h-4 bg-slate-700" />
+                            <div className="w-px h-4 bg-white/[0.08]" />
                             <div className="flex items-center gap-1.5">
                                 <div className="w-2.5 h-2.5 rounded-full bg-orange-500" />
                                 <span className="text-xs text-slate-400">F&B</span>
@@ -1389,7 +1389,7 @@ export function Reports({ cafeId, cafeName, isMobile, openingHours }: ReportsPro
                         Loading F&B data...
                     </div>
                 ) : snackOrders.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-10 gap-2 bg-slate-800/20 rounded-2xl border border-slate-800">
+                    <div className="flex flex-col items-center justify-center py-10 gap-2 bg-white/[0.02] rounded-2xl border border-white/[0.08]">
                         <Store size={32} className="text-slate-700" />
                         <p className="text-slate-400 text-sm">No F&B sales in this period</p>
                         <button onClick={() => setDateRange('all')} className="text-xs text-blue-400 hover:text-blue-300 underline underline-offset-2 transition-colors">
@@ -1422,7 +1422,7 @@ export function Reports({ cafeId, cafeName, isMobile, openingHours }: ReportsPro
                                                 <span className="text-sm font-medium text-white truncate max-w-[140px]">{item.itemName}</span>
                                                 <span className="text-xs text-slate-400">{item.quantitySold} sold · ₹{item.revenue.toLocaleString()}</span>
                                             </div>
-                                            <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                                            <div className="h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
                                                 <div className={`h-full ${colors.bar} rounded-full transition-all duration-500`} style={{ width: `${(item.quantitySold / maxQty) * 100}%` }} />
                                             </div>
                                         </div>
@@ -1430,7 +1430,7 @@ export function Reports({ cafeId, cafeName, isMobile, openingHours }: ReportsPro
                                 );
                             })}
                         </div>
-                        <div className="mt-4 pt-3 border-t border-slate-800 flex justify-between text-xs text-slate-500">
+                        <div className="mt-4 pt-3 border-t border-white/[0.08] flex justify-between text-xs text-slate-500">
                             <span>{snackStats.totalItemsSold} units sold</span>
                             <span>{snackStats.totalOrders} orders · avg ₹{Math.round(snackStats.avgOrderValue)}</span>
                         </div>
@@ -1438,21 +1438,21 @@ export function Reports({ cafeId, cafeName, isMobile, openingHours }: ReportsPro
 
                     {/* Sale Transactions */}
                     <Card padding="none" className="overflow-hidden">
-                        <div className="p-4 border-b border-slate-800 flex items-center justify-between">
+                        <div className="p-4 border-b border-white/[0.08] flex items-center justify-between">
                             <h3 className="text-base font-semibold text-white flex items-center gap-2">
                                 <Receipt size={18} className="text-cyan-500" />
                                 F&B Transactions
                             </h3>
                             <span className="text-xs text-slate-500">{snackTransactions.filter(t => !t.isOwnerUse).length} sales</span>
                         </div>
-                        <div className="divide-y divide-slate-800/60 max-h-[320px] overflow-y-auto">
+                        <div className="divide-y divide-white/[0.08]/60 max-h-[320px] overflow-y-auto">
                             {snackTransactions.map(tx => {
                                 const payMode = (tx.paymentMode || 'cash').toLowerCase();
                                 const isOwner = tx.isOwnerUse;
                                 const [y, m, d] = tx.date.split('-').map(Number);
                                 const dateLabel = new Date(y, m - 1, d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
                                 return (
-                                    <div key={tx.bookingId} className={`px-4 py-3 hover:bg-slate-800/20 transition-colors ${isOwner ? 'opacity-50' : ''}`}>
+                                    <div key={tx.bookingId} className={`px-4 py-3 hover:bg-white/[0.02] transition-colors ${isOwner ? 'opacity-50' : ''}`}>
                                         <div className="flex items-start justify-between gap-3">
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex flex-wrap items-center gap-1.5 mb-1">
@@ -1465,12 +1465,12 @@ export function Reports({ cafeId, cafeName, isMobile, openingHours }: ReportsPro
                                                     ) : payMode === 'upi' ? (
                                                         <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-500/15 text-blue-400">UPI</span>
                                                     ) : (
-                                                        <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-slate-700 text-slate-400 capitalize">{tx.paymentMode}</span>
+                                                        <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-white/[0.08] text-slate-400 capitalize">{tx.paymentMode}</span>
                                                     )}
                                                 </div>
                                                 <div className="flex flex-wrap gap-1">
                                                     {tx.items.map((item, idx) => (
-                                                        <span key={idx} className="text-[11px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700/60">
+                                                        <span key={idx} className="text-[11px] px-1.5 py-0.5 rounded bg-white/[0.06] text-slate-400 border border-white/[0.09]/60">
                                                             {item.name} ×{item.quantity}
                                                         </span>
                                                     ))}
@@ -1492,7 +1492,7 @@ export function Reports({ cafeId, cafeName, isMobile, openingHours }: ReportsPro
 
             {/* Recent Transactions Table */}
             <Card padding="none" className="overflow-hidden">
-                <div className="p-6 border-b border-slate-800/50 flex items-center justify-between">
+                <div className="p-6 border-b border-white/[0.06] flex items-center justify-between">
                     <h3 className="text-lg font-semibold text-white">Recent Transactions</h3>
                     <Button
                         variant="ghost"
@@ -1508,7 +1508,7 @@ export function Reports({ cafeId, cafeName, isMobile, openingHours }: ReportsPro
                 <div className="overflow-x-auto">
                     <table className="w-full text-left">
                         <thead>
-                            <tr className="bg-slate-900/50 text-slate-400 text-xs uppercase tracking-wider border-b border-slate-800">
+                            <tr className="bg-white/[0.03] text-slate-400 text-xs uppercase tracking-wider border-b border-white/[0.08]">
                                 <th className="px-6 py-4 font-medium">Date & Time</th>
                                 <th className="px-6 py-4 font-medium">Customer</th>
                                 <th className="px-6 py-4 font-medium">Amount</th>
@@ -1517,9 +1517,9 @@ export function Reports({ cafeId, cafeName, isMobile, openingHours }: ReportsPro
                                 <th className="px-6 py-4 font-medium text-right">Actions</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-800/50">
+                        <tbody className="divide-y divide-white/[0.08]/50">
                             {billableBookings.slice(-10).reverse().map((booking) => (
-                                <tr key={booking.id} className="hover:bg-slate-800/20 transition-colors">
+                                <tr key={booking.id} className="hover:bg-white/[0.02] transition-colors">
                                     <td className="px-6 py-4 text-white">
                                         <div className="font-medium">
                                             {parseLocalDate(booking.booking_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
