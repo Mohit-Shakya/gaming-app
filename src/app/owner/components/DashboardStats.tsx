@@ -206,57 +206,57 @@ export function DashboardStats({ bookings, subscriptions, activeTimers, loadingD
           key={card.key}
           onClick={card.key === 'revenue' && revenueVisible ? () => setShowBreakdown(p => !p) : undefined}
           className={`
-            relative rounded-xl border border-white/[0.09] bg-white/[0.04] px-4 py-4 flex flex-col gap-3 overflow-hidden
+            relative rounded-xl border border-white/[0.09] bg-white/[0.04] px-3 py-3 md:px-4 md:py-4 flex flex-col gap-2.5 overflow-hidden
             ${card.key === 'revenue' && revenueVisible ? 'cursor-pointer hover:bg-white/[0.06] transition-colors' : ''}
           `}
         >
-          {/* Colored top accent line — 2px, full opacity */}
+          {/* Colored top accent line */}
           <div className={`absolute top-0 left-0 right-0 h-[2px] ${card.accentClass}`} />
 
-          {/* Header row */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className={`w-6 h-6 rounded-lg ${card.iconBg} flex items-center justify-center shrink-0`}>
+          {/* Header row — icon left, eye button right */}
+          <div className="flex items-start justify-between gap-1 mt-0.5">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <div className={`w-5 h-5 md:w-6 md:h-6 rounded-md md:rounded-lg ${card.iconBg} flex items-center justify-center shrink-0`}>
                 {card.icon}
               </div>
-              <p className="text-[10px] uppercase tracking-widest font-semibold text-slate-400 truncate">{card.label}</p>
+              <p className="text-[9px] md:text-[10px] uppercase tracking-wide md:tracking-widest font-semibold text-slate-400 leading-tight break-words">{card.label}</p>
             </div>
             {card.key === 'revenue' && (
               <button
                 type="button"
                 onClick={toggleRevenueVisibility}
-                className="p-0.5 rounded text-slate-500 hover:text-slate-300 transition-colors z-10 shrink-0"
+                className="p-0.5 rounded text-slate-500 hover:text-slate-300 transition-colors z-10 shrink-0 mt-0.5"
               >
-                {revenueVisible ? <EyeOff size={12} /> : <Eye size={12} />}
+                {revenueVisible ? <EyeOff size={11} /> : <Eye size={11} />}
               </button>
             )}
           </div>
 
           {/* Value */}
-          <p className="text-[28px] font-bold text-white leading-none tracking-tight">
+          <p className="text-[22px] md:text-[28px] font-bold text-white leading-none tracking-tight">
             {card.value}
           </p>
 
           {/* Footer */}
-          <div className="flex items-center justify-between">
-            {card.sub && <p className="text-[10px] text-slate-500">{card.sub}</p>}
+          <div className="flex items-center justify-between gap-1">
+            {card.sub && <p className="text-[9px] md:text-[10px] text-slate-500 leading-tight">{card.sub}</p>}
             {card.trend && card.trend}
             {!card.sub && !card.trend && <div />}
             {card.key === 'revenue' && revenueVisible && !showBreakdown && (
-              <span className="text-[9px] text-slate-600 animate-pulse">breakdown</span>
+              <span className="text-[8px] md:text-[9px] text-slate-600 animate-pulse">breakdown</span>
             )}
           </div>
 
           {/* Revenue breakdown */}
           {card.key === 'revenue' && showBreakdown && revenueVisible && (
-            <div className="mt-1 pt-3 border-t border-white/[0.06] grid grid-cols-2 gap-x-3 gap-y-1">
+            <div className="mt-1 pt-2 border-t border-white/[0.06] grid grid-cols-1 gap-y-1">
               {([
                 ...(gamingCash > 0 ? [['Cash', gamingCash]] : []),
                 ...(gamingOnline > 0 ? [['Online/UPI', gamingOnline]] : []),
-                ...(membershipRevenue > 0 ? [['Memberships', membershipRevenue]] : []),
+                ...(membershipRevenue > 0 ? [['Members', membershipRevenue]] : []),
                 ...(snacksRevenue > 0 ? [['Snacks', snacksRevenue]] : []),
               ] as [string, number][]).map(([label, val]) => (
-                <div key={label} className="flex justify-between text-[10px]">
+                <div key={label} className="flex justify-between text-[9px] md:text-[10px]">
                   <span className="text-slate-500">{label}</span>
                   <span className="text-emerald-400 font-semibold">₹{val.toLocaleString('en-IN')}</span>
                 </div>

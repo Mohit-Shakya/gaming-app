@@ -154,8 +154,8 @@ export function ActiveSessions({
 
     if (sortedActiveBookings.length === 0 && activeMemberships.length === 0) {
         return (
-            <div className="bg-slate-900/40 border border-slate-800/60 rounded-2xl p-16 text-center flex flex-col items-center gap-3">
-                <div className="w-14 h-14 rounded-2xl bg-slate-800/60 flex items-center justify-center mb-1">
+            <div className="bg-white/[0.02] border border-white/[0.08] rounded-xl p-16 text-center flex flex-col items-center gap-3">
+                <div className="w-14 h-14 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center mb-1">
                     <Gamepad2 size={28} className="text-slate-600" />
                 </div>
                 <p className="text-base text-slate-400 font-medium">No active sessions</p>
@@ -277,8 +277,8 @@ export function ActiveSessions({
 
                         {/* Header */}
                         <div className="flex items-center gap-2.5 mb-4">
-                            <div className="text-3xl">
-                                {getConsoleIcon(consoleInfo?.console || '')}
+                            <div className="w-10 h-10 rounded-xl bg-white/[0.08] flex items-center justify-center shrink-0">
+                                <Gamepad2 size={20} className="text-slate-300" />
                             </div>
                             <div className="flex-1 min-w-0">
                                 <div className="text-xs text-[#6b7280] font-semibold uppercase tracking-wide">
