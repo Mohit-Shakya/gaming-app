@@ -32,8 +32,11 @@ type CafeRow = {
   name: string;
   slug: string;
   address: string;
+  city: string | null;
   phone: string | null;
   email: string | null;
+  description: string | null;
+  opening_hours: string | null;
   owner_id: string;
   is_active: boolean;
   is_featured?: boolean;
@@ -44,8 +47,15 @@ type CafeRow = {
   ps4_count: number;
   xbox_count: number;
   pc_count: number;
+  vr_count: number;
+  pool_count: number;
+  snooker_count: number;
+  arcade_count: number;
+  steering_wheel_count: number;
+  racing_sim_count: number;
   owner_name?: string;
   owner_email?: string;
+  owner_phone?: string;
   total_bookings?: number;
   total_revenue?: number;
 };
@@ -153,7 +163,7 @@ export default function AdminDashboardPage() {
 
   // Cafe management panel
   const [managedCafeId, setManagedCafeId] = useState<string | null>(null);
-  const [cafeManageSubTab, setCafeManageSubTab] = useState<'info' | 'stations' | 'memberships' | 'coupons'>('info');
+  const [cafeManageSubTab, setCafeManageSubTab] = useState<'info' | 'stations' | 'memberships' | 'coupons' | 'bookings'>('info');
   const [editCafeForm, setEditCafeForm] = useState<Record<string, string>>({});
   const [savingCafeInfo, setSavingCafeInfo] = useState(false);
   const [cafeInfoMsg, setCafeInfoMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -170,6 +180,20 @@ export default function AdminDashboardPage() {
   const [couponForm, setCouponForm] = useState({ code: '', discount_type: 'percentage', discount_value: '', bonus_minutes: '0', max_uses: '', valid_until: '' });
   const [savingCoupon, setSavingCoupon] = useState(false);
   const [couponMsg, setCouponMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [editCouponId, setEditCouponId] = useState<string | null>(null);
+  const [editCouponForm, setEditCouponForm] = useState({ discount_value: '', max_uses: '', valid_until: '' });
+  const [savingEditCoupon, setSavingEditCoupon] = useState(false);
+
+  // Cafe bookings sub-tab state
+  const [cafeBookings, setCafeBookings] = useState<BookingRow[]>([]);
+  const [loadingCafeBookings, setLoadingCafeBookings] = useState(false);
+
+  // Bulk selection
+  const [selectedCafeIds, setSelectedCafeIds] = useState<Set<string>>(new Set());
+  const [bulkActionLoading, setBulkActionLoading] = useState(false);
+
+  // Delete confirm modal
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
 
   // Global coupons tab state
   const [showGlobalCouponForm, setShowGlobalCouponForm] = useState(false);
@@ -411,8 +435,11 @@ export default function AdminDashboardPage() {
             name,
             slug,
             address,
+            city,
             phone,
             email,
+            description,
+            opening_hours,
             owner_id,
             is_active,
             is_featured,
@@ -422,7 +449,13 @@ export default function AdminDashboardPage() {
             ps5_count,
             ps4_count,
             xbox_count,
-            pc_count
+            pc_count,
+            vr_count,
+            pool_count,
+            snooker_count,
+            arcade_count,
+            steering_wheel_count,
+            racing_sim_count
           `)
           .order("created_at", { ascending: false });
 
@@ -432,7 +465,7 @@ export default function AdminDashboardPage() {
           (data || []).map(async (cafe) => {
             const { data: owner } = await supabase
               .from("profiles")
-              .select("first_name, last_name")
+              .select("first_name, last_name, phone, email")
               .eq("id", cafe.owner_id)
               .maybeSingle();
 
@@ -448,7 +481,6 @@ export default function AdminDashboardPage() {
 
             const totalRevenue = revenueData?.reduce((sum, b) => sum + (b.total_amount || 0), 0) || 0;
 
-            // Combine first_name and last_name for owner name
             const ownerName = owner
               ? [owner.first_name, owner.last_name].filter(Boolean).join(" ") || "Unknown Owner"
               : "Unknown Owner";
@@ -456,7 +488,8 @@ export default function AdminDashboardPage() {
             return {
               ...cafe,
               owner_name: ownerName,
-              owner_email: "N/A", // Email not in profiles table
+              owner_email: owner?.email || null,
+              owner_phone: owner?.phone || null,
               total_bookings: bookingCount || 0,
               total_revenue: totalRevenue,
             };
@@ -853,9 +886,11 @@ export default function AdminDashboardPage() {
 
   // Delete cafe
   async function deleteCafe(cafeId: string, cafeName: string) {
-    if (!confirm(`Are you sure you want to delete "${cafeName}"? This will delete all related bookings, pricing, and images. This action cannot be undone.`)) {
-      return;
-    }
+    setDeleteConfirm({ id: cafeId, name: cafeName });
+  }
+
+  async function confirmDeleteCafe(cafeId: string, cafeName: string) {
+    setDeleteConfirm(null);
 
     try {
       setLoadingData(true);
@@ -1377,11 +1412,23 @@ export default function AdminDashboardPage() {
     setManagedCafeId(cafe.id);
     setCafeManageSubTab('info');
     setCafeInfoMsg(null);
+    // Parse opening/closing time from opening_hours string e.g. "Mon-Sun: 10:00 AM - 11:00 PM"
+    let openingTime = '';
+    let closingTime = '';
+    if (cafe.opening_hours) {
+      const match = cafe.opening_hours.match(/(\d{1,2}:\d{2}\s*[AP]M)\s*-\s*(\d{1,2}:\d{2}\s*[AP]M)/i);
+      if (match) { openingTime = match[1].trim(); closingTime = match[2].trim(); }
+    }
     setEditCafeForm({
       name: cafe.name || '',
+      slug: cafe.slug || '',
       address: cafe.address || '',
+      city: cafe.city || '',
       phone: cafe.phone || '',
       email: cafe.email || '',
+      description: cafe.description || '',
+      opening_time: openingTime,
+      closing_time: closingTime,
       price_starts_from: cafe.price_starts_from?.toString() || '',
       hourly_price: cafe.hourly_price?.toString() || '',
       ps5_count: cafe.ps5_count?.toString() || '0',
@@ -1391,6 +1438,8 @@ export default function AdminDashboardPage() {
     });
     setCafeMembershipPlans([]);
     setCafeCoupons([]);
+    setCafeBookings([]);
+    setEditCouponId(null);
   }
 
   async function handleCreateCafe(e: React.FormEvent) {
@@ -1429,17 +1478,24 @@ export default function AdminDashboardPage() {
     setSavingCafeInfo(true);
     setCafeInfoMsg(null);
     try {
+      const opening_hours = editCafeForm.opening_time && editCafeForm.closing_time
+        ? `Mon-Sun: ${editCafeForm.opening_time} - ${editCafeForm.closing_time}`
+        : null;
       const updates: Record<string, string | number | null> = {
         name: editCafeForm.name,
+        slug: editCafeForm.slug || null,
         address: editCafeForm.address,
+        city: editCafeForm.city || null,
         phone: editCafeForm.phone || null,
         email: editCafeForm.email || null,
+        description: editCafeForm.description || null,
+        opening_hours,
         price_starts_from: editCafeForm.price_starts_from ? Number(editCafeForm.price_starts_from) : null,
         hourly_price: editCafeForm.hourly_price ? Number(editCafeForm.hourly_price) : null,
       };
       const { error } = await supabase.from('cafes').update(updates).eq('id', managedCafeId);
       if (error) throw error;
-      setCafes(prev => prev.map(c => c.id === managedCafeId ? { ...c, ...updates } as CafeRow : c));
+      setCafes(prev => prev.map(c => c.id === managedCafeId ? { ...c, ...updates, opening_hours } as CafeRow : c));
       setCafeInfoMsg({ type: 'success', text: 'Café info updated successfully' });
     } catch (err: any) {
       setCafeInfoMsg({ type: 'error', text: err.message || 'Failed to save' });
@@ -1576,6 +1632,111 @@ export default function AdminDashboardPage() {
       await loadCafeCoupons(cafeId);
     } catch (err: any) {
       alert(err.message || 'Failed to delete coupon');
+    }
+  }
+
+  async function toggleCouponActiveInManage(id: string, currentStatus: boolean, cafeId: string) {
+    try {
+      const { error } = await supabase.from('coupons').update({ is_active: !currentStatus }).eq('id', id);
+      if (error) throw error;
+      setCafeCoupons(prev => prev.map(c => c.id === id ? { ...c, is_active: !currentStatus } : c));
+    } catch (err: any) {
+      alert(err.message || 'Failed to update coupon');
+    }
+  }
+
+  function startEditCoupon(coupon: any) {
+    setEditCouponId(coupon.id);
+    setEditCouponForm({
+      discount_value: coupon.discount_value?.toString() || '',
+      max_uses: coupon.max_uses?.toString() || '',
+      valid_until: coupon.valid_until ? coupon.valid_until.slice(0, 10) : '',
+    });
+  }
+
+  async function saveEditCoupon(cafeId: string) {
+    if (!editCouponId) return;
+    setSavingEditCoupon(true);
+    try {
+      const updates: Record<string, string | number | null> = {
+        discount_value: Number(editCouponForm.discount_value) || 0,
+        max_uses: editCouponForm.max_uses ? Number(editCouponForm.max_uses) : null,
+        valid_until: editCouponForm.valid_until || null,
+      };
+      const { error } = await supabase.from('coupons').update(updates).eq('id', editCouponId);
+      if (error) throw error;
+      setCafeCoupons(prev => prev.map(c => c.id === editCouponId ? { ...c, ...updates } : c));
+      setEditCouponId(null);
+    } catch (err: any) {
+      alert(err.message || 'Failed to save coupon');
+    } finally {
+      setSavingEditCoupon(false);
+    }
+  }
+
+  async function toggleMembershipActive(id: string, currentStatus: boolean, cafeId: string) {
+    try {
+      const { error } = await supabase.from('membership_plans').update({ is_active: !currentStatus }).eq('id', id);
+      if (error) throw error;
+      setCafeMembershipPlans(prev => prev.map(p => p.id === id ? { ...p, is_active: !currentStatus } : p));
+    } catch (err: any) {
+      alert(err.message || 'Failed to update plan');
+    }
+  }
+
+  async function loadCafeBookings(cafeId: string) {
+    setLoadingCafeBookings(true);
+    try {
+      const { data, error } = await supabase
+        .from('bookings')
+        .select('id, cafe_id, user_id, booking_date, start_time, duration, total_amount, status, source, customer_name, customer_phone, created_at')
+        .eq('cafe_id', cafeId)
+        .order('booking_date', { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      setCafeBookings((data || []).map(b => ({ ...b, cafe_name: '', user_name: b.customer_name || 'Walk-in' })));
+    } catch (err: any) {
+      console.error(err);
+    } finally {
+      setLoadingCafeBookings(false);
+    }
+  }
+
+  function downloadCafesCSV() {
+    const rows = [
+      ['Name', 'Slug', 'City', 'Address', 'Phone', 'Email', 'Owner', 'Owner Email', 'Status', 'Featured', 'Bookings', 'Revenue (₹)', 'Created'],
+      ...filteredCafes.map(c => [
+        c.name, c.slug, c.city || '', c.address, c.phone || '', c.email || '',
+        c.owner_name || '', c.owner_email || '',
+        c.is_active ? 'Active' : 'Inactive',
+        c.is_featured ? 'Yes' : 'No',
+        c.total_bookings || 0, c.total_revenue || 0,
+        formatDate(c.created_at),
+      ]),
+    ];
+    const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `cafes-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function bulkToggleCafeStatus(newStatus: boolean) {
+    if (!selectedCafeIds.size) return;
+    setBulkActionLoading(true);
+    try {
+      const ids = Array.from(selectedCafeIds);
+      const { error } = await supabase.from('cafes').update({ is_active: newStatus }).in('id', ids);
+      if (error) throw error;
+      setCafes(prev => prev.map(c => selectedCafeIds.has(c.id) ? { ...c, is_active: newStatus } : c));
+      setSelectedCafeIds(new Set());
+    } catch (err: any) {
+      alert(err.message || 'Bulk action failed');
+    } finally {
+      setBulkActionLoading(false);
     }
   }
 
@@ -1904,12 +2065,29 @@ export default function AdminDashboardPage() {
                   {filteredCafes.length} result{filteredCafes.length !== 1 ? 's' : ''}
                 </div>
                 <button
+                  onClick={downloadCafesCSV}
+                  className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold bg-white/[0.06] hover:bg-white/[0.09] text-slate-300 transition-colors"
+                  title="Export current results as CSV"
+                >
+                  ↓ Export CSV
+                </button>
+                <button
                   onClick={() => { setShowCreateCafe(true); setCreateCafeMsg(null); }}
                   className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm font-semibold bg-violet-600 hover:bg-violet-500 text-white transition-colors"
                 >
                   + New Café
                 </button>
               </div>
+
+              {/* Bulk action bar */}
+              {selectedCafeIds.size > 0 && (
+                <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-blue-500/10 border border-blue-500/30">
+                  <span className="text-xs text-blue-300 font-semibold">{selectedCafeIds.size} selected</span>
+                  <button onClick={() => bulkToggleCafeStatus(true)} disabled={bulkActionLoading} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 disabled:opacity-50 transition-colors">Activate All</button>
+                  <button onClick={() => bulkToggleCafeStatus(false)} disabled={bulkActionLoading} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-500/15 text-red-400 hover:bg-red-500/25 disabled:opacity-50 transition-colors">Deactivate All</button>
+                  <button onClick={() => setSelectedCafeIds(new Set())} className="ml-auto px-3 py-1.5 rounded-lg text-xs font-semibold bg-white/[0.06] text-slate-400 hover:bg-white/[0.08] transition-colors">Clear</button>
+                </div>
+              )}
 
               {/* ── CREATE CAFÉ MODAL ── */}
               {showCreateCafe && (
@@ -2037,11 +2215,36 @@ export default function AdminDashboardPage() {
                 </div>
               )}
 
+              {/* Delete confirm modal */}
+              {deleteConfirm && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+                  <div className="w-full max-w-md bg-[#0d0d12] border border-red-500/30 rounded-2xl shadow-2xl p-6 space-y-4">
+                    <h2 className="text-base font-bold text-white">Delete Café?</h2>
+                    <p className="text-sm text-slate-400">This will permanently delete <span className="text-white font-semibold">&ldquo;{deleteConfirm.name}&rdquo;</span> and all related bookings, pricing, and images. This cannot be undone.</p>
+                    <div className="flex gap-3 pt-2">
+                      <button onClick={() => setDeleteConfirm(null)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-white/[0.06] text-slate-300 hover:bg-white/[0.09] transition-colors">Cancel</button>
+                      <button onClick={() => confirmDeleteCafe(deleteConfirm.id, deleteConfirm.name)} className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-red-600 hover:bg-red-500 text-white transition-colors">Yes, Delete</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="rounded-2xl bg-[#0d0d14] border border-white/[0.08] overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead className="bg-white/[0.04] border-b border-white/[0.08]">
                       <tr>
+                        <th className="px-4 py-3 w-10">
+                          <input
+                            type="checkbox"
+                            checked={selectedCafeIds.size === paginatedCafes.length && paginatedCafes.length > 0}
+                            onChange={e => {
+                              if (e.target.checked) setSelectedCafeIds(new Set(paginatedCafes.map(c => c.id)));
+                              else setSelectedCafeIds(new Set());
+                            }}
+                            className="rounded"
+                          />
+                        </th>
                         {[
                           { label: 'Café', field: 'name' },
                           { label: 'Owner', field: 'owner_name' },
@@ -2069,6 +2272,18 @@ export default function AdminDashboardPage() {
                         <tr><td colSpan={8} className="px-4 py-12 text-center text-slate-500">No cafés found</td></tr>
                       ) : paginatedCafes.map(cafe => (
                         <tr key={cafe.id} className="hover:bg-white/[0.03] transition-colors">
+                          <td className="px-4 py-3.5 w-10">
+                            <input
+                              type="checkbox"
+                              checked={selectedCafeIds.has(cafe.id)}
+                              onChange={e => {
+                                const next = new Set(selectedCafeIds);
+                                if (e.target.checked) next.add(cafe.id); else next.delete(cafe.id);
+                                setSelectedCafeIds(next);
+                              }}
+                              className="rounded"
+                            />
+                          </td>
                           <td className="px-4 py-3.5 text-sm font-semibold text-white">{cafe.name}</td>
                           <td className="px-4 py-3.5 text-sm text-slate-300">{cafe.owner_name}</td>
                           <td className="px-4 py-3.5 text-sm text-slate-400 max-w-[160px] truncate">{cafe.address}</td>
@@ -2160,17 +2375,18 @@ export default function AdminDashboardPage() {
 
                 {/* Sub-tabs */}
                 <div className="flex gap-1 p-1 rounded-2xl bg-[#0d0d14] border border-white/[0.08] w-fit">
-                  {(['info', 'stations', 'memberships', 'coupons'] as const).map(tab => (
+                  {(['info', 'stations', 'bookings', 'memberships', 'coupons'] as const).map(tab => (
                     <button
                       key={tab}
                       onClick={() => {
                         setCafeManageSubTab(tab);
                         if (tab === 'memberships' && cafeMembershipPlans.length === 0) loadCafeMemberships(managedCafeId);
                         if (tab === 'coupons' && cafeCoupons.length === 0) loadCafeCoupons(managedCafeId);
+                        if (tab === 'bookings' && cafeBookings.length === 0) loadCafeBookings(managedCafeId);
                       }}
                       className={`px-4 py-2 rounded-xl text-xs font-semibold capitalize transition-colors ${cafeManageSubTab === tab ? 'bg-blue-500 text-white' : 'text-slate-400 hover:text-white hover:bg-white/[0.06]'}`}
                     >
-                      {tab === 'info' ? 'Info' : tab === 'stations' ? 'Stations' : tab === 'memberships' ? 'Memberships' : 'Coupons'}
+                      {tab === 'info' ? 'Info' : tab === 'stations' ? 'Stations' : tab === 'memberships' ? 'Memberships' : tab === 'coupons' ? 'Coupons' : 'Bookings'}
                     </button>
                   ))}
                 </div>
@@ -2185,7 +2401,9 @@ export default function AdminDashboardPage() {
                       )}
                       {[
                         { label: 'Café Name', key: 'name' },
+                        { label: 'URL Slug', key: 'slug', hint: 'e.g. gamezon-bandra' },
                         { label: 'Address', key: 'address' },
+                        { label: 'City', key: 'city' },
                         { label: 'Phone', key: 'phone' },
                         { label: 'Email', key: 'email' },
                         { label: 'Starting Price (₹)', key: 'price_starts_from' },
@@ -2197,10 +2415,43 @@ export default function AdminDashboardPage() {
                             type={f.key.includes('price') ? 'number' : 'text'}
                             value={editCafeForm[f.key] || ''}
                             onChange={e => setEditCafeForm(prev => ({ ...prev, [f.key]: e.target.value }))}
+                            placeholder={(f as any).hint || ''}
                             className="w-full px-3 py-2 rounded-xl bg-white/[0.06] border border-white/[0.09] text-sm text-white placeholder-slate-500 outline-none focus:border-blue-500/50"
                           />
                         </div>
                       ))}
+                      <div>
+                        <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-1">Description</label>
+                        <textarea
+                          value={editCafeForm.description || ''}
+                          onChange={e => setEditCafeForm(prev => ({ ...prev, description: e.target.value }))}
+                          rows={3}
+                          className="w-full px-3 py-2 rounded-xl bg-white/[0.06] border border-white/[0.09] text-sm text-white placeholder-slate-500 outline-none focus:border-blue-500/50 resize-none"
+                          placeholder="About this café…"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-1">Opens At</label>
+                          <input
+                            type="text"
+                            value={editCafeForm.opening_time || ''}
+                            onChange={e => setEditCafeForm(prev => ({ ...prev, opening_time: e.target.value }))}
+                            placeholder="10:00 AM"
+                            className="w-full px-3 py-2 rounded-xl bg-white/[0.06] border border-white/[0.09] text-sm text-white placeholder-slate-500 outline-none focus:border-blue-500/50"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-1">Closes At</label>
+                          <input
+                            type="text"
+                            value={editCafeForm.closing_time || ''}
+                            onChange={e => setEditCafeForm(prev => ({ ...prev, closing_time: e.target.value }))}
+                            placeholder="11:00 PM"
+                            className="w-full px-3 py-2 rounded-xl bg-white/[0.06] border border-white/[0.09] text-sm text-white placeholder-slate-500 outline-none focus:border-blue-500/50"
+                          />
+                        </div>
+                      </div>
                       <button
                         onClick={saveCafeInfoAdmin}
                         disabled={savingCafeInfo}
@@ -2217,10 +2468,14 @@ export default function AdminDashboardPage() {
                         { label: 'Total Bookings', value: mc.total_bookings || 0 },
                         { label: 'Total Revenue', value: formatCurrency(mc.total_revenue || 0) },
                         { label: 'Owner', value: mc.owner_name || '—' },
+                        { label: 'Owner Email', value: mc.owner_email || '—' },
+                        { label: 'Owner Phone', value: mc.owner_phone || '—' },
+                        { label: 'City', value: mc.city || '—' },
+                        { label: 'Opening Hours', value: mc.opening_hours || '—' },
                       ].map(r => (
-                        <div key={r.label} className="flex justify-between items-center py-2.5 border-b border-white/[0.06]">
+                        <div key={r.label} className="flex justify-between items-center py-2 border-b border-white/[0.06]">
                           <span className="text-xs text-slate-500">{r.label}</span>
-                          <span className="text-sm font-semibold text-white">{r.value}</span>
+                          <span className="text-xs font-semibold text-white max-w-[55%] text-right truncate">{r.value}</span>
                         </div>
                       ))}
                       <div className="pt-2 space-y-2">
@@ -2296,6 +2551,58 @@ export default function AdminDashboardPage() {
                         </button>
                       </div>
                     </div>
+                  </div>
+                )}
+
+                {/* ── BOOKINGS SUB-TAB ── */}
+                {cafeManageSubTab === 'bookings' && (
+                  <div className="rounded-2xl bg-[#0d0d14] border border-white/[0.08] overflow-hidden">
+                    <div className="px-5 py-4 border-b border-white/[0.08] flex items-center justify-between">
+                      <h3 className="text-sm font-semibold text-white">Bookings</h3>
+                      <button onClick={() => loadCafeBookings(managedCafeId)} className="text-xs text-slate-500 hover:text-white transition-colors">↻ Refresh</button>
+                    </div>
+                    {loadingCafeBookings ? (
+                      <div className="py-10 text-center text-sm text-slate-500">Loading…</div>
+                    ) : cafeBookings.length === 0 ? (
+                      <div className="py-10 text-center text-sm text-slate-500">No bookings yet.</div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead className="bg-white/[0.03] border-b border-white/[0.08]">
+                            <tr>
+                              <th className={thCls}>Date</th>
+                              <th className={thCls}>Time</th>
+                              <th className={thCls}>Customer</th>
+                              <th className={thCls}>Duration</th>
+                              <th className={thCls}>Source</th>
+                              <th className={thCls}>Amount</th>
+                              <th className={thCls}>Status</th>
+                              <th className={`${thCls} text-right`}>Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-white/[0.06]">
+                            {cafeBookings.map(b => (
+                              <tr key={b.id} className="hover:bg-white/[0.03] transition-colors">
+                                <td className={tdCls}>{formatDate(b.booking_date)}</td>
+                                <td className={`${tdCls} text-cyan-400`}>{b.start_time}</td>
+                                <td className={tdCls}>{b.user_name || b.customer_name || 'Walk-in'}</td>
+                                <td className={tdCls}>{b.duration} min</td>
+                                <td className={tdCls}>{b.source === 'walk_in' ? 'Walk-in' : 'Online'}</td>
+                                <td className={`${tdCls} font-semibold text-emerald-400`}>{formatCurrency(b.total_amount)}</td>
+                                <td className={tdCls}>
+                                  <select value={b.status} onChange={e => updateBookingStatus(b.id, e.target.value)} className="px-2 py-1 rounded-lg bg-white/[0.06] border border-white/[0.09] text-xs text-white outline-none">
+                                    {['pending','confirmed','in-progress','completed','cancelled'].map(s => <option key={s} value={s}>{s}</option>)}
+                                  </select>
+                                </td>
+                                <td className={`${tdCls} text-right`}>
+                                  <button onClick={() => deleteBookingAdmin(b.id, mc.name || '')} className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors">Delete</button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -2390,7 +2697,12 @@ export default function AdminDashboardPage() {
                                 <td className="px-4 py-3 text-sm text-slate-400">{plan.hours ? `${plan.hours}h` : '—'}</td>
                                 <td className="px-4 py-3 text-sm text-slate-400">{plan.validity_days}d</td>
                                 <td className="px-4 py-3 text-right">
-                                  <button onClick={() => deleteMembershipPlan(plan.id, managedCafeId)} className="px-3 py-1 rounded-lg text-xs font-semibold bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors">Delete</button>
+                                  <div className="flex items-center justify-end gap-1.5">
+                                    <button onClick={() => toggleMembershipActive(plan.id, plan.is_active, managedCafeId)} className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors ${plan.is_active ? 'bg-amber-500/15 text-amber-400 hover:bg-amber-500/25' : 'bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25'}`}>
+                                      {plan.is_active ? 'Disable' : 'Enable'}
+                                    </button>
+                                    <button onClick={() => deleteMembershipPlan(plan.id, managedCafeId)} className="px-3 py-1 rounded-lg text-xs font-semibold bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors">Delete</button>
+                                  </div>
                                 </td>
                               </tr>
                             ))}
@@ -2404,6 +2716,30 @@ export default function AdminDashboardPage() {
                 {/* ── COUPONS SUB-TAB ── */}
                 {cafeManageSubTab === 'coupons' && (
                   <div className="space-y-4">
+                    {/* Edit coupon modal */}
+                    {editCouponId && (
+                      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                        <div className="w-full max-w-sm bg-[#0d0d12] border border-white/[0.09] rounded-2xl shadow-2xl p-6 space-y-4">
+                          <h2 className="text-sm font-bold text-white">Edit Coupon</h2>
+                          <div>
+                            <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-1">Discount Value</label>
+                            <input type="number" value={editCouponForm.discount_value} onChange={e => setEditCouponForm(p => ({...p, discount_value: e.target.value}))} className="w-full px-3 py-2 rounded-xl bg-white/[0.06] border border-white/[0.09] text-sm text-white outline-none" />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-1">Max Uses (blank = ∞)</label>
+                            <input type="number" value={editCouponForm.max_uses} onChange={e => setEditCouponForm(p => ({...p, max_uses: e.target.value}))} className="w-full px-3 py-2 rounded-xl bg-white/[0.06] border border-white/[0.09] text-sm text-white outline-none" placeholder="∞" />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-widest mb-1">Valid Until</label>
+                            <input type="date" value={editCouponForm.valid_until} onChange={e => setEditCouponForm(p => ({...p, valid_until: e.target.value}))} className="w-full px-3 py-2 rounded-xl bg-white/[0.06] border border-white/[0.09] text-sm text-white outline-none" />
+                          </div>
+                          <div className="flex gap-3 pt-1">
+                            <button onClick={() => setEditCouponId(null)} className="flex-1 py-2 rounded-xl text-sm font-semibold bg-white/[0.06] text-slate-300 hover:bg-white/[0.09] transition-colors">Cancel</button>
+                            <button onClick={() => saveEditCoupon(managedCafeId)} disabled={savingEditCoupon} className="flex-1 py-2 rounded-xl text-sm font-semibold bg-blue-600 hover:bg-blue-500 text-white transition-colors disabled:opacity-50">{savingEditCoupon ? 'Saving…' : 'Save'}</button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                     {/* Add coupon form */}
                     <div className="rounded-2xl bg-[#0d0d14] border border-white/[0.08] p-5 space-y-4">
                       <h3 className="text-sm font-semibold text-white">Create Coupon</h3>
@@ -2487,7 +2823,13 @@ export default function AdminDashboardPage() {
                                       : <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-white/[0.06] text-slate-400">Inactive</span>}
                                   </td>
                                   <td className="px-4 py-3 text-right">
-                                    <button onClick={() => deleteCoupon(coupon.id, managedCafeId)} className="px-3 py-1 rounded-lg text-xs font-semibold bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors">Delete</button>
+                                    <div className="flex items-center justify-end gap-1.5">
+                                      <button onClick={() => startEditCoupon(coupon)} className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 transition-colors">Edit</button>
+                                      <button onClick={() => toggleCouponActiveInManage(coupon.id, coupon.is_active, managedCafeId)} className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors ${coupon.is_active ? 'bg-amber-500/15 text-amber-400 hover:bg-amber-500/25' : 'bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25'}`}>
+                                        {coupon.is_active ? 'Pause' : 'Resume'}
+                                      </button>
+                                      <button onClick={() => deleteCoupon(coupon.id, managedCafeId)} className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors">Delete</button>
+                                    </div>
                                   </td>
                                 </tr>
                               );
