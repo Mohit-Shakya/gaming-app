@@ -26,29 +26,25 @@ export interface AuditLogEntry {
   entityType: EntityType;
   entityId?: string;
   details?: Record<string, unknown>;
+  adminId?: string | null;
 }
 
 /**
- * Log an admin action to the audit_logs table
+ * Log an admin action to the audit_logs table.
+ * Pass adminId from the useAdminAuth hook — admin uses cookie sessions, not Supabase auth.
  */
 export async function logAdminAction({
   action,
   entityType,
   entityId,
   details,
+  adminId,
 }: AuditLogEntry): Promise<void> {
+  if (!adminId) return; // skip if no admin session (cookie auth, not Supabase auth)
+
   try {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      console.error("Cannot log audit action: No authenticated user");
-      return;
-    }
-
     const { error } = await supabase.from("audit_logs").insert({
-      admin_id: user.id,
+      admin_id: adminId,
       action,
       entity_type: entityType,
       entity_id: entityId,

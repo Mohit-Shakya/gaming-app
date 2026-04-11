@@ -1002,7 +1002,8 @@ export default function AdminDashboardPage() {
         action: newStatus ? "activate" : "deactivate",
         entityType: "cafe",
         entityId: cafeId,
-        details: { cafeName, oldStatus: currentStatus, newStatus }
+        details: { cafeName, oldStatus: currentStatus, newStatus },
+        adminId,
       });
     } catch (err) {
       console.error("Error toggling cafe status:", err);
@@ -1109,7 +1110,8 @@ export default function AdminDashboardPage() {
         action: "delete",
         entityType: "cafe",
         entityId: cafeId,
-        details: { cafeName }
+        details: { cafeName },
+        adminId,
       });
 
       alert("Café and all related data deleted successfully");
@@ -1142,7 +1144,8 @@ export default function AdminDashboardPage() {
         action: "change_role",
         entityType: "user",
         entityId: userId,
-        details: { userName, oldRole, newRole }
+        details: { userName, oldRole, newRole },
+        adminId,
       });
     } catch (err) {
       console.error("Error updating user role:", err);
@@ -1171,7 +1174,8 @@ export default function AdminDashboardPage() {
         action: "delete",
         entityType: "user",
         entityId: userId,
-        details: { userName }
+        details: { userName },
+        adminId,
       });
 
       alert("User deleted successfully");
@@ -1205,7 +1209,8 @@ export default function AdminDashboardPage() {
       await logAdminAction({
         action: "create",
         entityType: "announcement",
-        details: { title: announcementForm.title, type: announcementForm.type }
+        details: { title: announcementForm.title, type: announcementForm.type },
+        adminId,
       });
 
       // Reset form
@@ -1271,7 +1276,8 @@ export default function AdminDashboardPage() {
         action: "delete",
         entityType: "announcement",
         entityId: id,
-        details: { title }
+        details: { title },
+        adminId,
       });
 
       alert("Announcement deleted successfully");
@@ -1355,7 +1361,8 @@ export default function AdminDashboardPage() {
         details: {
           username_changed: !!newUsername,
           password_changed: !!newPassword
-        }
+        },
+        adminId,
       });
 
       setSettingsMessage({ type: 'success', text: 'Admin credentials updated successfully!' });
@@ -1396,7 +1403,8 @@ export default function AdminDashboardPage() {
         action: newStatus ? "feature" : "unfeature",
         entityType: "cafe",
         entityId: cafeId,
-        details: { cafeName }
+        details: { cafeName },
+        adminId,
       });
 
       alert(`Café ${newStatus ? 'featured' : 'unfeatured'} successfully`);
@@ -1935,7 +1943,7 @@ export default function AdminDashboardPage() {
         .upsert({ key: 'maintenance_mode', value: newVal ? 'true' : 'false' }, { onConflict: 'key' });
       if (error) throw error;
       setMaintenanceMode(newVal);
-      await logAdminAction({ action: newVal ? 'enable_maintenance' : 'disable_maintenance', entityType: 'settings', details: { maintenance_mode: newVal } });
+      await logAdminAction({ action: newVal ? 'enable_maintenance' : 'disable_maintenance', entityType: 'settings', details: { maintenance_mode: newVal }, adminId });
     } catch (err: any) {
       alert(err.message || 'Failed to toggle maintenance mode');
     } finally {
@@ -2036,7 +2044,7 @@ export default function AdminDashboardPage() {
       const { error } = await supabase.from('bookings').delete().eq('id', bookingId);
       if (error) throw error;
       setBookings(prev => prev.filter(b => b.id !== bookingId));
-      await logAdminAction({ action: 'delete', entityType: 'booking', entityId: bookingId, details: { cafeName } });
+      await logAdminAction({ action: 'delete', entityType: 'booking', entityId: bookingId, details: { cafeName }, adminId });
     } catch (err: any) {
       alert(err.message || 'Failed to delete booking');
     }
@@ -2517,17 +2525,9 @@ export default function AdminDashboardPage() {
                               : <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-red-500/15 text-red-400">Inactive</span>}
                           </td>
                           <td className="px-4 py-3.5">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <button onClick={() => openCafeManage(cafe)} className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-violet-500/15 text-violet-400 hover:bg-violet-500/25 transition-colors">⚙ Manage</button>
-                              <button onClick={() => router.push(`/cafes/${cafe.slug}`)} className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 transition-colors">View</button>
-                              <button onClick={() => toggleCafeStatus(cafe.id, cafe.is_active, cafe.name)} className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors ${cafe.is_active ? 'bg-red-500/15 text-red-400 hover:bg-red-500/25' : 'bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25'}`}>
-                                {cafe.is_active ? 'Deactivate' : 'Activate'}
-                              </button>
-                              <button onClick={() => toggleFeaturedCafe(cafe.id, cafe.is_featured || false, cafe.name)} className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors ${cafe.is_featured ? 'bg-amber-500/15 text-amber-400 hover:bg-amber-500/25' : 'bg-white/[0.06] text-slate-400 hover:bg-white/[0.08]'}`}>
-                                {cafe.is_featured ? '⭐ Featured' : '☆ Feature'}
-                              </button>
-                              <button onClick={() => deleteCafe(cafe.id, cafe.name)} className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors">Delete</button>
-                            </div>
+                            <button onClick={() => openCafeManage(cafe)} className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-violet-500/15 text-violet-400 hover:bg-violet-500/25 transition-colors">
+                              Manage
+                            </button>
                           </td>
                         </tr>
                       ))}
@@ -2703,6 +2703,9 @@ export default function AdminDashboardPage() {
                         </button>
                         <button onClick={() => toggleFeaturedCafe(mc.id, mc.is_featured || false, mc.name!)} className={`w-full py-2 rounded-xl text-xs font-semibold transition-colors ${mc.is_featured ? 'bg-amber-500/15 text-amber-400 hover:bg-amber-500/25' : 'bg-white/[0.06] text-slate-400 hover:bg-white/[0.08]'}`}>
                           {mc.is_featured ? '⭐ Remove Featured' : '☆ Mark as Featured'}
+                        </button>
+                        <button onClick={() => { setManagedCafeId(null); deleteCafe(mc.id, mc.name!); }} className="w-full py-2 rounded-xl text-xs font-semibold bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors">
+                          Delete Café
                         </button>
                       </div>
                     </div>
