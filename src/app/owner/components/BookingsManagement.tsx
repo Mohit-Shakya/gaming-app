@@ -30,8 +30,8 @@ function getDateRange(range: string, customStart: string, customEnd: string): { 
     const fmt = (d: Date) => d.toISOString().slice(0, 10);
 
     if (range === 'today') return { dateFrom: fmt(today), dateTo: fmt(today) };
-    if (range === 'tomorrow') {
-        const t = new Date(today); t.setDate(t.getDate() + 1);
+    if (range === 'yesterday') {
+        const t = new Date(today); t.setDate(t.getDate() - 1);
         return { dateFrom: fmt(t), dateTo: fmt(t) };
     }
     if (range === 'week') {
@@ -377,7 +377,7 @@ export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateS
                         <div className="flex flex-wrap gap-1.5">
                             {([
                                 { v: 'today', l: 'Today' },
-                                { v: 'tomorrow', l: 'Tomorrow' },
+                                { v: 'yesterday', l: 'Yesterday' },
                                 { v: 'week', l: 'This Week' },
                                 { v: 'all', l: 'All Time' },
                                 { v: 'custom', l: 'Custom' },
