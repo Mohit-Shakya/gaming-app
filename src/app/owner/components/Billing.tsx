@@ -101,6 +101,7 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess, onMembersh
     // Autocomplete State
     const [suggestions, setSuggestions] = useState<CustomerSuggestion[]>([]);
     const [showSuggestions, setShowSuggestions] = useState(false);
+    const [suggestionField, setSuggestionField] = useState<'name' | 'phone' | null>(null);
     const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     const normalizedStationPricing = useMemo(
@@ -260,7 +261,8 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess, onMembersh
     // Customer Autocomplete — debounced server-side search (no load-all)
     const searchCustomers = (query: string, field: 'name' | 'phone') => {
         if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
-        if (query.length < 2) { setSuggestions([]); setShowSuggestions(false); return; }
+        if (query.length < 2) { setSuggestions([]); setShowSuggestions(false); setSuggestionField(null); return; }
+        setSuggestionField(field);
         searchTimeoutRef.current = setTimeout(async () => {
             if (!cafeId) return;
             try {
@@ -485,32 +487,39 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess, onMembersh
                         onChange={(val) => { setCustomerName(val); searchCustomers(val, 'name'); }}
                         placeholder="Enter customer name"
                     />
-                    {showSuggestions && suggestions.length > 0 && (
+                    {showSuggestions && suggestionField === 'name' && suggestions.length > 0 && (
                         <>
                             <div
                                 className="fixed inset-0 z-40"
-                                onClick={() => setShowSuggestions(false)}
+                                onClick={() => { setShowSuggestions(false); setSuggestionField(null); }}
                             />
-                            <div className="absolute top-full mt-1 left-0 w-full z-50 bg-white/[0.06] border border-white/[0.09] rounded-xl shadow-xl overflow-hidden max-h-48 overflow-y-auto">
+                            <div className="absolute top-full mt-1 left-0 w-full z-50 bg-[#13131f] border border-white/[0.12] rounded-xl shadow-2xl overflow-hidden max-h-48 overflow-y-auto">
                                 {suggestions.map((s, idx) => (
                                     <div
                                         key={idx}
-                                        onClick={() => {
+                                        onMouseDown={(e) => {
+                                            e.preventDefault(); // prevent blur before click
                                             setCustomerName(s.name);
                                             setCustomerPhone(s.phone);
                                             setShowSuggestions(false);
+                                            setSuggestionField(null);
                                         }}
-                                        className="px-4 py-3 hover:bg-white/[0.05] cursor-pointer border-b border-white/[0.09]/50 last:border-0"
+                                        className="px-4 py-3 hover:bg-white/[0.06] cursor-pointer border-b border-white/[0.08] last:border-0 flex items-center gap-3"
                                     >
-                                        <div className="font-medium text-white">{s.name}</div>
-                                        <div className="text-xs text-slate-400">{s.phone}</div>
+                                        <span className="w-7 h-7 rounded-lg bg-indigo-500/20 flex items-center justify-center text-xs font-bold text-indigo-400 shrink-0">
+                                            {s.name.charAt(0).toUpperCase()}
+                                        </span>
+                                        <div>
+                                            <div className="font-medium text-white text-sm">{s.name}</div>
+                                            <div className="text-xs text-slate-500">{s.phone}</div>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
                         </>
                     )}
                 </div>
-                <div className="relative">
+                <div className="relative z-10">
                     <Input
                         label={mode === 'membership' ? 'Phone (Required)' : 'Phone (Optional)'}
                         value={customerPhone}
@@ -518,18 +527,29 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess, onMembersh
                         placeholder="Enter phone number"
                         type="tel"
                     />
-                    {showSuggestions && suggestions.length > 0 && (
+                    {showSuggestions && suggestionField === 'phone' && suggestions.length > 0 && (
                         <>
-                            <div className="fixed inset-0 z-40" onClick={() => setShowSuggestions(false)} />
-                            <div className="absolute top-full mt-1 left-0 w-full z-50 bg-white/[0.06] border border-white/[0.09] rounded-xl shadow-xl overflow-hidden max-h-48 overflow-y-auto">
+                            <div className="fixed inset-0 z-40" onClick={() => { setShowSuggestions(false); setSuggestionField(null); }} />
+                            <div className="absolute top-full mt-1 left-0 w-full z-50 bg-[#13131f] border border-white/[0.12] rounded-xl shadow-2xl overflow-hidden max-h-48 overflow-y-auto">
                                 {suggestions.map((s, idx) => (
                                     <div
                                         key={idx}
-                                        onClick={() => { setCustomerName(s.name); setCustomerPhone(s.phone); setShowSuggestions(false); }}
-                                        className="px-4 py-3 hover:bg-white/[0.05] cursor-pointer border-b border-white/[0.09]/50 last:border-0"
+                                        onMouseDown={(e) => {
+                                            e.preventDefault();
+                                            setCustomerName(s.name);
+                                            setCustomerPhone(s.phone);
+                                            setShowSuggestions(false);
+                                            setSuggestionField(null);
+                                        }}
+                                        className="px-4 py-3 hover:bg-white/[0.06] cursor-pointer border-b border-white/[0.08] last:border-0 flex items-center gap-3"
                                     >
-                                        <div className="font-medium text-white">{s.name}</div>
-                                        <div className="text-xs text-slate-400">{s.phone}</div>
+                                        <span className="w-7 h-7 rounded-lg bg-indigo-500/20 flex items-center justify-center text-xs font-bold text-indigo-400 shrink-0">
+                                            {s.name.charAt(0).toUpperCase()}
+                                        </span>
+                                        <div>
+                                            <div className="font-medium text-white text-sm">{s.name}</div>
+                                            <div className="text-xs text-slate-500">{s.phone}</div>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
