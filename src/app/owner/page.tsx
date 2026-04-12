@@ -934,6 +934,23 @@ export default function OwnerDashboardPage() {
       debugLog('[handleSaveBooking] Parsed amount:', updatedAmount);
       debugLog('[handleSaveBooking] Booking ID:', editingBooking.id);
 
+      // Auto-restore in-progress if a completed booking is extended into the future
+      const newDuration = editItems.reduce((max, item) => Math.max(max, item.duration || 60), 0);
+      let resolvedStatus = editStatus;
+      if (editStatus === 'completed') {
+        const timeParts = startTime12h.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
+        if (timeParts) {
+          let h = parseInt(timeParts[1]);
+          const m = parseInt(timeParts[2]);
+          const period = timeParts[3];
+          if (period?.toLowerCase() === 'pm' && h !== 12) h += 12;
+          else if (period?.toLowerCase() === 'am' && h === 12) h = 0;
+          const endMins = h * 60 + m + newDuration;
+          const nowMins = new Date().getHours() * 60 + new Date().getMinutes();
+          if (endMins > nowMins) resolvedStatus = 'in-progress';
+        }
+      }
+
       // Update booking via server API route (bypasses ISP block)
       const res = await fetch('/api/owner/billing', {
         method: 'PUT',
@@ -943,13 +960,13 @@ export default function OwnerDashboardPage() {
           updatedAtCheck: editConflictBase,
           booking: {
             total_amount: updatedAmount,
-            status: editStatus,
+            status: resolvedStatus,
             payment_mode: normalizedPaymentMode,
             customer_name: sanitizedCustomerName,
             customer_phone: sanitizedCustomerPhone,
             booking_date: editDate,
             start_time: startTime12h,
-            duration: editItems.reduce((max, item) => Math.max(max, item.duration || 60), 0),
+            duration: newDuration,
           },
           items: editItems.map(item => {
             // Preserve existing station assignment from title (format: "duration|station")
@@ -988,7 +1005,7 @@ export default function OwnerDashboardPage() {
             ? {
               ...b,
               total_amount: parseFloat(editAmount),
-              status: editStatus,
+              status: resolvedStatus,
               payment_mode: normalizedPaymentMode,
               customer_name: sanitizedCustomerName,
               customer_phone: sanitizedCustomerPhone,

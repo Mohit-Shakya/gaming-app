@@ -458,27 +458,6 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess, onMembersh
             <h3 className="text-lg font-semibold text-white flex items-center gap-2">
                 <User className="text-blue-500" size={20} /> Customer Info
             </h3>
-            {/* Recent customers quick-pick */}
-            {recentCustomers.length > 0 && !customerName && (
-                <div className="space-y-1.5">
-                    <p className="text-[10px] font-semibold text-slate-600 uppercase tracking-widest">Recent</p>
-                    <div className="flex flex-wrap gap-1.5">
-                        {recentCustomers.map((c, i) => (
-                            <button
-                                key={i}
-                                type="button"
-                                onClick={() => { setCustomerName(c.name); setCustomerPhone(c.phone); setSuggestions([]); setShowSuggestions(false); }}
-                                className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/[0.05] border border-white/[0.09] hover:bg-white/[0.09] hover:border-white/[0.15] transition-colors text-xs"
-                            >
-                                <span className="w-5 h-5 rounded-md bg-indigo-500/20 flex items-center justify-center text-[10px] font-bold text-indigo-400 shrink-0">
-                                    {c.name.charAt(0).toUpperCase()}
-                                </span>
-                                <span className="text-slate-300 font-medium truncate max-w-[80px]">{c.name.split(' ')[0]}</span>
-                            </button>
-                        ))}
-                    </div>
-                </div>
-            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="relative z-20">
                     <Input
