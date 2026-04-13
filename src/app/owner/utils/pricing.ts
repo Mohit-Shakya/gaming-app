@@ -203,5 +203,9 @@ export function calcBillingPrice(
     }
   }
 
+  // Neither station pricing nor console pricing had a match — returning fallback ₹100
+  console.warn(
+    `[calcBillingPrice] No pricing found for consoleType="${consoleType}" qty=${quantity} dur=${duration} cafeId=${cafeId} — falling back to ₹100`
+  );
   return 100; // fallback
 }

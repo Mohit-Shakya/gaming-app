@@ -232,6 +232,9 @@ export default function OwnerDashboardPage() {
   const [stationToDelete, setStationToDelete] = useState<{ name: string, displayName: string, type: string } | null>(null);
   const [deletingStation, setDeletingStation] = useState(false);
 
+  // Station power toggle confirmation state
+  const [pendingPowerToggle, setPendingPowerToggle] = useState<{ name: string; hasActiveSession: boolean } | null>(null);
+
   // Station power status (tracks which stations are powered off)
   const [poweredOffStations, setPoweredOffStations] = useState<Set<string>>(new Set());
   const [maintenanceStations, setMaintenanceStations] = useState<Set<string>>(new Set());
@@ -524,13 +527,18 @@ export default function OwnerDashboardPage() {
         return;
       }
 
-      const res = await fetch(`/api/owner/gallery?cafeId=${currentCafeId}`);
-      if (!res.ok) {
+      try {
+        const res = await fetch(`/api/owner/gallery?cafeId=${currentCafeId}`);
+        if (!res.ok) {
+          toast.error('Failed to load gallery images');
+          return;
+        }
+        const data = await res.json();
+        setGalleryImages(data.images || []);
+      } catch (err) {
+        console.error('Gallery fetch error:', err);
         toast.error('Failed to load gallery images');
-        return;
       }
-      const { images } = await res.json();
-      setGalleryImages(images || []);
     }
 
     fetchGalleryImages();
@@ -1720,22 +1728,23 @@ export default function OwnerDashboardPage() {
     }
   };
 
-  // Handle toggle station power
-  const handleTogglePower = async (stationName: string) => {
+  // Handle toggle station power — shows confirmation before powering off
+  const handleTogglePower = (stationName: string) => {
     const isCurrentlyOff = poweredOffStations.has(stationName);
-
-    // Warn if powering off a station with an active session
-    if (!isCurrentlyOff) {
-      const hasActiveSession = bookings.some(
-        b => b.status === 'in-progress' && b.booking_items?.some(
-          (bi: any) => getAssignedStationsFromItemTitle(bi.title).includes(stationName.toLowerCase())
-        )
-      );
-      if (hasActiveSession) {
-        toast.warning(`Station "${stationName}" has an active session — powering off anyway.`);
-      }
+    if (isCurrentlyOff) {
+      // Powering back on — no confirmation needed
+      void executePowerToggle(stationName, true);
+      return;
     }
+    const hasActiveSession = bookings.some(
+      b => b.status === 'in-progress' && b.booking_items?.some(
+        (bi: any) => getAssignedStationsFromItemTitle(bi.title).includes(stationName.toLowerCase())
+      )
+    );
+    setPendingPowerToggle({ name: stationName, hasActiveSession });
+  };
 
+  const executePowerToggle = async (stationName: string, isCurrentlyOff: boolean) => {
     // Optimistic update
     setPoweredOffStations(prev => {
       const newSet = new Set(prev);
@@ -2413,6 +2422,7 @@ export default function OwnerDashboardPage() {
 
           {/* Bookings Tab */}
           {activeTab === 'bookings' && (
+            <ErrorBoundary>
             <BookingsManagement
               cafeId={selectedCafeId || undefined}
               loading={loadingData}
@@ -2448,6 +2458,7 @@ export default function OwnerDashboardPage() {
               onStartTimer={handleStartTimer}
               onStopTimer={handleStopTimer}
             />
+            </ErrorBoundary>
           )}
 
           {/* Cafe Details Tab */}
@@ -2578,6 +2589,7 @@ export default function OwnerDashboardPage() {
 
           {/* Customers Tab */}
           {activeTab === 'customers' && (
+            <ErrorBoundary>
             <CustomersTab
               theme={theme}
               bookings={bookings}
@@ -2594,10 +2606,12 @@ export default function OwnerDashboardPage() {
               subscriptions={subscriptions}
               handleViewCustomer={handleViewCustomer}
             />
+            </ErrorBoundary>
           )}
 
           {/* Stations Tab */}
           {activeTab === 'stations' && cafes.length > 0 && (
+            <ErrorBoundary>
             <StationsTab
               currentCafe={currentCafe}
               bookings={bookings}
@@ -2615,6 +2629,7 @@ export default function OwnerDashboardPage() {
               }}
               theme={theme}
             />
+            </ErrorBoundary>
           )}
 
           {/* Tournament Tab */}
@@ -2640,6 +2655,7 @@ export default function OwnerDashboardPage() {
 
           {/* Memberships Tab */}
           {activeTab === 'memberships' && (
+            <ErrorBoundary>
             <Memberships
               isMobile={isMobile}
               cafeId={currentCafeId}
@@ -2652,37 +2668,45 @@ export default function OwnerDashboardPage() {
               onStopTimer={handleStopTimer}
               onRefresh={() => refreshData()}
             />
+            </ErrorBoundary>
           )}
 
           {/* Coupons Tab */}
           {activeTab === 'coupons' && (
+            <ErrorBoundary>
             <Coupons
               isMobile={isMobile}
               cafeId={currentCafeId}
               onRefresh={() => refreshData()}
             />
+            </ErrorBoundary>
           )}
 
           {/* Reports Tab */}
           {activeTab === 'reports' && (
+            <ErrorBoundary>
             <Reports
               cafeId={currentCafeId}
               cafeName={currentCafe?.name ?? undefined}
               isMobile={isMobile}
               openingHours={currentCafe?.opening_hours ?? undefined}
             />
+            </ErrorBoundary>
           )}
 
           {/* Inventory Tab */}
           {activeTab === 'inventory' && (
+            <ErrorBoundary>
             <Inventory
               cafeId={currentCafeId}
             />
+            </ErrorBoundary>
           )}
 
           {/* Billing Tab - Quick Booking Interface */}
 
           {activeTab === 'billing' && (
+            <ErrorBoundary>
             <div>
               {/* Snack-only sale shortcut */}
               <div className="mb-4 flex justify-end">
@@ -2710,11 +2734,13 @@ export default function OwnerDashboardPage() {
                 }}
               />
             </div>
+            </ErrorBoundary>
           )}
 
 
           {/* Settings Tab */}
           {activeTab === 'settings' && (
+            <ErrorBoundary>
             <SettingsTab
               theme={theme}
               fonts={fonts}
@@ -2733,6 +2759,7 @@ export default function OwnerDashboardPage() {
               galleryImages={galleryImages}
               handleGalleryPhotoDelete={handleGalleryPhotoDelete}
             />
+            </ErrorBoundary>
           )}
         </div>
       </DashboardLayout>
@@ -3866,6 +3893,77 @@ export default function OwnerDashboardPage() {
           </div>
         )
       }
+
+      {/* Power Off Station Confirmation Modal */}
+      {pendingPowerToggle && (
+        <div
+          style={{
+            position: "fixed", inset: 0,
+            background: "rgba(0,0,0,0.7)",
+            backdropFilter: "blur(4px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 10000,
+            padding: "20px",
+          }}
+          onClick={() => setPendingPowerToggle(null)}
+        >
+          <div
+            style={{
+              background: theme.cardBackground,
+              borderRadius: 20,
+              border: `1px solid ${theme.border}`,
+              maxWidth: "420px",
+              width: "100%",
+              padding: "32px",
+              boxShadow: "0 25px 50px rgba(0,0,0,0.3)",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ fontSize: 48, textAlign: "center", marginBottom: 16 }}>⚡</div>
+            <h3 style={{ fontSize: 20, fontWeight: 700, color: theme.textPrimary, textAlign: "center", marginBottom: 8 }}>
+              Power Off Station?
+            </h3>
+            <p style={{ fontSize: 14, color: theme.textSecondary, textAlign: "center", marginBottom: 8 }}>
+              Station <strong style={{ color: theme.textPrimary }}>{pendingPowerToggle.name}</strong> will be marked as offline.
+            </p>
+            {pendingPowerToggle.hasActiveSession && (
+              <p style={{ fontSize: 13, color: "#f97316", textAlign: "center", background: "rgba(249,115,22,0.1)", border: "1px solid rgba(249,115,22,0.3)", borderRadius: 8, padding: "8px 12px", marginBottom: 8 }}>
+                This station has an active session in progress.
+              </p>
+            )}
+            <div style={{ display: "flex", gap: 12, marginTop: 24 }}>
+              <button
+                onClick={() => setPendingPowerToggle(null)}
+                style={{
+                  flex: 1, padding: "12px", borderRadius: 10,
+                  border: `1px solid ${theme.border}`,
+                  background: "transparent", color: theme.textSecondary,
+                  fontSize: 14, fontWeight: 500, cursor: "pointer",
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  const name = pendingPowerToggle.name;
+                  setPendingPowerToggle(null);
+                  void executePowerToggle(name, false);
+                }}
+                style={{
+                  flex: 1, padding: "12px", borderRadius: 10,
+                  border: "none",
+                  background: "linear-gradient(135deg, #ef4444, #dc2626)",
+                  color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer",
+                }}
+              >
+                Power Off
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete Station Confirmation Modal */}
       {

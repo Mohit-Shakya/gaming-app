@@ -18,8 +18,6 @@ export function convertTo24Hour(timeStr: string): string {
   // Trim whitespace
   const time = timeStr.trim();
 
-  // console.log('[convertTo24Hour] Input:', JSON.stringify(time), 'Length:', time.length);
-
   // Try 12-hour format with am/pm (e.g., "10:30 am", "2:00pm", "10:30 AM")
   const match12h = time.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(am|pm)$/i);
   if (match12h) {
@@ -34,7 +32,6 @@ export function convertTo24Hour(timeStr: string): string {
     }
 
     const result = `${hours.toString().padStart(2, "0")}:${minutes}`;
-    // console.log('[convertTo24Hour] Matched 12h format, result:', result);
     return result;
   }
 
@@ -44,7 +41,6 @@ export function convertTo24Hour(timeStr: string): string {
     const hours = match24h[1].padStart(2, "0");
     const minutes = match24h[2];
     const result = `${hours}:${minutes}`;
-    // console.log('[convertTo24Hour] Matched 24h format, result:', result);
     return result;
   }
 
@@ -62,7 +58,6 @@ export function convertTo24Hour(timeStr: string): string {
     }
 
     const result = `${hours.toString().padStart(2, "0")}:${minutes}`;
-    // console.log('[convertTo24Hour] Matched relaxed format, result:', result);
     return result;
   }
 
