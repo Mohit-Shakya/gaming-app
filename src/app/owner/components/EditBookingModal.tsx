@@ -94,6 +94,7 @@ export function EditBookingModal({
   // Customer autocomplete
   const [suggestions, setSuggestions] = useState<{ name: string; phone: string | null }[]>([]);
   const [showSugg, setShowSugg] = useState(false);
+  const [searching, setSearching] = useState(false);
   const suggRef = useRef<HTMLDivElement>(null);
   const [endNowMsg, setEndNowMsg] = useState<string | null>(null);
   const searchAbortRef = useRef<AbortController | null>(null);
@@ -124,6 +125,7 @@ export function EditBookingModal({
     const controller = new AbortController();
     searchAbortRef.current = controller;
 
+    setSearching(true);
     try {
       const [bookRes, profRes] = await Promise.all([
         supabase.from('bookings').select('customer_name, customer_phone')
@@ -151,6 +153,8 @@ export function EditBookingModal({
       // Autocomplete is best-effort — silently suppress abort and network errors
       setSuggestions([]);
       setShowSugg(false);
+    } finally {
+      setSearching(false);
     }
   }, [booking.cafe_id]);
 
@@ -257,12 +261,16 @@ export function EditBookingModal({
             <div className="p-4 grid grid-cols-2 gap-3">
               {/* Name with autocomplete */}
               <div className="relative" ref={suggRef}>
-                <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Name</label>
+                <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
+                  Name
+                  {searching && <span className="inline-block w-3 h-3 border border-slate-500 border-t-transparent rounded-full animate-spin" />}
+                </label>
                 <input
                   type="text"
                   value={customerName}
                   onChange={e => { setCustomerName(e.target.value); }}
                   placeholder="Customer name"
+                  maxLength={100}
                   className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/[0.06] text-slate-200 text-sm placeholder-slate-600 focus:outline-none focus:border-indigo-500/60 transition-colors"
                 />
                 {showSugg && suggestions.length > 0 && (
@@ -300,9 +308,9 @@ export function EditBookingModal({
                     type="tel"
                     value={customerPhone}
                     onChange={e => setCustomerPhone(e.target.value.replace(/[^\d+\-\s()]/g, ''))}
-                    placeholder="Phone number (10 digits)"
+                    placeholder="e.g. 9876543210"
                     maxLength={15}
-                    className={`w-full pl-8 pr-3 py-2.5 rounded-lg bg-white/[0.03] border text-slate-200 text-sm placeholder-slate-600 focus:outline-none focus:border-indigo-500/60 transition-colors ${customerPhone && !/^\+?\d[\d\s\-()]{7,14}$/.test(customerPhone) ? 'border-red-500/60' : 'border-white/[0.06]'}`}
+                    className={`w-full pl-8 pr-3 py-2.5 rounded-lg bg-white/[0.03] border text-slate-200 text-sm placeholder-slate-600 focus:outline-none focus:border-indigo-500/60 transition-colors ${customerPhone && !/^(\+91|0)?[6-9]\d{9}$|^\+\d{7,15}$/.test(customerPhone) ? 'border-red-500/60' : 'border-white/[0.06]'}`}
                   />
                 </div>
               </div>

@@ -98,9 +98,10 @@ interface InputProps {
     type?: 'text' | 'email' | 'password' | 'number' | 'tel';
     disabled?: boolean;
     className?: string;
+    maxLength?: number;
 }
 
-export function Input({ id, label, placeholder, value, onChange, type = 'text', disabled = false, className = '' }: InputProps) {
+export function Input({ id, label, placeholder, value, onChange, type = 'text', disabled = false, className = '', maxLength }: InputProps) {
     const inputId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
     return (
         <div className={className}>
@@ -113,6 +114,7 @@ export function Input({ id, label, placeholder, value, onChange, type = 'text', 
                 onChange={(e) => onChange(e.target.value)}
                 placeholder={placeholder}
                 disabled={disabled}
+                maxLength={maxLength}
                 className="w-full px-3 py-2.5 rounded-lg bg-white/[0.04] border border-white/[0.09] text-sm text-white placeholder-slate-600 focus:outline-none focus:border-blue-500/60 focus:ring-1 focus:ring-blue-500/30 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             />
         </div>

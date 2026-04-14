@@ -27,7 +27,7 @@ export function useToast() {
 
   const toast = {
     success: (msg: string) => addToast(msg, 'success'),
-    error: (msg: string) => addToast(msg, 'error'),
+    error: (msg: string) => addToast(msg, 'error', 6000),
     warning: (msg: string) => addToast(msg, 'warning'),
     info: (msg: string) => addToast(msg, 'info'),
   };

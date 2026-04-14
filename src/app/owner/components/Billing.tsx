@@ -80,6 +80,7 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess, onMembersh
     const [paymentMode, setPaymentMode] = useState<'cash' | 'upi'>('cash');
     const [manualAmount, setManualAmount] = useState<number | null>(null);
     const [submitting, setSubmitting] = useState(false);
+    const [formError, setFormError] = useState<string | null>(null);
 
     // After a successful gaming booking, store details to show a WhatsApp send option
     type LastBooking = {
@@ -332,9 +333,10 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess, onMembersh
 
     const handleSubmit = async () => {
         if (!customerName || !startTime || items.length === 0) {
-            alert('Please fill all required fields');
+            setFormError('Please fill all required fields and add at least one console.');
             return;
         }
+        setFormError(null);
 
         setSubmitting(true);
         try {
@@ -388,7 +390,7 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess, onMembersh
 
         } catch (error: any) {
             console.error('Booking failed:', error);
-            alert('Failed to create booking: ' + error.message);
+            setFormError('Failed to create booking: ' + (error.message || 'Please try again.'));
         } finally {
             setSubmitting(false);
         }
@@ -411,10 +413,11 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess, onMembersh
     const memTotalAmount = memManualAmount !== null ? memManualAmount : memCalculatedTotal;
 
     const handleMemSubmit = async () => {
-        if (!customerName.trim()) { alert('Customer name is required'); return; }
-        if (!customerPhone.trim()) { alert('Phone number is required'); return; }
-        if (!/^\+?\d[\d\s\-()]{7,14}$/.test(customerPhone.trim())) { alert('Invalid phone number'); return; }
-        if (memItems.length === 0) { alert('Please add at least one membership plan'); return; }
+        if (!customerName.trim()) { setFormError('Customer name is required'); return; }
+        if (!customerPhone.trim()) { setFormError('Phone number is required'); return; }
+        if (!/^\+?\d[\d\s\-()]{7,14}$/.test(customerPhone.trim())) { setFormError('Invalid phone number format'); return; }
+        if (memItems.length === 0) { setFormError('Please add at least one membership plan'); return; }
+        setFormError(null);
 
         setMemSubmitting(true);
         try {
@@ -442,11 +445,10 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess, onMembersh
             setMemItems([]);
             setMemManualAmount(null);
             setMemPaymentMode('cash');
-            alert('Membership added successfully!');
             if (onMembershipSuccess) onMembershipSuccess();
             else if (onSuccess) onSuccess();
         } catch (err: any) {
-            alert('Failed to add membership: ' + err.message);
+            setFormError('Failed to add membership: ' + (err.message || 'Please try again.'));
         } finally {
             setMemSubmitting(false);
         }
@@ -465,6 +467,7 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess, onMembersh
                         value={customerName}
                         onChange={(val) => { setCustomerName(val); searchCustomers(val, 'name'); }}
                         placeholder="Enter customer name"
+                        maxLength={100}
                     />
                     {showSuggestions && suggestionField === 'name' && suggestions.length > 0 && (
                         <>
@@ -503,8 +506,9 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess, onMembersh
                         label={mode === 'membership' ? 'Phone (Required)' : 'Phone (Optional)'}
                         value={customerPhone}
                         onChange={(val) => { setCustomerPhone(val); searchCustomers(val, 'phone'); }}
-                        placeholder="Enter phone number"
+                        placeholder="e.g. 9876543210"
                         type="tel"
+                        maxLength={15}
                     />
                     {showSuggestions && suggestionField === 'phone' && suggestions.length > 0 && (
                         <>
@@ -779,6 +783,7 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess, onMembersh
                                         type="time"
                                         className="bg-transparent text-white text-right outline-none focus:text-blue-400"
                                         value={startTime}
+                                        placeholder="HH:MM"
                                         onChange={(e) => setStartTime(e.target.value)}
                                     />
                                 </div>
@@ -846,13 +851,16 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess, onMembersh
                                     </button>
                                 </div>
 
+                                {formError && (
+                                    <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{formError}</p>
+                                )}
                                 <Button
                                     className="w-full py-4 text-lg"
                                     onClick={handleSubmit}
                                     loading={submitting}
-                                    disabled={items.length === 0}
+                                    disabled={submitting || items.length === 0}
                                 >
-                                    Confirm Booking
+                                    {submitting ? 'Creating...' : 'Confirm Booking'}
                                 </Button>
                             </div>
                         </Card>
@@ -1031,13 +1039,16 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess, onMembersh
                                 </button>
                             </div>
 
+                            {formError && (
+                                <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{formError}</p>
+                            )}
                             <Button
                                 className="w-full py-4 text-lg"
                                 onClick={handleMemSubmit}
                                 loading={memSubmitting}
-                                disabled={memItems.length === 0 || !customerName.trim() || !customerPhone.trim()}
+                                disabled={memSubmitting || memItems.length === 0 || !customerName.trim() || !customerPhone.trim()}
                             >
-                                Add Membership
+                                {memSubmitting ? 'Adding...' : 'Add Membership'}
                             </Button>
                         </Card>
                     </div>

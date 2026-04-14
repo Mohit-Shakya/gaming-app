@@ -203,20 +203,28 @@ export async function POST(request: NextRequest) {
             .or(`timer_active.eq.true,and(purchase_date.gte.${todayStr}T00:00:00+05:30,purchase_date.lte.${todayStr}T23:59:59+05:30)`)
             .order('created_at', { ascending: false });
 
-    // Await all parallel fetches
-    const [
-      stationPricingRes,
-      consolePricingRes,
-      bookingsRes,
-      plansRes,
-      subscriptionsRes
-    ] = await Promise.all([
+    // Await all parallel fetches — use allSettled so one failure doesn't blank the dashboard
+    const results = await Promise.allSettled([
       stationPricingPromise,
       consolePricingPromise,
       bookingsPromise,
       plansPromise,
       subscriptionsPromise
     ]);
+
+    const getValue = <T,>(result: PromiseSettledResult<T>, fallback: T, label: string): T => {
+      if (result.status === 'rejected') {
+        console.error(`[owner/data] ${label} fetch failed:`, result.reason);
+        return fallback;
+      }
+      return result.value;
+    };
+
+    const stationPricingRes = getValue(results[0], { data: [], error: null }, 'stationPricing');
+    const consolePricingRes = getValue(results[1], { data: [], error: null }, 'consolePricing');
+    const bookingsRes      = getValue(results[2], { data: [], error: null, count: null }, 'bookings');
+    const plansRes         = getValue(results[3], { data: [], error: null }, 'membershipPlans');
+    const subscriptionsRes = getValue(results[4], { data: [], error: null }, 'subscriptions');
 
     let bookingsResult: BookingQueryResult = bookingsRes;
     if (isMissingBookingsUpdatedAtError(bookingsRes.error)) {
@@ -276,8 +284,8 @@ export async function POST(request: NextRequest) {
     ownerBookings = ownerBookings.map((b: any) => {
         if (b.status === 'in-progress' || b.status === 'confirmed') {
             if (b.booking_date < todayStr) {
-                b.status = 'completed'; // Mutate in memory
                 endedIds.push(b.id);
+                return { ...b, status: 'completed' };
             } else if (b.booking_date === todayStr && b.start_time && b.duration) {
                 const timeParts = b.start_time.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
                 if (timeParts) {
@@ -287,8 +295,8 @@ export async function POST(request: NextRequest) {
                     if (period === 'pm' && hours !== 12) hours += 12;
                     else if (period === 'am' && hours === 12) hours = 0;
                     if (currentMinutes > hours * 60 + minutes + b.duration) {
-                        b.status = 'completed';
                         endedIds.push(b.id);
+                        return { ...b, status: 'completed' };
                     }
                 }
             }
@@ -298,8 +306,14 @@ export async function POST(request: NextRequest) {
 
     // Fire & forget DB update for completed bookings (don't block the request)
     if (endedIds.length > 0) {
-        supabase.from("bookings").update({ status: "completed" }).in("id", endedIds)
-          .then(({ error }) => { if (error) console.error('Auto-complete bookings failed:', error.message); });
+        void (async () => {
+          try {
+            const { error } = await supabase.from("bookings").update({ status: "completed" }).in("id", endedIds);
+            if (error) console.error('Auto-complete bookings failed:', error.message, 'ids:', endedIds);
+          } catch (err: unknown) {
+            console.error('Auto-complete bookings unexpected error:', err);
+          }
+        })();
     }
 
     // Profiles enrichment keeps online bookings editable across dashboard and bookings views.

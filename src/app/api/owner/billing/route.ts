@@ -15,7 +15,8 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-const PHONE_REGEX = /^\+?\d[\d\s\-()]{7,14}$/;
+// Accepts: 10-digit Indian numbers (9876543210), with optional +91/0 prefix, or international E.164
+const PHONE_REGEX = /^(\+91|0)?[6-9]\d{9}$|^\+\d{7,15}$/;
 
 function validatePhone(phone: unknown): boolean {
   if (!phone || phone === null) return true; // phone is optional

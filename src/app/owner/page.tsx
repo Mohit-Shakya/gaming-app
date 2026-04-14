@@ -59,11 +59,8 @@ const CustomerDetailsModal = dynamic(() => import('./components/CustomerDetailsM
 const SessionEndedPopup = dynamic(() => import('./components/SessionEndedPopup').then((mod) => mod.SessionEndedPopup), { ssr: false });
 
 
-const debugLog = (...args: unknown[]) => {
-  if (process.env.NODE_ENV !== "production") {
-    console.log(...args);
-  }
-};
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const debugLog: (...args: any[]) => void = process.env.NODE_ENV !== "production" ? console.log.bind(console) : () => {};
 
 const DIGITAL_PAYMENT_MODES = new Set(['online', 'upi', 'paytm', 'gpay', 'phonepe', 'card']);
 
@@ -93,11 +90,15 @@ export default function OwnerDashboardPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<NavTab>(() => {
     // Prefer URL ?tab= param, fall back to localStorage
-    if (typeof window !== 'undefined') {
-      const urlTab = new URLSearchParams(window.location.search).get('tab');
-      if (urlTab) return urlTab as NavTab;
-      const savedTab = localStorage.getItem('ownerActiveTab');
-      if (savedTab) return savedTab as NavTab;
+    try {
+      if (typeof window !== 'undefined') {
+        const urlTab = new URLSearchParams(window.location.search).get('tab');
+        if (urlTab) return urlTab as NavTab;
+        const savedTab = localStorage.getItem('ownerActiveTab');
+        if (savedTab) return savedTab as NavTab;
+      }
+    } catch {
+      // localStorage or URLSearchParams unavailable (e.g., SSR, private browsing restrictions)
     }
     return 'dashboard';
   });
@@ -587,19 +588,24 @@ export default function OwnerDashboardPage() {
     const cafeId = editingBooking.cafe_id || selectedCafeId;
     if (consolePricing[cafeId] && Object.keys(consolePricing[cafeId]).length > 0) return;
 
-    fetch('/api/owner/data', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ scope: 'full', tab: 'billing' }),
-      credentials: 'include',
-      cache: 'no-store',
-    })
-      .then(r => r.json())
-      .then(data => {
+    void (async () => {
+      try {
+        const r = await fetch('/api/owner/data', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ scope: 'full', tab: 'billing' }),
+          credentials: 'include',
+          cache: 'no-store',
+        });
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const data = await r.json();
         if (data.consolePricing) setConsolePricing(data.consolePricing);
         if (data.stationPricing) setStationPricing(data.stationPricing);
-      })
-      .catch(err => console.error('Failed to fetch pricing for edit modal:', err));
+      } catch (err) {
+        console.error('Failed to fetch pricing for edit modal:', err);
+        toast.error('Could not load pricing data. Amount may not auto-calculate correctly.');
+      }
+    })();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editingBooking]);
 
@@ -711,36 +717,33 @@ export default function OwnerDashboardPage() {
       return b;
     }));
 
+    const revertPaymentMode = () => setBookings(prev => prev.map((b: any) => {
+      if (b.id === bookingId || b.originalBookingId === trueBookingId) return { ...b, payment_mode: prevMode };
+      return b;
+    }));
+
     try {
       const res = await fetch('/api/owner/billing', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ bookingId: trueBookingId, booking: { payment_mode: normalizedMode } }),
+        signal: AbortSignal.timeout(10000),
       });
 
       if (!res.ok) {
         const data = await res.json();
         toast.error('Failed to update payment mode: ' + (data.error || 'Unknown error'));
-        // Revert optimistic update
-        setBookings(prev => prev.map((b: any) => {
-          if (b.id === bookingId || b.originalBookingId === trueBookingId) {
-            return { ...b, payment_mode: prevMode };
-          }
-          return b;
-        }));
+        revertPaymentMode();
         return;
       }
 
       // Optimistic update is already correct — no refresh needed, avoids race with stale data
     } catch (err) {
       console.error('Error updating payment mode:', err);
-      // Revert optimistic update
-      setBookings(prev => prev.map((b: any) => {
-        if (b.id === bookingId || b.originalBookingId === trueBookingId) {
-          return { ...b, payment_mode: prevMode };
-        }
-        return b;
-      }));
+      revertPaymentMode();
+      if (err instanceof Error && err.name === 'TimeoutError') {
+        toast.error('Request timed out — payment mode may not have saved.');
+      }
     }
   }
 
@@ -1334,11 +1337,15 @@ export default function OwnerDashboardPage() {
           }),
         });
 
+        const responseData = await response.json().catch(() => ({}));
         if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          console.error('[Timer] Database error:', errorData);
+          console.error('[Timer] Database error:', responseData);
           toast.error('Failed to update subscription hours');
           return;
+        }
+        if (responseData?.partialSuccess) {
+          console.warn('[Timer] Usage history insert failed but subscription updated:', subscriptionId);
+          toast.warning('Session time deducted, but usage history could not be saved.');
         }
 
         debugLog('[Timer] Database updated successfully');
@@ -1442,9 +1449,11 @@ export default function OwnerDashboardPage() {
 
         debugLog('[Timer] Restoring timer for subscription:', subscription.id);
         const dbStartTime = new Date(subscription.timer_start_time).getTime();
+        const restoredElapsed = Math.floor((Date.now() - dbStartTime) / 1000);
 
-        // Add to active timers
+        // Add to active timers and immediately seed elapsed so UI shows correct time on reload
         setActiveTimers(prev => new Map(prev).set(subscription.id, dbStartTime));
+        setTimerElapsed(prev => new Map(prev).set(subscription.id, restoredElapsed));
 
         debugLog('[Timer] Timer restored.');
       }
