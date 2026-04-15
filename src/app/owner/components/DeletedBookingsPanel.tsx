@@ -39,6 +39,7 @@ export function DeletedBookingsPanel() {
   const [hasMore, setHasMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [actionId, setActionId] = useState<string | null>(null);
+  const [actionKind, setActionKind] = useState<'restore' | 'delete' | null>(null);
 
   const fetchDeleted = useCallback(async (offset = 0) => {
     if (offset === 0) { setLoading(true); setError(null); } else { setLoadingMore(true); }
@@ -70,13 +71,19 @@ export function DeletedBookingsPanel() {
   };
 
   useEffect(() => {
-    return subscribeToOwnerBookingsChanged(() => {
-      fetchDeleted();
+    return subscribeToOwnerBookingsChanged((detail) => {
+      if (detail?.bookingId && (detail.action === 'restored' || detail.action === 'permanently-deleted')) {
+        setBookings((prev) => prev.filter((booking) => booking.id !== detail.bookingId));
+      }
+      if (open || detail?.action === 'deleted') {
+        fetchDeleted();
+      }
     });
-  }, [fetchDeleted]);
+  }, [fetchDeleted, open]);
 
   const restore = async (bookingId: string) => {
     setActionId(bookingId);
+    setActionKind('restore');
     try {
       const res = await fetch('/api/owner/deleted-bookings', {
         method: 'PATCH',
@@ -87,12 +94,39 @@ export function DeletedBookingsPanel() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setBookings(prev => prev.filter(b => b.id !== bookingId));
-      dispatchOwnerBookingsChanged();
+      dispatchOwnerBookingsChanged({ action: 'restored', bookingId });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Unknown error';
       alert(`Failed to restore: ${message}`);
     } finally {
       setActionId(null);
+      setActionKind(null);
+    }
+  };
+
+  const permanentlyDelete = async (bookingId: string) => {
+    const shouldDelete = window.confirm('Permanently delete this booking? This cannot be undone.');
+    if (!shouldDelete) return;
+
+    setActionId(bookingId);
+    setActionKind('delete');
+    try {
+      const res = await fetch('/api/owner/deleted-bookings', {
+        method: 'DELETE',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bookingId }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      setBookings(prev => prev.filter(b => b.id !== bookingId));
+      dispatchOwnerBookingsChanged({ action: 'permanently-deleted', bookingId });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      alert(`Failed to permanently delete: ${message}`);
+    } finally {
+      setActionId(null);
+      setActionKind(null);
     }
   };
 
@@ -159,6 +193,8 @@ export function DeletedBookingsPanel() {
                 <div className="divide-y divide-white/[0.08]">
                   {bookings.map((b) => {
                     const isProcessing = actionId === b.id;
+                    const isRestoring = isProcessing && actionKind === 'restore';
+                    const isDeleting = isProcessing && actionKind === 'delete';
                     const customerLabel = b.user_name || b.customer_name || 'Walk-in';
                     return (
                       <div
@@ -217,12 +253,25 @@ export function DeletedBookingsPanel() {
                             title="Restore booking"
                             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-colors disabled:opacity-50"
                           >
-                            {isProcessing ? (
+                            {isRestoring ? (
                               <Loader2 size={13} className="animate-spin" />
                             ) : (
                               <RotateCcw size={13} />
                             )}
                             Restore
+                          </button>
+                          <button
+                            onClick={() => permanentlyDelete(b.id)}
+                            disabled={isProcessing}
+                            title="Permanently delete booking"
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-50"
+                          >
+                            {isDeleting ? (
+                              <Loader2 size={13} className="animate-spin" />
+                            ) : (
+                              <Trash2 size={13} />
+                            )}
+                            Delete Forever
                           </button>
                         </div>
                       </div>

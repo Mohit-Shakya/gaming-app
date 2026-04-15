@@ -118,7 +118,16 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Hard-delete booking_items first, then the booking
+    // Hard-delete dependent rows first, then the booking.
+    const { error: ordersDeleteError } = await supabase
+      .from("booking_orders")
+      .delete()
+      .eq("booking_id", bookingId);
+
+    if (ordersDeleteError) {
+      return NextResponse.json({ error: ordersDeleteError.message }, { status: 500 });
+    }
+
     const { error: itemsDeleteError } = await supabase
       .from("booking_items")
       .delete()

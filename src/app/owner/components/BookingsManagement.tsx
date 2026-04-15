@@ -61,6 +61,7 @@ export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateS
     const [total, setTotal] = useState(0);
     const [limit, setLimit] = useState(30);
     const [fetching, setFetching] = useState(false);
+    const [hiddenDeletedIds, setHiddenDeletedIds] = useState<Set<string>>(new Set());
 
     const [bookingSubTab, setBookingSubTab] = useState<'all' | 'normal' | 'membership'>('all');
     const [searchTerm, setSearchTerm] = useState('');
@@ -113,7 +114,9 @@ export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateS
             });
             const data = await res.json();
             if (res.ok) {
-                const visibleBookings = filterVisibleBookings(data.bookings || []);
+                const visibleBookings = filterVisibleBookings(data.bookings || []).filter(
+                    (booking) => !hiddenDeletedIds.has(booking.id)
+                );
                 const hiddenDeletedCount = (data.bookings || []).length - visibleBookings.length;
                 setBookings(visibleBookings);
                 setTotal(Math.max(0, (data.total || 0) - hiddenDeletedCount));
@@ -127,7 +130,7 @@ export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateS
         } finally {
             setFetching(false);
         }
-    }, [cafeId, statusFilter, bookingSubTab, dateRange, customStart, customEnd, limit]);
+    }, [cafeId, statusFilter, bookingSubTab, dateRange, customStart, customEnd, hiddenDeletedIds, limit]);
 
     // Re-fetch when filters change — don't clear selection so user can act across searches
     useEffect(() => {
@@ -144,7 +147,19 @@ export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateS
     }, [refreshTrigger]);
 
     useEffect(() => {
-        return subscribeToOwnerBookingsChanged(() => {
+        return subscribeToOwnerBookingsChanged((detail) => {
+            if (detail?.bookingId && (detail.action === 'deleted' || detail.action === 'permanently-deleted')) {
+                setHiddenDeletedIds((prev) => new Set(prev).add(detail.bookingId!));
+                setBookings((prev) => prev.filter((booking) => booking.id !== detail.bookingId));
+                setTotal((prev) => Math.max(0, prev - 1));
+            }
+            if (detail?.bookingId && detail.action === 'restored') {
+                setHiddenDeletedIds((prev) => {
+                    const next = new Set(prev);
+                    next.delete(detail.bookingId!);
+                    return next;
+                });
+            }
             latestFetchRef.current.fn(latestFetchRef.current.search);
         });
     }, []);

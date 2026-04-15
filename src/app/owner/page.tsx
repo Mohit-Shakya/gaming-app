@@ -704,7 +704,7 @@ export default function OwnerDashboardPage() {
     if (booking.deleted_at) {
       toast.error('Deleted bookings cannot be edited.');
       setBookingsMgmtRefreshKey(k => k + 1);
-      dispatchOwnerBookingsChanged();
+      dispatchOwnerBookingsChanged({ action: 'deleted', bookingId: targetBookingId });
       return;
     }
 
@@ -723,7 +723,7 @@ export default function OwnerDashboardPage() {
       if (res.status === 404) {
         toast.error('This booking was deleted or is no longer available.');
         setBookingsMgmtRefreshKey(k => k + 1);
-        dispatchOwnerBookingsChanged();
+        dispatchOwnerBookingsChanged({ action: 'deleted', bookingId: targetBookingId });
         return;
       }
 
@@ -736,7 +736,7 @@ export default function OwnerDashboardPage() {
       if (specificItemId && !actualBooking.booking_items?.some((item) => item.id === specificItemId)) {
         toast.error('That booking item no longer exists.');
         setBookingsMgmtRefreshKey(k => k + 1);
-        dispatchOwnerBookingsChanged();
+        dispatchOwnerBookingsChanged({ action: 'updated', bookingId: targetBookingId });
         return;
       }
     } catch (err) {
@@ -984,7 +984,7 @@ export default function OwnerDashboardPage() {
       setEditingBookingItemId(null);
       setBookingsMgmtRefreshKey(k => k + 1);
       toast.success("Booking updated successfully!");
-      dispatchOwnerBookingsChanged();
+      dispatchOwnerBookingsChanged({ action: 'updated', bookingId: editingBooking.id });
       refreshData();
     } catch (err) {
       console.error("Error updating booking:", err);
@@ -1056,7 +1056,7 @@ export default function OwnerDashboardPage() {
         }));
 
         setBookingsMgmtRefreshKey(k => k + 1);
-        dispatchOwnerBookingsChanged();
+        dispatchOwnerBookingsChanged({ action: 'updated', bookingId: editingBooking.id });
         toast.success("Console removed from booking successfully!");
       } else {
         // Delete the entire booking (soft-delete)
@@ -1081,7 +1081,7 @@ export default function OwnerDashboardPage() {
         // Remove from local state (soft-deleted = hidden from normal view)
         setBookings((prev) => prev.filter((b) => b.id !== editingBooking.id && (b as any).originalBookingId !== editingBooking.id));
         setBookingsMgmtRefreshKey(k => k + 1);
-        dispatchOwnerBookingsChanged();
+        dispatchOwnerBookingsChanged({ action: 'deleted', bookingId: editingBooking.id });
       }
 
       debugLog('[handleDeleteBooking] ===== DELETE BOOKING COMPLETE =====');
