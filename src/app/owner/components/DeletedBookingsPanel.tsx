@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Trash2, RotateCcw, AlertTriangle, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import { Card } from './ui';
+import { dispatchOwnerBookingsChanged, subscribeToOwnerBookingsChanged } from '@/lib/ownerBookingsSync';
 
 type DeletedBooking = {
   id: string;
@@ -68,6 +69,12 @@ export function DeletedBookingsPanel() {
     if (next && bookings.length === 0) fetchDeleted();
   };
 
+  useEffect(() => {
+    return subscribeToOwnerBookingsChanged(() => {
+      fetchDeleted();
+    });
+  }, [fetchDeleted]);
+
   const restore = async (bookingId: string) => {
     setActionId(bookingId);
     try {
@@ -80,6 +87,7 @@ export function DeletedBookingsPanel() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setBookings(prev => prev.filter(b => b.id !== bookingId));
+      dispatchOwnerBookingsChanged();
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Unknown error';
       alert(`Failed to restore: ${message}`);

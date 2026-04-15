@@ -48,6 +48,8 @@ export function BookingsTable({
 
     // Filter logic
     const filteredBookings = bookings.filter((booking) => {
+        if (booking.deleted_at) return false;
+
         const matchesSearch =
             (booking.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false) ||
             (booking.user_name?.toLowerCase().includes(searchTerm.toLowerCase()) ?? false) ||

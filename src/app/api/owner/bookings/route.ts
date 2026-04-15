@@ -22,11 +22,17 @@ type OwnedCafeRecord = { id: string };
 type BookingListRecord = {
   customer_name?: string | null;
   customer_phone?: string | null;
+  deleted_at?: string | null;
+  updated_at?: string | null;
   user_id?: string | null;
 } & Record<string, unknown>;
 type BookingQueryResult = {
   count: number | null;
   data: unknown[] | null;
+  error: { message?: string | null } | null;
+};
+type SingleBookingQueryResult = {
+  data: unknown | null;
   error: { message?: string | null } | null;
 };
 type ProfileRecord = {
@@ -51,6 +57,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
 
     const cafeId = searchParams.get("cafeId");
+    const bookingId = searchParams.get("bookingId");
     const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
     const requestedSize = parseInt(searchParams.get("pageSize") || "30", 10);
     const PAGE_SIZE = ALLOWED_PAGE_SIZES.includes(requestedSize) ? requestedSize : 30;
@@ -76,6 +83,48 @@ export async function GET(request: NextRequest) {
       : ownedCafeIds;
 
     const offset = (page - 1) * PAGE_SIZE;
+
+    const enrichBookings = async (rawBookings: BookingListRecord[]) => {
+      const bookings = rawBookings.filter((booking) => !booking.deleted_at);
+      const userIds = [...new Set(bookings.map((booking) => booking.user_id).filter((userId): userId is string => Boolean(userId)))];
+      const userProfiles = new Map<string, { name: string | null; phone: string | null }>();
+
+      if (userIds.length > 0) {
+        const { data: profiles, error: profilesError } = await supabase
+          .from("profiles")
+          .select("id, first_name, last_name, phone")
+          .in("id", userIds);
+
+        if (profilesError) {
+          throw new Error(profilesError.message);
+        }
+
+        (profiles as ProfileRecord[] | null)?.forEach((profile) => {
+          const fullName = [profile.first_name, profile.last_name].filter(Boolean).join(" ") || null;
+          userProfiles.set(profile.id, { name: fullName, phone: profile.phone || null });
+        });
+      }
+
+      return bookings.map((booking) => {
+        const userProfile = booking.user_id ? userProfiles.get(booking.user_id) : null;
+        return {
+          ...booking,
+          user_name: userProfile?.name || booking.customer_name || null,
+          user_email: null,
+          user_phone: userProfile?.phone || booking.customer_phone || null,
+        };
+      });
+    };
+
+    const runSingleBookingQuery = async (includeUpdatedAt: boolean): Promise<SingleBookingQueryResult> => {
+      return await supabase
+        .from("bookings")
+        .select(includeUpdatedAt ? BOOKING_SELECT_WITH_UPDATED_AT : BOOKING_SELECT_BASE)
+        .eq("id", bookingId!)
+        .in("cafe_id", targetCafeIds)
+        .is("deleted_at", null)
+        .maybeSingle() as unknown as SingleBookingQueryResult;
+    };
 
     const runBookingQuery = async (includeUpdatedAt: boolean): Promise<BookingQueryResult> => {
       let query = supabase
@@ -110,6 +159,29 @@ export async function GET(request: NextRequest) {
         .range(offset, offset + PAGE_SIZE - 1) as unknown as BookingQueryResult;
     };
 
+    if (bookingId) {
+      let { data, error } = await runSingleBookingQuery(true);
+      if (isMissingBookingsUpdatedAtError(error)) {
+        const fallbackResult = await runSingleBookingQuery(false);
+        data = fallbackResult.data
+          ? { ...(fallbackResult.data as Record<string, unknown>), updated_at: null }
+          : null;
+        error = fallbackResult.error;
+      }
+
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      if (!data) return NextResponse.json({ error: "Booking not found" }, { status: 404 });
+
+      const enrichedBookings = await enrichBookings([data as BookingListRecord]);
+      const booking = enrichedBookings[0];
+
+      if (!booking) {
+        return NextResponse.json({ error: "Booking not found" }, { status: 404 });
+      }
+
+      return NextResponse.json({ booking });
+    }
+
     let { data, error, count } = await runBookingQuery(true);
     if (isMissingBookingsUpdatedAtError(error)) {
       const fallbackResult = await runBookingQuery(false);
@@ -124,39 +196,13 @@ export async function GET(request: NextRequest) {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-    const bookings = (data || []) as BookingListRecord[];
-    const userIds = [...new Set(bookings.map((booking) => booking.user_id).filter((userId): userId is string => Boolean(userId)))];
-    const userProfiles = new Map<string, { name: string | null; phone: string | null }>();
-
-    if (userIds.length > 0) {
-      const { data: profiles, error: profilesError } = await supabase
-        .from("profiles")
-        .select("id, first_name, last_name, phone")
-        .in("id", userIds);
-
-      if (profilesError) {
-        return NextResponse.json({ error: profilesError.message }, { status: 500 });
-      }
-
-      (profiles as ProfileRecord[] | null)?.forEach((profile) => {
-        const fullName = [profile.first_name, profile.last_name].filter(Boolean).join(" ") || null;
-        userProfiles.set(profile.id, { name: fullName, phone: profile.phone || null });
-      });
-    }
-
-    const enrichedBookings = bookings.map((booking) => {
-      const userProfile = booking.user_id ? userProfiles.get(booking.user_id) : null;
-      return {
-        ...booking,
-        user_name: userProfile?.name || booking.customer_name || null,
-        user_email: null,
-        user_phone: userProfile?.phone || booking.customer_phone || null,
-      };
-    });
+    const rawBookings = (data || []) as BookingListRecord[];
+    const filteredOutDeletedCount = rawBookings.length - rawBookings.filter((booking) => !booking.deleted_at).length;
+    const enrichedBookings = await enrichBookings(rawBookings);
 
     return NextResponse.json({
       bookings: enrichedBookings,
-      total: count ?? 0,
+      total: count == null ? enrichedBookings.length : Math.max(0, count - filteredOutDeletedCount),
       page,
       pageSize: PAGE_SIZE,
     });

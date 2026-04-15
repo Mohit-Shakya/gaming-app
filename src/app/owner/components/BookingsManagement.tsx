@@ -6,8 +6,13 @@ import { Card, Button } from './ui';
 import { RefreshCw, Search, Check, X, IndianRupee, Timer, Clock, CheckCircle2, Zap } from 'lucide-react';
 import { DeletedBookingsPanel } from './DeletedBookingsPanel';
 import { supabase } from '@/lib/supabaseClient';
+import { subscribeToOwnerBookingsChanged } from '@/lib/ownerBookingsSync';
 
 const PAGE_SIZE_OPTIONS = [10, 30, 50, 100];
+
+function filterVisibleBookings(bookings: any[]): any[] {
+    return bookings.filter((booking) => !booking?.deleted_at);
+}
 
 interface BookingsManagementProps {
     cafeId?: string;
@@ -108,8 +113,10 @@ export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateS
             });
             const data = await res.json();
             if (res.ok) {
-                setBookings(data.bookings || []);
-                setTotal(data.total || 0);
+                const visibleBookings = filterVisibleBookings(data.bookings || []);
+                const hiddenDeletedCount = (data.bookings || []).length - visibleBookings.length;
+                setBookings(visibleBookings);
+                setTotal(Math.max(0, (data.total || 0) - hiddenDeletedCount));
             } else {
                 console.error('[BookingsManagement] Failed to fetch bookings:', data.error);
             }
@@ -135,6 +142,12 @@ export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateS
         if (!refreshTrigger) return;
         latestFetchRef.current.fn(latestFetchRef.current.search);
     }, [refreshTrigger]);
+
+    useEffect(() => {
+        return subscribeToOwnerBookingsChanged(() => {
+            latestFetchRef.current.fn(latestFetchRef.current.search);
+        });
+    }, []);
 
     // Debounce search input
     const handleSearchChange = (val: string) => {

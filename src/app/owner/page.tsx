@@ -12,6 +12,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { fonts, type ConsoleId } from "@/lib/constants";
 import { buildStationPricingMap } from "@/lib/stationNames";
+import { dispatchOwnerBookingsChanged } from "@/lib/ownerBookingsSync";
 import {
   CafeRow,
   BookingRow,
@@ -689,18 +690,60 @@ export default function OwnerDashboardPage() {
     }
   };
 
-  function handleEditBooking(booking: BookingRow) {
+  async function handleEditBooking(booking: BookingRow) {
     // If this is a flattened booking entry (from bulk booking), find the original booking
     const originalBookingId = (booking as any).originalBookingId;
-    const actualBooking = originalBookingId
-      ? bookings.find(b => b.id === originalBookingId) || booking
-      : booking;
+    const targetBookingId = originalBookingId || booking.id;
 
     // Track which specific booking_item is being edited (for bulk bookings)
     // The flattened entry has only one item in booking_items array
     const specificItemId = originalBookingId && booking.booking_items?.[0]?.id
       ? booking.booking_items[0].id
       : null;
+
+    if (booking.deleted_at) {
+      toast.error('Deleted bookings cannot be edited.');
+      setBookingsMgmtRefreshKey(k => k + 1);
+      dispatchOwnerBookingsChanged();
+      return;
+    }
+
+    let actualBooking = originalBookingId
+      ? bookings.find(b => b.id === originalBookingId) || booking
+      : booking;
+
+    try {
+      const params = new URLSearchParams({ bookingId: targetBookingId });
+      const res = await fetch(`/api/owner/bookings?${params.toString()}`, {
+        credentials: 'include',
+        cache: 'no-store',
+      });
+      const data = await res.json();
+
+      if (res.status === 404) {
+        toast.error('This booking was deleted or is no longer available.');
+        setBookingsMgmtRefreshKey(k => k + 1);
+        dispatchOwnerBookingsChanged();
+        return;
+      }
+
+      if (!res.ok || !data.booking) {
+        throw new Error(data.error || 'Failed to load the latest booking');
+      }
+
+      actualBooking = data.booking;
+
+      if (specificItemId && !actualBooking.booking_items?.some((item) => item.id === specificItemId)) {
+        toast.error('That booking item no longer exists.');
+        setBookingsMgmtRefreshKey(k => k + 1);
+        dispatchOwnerBookingsChanged();
+        return;
+      }
+    } catch (err) {
+      console.error('[handleEditBooking] Failed to load latest booking:', err);
+      toast.error('Failed to load the latest booking details.');
+      return;
+    }
 
     // Allow editing all bookings, not just walk-ins
     debugLog('[handleEditBooking] Opening edit modal for booking:', {
@@ -941,6 +984,7 @@ export default function OwnerDashboardPage() {
       setEditingBookingItemId(null);
       setBookingsMgmtRefreshKey(k => k + 1);
       toast.success("Booking updated successfully!");
+      dispatchOwnerBookingsChanged();
       refreshData();
     } catch (err) {
       console.error("Error updating booking:", err);
@@ -1012,6 +1056,7 @@ export default function OwnerDashboardPage() {
         }));
 
         setBookingsMgmtRefreshKey(k => k + 1);
+        dispatchOwnerBookingsChanged();
         toast.success("Console removed from booking successfully!");
       } else {
         // Delete the entire booking (soft-delete)
@@ -1034,8 +1079,9 @@ export default function OwnerDashboardPage() {
         }
 
         // Remove from local state (soft-deleted = hidden from normal view)
-        setBookings((prev) => prev.filter((b) => b.id !== editingBooking.id));
+        setBookings((prev) => prev.filter((b) => b.id !== editingBooking.id && (b as any).originalBookingId !== editingBooking.id));
         setBookingsMgmtRefreshKey(k => k + 1);
+        dispatchOwnerBookingsChanged();
       }
 
       debugLog('[handleDeleteBooking] ===== DELETE BOOKING COMPLETE =====');

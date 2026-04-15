@@ -96,6 +96,20 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Booking not found" }, { status: 404 });
     }
 
+    const { data: existingBooking, error: existingBookingError } = await supabase
+      .from("bookings")
+      .select("deleted_at")
+      .eq("id", bookingId)
+      .maybeSingle();
+
+    if (existingBookingError) {
+      return NextResponse.json({ error: existingBookingError.message }, { status: 500 });
+    }
+
+    if (existingBooking?.deleted_at) {
+      return NextResponse.json({ error: "Deleted bookings cannot be edited" }, { status: 409 });
+    }
+
     // Conflict detection: if caller provided a base updated_at, verify it hasn't changed
     if (updatedAtCheck) {
       const { data: currentVersionRow, error: versionError } = await supabase
@@ -221,6 +235,20 @@ export async function DELETE(request: NextRequest) {
     const ownedCafeId = await getOwnedCafeIdForBooking(supabase, bookingId, ownerId);
     if (!ownedCafeId) {
       return NextResponse.json({ error: "Booking not found" }, { status: 404 });
+    }
+
+    const { data: existingBooking, error: existingBookingError } = await supabase
+      .from("bookings")
+      .select("deleted_at")
+      .eq("id", bookingId)
+      .maybeSingle();
+
+    if (existingBookingError) {
+      return NextResponse.json({ error: existingBookingError.message }, { status: 500 });
+    }
+
+    if (existingBooking?.deleted_at) {
+      return NextResponse.json({ error: "Booking is already deleted" }, { status: 409 });
     }
 
     if (specificItemId) {
