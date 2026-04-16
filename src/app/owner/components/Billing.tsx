@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 import { CONSOLE_LABELS } from '@/lib/constants';
 import { dedupeStationPricingRows, formatStationOptionLabel, normaliseStationName } from '@/lib/stationNames';
 import { Card, Button, Input, Select, StatusBadge, LoadingSpinner } from './ui';
@@ -851,6 +852,19 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess, onMembersh
                                     </button>
                                 </div>
 
+                                {paymentMode === 'upi' && totalAmount > 0 && (
+                                    <div className="flex flex-col items-center gap-2 py-3">
+                                        <QRCodeSVG
+                                            value={`upi://pay?pa=paytmqr6k4kf1@ptys&pn=BookMyGame&am=${totalAmount}&cu=INR&tn=Booking+Payment`}
+                                            size={180}
+                                            bgColor="#ffffff"
+                                            fgColor="#000000"
+                                            level="M"
+                                        />
+                                        <p className="text-xs text-slate-400">Scan to pay <span className="text-white font-semibold">₹{totalAmount}</span> via UPI</p>
+                                    </div>
+                                )}
+
                                 {formError && (
                                     <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{formError}</p>
                                 )}
@@ -1038,6 +1052,19 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess, onMembersh
                                     <span className="text-sm font-semibold">UPI</span>
                                 </button>
                             </div>
+
+                            {memPaymentMode === 'upi' && memTotalAmount > 0 && (
+                                <div className="flex flex-col items-center gap-2 py-3">
+                                    <QRCodeSVG
+                                        value={`upi://pay?pa=paytmqr6k4kf1@ptys&pn=BookMyGame&am=${memTotalAmount}&cu=INR&tn=Membership+Payment`}
+                                        size={180}
+                                        bgColor="#ffffff"
+                                        fgColor="#000000"
+                                        level="M"
+                                    />
+                                    <p className="text-xs text-slate-400">Scan to pay <span className="text-white font-semibold">₹{memTotalAmount}</span> via UPI</p>
+                                </div>
+                            )}
 
                             {formError && (
                                 <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{formError}</p>
