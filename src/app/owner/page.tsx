@@ -2146,17 +2146,20 @@ export default function OwnerDashboardPage() {
               <section>
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-7 h-7 rounded-lg bg-red-500/15 flex items-center justify-center">
-                      <Zap size={14} className="text-red-400" />
-                    </div>
-                    <h2 className="text-base font-semibold text-white">Active Sessions</h2>
+                    <h2 className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Active Sessions</h2>
                     {(() => {
                       const count = bookings.filter((b: any) => b.status === 'in-progress' && b.booking_date === getLocalDateString()).length;
                       return count > 0 ? (
-                        <span className="px-2 py-0.5 rounded-full bg-red-500/15 text-red-400 text-[11px] font-bold">{count}</span>
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold" style={{ background: 'rgba(239,68,68,0.12)', color: '#fca5a5' }}>
+                          <span className="relative inline-block w-1.5 h-1.5 rounded-full bg-red-400 pulse-dot" style={{ color: '#ef4444' }} />
+                          {count} live
+                        </span>
                       ) : null;
                     })()}
                   </div>
+                  <button onClick={() => handleTabChange('bookings')} className="text-[11px] text-slate-500 hover:text-white flex items-center gap-1 transition-colors">
+                    View all <ChevronRight size={12} />
+                  </button>
                 </div>
                 <ActiveSessions
                   bookings={bookings}

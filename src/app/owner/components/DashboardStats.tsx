@@ -1,8 +1,35 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Eye, EyeOff, TrendingUp, TrendingDown, Minus, Zap, IndianRupee, Timer, Clock } from 'lucide-react';
 import { getLocalDateString } from '../utils';
+
+function Sparkline({ data }: { data: number[] }) {
+  if (data.length < 2) return null;
+  const W = 320, H = 52, P = 4;
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const range = max - min || 1;
+  const xStep = (W - P * 2) / (data.length - 1);
+  const pts = data.map((v, i) => [P + i * xStep, H - P - ((v - min) / range) * (H - P * 2)] as [number, number]);
+  const polyline = pts.map(([x, y]) => `${x},${y}`).join(' ');
+  const area = `${P},${H - P} ${polyline} ${P + (data.length - 1) * xStep},${H - P}`;
+  const [lx, ly] = pts[pts.length - 1];
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 52 }} preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="spkGrad" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stopColor="#06b6d4" stopOpacity="0.3" />
+          <stop offset="100%" stopColor="#06b6d4" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <polygon points={area} fill="url(#spkGrad)" />
+      <polyline points={polyline} fill="none" stroke="#22d3ee" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={lx} cy={ly} r="3" fill="#22d3ee" />
+      <circle cx={lx} cy={ly} r="7" fill="#22d3ee" opacity="0.18" />
+    </svg>
+  );
+}
 
 const REVENUE_VISIBILITY_KEY = 'owner-dashboard-revenue-visible';
 
@@ -161,6 +188,20 @@ export function DashboardStats({ bookings, subscriptions, activeTimers, loadingD
   }
 
   const revenueVisible = loadedPreference && showRevenue;
+
+  // 7-day sparkline data (daily revenue totals)
+  const sparklineData = useMemo(() => {
+    const days: number[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(); d.setDate(d.getDate() - i);
+      const dateStr = getLocalDateString(d);
+      const rev = bookings
+        .filter(b => b.booking_date === dateStr && b.status !== 'cancelled' && b.payment_mode !== 'owner')
+        .reduce((s, b) => s + (b.total_amount || 0), 0);
+      days.push(rev);
+    }
+    return days;
+  }, [bookings]);
   const gamingRevenue = gamingCash + gamingOnline;
   const totalForSplit = gamingRevenue + snacksRevenue + membershipRevenue;
   const gamingPct = totalForSplit > 0 ? Math.round((gamingRevenue / totalForSplit) * 100) : 0;
@@ -227,8 +268,9 @@ export function DashboardStats({ bookings, subscriptions, activeTimers, loadingD
         {/* ── BIG REVENUE CARD ── */}
         <div className="relative glass rounded-2xl p-5 overflow-hidden flex flex-col justify-between min-h-[180px]">
           <div className="absolute top-0 left-0 right-0 h-[2px] bg-emerald-500" />
-          {/* Subtle glow */}
-          <div className="absolute bottom-0 left-0 w-60 h-40 rounded-full opacity-10 blur-3xl pointer-events-none" style={{ background: 'radial-gradient(circle, #10b981, transparent 70%)' }} />
+          {/* Noise + glow overlays */}
+          <div className="absolute inset-0 rounded-2xl pointer-events-none" style={{ background: 'linear-gradient(to bottom right, rgba(255,255,255,0.03), transparent 35%)', mixBlendMode: 'overlay' }} />
+          <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full pointer-events-none" style={{ background: 'radial-gradient(closest-side, rgba(6,182,212,0.15), transparent)' }} />
 
           {/* Top row */}
           <div className="flex items-start justify-between gap-2 mb-3">
@@ -249,9 +291,12 @@ export function DashboardStats({ bookings, subscriptions, activeTimers, loadingD
           </div>
 
           {/* Revenue amount */}
-          <p className="mono text-4xl md:text-5xl font-bold text-white leading-none tracking-tight mb-4">
+          <p className="mono text-4xl md:text-5xl font-bold text-white leading-none tracking-tight mb-3">
             {revenueVisible ? `₹${displayRevenue.toLocaleString('en-IN')}` : '₹ ••••••'}
           </p>
+
+          {/* Sparkline */}
+          {revenueVisible && <div className="mb-2 -mx-1"><Sparkline data={sparklineData} /></div>}
 
           {/* Collections row */}
           {revenueVisible && (period === 'today') && (cashTotal > 0 || upiTotal > 0) && (

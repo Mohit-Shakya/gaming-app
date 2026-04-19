@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ConsoleId, CONSOLE_ICONS } from '@/lib/constants';
+import { ConsoleId, CONSOLE_ICONS, CONSOLE_COLORS, CONSOLE_LABELS } from '@/lib/constants';
 import { Plus, MessageCircle, Banknote, Smartphone, Gamepad2, CheckCircle, X } from 'lucide-react';
 
 import { getLocalDateString } from '../utils';
@@ -112,6 +112,14 @@ export function ActiveSessions({
     const getConsoleIcon = (consoleName: string) => {
         const key = consoleName?.toLowerCase() as ConsoleId;
         return CONSOLE_ICONS[key] || '🎮';
+    };
+    const getConsoleColor = (consoleName: string) => {
+        const key = consoleName?.toLowerCase() as ConsoleId;
+        return CONSOLE_COLORS[key] || '#6b7280';
+    };
+    const getConsoleLabel = (consoleName: string) => {
+        const key = consoleName?.toLowerCase() as ConsoleId;
+        return CONSOLE_LABELS[key] || consoleName;
     };
 
     // Fire session-ended callback once when time hits 0
@@ -241,7 +249,8 @@ export function ActiveSessions({
                 const ringR = 34;
                 const ringCircumference = 2 * Math.PI * ringR;
                 const ringOffset = ringCircumference * (1 - ringProgress);
-                const ringStroke = isCritical ? '#ef4444' : isWarning ? '#f59e0b' : '#10b981';
+                const consoleBaseColor = getConsoleColor(consoleInfo?.console || '');
+                const ringStroke = isCritical ? '#ef4444' : isWarning ? '#f59e0b' : consoleBaseColor;
 
                 return (
                     <div
@@ -252,12 +261,12 @@ export function ActiveSessions({
                         {/* Card header */}
                         <div className="flex items-center justify-between px-4 pt-4 pb-2">
                             <div className="flex items-center gap-2.5">
-                                <div className="w-8 h-8 rounded-lg bg-white/[0.07] flex items-center justify-center shrink-0">
-                                    <Gamepad2 size={16} className="text-slate-300" />
+                                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-base" style={{ background: `${consoleBaseColor}22`, color: consoleBaseColor }}>
+                                    {getConsoleIcon(consoleInfo?.console || '')}
                                 </div>
                                 <div>
-                                    <p className="text-[11px] font-bold text-white tracking-wide">{stationName}</p>
-                                    <p className="text-[10px] text-slate-500">{consoleType.charAt(0) + consoleType.slice(1).toLowerCase()}</p>
+                                    <p className="mono text-[12px] font-bold text-white tracking-wide">{stationName}</p>
+                                    <p className="text-[10px] text-slate-500">{getConsoleLabel(consoleInfo?.console || '')}</p>
                                 </div>
                             </div>
                             <span className={`text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full ${badgeBg} ${badgeText}`}>
