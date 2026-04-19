@@ -29,6 +29,37 @@ export default function CustomerDetailsModal({
         ? customer.totalSpent
         : customerBookings.reduce((sum, b) => sum + (b.total_amount || 0), 0);
     const totalHours = customerBookings.reduce((sum, b) => sum + (b.duration ? b.duration / 60 : 0), 0);
+
+    // Visit frequency analytics
+    const sortedDates = customerBookings
+        .map((b: any) => b.booking_date as string)
+        .filter(Boolean)
+        .sort();
+    const daysSinceLastVisit = sortedDates.length > 0
+        ? Math.floor((Date.now() - new Date(sortedDates[sortedDates.length - 1]).getTime()) / 86400000)
+        : null;
+    const avgDaysBetweenVisits = sortedDates.length >= 2
+        ? Math.round(
+            sortedDates.slice(1).reduce((sum: number, d: string, i: number) => {
+                return sum + (new Date(d).getTime() - new Date(sortedDates[i]).getTime()) / 86400000;
+            }, 0) / (sortedDates.length - 1)
+          )
+        : null;
+    const churnRisk = daysSinceLastVisit !== null && (
+        avgDaysBetweenVisits !== null
+            ? daysSinceLastVisit > avgDaysBetweenVisits * 2
+            : daysSinceLastVisit > 30
+    );
+
+    // Favorite console (most-used across booking_items)
+    const consoleCounts: Record<string, number> = {};
+    customerBookings.forEach((b: any) => {
+        (b.booking_items || []).forEach((item: any) => {
+            const c = item.console?.toUpperCase();
+            if (c) consoleCounts[c] = (consoleCounts[c] || 0) + (item.quantity || 1);
+        });
+    });
+    const favoriteConsole = Object.entries(consoleCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
     const activeSubscription = customer.activeSubscription;
     const purchasedHours = Number(
         activeSubscription?.hours_purchased ??
@@ -189,6 +220,47 @@ export default function CustomerDetailsModal({
                                 </div>
                                 <div style={{ color: '#10b981', fontWeight: 600 }}>₹{totalSpent.toLocaleString()}</div>
                             </div>
+                            {/* Divider */}
+                            <div style={{ width: '100%', height: 1, background: 'rgba(255,255,255,0.05)' }} />
+                            {/* Visit frequency */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#94a3b8', fontSize: 13 }}>
+                                    <Clock size={16} /> Visits every
+                                </div>
+                                <div style={{ color: 'white', fontWeight: 600, fontSize: 13 }}>
+                                    {avgDaysBetweenVisits !== null ? `~${avgDaysBetweenVisits}d` : '—'}
+                                </div>
+                            </div>
+                            {/* Last visit / churn signal */}
+                            {daysSinceLastVisit !== null && (
+                                <>
+                                    <div style={{ width: '100%', height: 1, background: 'rgba(255,255,255,0.05)' }} />
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#94a3b8', fontSize: 13 }}>
+                                            <History size={16} /> Last seen
+                                        </div>
+                                        <div style={{
+                                            fontWeight: 600, fontSize: 13,
+                                            color: churnRisk ? '#f87171' : daysSinceLastVisit > 14 ? '#fbbf24' : '#34d399'
+                                        }}>
+                                            {daysSinceLastVisit === 0 ? 'Today' : `${daysSinceLastVisit}d ago`}
+                                            {churnRisk && <span style={{ fontSize: 10, marginLeft: 6, background: 'rgba(248,113,113,0.15)', padding: '2px 6px', borderRadius: 6 }}>At Risk</span>}
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+                            {/* Favorite console */}
+                            {favoriteConsole && (
+                                <>
+                                    <div style={{ width: '100%', height: 1, background: 'rgba(255,255,255,0.05)' }} />
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#94a3b8', fontSize: 13 }}>
+                                            <Play size={16} /> Plays most
+                                        </div>
+                                        <div style={{ color: '#a78bfa', fontWeight: 600, fontSize: 13 }}>{favoriteConsole}</div>
+                                    </div>
+                                </>
+                            )}
                         </div>
 
                         {/* Action Buttons */}

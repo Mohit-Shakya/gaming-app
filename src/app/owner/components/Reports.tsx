@@ -29,6 +29,7 @@ import {
     Receipt,
     User,
     Phone,
+    Trophy,
 } from 'lucide-react';
 
 interface ReportsProps {
@@ -62,6 +63,7 @@ interface BookingData {
     booking_items?: BookingItem[];
     booking_orders?: BookingOrder[];
     customer_name?: string;
+    customer_phone?: string;
     source?: string;
 }
 
@@ -515,7 +517,23 @@ export function Reports({ cafeId, cafeName, isMobile, openingHours }: ReportsPro
         };
     }, [billableBookings]);
 
-    // 4. Console Popularity
+    // 4. Top Customers — group all-time bookings by phone, rank by spend
+    const topCustomers = useMemo(() => {
+        const map: Record<string, { name: string; phone: string; spent: number; sessions: number; lastVisit: string }> = {};
+        billableBookings.forEach(b => {
+            const key = b.customer_phone || b.customer_name || 'anonymous';
+            if (key === 'anonymous') return;
+            if (!map[key]) map[key] = { name: b.customer_name || 'Unknown', phone: b.customer_phone || '', spent: 0, sessions: 0, lastVisit: b.booking_date };
+            map[key].spent += b.total_amount || 0;
+            map[key].sessions += 1;
+            if (b.booking_date > map[key].lastVisit) map[key].lastVisit = b.booking_date;
+        });
+        return Object.values(map)
+            .sort((a, b) => b.spent - a.spent)
+            .slice(0, 10);
+    }, [billableBookings]);
+
+    // 5. Console Popularity
     const consoleData = useMemo(() => {
         const consoles: Record<string, { count: number; revenue: number }> = {};
         let snackCount = 0;
@@ -1489,6 +1507,57 @@ export function Reports({ cafeId, cafeName, isMobile, openingHours }: ReportsPro
                 </div>
                 )}
             </div>
+
+            {/* Top Customers Leaderboard */}
+            {topCustomers.length > 0 && (
+                <Card className="space-y-4">
+                    <div className="flex items-center gap-2">
+                        <Trophy size={18} className="text-amber-400" />
+                        <h3 className="text-lg font-semibold text-white">Top Customers</h3>
+                        <span className="text-xs text-slate-500 ml-1">by spend · {dateRange === 'all' ? 'all time' : 'selected period'}</span>
+                    </div>
+                    <div className="space-y-2">
+                        {topCustomers.map((c, i) => {
+                            const daysSince = Math.floor((Date.now() - new Date(c.lastVisit).getTime()) / 86400000);
+                            const churnColor = daysSince > 30 ? 'text-red-400' : daysSince > 14 ? 'text-amber-400' : 'text-emerald-400';
+                            const rankColors = ['text-amber-400', 'text-slate-300', 'text-orange-500'];
+                            const rankBg = ['bg-amber-500/15 border-amber-500/25', 'bg-slate-500/15 border-slate-500/25', 'bg-orange-500/15 border-orange-500/25'];
+                            return (
+                                <div key={c.phone || c.name} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/[0.03] border border-white/[0.07] hover:bg-white/[0.05] transition-colors">
+                                    {/* Rank */}
+                                    <div className={`w-7 h-7 rounded-lg border flex items-center justify-center text-xs font-bold shrink-0 ${i < 3 ? rankBg[i] : 'bg-white/[0.04] border-white/[0.08]'}`}>
+                                        <span className={i < 3 ? rankColors[i] : 'text-slate-500'}>#{i + 1}</span>
+                                    </div>
+                                    {/* Avatar */}
+                                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-xs font-bold text-white shrink-0">
+                                        {(c.name[0] || '?').toUpperCase()}
+                                    </div>
+                                    {/* Name + phone */}
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-semibold text-white truncate">{c.name}</p>
+                                        {c.phone && <p className="text-xs text-slate-500 truncate">{c.phone}</p>}
+                                    </div>
+                                    {/* Sessions */}
+                                    <div className="text-center shrink-0 hidden sm:block">
+                                        <p className="text-sm font-semibold text-white">{c.sessions}</p>
+                                        <p className="text-[10px] text-slate-500">visits</p>
+                                    </div>
+                                    {/* Last visit */}
+                                    <div className="text-center shrink-0 hidden md:block">
+                                        <p className={`text-xs font-semibold ${churnColor}`}>{daysSince === 0 ? 'Today' : `${daysSince}d ago`}</p>
+                                        <p className="text-[10px] text-slate-500">last visit</p>
+                                    </div>
+                                    {/* Spend */}
+                                    <div className="text-right shrink-0">
+                                        <p className="text-sm font-bold text-emerald-400">₹{c.spent.toLocaleString('en-IN')}</p>
+                                        <p className="text-[10px] text-slate-500">spent</p>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </Card>
+            )}
 
             {/* Recent Transactions Table */}
             <Card padding="none" className="overflow-hidden">

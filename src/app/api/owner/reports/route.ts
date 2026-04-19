@@ -15,6 +15,7 @@ type BookingRow = {
   payment_mode: string;
   start_time?: string;
   customer_name?: string;
+  customer_phone?: string;
   source?: string;
   booking_items?: Array<{ console: string; quantity: number; price?: number }>;
 };
@@ -87,7 +88,7 @@ export async function POST(request: NextRequest) {
       .from('bookings')
       .select(`
         id, total_amount, created_at, booking_date, status, payment_mode, start_time,
-        customer_name, source,
+        customer_name, customer_phone, source,
         booking_items (console, quantity, price)
       `)
       .eq('cafe_id', cafeId)
