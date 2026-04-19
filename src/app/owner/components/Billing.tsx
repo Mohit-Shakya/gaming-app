@@ -71,6 +71,7 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess, onMembersh
     const [memManualAmount, setMemManualAmount] = useState<number | null>(null);
     const [memPaymentMode, setMemPaymentMode] = useState<'cash' | 'upi'>('cash');
     const [memSubmitting, setMemSubmitting] = useState(false);
+    const [qrExpanded, setQrExpanded] = useState(false);
 
     // Shared customer state
     const [customerName, setCustomerName] = useState('');
@@ -854,14 +855,22 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess, onMembersh
 
                                 {paymentMode === 'upi' && totalAmount > 0 && (
                                     <div className="flex flex-col items-center gap-2 py-3">
-                                        <QRCodeSVG
-                                            value={`upi://pay?pa=${encodeURIComponent('paytmqr6k4kf1@ptys')}&pn=${encodeURIComponent('BookMyGame')}&am=${totalAmount.toFixed(2)}&cu=INR&tn=${encodeURIComponent('Booking Payment')}`}
-                                            size={180}
-                                            bgColor="#ffffff"
-                                            fgColor="#000000"
-                                            level="Q"
-                                        />
+                                        <div className="p-3 rounded-xl bg-[#d4d4d4]">
+                                            <QRCodeSVG
+                                                value={`upi://pay?pa=${encodeURIComponent('paytmqr6k4kf1@ptys')}&pn=${encodeURIComponent('BookMyGame')}&am=${totalAmount.toFixed(2)}&cu=INR&tn=${encodeURIComponent('Booking Payment')}`}
+                                                size={qrExpanded ? 260 : 180}
+                                                bgColor="#d4d4d4"
+                                                fgColor="#111111"
+                                                level="Q"
+                                            />
+                                        </div>
                                         <p className="text-xs text-slate-400">Scan to pay <span className="text-white font-semibold">₹{totalAmount}</span> via UPI</p>
+                                        <button
+                                            onClick={() => setQrExpanded(v => !v)}
+                                            className="text-xs text-slate-500 hover:text-slate-300 underline underline-offset-2 transition-colors"
+                                        >
+                                            {qrExpanded ? 'Make smaller' : 'Make bigger'}
+                                        </button>
                                     </div>
                                 )}
 
@@ -1055,14 +1064,22 @@ export function Billing({ cafeId, cafes, isMobile = false, onSuccess, onMembersh
 
                             {memPaymentMode === 'upi' && memTotalAmount > 0 && (
                                 <div className="flex flex-col items-center gap-2 py-3">
-                                    <QRCodeSVG
-                                        value={`upi://pay?pa=${encodeURIComponent('paytmqr6k4kf1@ptys')}&pn=${encodeURIComponent('BookMyGame')}&am=${memTotalAmount.toFixed(2)}&cu=INR&tn=${encodeURIComponent('Membership Payment')}`}
-                                        size={180}
-                                        bgColor="#ffffff"
-                                        fgColor="#000000"
-                                        level="Q"
-                                    />
+                                    <div className="p-3 rounded-xl bg-[#d4d4d4]">
+                                        <QRCodeSVG
+                                            value={`upi://pay?pa=${encodeURIComponent('paytmqr6k4kf1@ptys')}&pn=${encodeURIComponent('BookMyGame')}&am=${memTotalAmount.toFixed(2)}&cu=INR&tn=${encodeURIComponent('Membership Payment')}`}
+                                            size={qrExpanded ? 260 : 180}
+                                            bgColor="#d4d4d4"
+                                            fgColor="#111111"
+                                            level="Q"
+                                        />
+                                    </div>
                                     <p className="text-xs text-slate-400">Scan to pay <span className="text-white font-semibold">₹{memTotalAmount}</span> via UPI</p>
+                                    <button
+                                        onClick={() => setQrExpanded(v => !v)}
+                                        className="text-xs text-slate-500 hover:text-slate-300 underline underline-offset-2 transition-colors"
+                                    >
+                                        {qrExpanded ? 'Make smaller' : 'Make bigger'}
+                                    </button>
                                 </div>
                             )}
 
