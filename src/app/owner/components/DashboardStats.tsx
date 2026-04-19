@@ -212,9 +212,9 @@ export function DashboardStats({ bookings, subscriptions, activeTimers, loadingD
 
   if (loadingData) {
     return (
-      <div className="grid grid-cols-1 lg:grid-cols-[1.7fr_1fr] gap-3 mb-6">
-        <SkeletonCard />
-        <div className="grid grid-rows-3 gap-3">
+      <div className="grid grid-cols-12 gap-3 mb-6">
+        <div className="col-span-12 lg:col-span-5"><SkeletonCard /></div>
+        <div className="col-span-12 lg:col-span-7 grid grid-cols-1 sm:grid-cols-3 gap-3">
           <SkeletonCard /><SkeletonCard /><SkeletonCard />
         </div>
       </div>
@@ -233,11 +233,11 @@ export function DashboardStats({ bookings, subscriptions, activeTimers, loadingD
         </div>
       </div>
 
-      {/* Main grid: big revenue card + 3 stacked small cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1.7fr_1fr] gap-3">
+      {/* Main grid: revenue card (5/12) + 3 KPI tiles side-by-side (7/12) */}
+      <div className="grid grid-cols-12 gap-3">
 
         {/* ── BIG REVENUE CARD ── */}
-        <div className="relative glass rounded-2xl p-5 overflow-hidden flex flex-col justify-between min-h-[180px]">
+        <div className="col-span-12 lg:col-span-5 relative glass rounded-2xl p-5 overflow-hidden flex flex-col justify-between min-h-[180px]">
           <div className="absolute top-0 left-0 right-0 h-[2px] bg-emerald-500" />
           {/* Noise + glow overlays */}
           <div className="absolute inset-0 rounded-2xl pointer-events-none" style={{ background: 'linear-gradient(to bottom right, rgba(255,255,255,0.03), transparent 35%)', mixBlendMode: 'overlay' }} />
@@ -325,8 +325,8 @@ export function DashboardStats({ bookings, subscriptions, activeTimers, loadingD
           )}
         </div>
 
-        {/* ── 3 SMALL STACKED CARDS ── */}
-        <div className="grid grid-cols-1 gap-3">
+        {/* ── 3 KPI TILES side-by-side ── */}
+        <div className="col-span-12 lg:col-span-7 grid grid-cols-1 sm:grid-cols-3 gap-3">
 
           {/* Collections — PayBreakdown tile */}
           <div className="relative glass rounded-xl px-4 py-4 overflow-hidden">
