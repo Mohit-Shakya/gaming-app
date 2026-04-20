@@ -1971,7 +1971,7 @@ export default function OwnerDashboardPage() {
           {/* Dashboard Tab - New Design */}
           {!loadingData && activeTab === 'dashboard' && (
             <ErrorBoundary>
-            <div className="space-y-6">
+            <div className="space-y-5">
 
               {/* Ending Soon Alert Banner */}
               {(() => {
@@ -2013,70 +2013,6 @@ export default function OwnerDashboardPage() {
                     >
                       View <ChevronRight size={12} />
                     </button>
-                  </div>
-                );
-              })()}
-
-              {/* Quick Start Session + Upcoming Arrivals row */}
-              {(() => {
-                const todayStr = getLocalDateString();
-                const now = new Date();
-                const currentMinutes = now.getHours() * 60 + now.getMinutes();
-                const upcoming = bookings.filter((b: any) => {
-                  if (b.booking_date !== todayStr) return false;
-                  if (!['confirmed', 'pending'].includes(b.status)) return false;
-                  if (!b.start_time) return false;
-                  const tp = b.start_time.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
-                  if (!tp) return false;
-                  let h = parseInt(tp[1]); const m = parseInt(tp[2]); const p = tp[3];
-                  if (p) { if (p.toLowerCase() === 'pm' && h !== 12) h += 12; else if (p.toLowerCase() === 'am' && h === 12) h = 0; }
-                  const startMin = h * 60 + m;
-                  return startMin >= currentMinutes && startMin <= currentMinutes + 120;
-                }).sort((a: any, b: any) => a.start_time?.localeCompare(b.start_time));
-                return (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Quick Start Session */}
-                    <button
-                      onClick={() => handleTabChange('billing')}
-                      className="flex items-center gap-4 p-4 rounded-2xl bg-blue-500/10 border border-blue-500/25 hover:bg-blue-500/15 hover:border-blue-500/40 transition-all text-left group"
-                    >
-                      <div className="w-11 h-11 rounded-xl bg-blue-500 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                        <Zap size={22} className="text-white" />
-                      </div>
-                      <div>
-                        <p className="font-bold text-white text-sm">Start Session</p>
-                        <p className="text-xs text-blue-300/70 mt-0.5">New walk-in booking</p>
-                      </div>
-                      <ChevronRight size={16} className="text-blue-400/50 ml-auto" />
-                    </button>
-
-                    {/* Upcoming Arrivals */}
-                    <div className="rounded-2xl bg-white/[0.03] border border-white/[0.08] p-4">
-                      <p className="text-xs font-semibold text-slate-500 uppercase tracking-widest mb-2">Arriving Next 2 Hours</p>
-                      {upcoming.length === 0 ? (
-                        <p className="text-xs text-slate-600 py-1">No upcoming bookings</p>
-                      ) : (
-                        <div className="space-y-1.5">
-                          {upcoming.slice(0, 3).map((b: any) => (
-                            <div key={b.id} className="flex items-center justify-between gap-2">
-                              <div className="flex items-center gap-2 min-w-0">
-                                <span className="text-[10px] font-bold text-cyan-400 font-mono w-14 shrink-0">{b.start_time}</span>
-                                <span className="text-xs text-white truncate">{b.customer_name || b.user_name || 'Guest'}</span>
-                              </div>
-                              <button
-                                onClick={() => handleBookingStatusChange(b.id, 'in-progress')}
-                                className="text-[10px] font-semibold px-2 py-0.5 rounded-lg bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 transition-colors whitespace-nowrap shrink-0"
-                              >
-                                ▶ Start
-                              </button>
-                            </div>
-                          ))}
-                          {upcoming.length > 3 && (
-                            <p className="text-[10px] text-slate-600">+{upcoming.length - 3} more</p>
-                          )}
-                        </div>
-                      )}
-                    </div>
                   </div>
                 );
               })()}

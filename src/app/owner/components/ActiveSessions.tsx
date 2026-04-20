@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ConsoleId, CONSOLE_ICONS, CONSOLE_COLORS, CONSOLE_LABELS } from '@/lib/constants';
-import { Plus, MessageCircle, Banknote, Smartphone, Gamepad2, CheckCircle, X } from 'lucide-react';
+import { Plus, MessageCircle, Banknote, Smartphone, Gamepad2, CheckCircle, X, Square } from 'lucide-react';
 
 import { getLocalDateString } from '../utils';
 
@@ -160,7 +160,7 @@ export function ActiveSessions({
     }
 
     return (
-        <div className={`grid grid-cols-1 ${isMobile ? '' : 'sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'} gap-4 md:gap-5`}>
+        <div className={`grid grid-cols-2 lg:grid-cols-4 gap-3`}>
             {/* Active Membership Sessions */}
             {activeMemberships.map((sub: any) => {
                 const planDetails = sub.membership_plans || {};
@@ -297,7 +297,7 @@ export function ActiveSessions({
 
                             {/* Customer info */}
                             <div className="flex-1 min-w-0">
-                                <p className="text-[9px] text-slate-500 uppercase tracking-widest mb-0.5">Customer</p>
+                                <p className="text-[10px] text-slate-500 mb-0.5" style={{ fontVariant: 'all-small-caps', letterSpacing: '0.12em' }}>Customer</p>
                                 <p className="text-sm font-bold text-white truncate">{customerName}</p>
                                 {endTime && <p className="text-[11px] text-slate-500 mt-1">ends {endTime}</p>}
                                 <div className="flex items-center gap-1.5 mt-1.5">
@@ -350,21 +350,23 @@ export function ActiveSessions({
 
                         {/* Action buttons */}
                         {!isShowingEndCollect && (
-                            <div className="flex border-t border-white/[0.06] mt-auto">
+                            <div className="flex items-center gap-1.5 mt-3 px-4 pb-4">
                                 {onAddItems && (
                                     <button
                                         onClick={(e) => { e.stopPropagation(); onAddItems(bookingId, customerName); }}
-                                        className="flex-1 flex items-center justify-center gap-1.5 py-3 text-[11px] font-semibold text-slate-400 hover:text-white hover:bg-white/[0.04] transition-colors border-r border-white/[0.06]"
+                                        className="flex-1 flex items-center justify-center gap-1 py-1.5 text-[11px] font-semibold text-slate-400 hover:text-white hover:border-white/20 transition-colors rounded-lg"
+                                        style={{ border: '1px solid rgba(255,255,255,0.07)' }}
                                     >
-                                        <Plus className="w-3.5 h-3.5" /> Add Time
+                                        <Plus className="w-3 h-3" /> Add time
                                     </button>
                                 )}
                                 {onEndCollect && (
                                     <button
                                         onClick={(e) => { e.stopPropagation(); setEndCollectId(booking.id); setEndCollectPayment('cash'); }}
-                                        className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-[11px] font-semibold transition-colors ${isCritical ? 'text-red-400 hover:bg-red-500/10' : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'}`}
+                                        className="flex items-center justify-center gap-1 px-2.5 py-1.5 text-[11px] font-semibold rounded-lg transition-colors hover:border-white/20"
+                                        style={{ border: '1px solid rgba(255,255,255,0.07)', color: '#fca5a5' }}
                                     >
-                                        <CheckCircle className="w-3.5 h-3.5" /> End
+                                        <Square className="w-3 h-3" /> End
                                     </button>
                                 )}
                             </div>

@@ -212,29 +212,19 @@ export function DashboardStats({ bookings, subscriptions, activeTimers, loadingD
 
   if (loadingData) {
     return (
-      <div className="grid grid-cols-12 gap-3 mb-6">
+      <div className="grid grid-cols-12 gap-4">
         <div className="col-span-12 lg:col-span-5"><SkeletonCard /></div>
-        <div className="col-span-12 lg:col-span-7 grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="col-span-12 lg:col-span-7 grid grid-cols-1 sm:grid-cols-3 gap-4">
           <SkeletonCard /><SkeletonCard /><SkeletonCard />
         </div>
       </div>
     );
   }
 
-
   return (
-    <div className="mb-6 space-y-3">
-      {/* Header row with period toggle */}
-      <div className="flex items-center justify-between">
-        <p className="text-[10px] text-slate-500 font-semibold uppercase tracking-widest">Performance</p>
-        <div className="flex rounded-lg overflow-hidden border border-white/[0.08] text-xs">
-          <button onClick={() => setPeriod('today')} className={`px-3 py-1.5 font-semibold transition-colors ${period === 'today' ? 'bg-white/[0.08] text-white' : 'bg-transparent text-slate-500 hover:text-slate-300'}`}>Today</button>
-          <button onClick={() => setPeriod('week')} className={`px-3 py-1.5 font-semibold transition-colors ${period === 'week' ? 'bg-white/[0.08] text-white' : 'bg-transparent text-slate-500 hover:text-slate-300'}`}>7 Days</button>
-        </div>
-      </div>
-
+    <div>
       {/* Main grid: revenue card (5/12) + 3 KPI tiles side-by-side (7/12) */}
-      <div className="grid grid-cols-12 gap-3">
+      <div className="grid grid-cols-12 gap-4">
 
         {/* ── BIG REVENUE CARD ── */}
         <div className="col-span-12 lg:col-span-5 glass rounded-2xl p-5 relative overflow-hidden" style={{ position: 'relative' }}>
