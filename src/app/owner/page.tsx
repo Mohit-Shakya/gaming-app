@@ -1946,7 +1946,7 @@ export default function OwnerDashboardPage() {
         title="Dashboard"
         onRefresh={refreshData}
       >
-        <div>
+        <div className="px-4 md:px-8 pt-5 pb-10">
           {error && (
             <div
               style={{
@@ -2093,20 +2093,20 @@ export default function OwnerDashboardPage() {
 
               {/* Active Sessions */}
               <section>
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-2.5">
-                    <h2 className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest">Active Sessions</h2>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-sm text-slate-500" style={{ fontVariant: 'all-small-caps', letterSpacing: '0.12em', fontWeight: 600 }}>Active Sessions</h2>
                     {(() => {
                       const count = bookings.filter((b: any) => b.status === 'in-progress' && b.booking_date === getLocalDateString()).length;
                       return count > 0 ? (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold" style={{ background: 'rgba(239,68,68,0.12)', color: '#fca5a5' }}>
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px]" style={{ background: 'rgba(239,68,68,0.12)', color: '#fca5a5', border: '1px solid transparent' }}>
                           <span className="relative inline-block w-1.5 h-1.5 rounded-full bg-red-400 pulse-dot" style={{ color: '#ef4444' }} />
                           {count} live
                         </span>
                       ) : null;
                     })()}
                   </div>
-                  <button onClick={() => handleTabChange('bookings')} className="text-[11px] text-slate-500 hover:text-white flex items-center gap-1 transition-colors">
+                  <button onClick={() => handleTabChange('bookings')} className="text-[12px] text-slate-500 hover:text-white flex items-center gap-1 transition-colors">
                     View all <ChevronRight size={12} />
                   </button>
                 </div>

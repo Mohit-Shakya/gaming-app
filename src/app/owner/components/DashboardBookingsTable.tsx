@@ -30,16 +30,16 @@ export function DashboardBookingsTable({ bookings, onViewAll }: DashboardBooking
     return (
         <div className="glass rounded-2xl overflow-hidden">
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.05]">
-                <div className="flex items-center gap-2.5">
+            <div className="px-5 py-4 border-b border-white/[0.05] flex items-center justify-between">
+                <div className="flex items-center gap-2">
                     <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'rgba(6,182,212,0.12)', color: '#06b6d4' }}>
                         <CalendarX size={14} />
                     </div>
-                    <h2 className="text-[11px] font-semibold text-slate-300 uppercase tracking-widest">Today's Bookings</h2>
+                    <h2 className="text-sm text-slate-300" style={{ fontVariant: 'all-small-caps', letterSpacing: '0.12em', fontWeight: 600 }}>Today's Bookings</h2>
                     <span className="mono text-[11px] text-slate-500">({bookings.filter(b => !b.deleted_at && b.status !== 'cancelled').length})</span>
                 </div>
                 {onViewAll && (
-                    <button onClick={onViewAll} className="flex items-center gap-1 text-[11px] text-cyan-400 hover:text-cyan-300 transition-colors font-medium">
+                    <button onClick={onViewAll} className="text-[11px] flex items-center gap-1 transition-colors hover:opacity-80" style={{ color: '#06b6d4' }}>
                         View all <ArrowRight size={11} />
                     </button>
                 )}
@@ -47,15 +47,15 @@ export function DashboardBookingsTable({ bookings, onViewAll }: DashboardBooking
 
             {/* Table */}
             <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full text-sm">
                     <thead>
-                        <tr className="text-[10px] font-semibold text-slate-600 uppercase tracking-widest border-b border-white/[0.04]" style={{ fontVariant: 'all-small-caps', letterSpacing: '0.12em' }}>
-                            <th className="px-5 py-2.5 font-normal text-left">Customer</th>
-                            <th className="px-3 py-2.5 font-normal text-left">Station</th>
-                            <th className="px-3 py-2.5 font-normal text-left">Start</th>
-                            <th className="px-3 py-2.5 font-normal text-right">Amount</th>
-                            <th className="px-3 py-2.5 font-normal text-left">Pay</th>
-                            <th className="px-5 py-2.5 font-normal text-left">Status</th>
+                        <tr className="text-left" style={{ color: '#5b6170' }}>
+                            <th className="px-5 py-2.5 font-normal text-[10px]" style={{ fontVariant: 'all-small-caps', letterSpacing: '0.12em' }}>Customer</th>
+                            <th className="px-3 py-2.5 font-normal text-[10px]" style={{ fontVariant: 'all-small-caps', letterSpacing: '0.12em' }}>Station</th>
+                            <th className="px-3 py-2.5 font-normal text-[10px]" style={{ fontVariant: 'all-small-caps', letterSpacing: '0.12em' }}>Start</th>
+                            <th className="px-3 py-2.5 font-normal text-[10px] text-right" style={{ fontVariant: 'all-small-caps', letterSpacing: '0.12em' }}>Amount</th>
+                            <th className="px-3 py-2.5 font-normal text-[10px]" style={{ fontVariant: 'all-small-caps', letterSpacing: '0.12em' }}>Pay</th>
+                            <th className="px-5 py-2.5 font-normal text-[10px]" style={{ fontVariant: 'all-small-caps', letterSpacing: '0.12em' }}>Status</th>
                         </tr>
                     </thead>
                     <tbody>

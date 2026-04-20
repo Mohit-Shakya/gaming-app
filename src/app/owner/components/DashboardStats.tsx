@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Eye, EyeOff, TrendingUp, TrendingDown, Minus, Zap, IndianRupee, Timer } from 'lucide-react';
+import { Eye, EyeOff, TrendingUp, TrendingDown, Minus, Zap, IndianRupee, Timer, Activity, Hourglass } from 'lucide-react';
 import { getLocalDateString } from '../utils';
 
 function Sparkline({ data }: { data: number[] }) {
@@ -237,87 +237,78 @@ export function DashboardStats({ bookings, subscriptions, activeTimers, loadingD
       <div className="grid grid-cols-12 gap-3">
 
         {/* ── BIG REVENUE CARD ── */}
-        <div className="col-span-12 lg:col-span-5 relative glass rounded-2xl p-5 overflow-hidden flex flex-col justify-between min-h-[180px]">
-          <div className="absolute top-0 left-0 right-0 h-[2px] bg-emerald-500" />
-          {/* Noise + glow overlays */}
-          <div className="absolute inset-0 rounded-2xl pointer-events-none" style={{ background: 'linear-gradient(to bottom right, rgba(255,255,255,0.03), transparent 35%)', mixBlendMode: 'overlay' }} />
-          <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full pointer-events-none" style={{ background: 'radial-gradient(closest-side, rgba(6,182,212,0.15), transparent)' }} />
+        <div className="col-span-12 lg:col-span-5 glass rounded-2xl p-5 relative overflow-hidden" style={{ position: 'relative' }}>
+          {/* Glow orb */}
+          <div className="absolute -top-16 -right-16 w-64 h-64 rounded-full pointer-events-none"
+            style={{ background: 'radial-gradient(closest-side, rgba(6,182,212,0.18), transparent)' }} />
+          {/* Noise overlay */}
+          <div className="absolute inset-0 rounded-2xl pointer-events-none"
+            style={{ backgroundImage: 'linear-gradient(to bottom right, rgba(255,255,255,0.03), transparent 30%)', mixBlendMode: 'overlay' }} />
 
           {/* Top row */}
-          <div className="flex items-start justify-between gap-2 mb-3">
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                <IndianRupee size={13} className="text-emerald-400" />
-              </div>
-              <span className="text-[10px] uppercase tracking-widest font-semibold text-slate-400">
-                {period === 'today' ? 'Today · Revenue' : '7 Days · Revenue'}
-              </span>
+          <div className="flex items-center justify-between relative">
+            <div className="text-[10px] text-slate-500 font-semibold" style={{ fontVariant: 'all-small-caps', letterSpacing: '0.12em' }}>
+              {period === 'today' ? 'Today · Revenue' : '7 Days · Revenue'}
             </div>
             <div className="flex items-center gap-2">
-              {revenueVisible && <Trend today={displayRevenue} yesterday={displayPrevRevenue} />}
+              {revenueVisible && (
+                <div className="flex items-center gap-1 text-[11px] text-slate-500">
+                  <TrendingUp size={12} />
+                  <Trend today={displayRevenue} yesterday={displayPrevRevenue} />
+                  <span>vs yest</span>
+                </div>
+              )}
               <button type="button" onClick={toggleRevenueVisibility} className="p-1 rounded text-slate-500 hover:text-slate-300 transition-colors">
                 {revenueVisible ? <EyeOff size={13} /> : <Eye size={13} />}
               </button>
             </div>
           </div>
 
-          {/* Revenue amount */}
-          <p className="mono text-4xl md:text-5xl font-bold text-white leading-none tracking-tight mb-3">
-            {revenueVisible ? `₹${displayRevenue.toLocaleString('en-IN')}` : '₹ ••••••'}
-          </p>
+          {/* Revenue amount + sessions */}
+          <div className="mt-2 flex items-baseline gap-3 relative">
+            <p className="mono font-bold text-white leading-none tracking-tight" style={{ fontSize: 44 }}>
+              {revenueVisible ? `₹${displayRevenue.toLocaleString('en-IN')}` : '₹ ••••••'}
+            </p>
+            <span className="text-[11px] text-slate-500">{displaySessions} sessions</span>
+          </div>
 
           {/* Sparkline */}
-          {revenueVisible && <div className="mb-2 -mx-1"><Sparkline data={sparklineData} /></div>}
+          {revenueVisible && <div className="mt-4 relative"><Sparkline data={sparklineData} /></div>}
 
-          {/* Collections row */}
-          {revenueVisible && (period === 'today') && (cashTotal > 0 || upiTotal > 0) && (
-            <div className="flex items-center gap-4 mb-3">
-              {upiTotal > 0 && (
-                <span className="flex items-center gap-1.5 text-[11px] text-slate-400">
-                  <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 inline-block" />
-                  UPI <span className="text-white font-semibold ml-1">₹{upiTotal.toLocaleString('en-IN')}</span>
-                </span>
-              )}
-              {cashTotal > 0 && (
-                <span className="flex items-center gap-1.5 text-[11px] text-slate-400">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
-                  Cash <span className="text-white font-semibold ml-1">₹{cashTotal.toLocaleString('en-IN')}</span>
-                </span>
-              )}
-            </div>
-          )}
-
-          {/* Gaming / Snacks split bar */}
+          {/* Split bar */}
           {revenueVisible && totalForSplit > 0 && (
-            <div>
-              <div className="flex rounded-full overflow-hidden h-1.5 gap-px mb-2.5">
-                {gamingPct > 0 && <div className="h-full rounded-l-full" style={{ width: `${gamingPct}%`, background: '#06b6d4' }} />}
-                {snacksPct > 0 && <div className="h-full" style={{ width: `${snacksPct}%`, background: '#f59e0b' }} />}
-                {memberPct > 0 && <div className="h-full rounded-r-full" style={{ width: `${memberPct}%`, background: '#8b5cf6' }} />}
+            <div className="mt-4">
+              <div className="h-2 rounded-full overflow-hidden flex" style={{ background: 'rgba(255,255,255,0.04)' }}>
+                {gamingPct > 0 && <div style={{ width: `${gamingPct}%`, background: 'linear-gradient(90deg,#06b6d4,#22d3ee)' }} />}
+                {snacksPct > 0 && <div style={{ width: `${snacksPct}%`, background: 'linear-gradient(90deg,#f59e0b,#fbbf24)' }} />}
+                {memberPct > 0 && <div style={{ width: `${memberPct}%`, background: 'linear-gradient(90deg,#8b5cf6,#a78bfa)' }} />}
               </div>
-              <div className="flex items-center gap-4 flex-wrap">
+              <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
                 {gamingRevenue > 0 && (
-                  <div>
-                    <span className="text-[9px] text-slate-500 uppercase tracking-wide flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 inline-block" /> Gaming · {gamingPct}%
-                    </span>
-                    <p className="mono text-sm font-bold text-white">₹{gamingRevenue.toLocaleString('en-IN')}</p>
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-8 rounded shrink-0" style={{ background: '#06b6d4' }} />
+                    <div>
+                      <div className="text-[10px] text-slate-500" style={{ fontVariant: 'all-small-caps', letterSpacing: '0.1em' }}>Gaming · {gamingPct}%</div>
+                      <p className="mono font-bold text-white text-base">₹{gamingRevenue.toLocaleString('en-IN')}</p>
+                    </div>
                   </div>
                 )}
                 {snacksRevenue > 0 && (
-                  <div>
-                    <span className="text-[9px] text-slate-500 uppercase tracking-wide flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" /> Snacks · {snacksPct}%
-                    </span>
-                    <p className="mono text-sm font-bold text-white">₹{snacksRevenue.toLocaleString('en-IN')}</p>
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-8 rounded shrink-0" style={{ background: '#f59e0b' }} />
+                    <div>
+                      <div className="text-[10px] text-slate-500" style={{ fontVariant: 'all-small-caps', letterSpacing: '0.1em' }}>Snacks · {snacksPct}%</div>
+                      <p className="mono font-bold text-white text-base">₹{snacksRevenue.toLocaleString('en-IN')}</p>
+                    </div>
                   </div>
                 )}
                 {membershipRevenue > 0 && (
-                  <div>
-                    <span className="text-[9px] text-slate-500 uppercase tracking-wide flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-violet-400 inline-block" /> Members · {memberPct}%
-                    </span>
-                    <p className="mono text-sm font-bold text-white">₹{membershipRevenue.toLocaleString('en-IN')}</p>
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-8 rounded shrink-0" style={{ background: '#8b5cf6' }} />
+                    <div>
+                      <div className="text-[10px] text-slate-500" style={{ fontVariant: 'all-small-caps', letterSpacing: '0.1em' }}>Members · {memberPct}%</div>
+                      <p className="mono font-bold text-white text-base">₹{membershipRevenue.toLocaleString('en-IN')}</p>
+                    </div>
                   </div>
                 )}
               </div>
@@ -326,60 +317,69 @@ export function DashboardStats({ bookings, subscriptions, activeTimers, loadingD
         </div>
 
         {/* ── 3 KPI TILES side-by-side ── */}
-        <div className="col-span-12 lg:col-span-7 grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="col-span-12 lg:col-span-7 grid grid-cols-1 sm:grid-cols-3 gap-4">
 
           {/* Collections — PayBreakdown tile */}
-          <div className="relative glass rounded-xl px-4 py-4 overflow-hidden">
-            <div className="absolute top-0 left-0 right-0 h-[2px] bg-violet-500" />
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'rgba(139,92,246,0.18)', color: '#c4b5fd' }}>
-                <IndianRupee size={13} />
+          <div className="glass rounded-2xl p-4 relative overflow-hidden">
+            <div className="absolute inset-0 rounded-2xl pointer-events-none"
+              style={{ backgroundImage: 'linear-gradient(to bottom right, rgba(255,255,255,0.03), transparent 30%)', mixBlendMode: 'overlay' }} />
+            <div className="flex items-center justify-between relative">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(139,92,246,0.18)', color: '#c4b5fd' }}>
+                <IndianRupee size={14} />
               </div>
-              <span className="text-[9px] text-slate-600 uppercase tracking-widest">Today</span>
+              <span className="text-[10px] text-slate-600" style={{ fontVariant: 'all-small-caps', letterSpacing: '0.1em' }}>Today</span>
             </div>
-            <p className="text-[9px] uppercase tracking-widest text-slate-500 mb-0.5">Collections</p>
-            <p className="mono text-2xl font-bold text-white leading-none mb-3">₹{(cashTotal + upiTotal).toLocaleString('en-IN')}</p>
+            <div className="mt-4 text-[10px] text-slate-500 relative" style={{ fontVariant: 'all-small-caps', letterSpacing: '0.12em' }}>Collections</div>
+            <div className="mt-0.5 flex items-baseline gap-1.5 relative">
+              <span className="mono font-bold text-white" style={{ fontSize: 26 }}>₹{(cashTotal + upiTotal).toLocaleString('en-IN')}</span>
+            </div>
             {(cashTotal + upiTotal) > 0 && (
               <>
-                <div className="h-1.5 rounded-full overflow-hidden flex mb-2" style={{ background: 'rgba(255,255,255,0.04)' }}>
+                <div className="mt-3 h-1.5 rounded-full overflow-hidden flex" style={{ background: 'rgba(255,255,255,0.04)' }}>
                   <div style={{ width: `${Math.round(upiTotal / (cashTotal + upiTotal) * 100)}%`, background: '#06b6d4' }} />
                   <div style={{ width: `${Math.round(cashTotal / (cashTotal + upiTotal) * 100)}%`, background: '#10b981' }} />
                 </div>
-                <div className="flex items-center justify-between text-[10px]">
-                  <span className="flex items-center gap-1.5 text-slate-400"><span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />UPI <span className="mono text-white ml-1">₹{upiTotal.toLocaleString('en-IN')}</span></span>
-                  <span className="flex items-center gap-1.5 text-slate-400"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />Cash <span className="mono text-white ml-1">₹{cashTotal.toLocaleString('en-IN')}</span></span>
+                <div className="mt-2 flex items-center justify-between text-[11px]">
+                  <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shrink-0" /><span className="text-slate-500">UPI</span> <span className="mono text-white ml-1">₹{upiTotal.toLocaleString('en-IN')}</span></span>
+                  <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" /><span className="text-slate-500">Cash</span> <span className="mono text-white ml-1">₹{cashTotal.toLocaleString('en-IN')}</span></span>
                 </div>
               </>
             )}
           </div>
 
           {/* Active Now */}
-          <div className="relative glass rounded-xl px-4 py-4 overflow-hidden">
-            <div className="absolute top-0 left-0 right-0 h-[2px] bg-emerald-500" />
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-emerald-500/10">
-                <Zap size={13} className="text-emerald-400" />
+          <div className="glass rounded-2xl p-4 relative overflow-hidden">
+            <div className="absolute inset-0 rounded-2xl pointer-events-none"
+              style={{ backgroundImage: 'linear-gradient(to bottom right, rgba(255,255,255,0.03), transparent 30%)', mixBlendMode: 'overlay' }} />
+            <div className="flex items-center justify-between relative">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(16,185,129,0.18)', color: '#10b981' }}>
+                <Zap size={14} />
               </div>
-              <span className="relative inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 pulse-dot" style={{ color: '#10b981' }} />
+              <span className="relative inline-block w-1.5 h-1.5 rounded-full pulse-dot" style={{ background: '#10b981', color: '#10b981' }} />
             </div>
-            <p className="text-[9px] uppercase tracking-widest text-slate-500 mb-0.5">Active Now</p>
-            <div className="flex items-baseline gap-1.5">
-              <p className="mono text-2xl font-bold text-white leading-none">{activeNow}</p>
-              <span className="text-[10px] text-slate-500">in progress</span>
+            <div className="mt-4 text-[10px] text-slate-500 relative" style={{ fontVariant: 'all-small-caps', letterSpacing: '0.12em' }}>Active now</div>
+            <div className="mt-0.5 flex items-baseline gap-1.5 relative">
+              <span className="mono font-bold text-white" style={{ fontSize: 26 }}>{activeNow}</span>
+              <span className="text-[10px] text-slate-500">of stations</span>
             </div>
           </div>
 
           {/* Sessions */}
-          <div className="relative glass rounded-xl px-4 py-4 overflow-hidden">
-            <div className="absolute top-0 left-0 right-0 h-[2px] bg-cyan-500" />
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-cyan-500/10">
-                <Timer size={13} className="text-cyan-400" />
+          <div className="glass rounded-2xl p-4 relative overflow-hidden">
+            <div className="absolute inset-0 rounded-2xl pointer-events-none"
+              style={{ backgroundImage: 'linear-gradient(to bottom right, rgba(255,255,255,0.03), transparent 30%)', mixBlendMode: 'overlay' }} />
+            <div className="flex items-center justify-between relative">
+              <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(6,182,212,0.18)', color: '#06b6d4' }}>
+                <Timer size={14} />
               </div>
-              <Trend today={displaySessions} yesterday={displayPrevSessions} />
             </div>
-            <p className="text-[9px] uppercase tracking-widest text-slate-500 mb-0.5">{period === 'today' ? 'Sessions Today' : 'Week Sessions'}</p>
-            <p className="mono text-2xl font-bold text-white leading-none">{displaySessions}</p>
+            <div className="mt-4 text-[10px] text-slate-500 relative" style={{ fontVariant: 'all-small-caps', letterSpacing: '0.12em' }}>
+              {period === 'today' ? 'Sessions' : 'Week Sessions'}
+            </div>
+            <div className="mt-0.5 flex items-baseline gap-1.5 relative">
+              <span className="mono font-bold text-white" style={{ fontSize: 26 }}>{displaySessions}</span>
+              <span className="text-[10px] text-slate-500">today</span>
+            </div>
           </div>
 
         </div>
