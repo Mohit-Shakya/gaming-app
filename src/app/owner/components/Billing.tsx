@@ -955,22 +955,6 @@ export function Billing({
                             )}
                         </Card>
 
-                        {onSnackOnlySale && (
-                            <Card className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/12 text-amber-300">
-                                        <Store size={18} />
-                                    </div>
-                                    <div>
-                                        <div className="text-[10px] smallcaps text-[var(--dim)]">Snack Counter</div>
-                                        <div className="text-sm font-semibold text-white">Log a snack-only sale</div>
-                                    </div>
-                                </div>
-                                <Button variant="secondary" onClick={onSnackOnlySale}>
-                                    Open snack sale
-                                </Button>
-                            </Card>
-                        )}
                     </div>
 
                     <div className="space-y-5">
