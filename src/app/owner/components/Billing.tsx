@@ -885,13 +885,15 @@ export function Billing({
                                                 </div>
 
                                                 {/* Station + Players in one row */}
-                                                <div className="grid gap-3 sm:grid-cols-2">
+                                                <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_170px]">
                                                     <div>
-                                                        <div className="mb-1.5 text-[10px] smallcaps text-[var(--dim)]">Station</div>
+                                                        <div className="mb-2 text-[10px] smallcaps text-[var(--dim)]">Station</div>
                                                         {allowSingleStation ? (
-                                                            <div className="flex flex-wrap gap-1.5">
+                                                            <div className="flex flex-wrap gap-2">
                                                                 {stations.length === 0 ? (
-                                                                    <span className="text-xs text-[var(--muted)]">No stations configured</span>
+                                                                    <div className="rounded-xl border border-dashed border-white/[0.08] px-3 py-2 text-xs text-[var(--muted)]">
+                                                                        Configure stations in Settings to pin a specific unit.
+                                                                    </div>
                                                                 ) : stations.map((station) => {
                                                                     const selected = item.station === station;
                                                                     return (
@@ -899,7 +901,7 @@ export function Billing({
                                                                             key={station}
                                                                             type="button"
                                                                             onClick={() => updateItem(item.id, 'station', station)}
-                                                                            className={`rounded-xl px-2.5 py-1.5 text-xs transition ${selected ? 'glow-selected text-white' : 'glass-2 text-slate-300 hover:border-white/15'}`}
+                                                                            className={`rounded-xl px-3 py-2 text-xs transition ${selected ? 'glow-selected text-white' : 'glass-2 text-slate-300 hover:border-white/15'}`}
                                                                             style={{ background: selected ? `${theme.accent}16` : 'var(--card-2)' }}
                                                                         >
                                                                             {formatStationOptionLabel(station)}
@@ -908,12 +910,14 @@ export function Billing({
                                                                 })}
                                                             </div>
                                                         ) : (
-                                                            <span className="text-xs text-[var(--muted)]">Auto-assign</span>
+                                                            <div className="rounded-xl border border-dashed border-white/[0.08] px-3 py-2 text-xs text-[var(--muted)]">
+                                                                Multiple units will auto-assign to available configured stations.
+                                                            </div>
                                                         )}
                                                     </div>
                                                     <div>
-                                                        <div className="mb-1.5 text-[10px] smallcaps text-[var(--dim)]">Players</div>
-                                                        <div className="flex gap-1.5">
+                                                        <div className="mb-2 text-[10px] smallcaps text-[var(--dim)]">Players</div>
+                                                        <div className="flex flex-wrap gap-2">
                                                             {PLAYER_OPTIONS.map((players) => {
                                                                 const selected = item.quantity === players;
                                                                 return (
@@ -921,7 +925,7 @@ export function Billing({
                                                                         key={players}
                                                                         type="button"
                                                                         onClick={() => updateItem(item.id, 'quantity', players)}
-                                                                        className={`rounded-xl px-2.5 py-1.5 text-xs font-medium transition ${selected ? 'border-transparent bg-white/[0.10] text-white' : 'glass-2 text-slate-300 hover:border-white/15'}`}
+                                                                        className={`rounded-xl px-3 py-2 text-xs font-medium transition ${selected ? 'border-transparent bg-white/[0.08] text-white' : 'glass-2 text-slate-300 hover:border-white/15'}`}
                                                                     >
                                                                         {players}P
                                                                     </button>
@@ -933,8 +937,8 @@ export function Billing({
 
                                                 {/* Duration */}
                                                 <div>
-                                                    <div className="mb-1.5 text-[10px] smallcaps text-[var(--dim)]">Duration</div>
-                                                    <div className="flex flex-wrap gap-1.5">
+                                                    <div className="mb-2 text-[10px] smallcaps text-[var(--dim)]">Duration</div>
+                                                    <div className="flex flex-wrap gap-2">
                                                         {DURATION_OPTIONS.map((dur) => {
                                                             const selected = item.duration === dur;
                                                             return (
@@ -942,7 +946,7 @@ export function Billing({
                                                                     key={dur}
                                                                     type="button"
                                                                     onClick={() => updateItem(item.id, 'duration', dur)}
-                                                                    className={`rounded-xl px-2.5 py-1.5 text-xs font-medium transition ${selected ? 'border-transparent bg-cyan-500/15 text-white shadow-[0_0_20px_-10px_rgba(34,211,238,0.75)]' : 'glass-2 text-slate-300 hover:border-white/15'}`}
+                                                                    className={`rounded-xl px-3 py-2 text-xs font-medium transition ${selected ? 'border-transparent bg-cyan-500/15 text-white shadow-[0_0_24px_-10px_rgba(34,211,238,0.75)]' : 'glass-2 text-slate-300 hover:border-white/15'}`}
                                                                 >
                                                                     {dur < 60 ? `${dur}m` : dur === 60 ? '1h' : dur === 90 ? '1.5h' : dur === 120 ? '2h' : '3h'}
                                                                 </button>
@@ -952,11 +956,21 @@ export function Billing({
                                                 </div>
 
                                                 {/* Summary strip */}
-                                                <div className="glass rounded-xl px-3.5 py-2.5 flex items-center justify-between gap-3">
-                                                    <span className="mono text-xs text-[var(--muted)]">
-                                                        {item.quantity}P · {item.duration}m · {allowSingleStation ? formatStationOptionLabel(item.station || stations[0] || '—') : 'Auto'}
-                                                    </span>
-                                                    <span className="mono text-sm font-bold text-white">Rs.{item.price}</span>
+                                                <div className="glass rounded-xl px-4 py-3">
+                                                    <div className="flex items-center justify-between gap-3">
+                                                        <div>
+                                                            <div className="text-[10px] smallcaps text-[var(--dim)]">Configured session</div>
+                                                            <div className="mono mt-1 text-sm font-semibold text-white">
+                                                                {item.quantity} player{item.quantity === 1 ? '' : 's'} · {item.duration} min
+                                                            </div>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <div className="mono text-base font-semibold text-white">Rs.{item.price}</div>
+                                                            <div className="text-[11px] text-[var(--muted)]">
+                                                                {allowSingleStation ? formatStationOptionLabel(item.station || stations[0] || 'Any station') : 'Auto assign'}
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
                                         );
