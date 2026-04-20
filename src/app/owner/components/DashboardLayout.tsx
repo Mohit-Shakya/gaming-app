@@ -68,51 +68,57 @@ export function DashboardLayout({
 
             {/* ── DESKTOP HEADER (2 rows) ── */}
             <div className="hidden lg:block sticky top-0 z-40"
-                style={{ background: 'rgba(10,10,15,0.9)', backdropFilter: 'blur(20px)', boxShadow: '0 1px 0 rgba(255,255,255,0.06)' }}>
+                style={{ background: 'rgba(13,13,20,0.95)', backdropFilter: 'blur(24px)', boxShadow: '0 1px 0 rgba(255,255,255,0.07)' }}>
 
                 {/* Row 1: Logo + User */}
-                <div className="flex items-center justify-between px-6 py-2.5 border-b border-white/[0.05]">
+                <div className="flex items-center justify-between px-6 py-3 border-b border-white/[0.06]">
                     <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'rgba(6,182,212,0.15)' }}>
+                        <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, rgba(6,182,212,0.25), rgba(6,182,212,0.1))', border: '1px solid rgba(6,182,212,0.2)' }}>
                             <Gamepad2 size={18} className="text-cyan-400" />
                         </div>
                         <div>
-                            <p className="text-[14px] font-bold text-white leading-none">BookMyGame.</p>
+                            <p className="text-[15px] font-bold text-white leading-none tracking-tight">BookMyGame.</p>
                             <p className="text-[9px] text-slate-500 uppercase tracking-widest mt-0.5">Owner Console · {cafeName}</p>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
                         {onRefresh && (
                             <button onClick={handleRefresh} title="Refresh"
-                                className="w-8 h-8 rounded-full border border-white/[0.08] bg-white/[0.03] flex items-center justify-center text-slate-500 hover:text-white transition-colors">
-                                <RefreshCw size={13} className={spinning ? 'animate-spin' : ''} />
+                                className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-500 hover:text-white transition-colors hover:bg-white/[0.05]">
+                                <RefreshCw size={14} className={spinning ? 'animate-spin' : ''} />
                             </button>
                         )}
-                        <button className="w-8 h-8 rounded-full border border-white/[0.08] bg-white/[0.03] flex items-center justify-center text-slate-500 hover:text-white transition-colors">
-                            <Bell size={13} />
+                        {/* Bell with notification dot */}
+                        <button className="relative w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-white transition-colors hover:bg-white/[0.05]">
+                            <Bell size={16} />
+                            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-orange-400 border-2 border-[#0d0d14]" />
                         </button>
+                        {/* User avatar + name */}
                         <button onClick={handleLogout}
-                            className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/[0.10] bg-white/[0.04] hover:bg-white/[0.07] transition-colors">
-                            <div className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold" style={{ background: 'rgba(6,182,212,0.3)', color: '#22d3ee' }}>
+                            className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl border border-white/[0.08] bg-white/[0.04] hover:bg-white/[0.07] transition-colors">
+                            <div className="w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-bold shrink-0"
+                                style={{ background: 'linear-gradient(135deg, #06b6d4, #0891b2)', color: '#fff' }}>
                                 {initials || 'O'}
                             </div>
-                            <span className="text-[12px] font-medium text-slate-200 max-w-[90px] truncate">{cafeName}</span>
-                            <ChevronDown size={11} className="text-slate-500" />
+                            <span className="text-[13px] font-medium text-slate-200 max-w-[100px] truncate">{cafeName}</span>
+                            <ChevronDown size={12} className="text-slate-500" />
                         </button>
                     </div>
                 </div>
 
                 {/* Row 2: Tab navigation */}
-                <nav className="flex items-end px-6 overflow-x-auto no-scrollbar" style={{ height: 42 }}>
+                <nav className="flex items-end px-6 overflow-x-auto no-scrollbar" style={{ height: 46 }}>
                     {DESKTOP_PRIMARY_TABS.map(tab => {
                         const Icon = tab.icon;
                         const isActive = activeTab === tab.id;
                         return (
                             <button key={tab.id} onClick={() => onTabChange(tab.id)}
-                                className={`relative flex items-center gap-1.5 px-4 h-full text-[12px] font-medium whitespace-nowrap transition-colors border-b-2 mr-0.5
-                                    ${isActive ? 'text-white border-cyan-400' : 'text-slate-500 border-transparent hover:text-slate-200'}`}>
-                                <Icon size={12} />
+                                className={`relative flex items-center gap-2 px-4 h-full text-[13px] font-medium whitespace-nowrap transition-all border-b-2 mr-1
+                                    ${isActive
+                                        ? 'text-white border-cyan-400 bg-white/[0.05] rounded-t-lg'
+                                        : 'text-slate-500 border-transparent hover:text-slate-200 hover:bg-white/[0.03] rounded-t-lg'}`}>
+                                <Icon size={13} />
                                 {tab.label}
                             </button>
                         );
@@ -120,9 +126,9 @@ export function DashboardLayout({
 
                     <div className="relative h-full">
                         <button onClick={() => setMoreOpen(p => !p)}
-                            className={`relative flex items-center gap-1 px-4 h-full text-[12px] font-medium whitespace-nowrap transition-colors border-b-2
-                                ${isMoreActive ? 'text-white border-cyan-400' : 'text-slate-500 border-transparent hover:text-slate-200'}`}>
-                            More <ChevronDown size={10} className={`transition-transform ${moreOpen ? 'rotate-180' : ''}`} />
+                            className={`relative flex items-center gap-1.5 px-4 h-full text-[13px] font-medium whitespace-nowrap transition-all border-b-2 rounded-t-lg
+                                ${isMoreActive ? 'text-white border-cyan-400 bg-white/[0.05]' : 'text-slate-500 border-transparent hover:text-slate-200 hover:bg-white/[0.03]'}`}>
+                            More <ChevronDown size={11} className={`transition-transform ${moreOpen ? 'rotate-180' : ''}`} />
                         </button>
                         {moreOpen && (
                             <div className="absolute top-full left-0 mt-1 w-40 glass rounded-xl overflow-hidden py-1 z-50" onClick={() => setMoreOpen(false)}>
