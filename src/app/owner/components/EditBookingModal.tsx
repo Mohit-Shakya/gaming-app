@@ -506,37 +506,89 @@ export function EditBookingModal({
           </section>
 
           {/* Snacks & Orders */}
-          <section className="rounded-xl bg-white/[0.06]/40 border border-white/[0.09]/40 overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.09]/40 bg-white/[0.03]">
+          <section className="rounded-xl overflow-hidden" style={{ background: 'rgba(251,146,60,0.03)', border: '1px solid rgba(251,146,60,0.10)' }}>
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'rgba(251,146,60,0.10)', background: 'rgba(251,146,60,0.05)' }}>
               <div className="flex items-center gap-2.5">
-                <div className="w-7 h-7 rounded-lg bg-amber-500/15 flex items-center justify-center">
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'rgba(251,146,60,0.15)' }}>
                   <UtensilsCrossed size={13} className="text-amber-400" />
                 </div>
                 <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Snacks & F&B</span>
-                {snacksTotal > 0 && (
-                  <span className="text-xs font-bold text-amber-400">₹{snacksTotal.toLocaleString('en-IN')}</span>
-                )}
               </div>
-              <button
-                type="button"
-                onClick={onManageSnacks}
-                className="text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/25 text-amber-400 hover:bg-amber-500/20 transition-colors"
-              >
-                Manage Snacks
-              </button>
+              <div className="flex items-center gap-2.5">
+                {snacksTotal > 0 && (
+                  <span className="text-sm font-bold text-amber-400">₹{snacksTotal.toLocaleString('en-IN')}</span>
+                )}
+                <button
+                  type="button"
+                  onClick={onManageSnacks}
+                  className="flex items-center gap-1.5 text-[11px] font-bold px-3 py-1.5 rounded-lg transition-all hover:opacity-90 active:scale-95"
+                  style={{ background: 'rgba(251,146,60,0.15)', color: '#fbbf24', border: '1px solid rgba(251,146,60,0.28)' }}
+                >
+                  <Plus size={11} />
+                  Manage Snacks
+                </button>
+              </div>
             </div>
-            <div className="px-4 py-3">
+
+            {/* Body */}
+            <div className="p-3">
               {booking.booking_orders?.length ? (
-                <div className="flex flex-col gap-1.5">
-                  {booking.booking_orders.map(order => (
-                    <div key={order.id} className="flex items-center justify-between text-xs">
-                      <span className="text-slate-500 font-mono">Order #{order.id.slice(0, 8).toUpperCase()}</span>
-                      <span className="font-semibold text-slate-300">₹{order.total_price?.toLocaleString('en-IN')}</span>
+                <div className="flex flex-col gap-2">
+                  {booking.booking_orders.map((order, idx) => (
+                    <div
+                      key={order.id}
+                      className="flex items-center justify-between px-3 py-2.5 rounded-lg"
+                      style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)' }}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div
+                          className="w-6 h-6 rounded-md flex items-center justify-center text-[10px] font-bold shrink-0"
+                          style={{ background: 'rgba(251,146,60,0.12)', color: '#f59e0b' }}
+                        >
+                          {idx + 1}
+                        </div>
+                        <div>
+                          <p className="text-[12px] font-mono text-slate-400">
+                            Order #{order.id.slice(0, 8).toUpperCase()}
+                          </p>
+                          {order.quantity != null && order.quantity > 0 && (
+                            <p className="text-[10px] text-slate-600 mt-0.5">
+                              {order.quantity} item{order.quantity !== 1 ? 's' : ''}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <span className="text-sm font-bold text-amber-400">
+                        ₹{(order.total_price ?? 0).toLocaleString('en-IN')}
+                      </span>
                     </div>
                   ))}
+
+                  {/* Total row — only when multiple orders */}
+                  {booking.booking_orders.length > 1 && (
+                    <div className="flex items-center justify-between px-3 py-2 mt-0.5 rounded-lg" style={{ background: 'rgba(251,146,60,0.07)', border: '1px solid rgba(251,146,60,0.12)' }}>
+                      <span className="text-[11px] font-bold text-amber-500/70 uppercase tracking-wider">Total F&B</span>
+                      <span className="text-sm font-bold text-amber-400">₹{snacksTotal.toLocaleString('en-IN')}</span>
+                    </div>
+                  )}
                 </div>
               ) : (
-                <p className="text-xs text-slate-600 py-1">No snacks attached to this session.</p>
+                /* Empty state — clicking opens the snack modal */
+                <button
+                  type="button"
+                  onClick={onManageSnacks}
+                  className="w-full flex flex-col items-center gap-2 py-5 rounded-xl transition-colors hover:bg-white/[0.02] active:scale-[0.99]"
+                  style={{ border: '1.5px dashed rgba(251,146,60,0.18)' }}
+                >
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: 'rgba(251,146,60,0.10)' }}>
+                    <UtensilsCrossed size={16} style={{ color: 'rgba(245,158,11,0.5)' }} />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-[12px] font-semibold text-slate-500">No snacks added yet</p>
+                    <p className="text-[10px] mt-0.5" style={{ color: 'rgba(245,158,11,0.5)' }}>Tap to add F&amp;B orders</p>
+                  </div>
+                </button>
               )}
             </div>
           </section>
