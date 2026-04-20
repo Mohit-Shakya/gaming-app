@@ -854,10 +854,10 @@ export function Billing({
                                                     </div>
                                                 </div>
 
-                                                {/* Console — compact pill row */}
+                                                {/* Console — card grid */}
                                                 <div>
-                                                    <div className="mb-1.5 text-[10px] smallcaps text-[var(--dim)]">Console</div>
-                                                    <div className="flex flex-wrap gap-1.5">
+                                                    <div className="mb-2 text-[10px] smallcaps text-[var(--dim)]">Console</div>
+                                                    <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
                                                         {availableConsoles.map((consoleType) => {
                                                             const t = getConsoleTheme(consoleType);
                                                             const selected = item.console === consoleType;
@@ -866,11 +866,18 @@ export function Billing({
                                                                     key={consoleType}
                                                                     type="button"
                                                                     onClick={() => updateItem(item.id, 'console', consoleType)}
-                                                                    className={`flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-medium transition ${selected ? 'glow-selected text-white' : 'glass text-slate-300 hover:border-white/15'}`}
-                                                                    style={{ background: selected ? `${t.accent}20` : 'var(--card-2)', borderColor: selected ? `${t.accent}40` : undefined }}
+                                                                    className={`relative overflow-hidden rounded-xl p-3 text-left transition ${selected ? 'glow-selected' : 'glass hover:border-white/15'}`}
+                                                                    style={{ background: selected ? `linear-gradient(180deg, ${t.accent}18, rgba(0,0,0,0)), var(--card-2)` : 'var(--card-2)' }}
                                                                 >
-                                                                    <span className="flex h-5 w-5 items-center justify-center rounded-md text-[10px] font-bold" style={{ background: `${t.accent}22`, color: t.accent }}>{t.short}</span>
-                                                                    {CONSOLE_LABELS[consoleType as keyof typeof CONSOLE_LABELS] || consoleType.toUpperCase()}
+                                                                    <div className="flex items-center justify-between gap-2">
+                                                                        <span className="flex h-9 w-9 items-center justify-center rounded-xl text-xs font-bold" style={{ background: `${t.accent}22`, color: t.accent }}>
+                                                                            {t.short}
+                                                                        </span>
+                                                                        <span className="mono text-[10px] text-[var(--muted)]">{stationOptions(consoleType).length}</span>
+                                                                    </div>
+                                                                    <div className="mt-2 text-xs font-semibold text-white">
+                                                                        {CONSOLE_LABELS[consoleType as keyof typeof CONSOLE_LABELS] || consoleType.toUpperCase()}
+                                                                    </div>
                                                                 </button>
                                                             );
                                                         })}
