@@ -828,154 +828,125 @@ export function Billing({
                                     })}
                                 </div>
                             ) : (
-                                <div className="space-y-4">
+                                <div className="space-y-3">
                                     {items.map((item, index) => {
                                         const theme = getConsoleTheme(item.console);
                                         const stations = stationOptions(item.console);
                                         const allowSingleStation = canPickSingleStation(item.console, item.quantity);
 
                                         return (
-                                            <div key={item.id} className="glass-2 relative overflow-hidden rounded-2xl p-4">
-                                                <span className="absolute inset-0 grid-dots opacity-25" />
-                                                <div className="relative flex items-start justify-between gap-3">
-                                                    <div>
-                                                        <div className="text-[10px] smallcaps text-[var(--dim)]">Booking item {index + 1}</div>
-                                                        <div className="mt-1 text-sm font-semibold text-white">
-                                                            {CONSOLE_LABELS[item.console as keyof typeof CONSOLE_LABELS] || item.console.toUpperCase()}
-                                                        </div>
-                                                    </div>
+                                            <div key={item.id} className="glass-2 rounded-2xl p-4 space-y-3">
+                                                {/* Header row */}
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <span className="text-[10px] smallcaps text-[var(--dim)]">Item {index + 1}</span>
                                                     <div className="flex items-center gap-2">
-                                                        <span className="chip border-transparent" style={{ background: `${theme.accent}18`, color: theme.accent }}>
-                                                            Rs.{item.price}
-                                                        </span>
+                                                        <span className="mono text-sm font-bold" style={{ color: theme.accent }}>Rs.{item.price}</span>
                                                         <button
                                                             type="button"
                                                             onClick={() => removeItem(item.id)}
-                                                            className="flex h-8 w-8 items-center justify-center rounded-full border border-white/[0.08] text-slate-400 transition hover:border-red-400/30 hover:text-red-300"
+                                                            className="flex h-7 w-7 items-center justify-center rounded-full border border-white/[0.08] text-slate-500 transition hover:border-red-400/30 hover:text-red-300"
                                                         >
-                                                            <Trash2 size={14} />
+                                                            <Trash2 size={13} />
                                                         </button>
                                                     </div>
                                                 </div>
 
-                                                <div className="relative mt-4 space-y-4">
-                                                    <div>
-                                                        <div className="mb-2 text-[10px] smallcaps text-[var(--dim)]">Console</div>
-                                                        <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
-                                                            {availableConsoles.map((consoleType) => {
-                                                                const optionTheme = getConsoleTheme(consoleType);
-                                                                const selected = item.console === consoleType;
-                                                                return (
-                                                                    <button
-                                                                        key={consoleType}
-                                                                        type="button"
-                                                                        onClick={() => updateItem(item.id, 'console', consoleType)}
-                                                                        className={`relative overflow-hidden rounded-xl p-3 text-left transition ${selected ? 'glow-selected' : 'glass hover:border-white/15'}`}
-                                                                        style={{ background: selected ? `linear-gradient(180deg, ${optionTheme.accent}18, rgba(0,0,0,0)) , var(--card-2)` : 'var(--card-2)' }}
-                                                                    >
-                                                                        <div className="flex items-center justify-between gap-2">
-                                                                            <span className="flex h-9 w-9 items-center justify-center rounded-xl text-xs font-bold" style={{ background: `${optionTheme.accent}22`, color: optionTheme.accent }}>
-                                                                                {optionTheme.short}
-                                                                            </span>
-                                                                            <span className="mono text-[10px] text-[var(--muted)]">{stationOptions(consoleType).length}</span>
-                                                                        </div>
-                                                                        <div className="mt-3 text-xs font-semibold text-white">
-                                                                            {CONSOLE_LABELS[consoleType as keyof typeof CONSOLE_LABELS] || consoleType.toUpperCase()}
-                                                                        </div>
-                                                                    </button>
-                                                                );
-                                                            })}
-                                                        </div>
+                                                {/* Console — compact pill row */}
+                                                <div>
+                                                    <div className="mb-1.5 text-[10px] smallcaps text-[var(--dim)]">Console</div>
+                                                    <div className="flex flex-wrap gap-1.5">
+                                                        {availableConsoles.map((consoleType) => {
+                                                            const t = getConsoleTheme(consoleType);
+                                                            const selected = item.console === consoleType;
+                                                            return (
+                                                                <button
+                                                                    key={consoleType}
+                                                                    type="button"
+                                                                    onClick={() => updateItem(item.id, 'console', consoleType)}
+                                                                    className={`flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-medium transition ${selected ? 'glow-selected text-white' : 'glass text-slate-300 hover:border-white/15'}`}
+                                                                    style={{ background: selected ? `${t.accent}20` : 'var(--card-2)', borderColor: selected ? `${t.accent}40` : undefined }}
+                                                                >
+                                                                    <span className="flex h-5 w-5 items-center justify-center rounded-md text-[10px] font-bold" style={{ background: `${t.accent}22`, color: t.accent }}>{t.short}</span>
+                                                                    {CONSOLE_LABELS[consoleType as keyof typeof CONSOLE_LABELS] || consoleType.toUpperCase()}
+                                                                </button>
+                                                            );
+                                                        })}
                                                     </div>
+                                                </div>
 
-                                                    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_170px]">
-                                                        <div>
-                                                            <div className="mb-2 text-[10px] smallcaps text-[var(--dim)]">Station</div>
-                                                            {allowSingleStation ? (
-                                                                <div className="flex flex-wrap gap-2">
-                                                                    {stations.length === 0 ? (
-                                                                        <div className="rounded-xl border border-dashed border-white/[0.08] px-3 py-2 text-xs text-[var(--muted)]">
-                                                                            Configure stations in Settings to pin a specific unit.
-                                                                        </div>
-                                                                    ) : (
-                                                                        stations.map((station) => {
-                                                                            const selected = item.station === station;
-                                                                            return (
-                                                                                <button
-                                                                                    key={station}
-                                                                                    type="button"
-                                                                                    onClick={() => updateItem(item.id, 'station', station)}
-                                                                                    className={`rounded-xl px-3 py-2 text-xs transition ${selected ? 'glow-selected text-white' : 'glass-2 text-slate-300 hover:border-white/15'}`}
-                                                                                    style={{ background: selected ? `${theme.accent}16` : 'var(--card-2)' }}
-                                                                                >
-                                                                                    {formatStationOptionLabel(station)}
-                                                                                </button>
-                                                                            );
-                                                                        })
-                                                                    )}
-                                                                </div>
-                                                            ) : (
-                                                                <div className="rounded-xl border border-dashed border-white/[0.08] px-3 py-2 text-xs text-[var(--muted)]">
-                                                                    Multiple units will auto-assign to available configured stations.
-                                                                </div>
-                                                            )}
-                                                        </div>
-
-                                                        <div>
-                                                            <div className="mb-2 text-[10px] smallcaps text-[var(--dim)]">Players</div>
-                                                            <div className="flex flex-wrap gap-2">
-                                                                {PLAYER_OPTIONS.map((players) => {
-                                                                    const selected = item.quantity === players;
+                                                {/* Station + Players in one row */}
+                                                <div className="grid gap-3 sm:grid-cols-2">
+                                                    <div>
+                                                        <div className="mb-1.5 text-[10px] smallcaps text-[var(--dim)]">Station</div>
+                                                        {allowSingleStation ? (
+                                                            <div className="flex flex-wrap gap-1.5">
+                                                                {stations.length === 0 ? (
+                                                                    <span className="text-xs text-[var(--muted)]">No stations configured</span>
+                                                                ) : stations.map((station) => {
+                                                                    const selected = item.station === station;
                                                                     return (
                                                                         <button
-                                                                            key={players}
+                                                                            key={station}
                                                                             type="button"
-                                                                            onClick={() => updateItem(item.id, 'quantity', players)}
-                                                                            className={`rounded-xl px-3 py-2 text-xs font-medium transition ${selected ? 'border-transparent bg-white/[0.08] text-white' : 'glass-2 text-slate-300 hover:border-white/15'}`}
+                                                                            onClick={() => updateItem(item.id, 'station', station)}
+                                                                            className={`rounded-xl px-2.5 py-1.5 text-xs transition ${selected ? 'glow-selected text-white' : 'glass-2 text-slate-300 hover:border-white/15'}`}
+                                                                            style={{ background: selected ? `${theme.accent}16` : 'var(--card-2)' }}
                                                                         >
-                                                                            {players}P
+                                                                            {formatStationOptionLabel(station)}
                                                                         </button>
                                                                     );
                                                                 })}
                                                             </div>
-                                                        </div>
+                                                        ) : (
+                                                            <span className="text-xs text-[var(--muted)]">Auto-assign</span>
+                                                        )}
                                                     </div>
-
                                                     <div>
-                                                        <div className="mb-2 text-[10px] smallcaps text-[var(--dim)]">Duration</div>
-                                                        <div className="flex flex-wrap gap-2">
-                                                            {DURATION_OPTIONS.map((duration) => {
-                                                                const selected = item.duration === duration;
+                                                        <div className="mb-1.5 text-[10px] smallcaps text-[var(--dim)]">Players</div>
+                                                        <div className="flex gap-1.5">
+                                                            {PLAYER_OPTIONS.map((players) => {
+                                                                const selected = item.quantity === players;
                                                                 return (
                                                                     <button
-                                                                        key={duration}
+                                                                        key={players}
                                                                         type="button"
-                                                                        onClick={() => updateItem(item.id, 'duration', duration)}
-                                                                        className={`rounded-xl px-3 py-2 text-xs font-medium transition ${selected ? 'border-transparent bg-cyan-500/15 text-white shadow-[0_0_24px_-10px_rgba(34,211,238,0.75)]' : 'glass-2 text-slate-300 hover:border-white/15'}`}
+                                                                        onClick={() => updateItem(item.id, 'quantity', players)}
+                                                                        className={`rounded-xl px-2.5 py-1.5 text-xs font-medium transition ${selected ? 'border-transparent bg-white/[0.10] text-white' : 'glass-2 text-slate-300 hover:border-white/15'}`}
                                                                     >
-                                                                        {duration < 60 ? `${duration}m` : duration === 60 ? '1h' : duration === 90 ? '1.5h' : duration === 120 ? '2h' : '3h'}
+                                                                        {players}P
                                                                     </button>
                                                                 );
                                                             })}
                                                         </div>
                                                     </div>
+                                                </div>
 
-                                                    <div className="glass rounded-xl px-4 py-3">
-                                                        <div className="flex items-center justify-between gap-3">
-                                                            <div>
-                                                                <div className="text-[10px] smallcaps text-[var(--dim)]">Configured session</div>
-                                                                <div className="mono mt-1 text-sm font-semibold text-white">
-                                                                    {item.quantity} player{item.quantity === 1 ? '' : 's'} · {item.duration} min
-                                                                </div>
-                                                            </div>
-                                                            <div className="text-right">
-                                                                <div className="mono text-base font-semibold text-white">Rs.{item.price}</div>
-                                                                <div className="text-[11px] text-[var(--muted)]">
-                                                                    {allowSingleStation ? formatStationOptionLabel(item.station || stations[0] || 'Any station') : 'Auto assign'}
-                                                                </div>
-                                                            </div>
-                                                        </div>
+                                                {/* Duration */}
+                                                <div>
+                                                    <div className="mb-1.5 text-[10px] smallcaps text-[var(--dim)]">Duration</div>
+                                                    <div className="flex flex-wrap gap-1.5">
+                                                        {DURATION_OPTIONS.map((dur) => {
+                                                            const selected = item.duration === dur;
+                                                            return (
+                                                                <button
+                                                                    key={dur}
+                                                                    type="button"
+                                                                    onClick={() => updateItem(item.id, 'duration', dur)}
+                                                                    className={`rounded-xl px-2.5 py-1.5 text-xs font-medium transition ${selected ? 'border-transparent bg-cyan-500/15 text-white shadow-[0_0_20px_-10px_rgba(34,211,238,0.75)]' : 'glass-2 text-slate-300 hover:border-white/15'}`}
+                                                                >
+                                                                    {dur < 60 ? `${dur}m` : dur === 60 ? '1h' : dur === 90 ? '1.5h' : dur === 120 ? '2h' : '3h'}
+                                                                </button>
+                                                            );
+                                                        })}
                                                     </div>
+                                                </div>
+
+                                                {/* Summary strip */}
+                                                <div className="glass rounded-xl px-3.5 py-2.5 flex items-center justify-between gap-3">
+                                                    <span className="mono text-xs text-[var(--muted)]">
+                                                        {item.quantity}P · {item.duration}m · {allowSingleStation ? formatStationOptionLabel(item.station || stations[0] || '—') : 'Auto'}
+                                                    </span>
+                                                    <span className="mono text-sm font-bold text-white">Rs.{item.price}</span>
                                                 </div>
                                             </div>
                                         );
