@@ -52,8 +52,12 @@ function getDateRange(range: string, customStart: string, customEnd: string): { 
         return { dateFrom: fmt(t), dateTo: fmt(t) };
     }
     if (range === 'week') {
-        const end = new Date(today); end.setDate(today.getDate() + 7);
-        return { dateFrom: fmt(today), dateTo: fmt(end) };
+        // Start from Monday of the current week so bookings from Mon–today all show
+        const dow = today.getDay(); // 0=Sun, 1=Mon, …, 6=Sat
+        const daysToMonday = dow === 0 ? 6 : dow - 1;
+        const monday = new Date(today); monday.setDate(today.getDate() - daysToMonday);
+        const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
+        return { dateFrom: fmt(monday), dateTo: fmt(sunday) };
     }
     if (range === 'custom' && customStart && customEnd) {
         return { dateFrom: customStart, dateTo: customEnd };
@@ -247,7 +251,8 @@ export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateS
         }
     }
 
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const _now = new Date();
+    const todayStr = `${_now.getFullYear()}-${String(_now.getMonth()+1).padStart(2,'0')}-${String(_now.getDate()).padStart(2,'0')}`;
     const activeSessionCount = bookings.filter(b => b.status === 'in-progress' && b.booking_date === todayStr).length;
 
     return (
