@@ -1,11 +1,12 @@
 'use client';
 
-import { CalendarX, ArrowRight } from 'lucide-react';
+import { CalendarX, ArrowRight, Pencil } from 'lucide-react';
 import { CONSOLE_COLORS } from '@/lib/constants';
 
 interface DashboardBookingsTableProps {
     bookings: any[];
     onViewAll?: () => void;
+    onEdit?: (booking: any) => void;
 }
 
 const STATUS_MAP: Record<string, { bg: string; fg: string; dot: string; label: string }> = {
@@ -21,7 +22,7 @@ const CONSOLE_ICON: Record<string, string> = {
     steering: '🏎️', racing_sim: '🏁',
 };
 
-export function DashboardBookingsTable({ bookings, onViewAll }: DashboardBookingsTableProps) {
+export function DashboardBookingsTable({ bookings, onViewAll, onEdit }: DashboardBookingsTableProps) {
     const displayed = bookings
         .filter(b => !b.deleted_at && b.status !== 'cancelled')
         .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
@@ -55,13 +56,14 @@ export function DashboardBookingsTable({ bookings, onViewAll }: DashboardBooking
                             <th className="px-3 py-2.5 font-normal text-[10px]" style={{ fontVariant: 'all-small-caps', letterSpacing: '0.12em' }}>Start</th>
                             <th className="px-3 py-2.5 font-normal text-[10px] text-right" style={{ fontVariant: 'all-small-caps', letterSpacing: '0.12em' }}>Amount</th>
                             <th className="px-3 py-2.5 font-normal text-[10px]" style={{ fontVariant: 'all-small-caps', letterSpacing: '0.12em' }}>Pay</th>
-                            <th className="px-5 py-2.5 font-normal text-[10px]" style={{ fontVariant: 'all-small-caps', letterSpacing: '0.12em' }}>Status</th>
+                            <th className="px-3 py-2.5 font-normal text-[10px]" style={{ fontVariant: 'all-small-caps', letterSpacing: '0.12em' }}>Status</th>
+                            {onEdit && <th className="px-5 py-2.5 font-normal text-[10px]" style={{ fontVariant: 'all-small-caps', letterSpacing: '0.12em' }}></th>}
                         </tr>
                     </thead>
                     <tbody>
                         {displayed.length === 0 ? (
                             <tr>
-                                <td colSpan={6} className="px-5 py-14 text-center">
+                                <td colSpan={onEdit ? 7 : 6} className="px-5 py-14 text-center">
                                     <p className="text-sm text-slate-500">No bookings today</p>
                                 </td>
                             </tr>
@@ -124,13 +126,28 @@ export function DashboardBookingsTable({ bookings, onViewAll }: DashboardBooking
                                     </td>
 
                                     {/* Status */}
-                                    <td className="px-5 py-3">
+                                    <td className="px-3 py-3">
                                         <span className="inline-flex items-center gap-1.5 text-[11px] px-2 py-1 rounded-md"
                                             style={{ background: status.bg, color: status.fg }}>
                                             <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: status.dot }} />
                                             {status.label}
                                         </span>
                                     </td>
+
+                                    {/* Edit */}
+                                    {onEdit && (
+                                        <td className="px-5 py-3">
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); onEdit(b); }}
+                                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-colors hover:bg-white/[0.06]"
+                                                style={{ color: '#94a3b8' }}
+                                                title="Edit booking"
+                                            >
+                                                <Pencil size={11} />
+                                                Edit
+                                            </button>
+                                        </td>
+                                    )}
                                 </tr>
                             );
                         })}

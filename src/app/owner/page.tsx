@@ -2074,6 +2074,7 @@ export default function OwnerDashboardPage() {
               <DashboardBookingsTable
                 bookings={bookings.filter((b: any) => b.booking_date === getLocalDateString())}
                 onViewAll={() => handleTabChange('bookings')}
+                onEdit={handleEditBooking}
               />
 
               {/* Today's Snack Orders */}
