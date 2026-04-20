@@ -884,16 +884,15 @@ export function Billing({
                                                     </div>
                                                 </div>
 
-                                                {/* Station + Players in one row */}
+                                                {/* Station + Players */}
                                                 <div className="grid gap-4 lg:grid-cols-2">
+                                                    {/* Station */}
                                                     <div>
                                                         <div className="mb-2 text-[10px] smallcaps text-[var(--dim)]">Station</div>
                                                         {allowSingleStation ? (
                                                             <div className="flex flex-wrap gap-2">
                                                                 {stations.length === 0 ? (
-                                                                    <div className="rounded-xl border border-dashed border-white/[0.08] px-3 py-2.5 text-xs text-[var(--muted)]">
-                                                                        Configure stations in Settings.
-                                                                    </div>
+                                                                    <p className="text-xs text-[var(--muted)]">Configure stations in Settings.</p>
                                                                 ) : stations.map((station) => {
                                                                     const selected = item.station === station;
                                                                     return (
@@ -901,8 +900,13 @@ export function Billing({
                                                                             key={station}
                                                                             type="button"
                                                                             onClick={() => updateItem(item.id, 'station', station)}
-                                                                            className={`rounded-xl px-4 py-2.5 text-sm font-medium transition ${selected ? 'glow-selected text-white' : 'glass-2 text-slate-300 hover:border-white/15'}`}
-                                                                            style={{ background: selected ? `${theme.accent}18` : 'var(--card-2)', borderColor: selected ? `${theme.accent}50` : undefined }}
+                                                                            className="relative rounded-xl px-3.5 py-2 text-sm font-semibold transition-all"
+                                                                            style={{
+                                                                                background: selected ? `${theme.accent}18` : 'rgba(255,255,255,0.04)',
+                                                                                border: selected ? `1.5px solid ${theme.accent}60` : '1.5px solid rgba(255,255,255,0.07)',
+                                                                                color: selected ? '#fff' : '#94a3b8',
+                                                                                boxShadow: selected ? `0 0 16px -4px ${theme.accent}50` : 'none',
+                                                                            }}
                                                                         >
                                                                             {formatStationOptionLabel(station)}
                                                                         </button>
@@ -910,11 +914,11 @@ export function Billing({
                                                                 })}
                                                             </div>
                                                         ) : (
-                                                            <div className="rounded-xl border border-dashed border-white/[0.08] px-3 py-2.5 text-xs text-[var(--muted)]">
-                                                                Auto-assign to available stations.
-                                                            </div>
+                                                            <p className="text-xs text-[var(--muted)]">Auto-assigns to available stations.</p>
                                                         )}
                                                     </div>
+
+                                                    {/* Players */}
                                                     <div>
                                                         <div className="mb-2 text-[10px] smallcaps text-[var(--dim)]">Players</div>
                                                         <div className="flex gap-2">
@@ -925,7 +929,12 @@ export function Billing({
                                                                         key={players}
                                                                         type="button"
                                                                         onClick={() => updateItem(item.id, 'quantity', players)}
-                                                                        className={`flex-1 rounded-xl py-2.5 text-sm font-semibold transition ${selected ? 'border-transparent bg-white/[0.10] text-white shadow-sm' : 'glass-2 text-slate-400 hover:border-white/15 hover:text-white'}`}
+                                                                        className="flex-1 rounded-xl py-2.5 text-sm font-bold transition-all"
+                                                                        style={{
+                                                                            background: selected ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.04)',
+                                                                            border: selected ? '1.5px solid rgba(255,255,255,0.20)' : '1.5px solid rgba(255,255,255,0.07)',
+                                                                            color: selected ? '#fff' : '#64748b',
+                                                                        }}
                                                                     >
                                                                         {players}P
                                                                     </button>
@@ -946,7 +955,13 @@ export function Billing({
                                                                     key={dur}
                                                                     type="button"
                                                                     onClick={() => updateItem(item.id, 'duration', dur)}
-                                                                    className={`rounded-xl py-2.5 text-sm font-semibold transition ${selected ? 'border-transparent bg-cyan-500/15 text-white shadow-[0_0_24px_-10px_rgba(34,211,238,0.75)]' : 'glass-2 text-slate-400 hover:border-white/15 hover:text-white'}`}
+                                                                    className="rounded-xl py-2.5 text-sm font-bold transition-all"
+                                                                    style={{
+                                                                        background: selected ? 'rgba(6,182,212,0.15)' : 'rgba(255,255,255,0.04)',
+                                                                        border: selected ? '1.5px solid rgba(6,182,212,0.40)' : '1.5px solid rgba(255,255,255,0.07)',
+                                                                        color: selected ? '#67e8f9' : '#64748b',
+                                                                        boxShadow: selected ? '0 0 20px -6px rgba(6,182,212,0.5)' : 'none',
+                                                                    }}
                                                                 >
                                                                     {dur < 60 ? `${dur}m` : dur === 60 ? '1h' : dur === 90 ? '1.5h' : dur === 120 ? '2h' : '3h'}
                                                                 </button>
@@ -955,21 +970,23 @@ export function Billing({
                                                     </div>
                                                 </div>
 
-                                                {/* Summary strip */}
-                                                <div className="glass rounded-xl px-4 py-3">
-                                                    <div className="flex items-center justify-between gap-3">
+                                                {/* Summary */}
+                                                <div className="flex items-center justify-between rounded-xl px-4 py-3" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="flex h-9 w-9 items-center justify-center rounded-xl text-sm font-bold shrink-0" style={{ background: `${theme.accent}18`, color: theme.accent }}>
+                                                            {theme.short}
+                                                        </div>
                                                         <div>
-                                                            <div className="text-[10px] smallcaps text-[var(--dim)]">Configured session</div>
-                                                            <div className="mono mt-1 text-sm font-semibold text-white">
+                                                            <p className="text-sm font-semibold text-white">
                                                                 {item.quantity} player{item.quantity === 1 ? '' : 's'} · {item.duration} min
-                                                            </div>
+                                                            </p>
+                                                            <p className="text-[11px] text-[var(--muted)] mt-0.5">
+                                                                {allowSingleStation ? formatStationOptionLabel(item.station || stations[0] || '—') : 'Auto assign'}
+                                                            </p>
                                                         </div>
-                                                        <div className="text-right">
-                                                            <div className="mono text-base font-semibold text-white">Rs.{item.price}</div>
-                                                            <div className="text-[11px] text-[var(--muted)]">
-                                                                {allowSingleStation ? formatStationOptionLabel(item.station || stations[0] || 'Any station') : 'Auto assign'}
-                                                            </div>
-                                                        </div>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <p className="mono text-lg font-bold" style={{ color: theme.accent }}>Rs.{item.price}</p>
                                                     </div>
                                                 </div>
                                             </div>
