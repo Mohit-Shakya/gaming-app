@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireOwnerContext } from "@/lib/ownerAuth";
+import { isSessionBooking } from "@/lib/bookingFilters";
 
 export const dynamic = "force-dynamic";
 
@@ -71,6 +72,8 @@ type BookingSummaryQuery = BookingFilterQuery & {
   order: (column: string, options: { ascending: boolean }) => PromiseLike<BookingQueryResult>;
 };
 type BookingSummaryRecord = {
+  booking_items?: unknown[] | null;
+  booking_orders?: unknown[] | null;
   deleted_at?: string | null;
   payment_mode?: string | null;
   status?: string | null;
@@ -173,7 +176,7 @@ function applyBookingFilters(query: unknown, {
 
 function buildBookingSummary(summaryRows: BookingSummaryRecord[]): BookingSummary {
   return summaryRows.reduce<BookingSummary>((acc, booking) => {
-    if (booking.deleted_at) return acc;
+    if (booking.deleted_at || !isSessionBooking(booking)) return acc;
 
     const amount = Number(booking.total_amount) || 0;
     const paymentMode = booking.payment_mode?.toLowerCase() || "";
@@ -303,7 +306,7 @@ export async function GET(request: NextRequest) {
     const runBookingSummaryQuery = async (): Promise<BookingQueryResult> => {
       let query: unknown = supabase
         .from("bookings")
-        .select("id, status, payment_mode, total_amount, deleted_at", { count: "exact" })
+        .select("id, status, payment_mode, total_amount, deleted_at, booking_items(id), booking_orders(id)", { count: "exact" })
         .in("cafe_id", targetCafeIds)
         .is("deleted_at", null);
 
@@ -335,14 +338,14 @@ export async function GET(request: NextRequest) {
       const enrichedBookings = await enrichBookings([data as BookingListRecord]);
       const booking = enrichedBookings[0];
 
-      if (!booking) {
+      if (!booking || !isSessionBooking(booking as BookingSummaryRecord)) {
         return NextResponse.json({ error: "Booking not found" }, { status: 404 });
       }
 
       return NextResponse.json({ booking });
     }
 
-    let { data, error, count } = await runBookingQuery(true);
+    let { data, error } = await runBookingQuery(true);
     if (isMissingBookingsUpdatedAtError(error)) {
       const fallbackResult = await runBookingQuery(false);
       const fallbackData = ((fallbackResult.data || []) as Record<string, unknown>[]);
@@ -351,7 +354,6 @@ export async function GET(request: NextRequest) {
         updated_at: null,
       }));
       error = fallbackResult.error;
-      count = fallbackResult.count;
     }
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -362,13 +364,15 @@ export async function GET(request: NextRequest) {
     }
 
     const rawBookings = (data || []) as BookingListRecord[];
-    const enrichedBookings = await enrichBookings(rawBookings);
+    const visibleRawBookings = rawBookings.filter((booking) => isSessionBooking(booking as BookingSummaryRecord));
+    const enrichedBookings = await enrichBookings(visibleRawBookings);
     const summaryRows = ((summaryResult.data || []) as BookingSummaryRecord[]);
+    const visibleSummaryRows = summaryRows.filter((booking) => !booking.deleted_at && isSessionBooking(booking));
 
     return NextResponse.json({
       bookings: enrichedBookings,
-      summary: buildBookingSummary(summaryRows),
-      total: count == null ? enrichedBookings.length : count,
+      summary: buildBookingSummary(visibleSummaryRows),
+      total: visibleSummaryRows.length,
       page,
       pageSize: PAGE_SIZE,
     });

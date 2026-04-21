@@ -19,6 +19,7 @@ import {
   NavTab,
 } from "./types";
 import { getAvailableConsoleIds, getLocalDateString, normaliseConsoleType } from "./utils";
+import { isSessionBooking } from "@/lib/bookingFilters";
 import { theme } from "./utils/theme";
 import {
   DashboardLayout,
@@ -2077,7 +2078,8 @@ export default function OwnerDashboardPage() {
               <DashboardBookingsTable
                 bookings={bookings.filter((b: any) =>
                   b.booking_date === getLocalDateString() &&
-                  (!currentCafeId || b.cafe_id === currentCafeId)
+                  (!currentCafeId || b.cafe_id === currentCafeId) &&
+                  isSessionBooking(b)
                 )}
                 onViewAll={() => handleTabChange('bookings')}
                 onEdit={handleEditBooking}
@@ -2108,7 +2110,7 @@ export default function OwnerDashboardPage() {
 
                 const weeklyBookings = bookings.filter((b: any) => {
                   const bDate = b.booking_date;
-                  return bDate >= lastWeekStr && bDate <= todayStr;
+                  return bDate >= lastWeekStr && bDate <= todayStr && isSessionBooking(b);
                 });
 
                 const weeklyRevenue = weeklyBookings

@@ -1,12 +1,14 @@
 'use client';
 
 import { CalendarX, ArrowRight, Pencil } from 'lucide-react';
-import { CONSOLE_COLORS } from '@/lib/constants';
+import { CONSOLE_COLORS, type ConsoleId } from '@/lib/constants';
+import { isSessionBooking } from '@/lib/bookingFilters';
+import type { BookingRow } from '../types';
 
 interface DashboardBookingsTableProps {
-    bookings: any[];
+    bookings: BookingRow[];
     onViewAll?: () => void;
-    onEdit?: (booking: any) => void;
+    onEdit?: (booking: BookingRow) => void;
 }
 
 const STATUS_MAP: Record<string, { bg: string; fg: string; dot: string; label: string }> = {
@@ -22,9 +24,13 @@ const CONSOLE_ICON: Record<string, string> = {
     steering: '🏎️', racing_sim: '🏁',
 };
 
+function isConsoleId(value: string): value is ConsoleId {
+    return value in CONSOLE_COLORS;
+}
+
 export function DashboardBookingsTable({ bookings, onViewAll, onEdit }: DashboardBookingsTableProps) {
     const displayed = bookings
-        .filter(b => !b.deleted_at && b.status !== 'cancelled')
+        .filter(b => !b.deleted_at && b.status !== 'cancelled' && isSessionBooking(b))
         .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
         .slice(0, 10);
 
@@ -36,8 +42,8 @@ export function DashboardBookingsTable({ bookings, onViewAll, onEdit }: Dashboar
                     <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'rgba(6,182,212,0.12)', color: '#06b6d4' }}>
                         <CalendarX size={14} />
                     </div>
-                    <h2 className="text-sm text-slate-300" style={{ fontVariant: 'all-small-caps', letterSpacing: '0.12em', fontWeight: 600 }}>Today's Bookings</h2>
-                    <span className="mono text-[11px] text-slate-500">({bookings.filter(b => !b.deleted_at && b.status !== 'cancelled').length})</span>
+                    <h2 className="text-sm text-slate-300" style={{ fontVariant: 'all-small-caps', letterSpacing: '0.12em', fontWeight: 600 }}>Today&apos;s Bookings</h2>
+                    <span className="mono text-[11px] text-slate-500">({bookings.filter(b => !b.deleted_at && b.status !== 'cancelled' && isSessionBooking(b)).length})</span>
                 </div>
                 {onViewAll && (
                     <button onClick={onViewAll} className="text-[11px] flex items-center gap-1 transition-colors hover:opacity-80" style={{ color: '#06b6d4' }}>
@@ -73,16 +79,17 @@ export function DashboardBookingsTable({ bookings, onViewAll, onEdit }: Dashboar
                             const phone = isWalkIn ? b.customer_phone : b.user_phone;
                             const items = b.booking_items || [];
                             const consoleKey = items[0]?.console?.toLowerCase() || '';
-                            const consoleColor = (CONSOLE_COLORS as any)[consoleKey] || '#6b7280';
+                            const consoleColor = isConsoleId(consoleKey) ? CONSOLE_COLORS[consoleKey] : '#6b7280';
                             const consoleIcon = CONSOLE_ICON[consoleKey] || '🎮';
-                            const stationLabel = items.map((it: any) => {
+                            const stationLabel = items.map((it) => {
                                 const titleParts = it.title?.split('|');
                                 const station = titleParts && titleParts.length > 1 ? titleParts[1].trim().toUpperCase() : `${it.console?.toUpperCase()}-?`;
                                 return station;
                             }).join(', ') || '—';
                             const duration = items[0]?.title ? parseInt(items[0].title) || b.duration : b.duration;
                             const isDigital = ['online','upi','paytm','gpay','phonepe','card'].includes((b.payment_mode || '').toLowerCase());
-                            const status = STATUS_MAP[b.status] || STATUS_MAP['confirmed'];
+                            const statusKey = b.status || 'confirmed';
+                            const status = STATUS_MAP[statusKey] || STATUS_MAP.confirmed;
 
                             return (
                                 <tr key={b.id} className={`border-t border-white/[0.04] hover:bg-white/[0.02] transition-colors ${i === displayed.length - 1 ? '' : ''}`}>
