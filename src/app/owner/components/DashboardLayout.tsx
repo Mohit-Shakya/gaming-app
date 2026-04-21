@@ -69,74 +69,74 @@ export function DashboardLayout({
             {/* ── DESKTOP HEADER ── */}
             <div className="hidden lg:block sticky top-0 z-40"
                 style={{ background: 'rgba(10,10,15,0.92)', backdropFilter: 'blur(24px)', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                <div className="px-8 pt-5 pb-0">
+                <div className="px-8 pt-6 pb-0">
 
                     {/* Row 1: Brand + User controls */}
-                    <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center justify-between mb-5">
                         {/* Brand */}
-                        <div className="flex items-center gap-2.5">
-                            <div className="w-9 h-9 rounded-lg relative overflow-hidden flex items-center justify-center"
+                        <div className="flex items-center gap-3">
+                            <div className="w-11 h-11 rounded-xl relative overflow-hidden flex items-center justify-center"
                                 style={{ background: 'linear-gradient(140deg, #06b6d4 0%, #0891b2 55%, #1e1b4b 100%)' }}>
-                                <Gamepad2 size={17} className="text-white relative z-10" />
+                                <Gamepad2 size={21} className="text-white relative z-10" />
                                 <span className="absolute inset-0 grid-dots opacity-30" />
                             </div>
                             <div>
-                                <div className="text-[15px] font-bold tracking-tight leading-none">
+                                <div className="text-[17px] font-bold tracking-tight leading-none">
                                     BookMyGame<span style={{ color: '#06b6d4' }}>.</span>
                                 </div>
-                                <div className="text-[10px] text-slate-500 uppercase tracking-widest mt-0.5" style={{ fontVariant: 'all-small-caps', letterSpacing: '0.12em', fontWeight: 600 }}>
+                                <div className="text-[11px] text-slate-500 uppercase tracking-widest mt-1" style={{ fontVariant: 'all-small-caps', letterSpacing: '0.12em', fontWeight: 600 }}>
                                     Owner Console · {cafeName}
                                 </div>
                             </div>
                         </div>
 
                         {/* Right controls */}
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2.5">
                             {onRefresh && (
                                 <button onClick={handleRefresh} title="Refresh"
-                                    className="w-9 h-9 rounded-lg flex items-center justify-center text-slate-500 hover:text-white hover:border-white/20 transition-colors"
+                                    className="w-10 h-10 rounded-lg flex items-center justify-center text-slate-500 hover:text-white hover:border-white/20 transition-colors"
                                     style={{ border: '1px solid rgba(255,255,255,0.07)' }}>
-                                    <RefreshCw size={14} className={spinning ? 'animate-spin' : ''} />
+                                    <RefreshCw size={16} className={spinning ? 'animate-spin' : ''} />
                                 </button>
                             )}
                             {/* Bell with cyan dot */}
-                            <button className="relative w-9 h-9 rounded-lg flex items-center justify-center text-slate-400 hover:text-white hover:border-white/20 transition-colors"
+                            <button className="relative w-10 h-10 rounded-lg flex items-center justify-center text-slate-400 hover:text-white hover:border-white/20 transition-colors"
                                 style={{ border: '1px solid rgba(255,255,255,0.07)' }}>
-                                <Bell size={15} />
-                                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full" style={{ background: '#06b6d4' }} />
+                                <Bell size={17} />
+                                <span className="absolute top-2 right-2 w-2 h-2 rounded-full" style={{ background: '#06b6d4' }} />
                             </button>
                             {/* User button */}
                             <button onClick={handleLogout}
-                                className="flex items-center gap-2 h-9 pl-1 pr-3 rounded-lg hover:border-white/20 transition-colors"
+                                className="flex items-center gap-2 h-10 pl-1.5 pr-3.5 rounded-lg hover:border-white/20 transition-colors"
                                 style={{ border: '1px solid rgba(255,255,255,0.07)' }}>
-                                <span className="w-7 h-7 rounded-md flex items-center justify-center text-[11px] font-bold text-white"
+                                <span className="w-8 h-8 rounded-md flex items-center justify-center text-[12px] font-bold text-white"
                                     style={{ background: 'linear-gradient(135deg, #06b6d4, #8b5cf6)' }}>
                                     {initials || 'O'}
                                 </span>
-                                <span className="text-sm text-slate-200 max-w-[90px] truncate">{cafeName}</span>
-                                <ChevronDown size={13} className="text-slate-500" />
+                                <span className="text-[14px] text-slate-200 max-w-[100px] truncate">{cafeName}</span>
+                                <ChevronDown size={14} className="text-slate-500" />
                             </button>
                         </div>
                     </div>
 
                     {/* Row 2: Tab nav */}
-                    <nav className="flex items-center gap-1 relative overflow-x-auto no-scrollbar">
+                    <nav className="flex items-center gap-1.5 relative overflow-x-auto no-scrollbar">
                         {DESKTOP_PRIMARY_TABS.map(tab => {
                             const Icon = tab.icon;
                             const isActive = activeTab === tab.id;
                             return (
                                 <button key={tab.id} onClick={() => onTabChange(tab.id)}
-                                    className={`relative flex items-center gap-2 px-3.5 h-10 rounded-xl text-[13px] transition-all whitespace-nowrap
+                                    className={`relative flex items-center gap-2 px-4 h-11 rounded-xl text-[14px] transition-all whitespace-nowrap
                                         ${isActive ? 'text-white' : 'text-slate-500 hover:text-white'}`}
                                     style={{
                                         background: isActive ? 'rgba(255,255,255,0.04)' : 'transparent',
                                         border: `1px solid ${isActive ? 'rgba(255,255,255,0.12)' : 'transparent'}`,
                                     }}>
-                                    <Icon size={14} />
+                                    <Icon size={16} />
                                     {tab.label}
                                     {isActive && (
                                         <span className="absolute left-3 right-3 h-0.5 rounded-full"
-                                            style={{ bottom: -7, background: '#06b6d4' }} />
+                                            style={{ bottom: -8, background: '#06b6d4' }} />
                                     )}
                                 </button>
                             );
@@ -145,16 +145,16 @@ export function DashboardLayout({
                         {/* More dropdown */}
                         <div className="relative">
                             <button onClick={() => setMoreOpen(p => !p)}
-                                className={`relative flex items-center gap-2 px-3.5 h-10 rounded-xl text-[13px] transition-all whitespace-nowrap
+                                className={`relative flex items-center gap-2 px-4 h-11 rounded-xl text-[14px] transition-all whitespace-nowrap
                                     ${isMoreActive ? 'text-white' : 'text-slate-500 hover:text-white'}`}
                                 style={{
                                     background: isMoreActive ? 'rgba(255,255,255,0.04)' : 'transparent',
                                     border: `1px solid ${isMoreActive ? 'rgba(255,255,255,0.12)' : 'transparent'}`,
                                 }}>
-                                More <ChevronDown size={12} className={`transition-transform ${moreOpen ? 'rotate-180' : ''}`} />
+                                More <ChevronDown size={13} className={`transition-transform ${moreOpen ? 'rotate-180' : ''}`} />
                                 {isMoreActive && (
                                     <span className="absolute left-3 right-3 h-0.5 rounded-full"
-                                        style={{ bottom: -7, background: '#06b6d4' }} />
+                                        style={{ bottom: -8, background: '#06b6d4' }} />
                                 )}
                             </button>
                             {moreOpen && (
@@ -164,9 +164,9 @@ export function DashboardLayout({
                                         const Icon = tab.icon;
                                         return (
                                             <button key={tab.id} onClick={() => onTabChange(tab.id)}
-                                                className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] transition-colors
+                                                className={`w-full flex items-center gap-2.5 px-4 py-3 text-[14px] transition-colors
                                                     ${activeTab === tab.id ? 'text-cyan-400 bg-cyan-500/10' : 'text-slate-400 hover:text-white hover:bg-white/[0.05]'}`}>
-                                                <Icon size={14} />{tab.label}
+                                                <Icon size={16} />{tab.label}
                                             </button>
                                         );
                                     })}

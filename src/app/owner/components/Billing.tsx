@@ -865,22 +865,48 @@ export function Billing({
                                                         {availableConsoles.map((consoleType) => {
                                                             const t = getConsoleTheme(consoleType);
                                                             const selected = item.console === consoleType;
+                                                            const stationCount = stationOptions(consoleType).length;
                                                             return (
                                                                 <button
                                                                     key={consoleType}
                                                                     type="button"
                                                                     onClick={() => updateItem(item.id, 'console', consoleType)}
-                                                                    className={`relative overflow-hidden rounded-2xl p-3.5 text-left transition-all duration-200 ${selected ? 'glow-selected' : `glass border border-white/[0.08] ${HOVER_CARD_CLASS}`}`}
-                                                                    style={{ background: selected ? `linear-gradient(180deg, ${t.accent}18, rgba(0,0,0,0)), var(--card-2)` : 'var(--card-2)' }}
+                                                                    className={`relative min-h-[148px] overflow-hidden rounded-2xl border p-4 text-left transition-all duration-200 ${selected ? '' : HOVER_CARD_CLASS}`}
+                                                                    style={{
+                                                                        background: selected
+                                                                            ? `linear-gradient(180deg, ${t.accent}1c, rgba(255,255,255,0.02) 55%, rgba(0,0,0,0) 100%), var(--card-2)`
+                                                                            : `linear-gradient(180deg, ${t.accent}10, rgba(255,255,255,0.01) 55%, rgba(0,0,0,0) 100%), var(--card-2)`,
+                                                                        borderColor: selected ? `${t.accent}70` : 'rgba(255,255,255,0.08)',
+                                                                        boxShadow: selected
+                                                                            ? `0 0 0 1px ${t.accent}55, 0 22px 38px -28px ${t.accent}88, inset 0 1px 0 rgba(255,255,255,0.04)`
+                                                                            : 'inset 0 1px 0 rgba(255,255,255,0.03), 0 20px 30px -28px rgba(0,0,0,0.9)',
+                                                                    }}
                                                                 >
-                                                                    <div className="flex items-center justify-between gap-2">
-                                                                        <span className="flex h-9 w-9 items-center justify-center rounded-xl text-xs font-bold" style={{ background: `${t.accent}22`, color: t.accent }}>
-                                                                            {t.short}
-                                                                        </span>
-                                                                        <span className="mono text-[10px] text-[var(--muted)]">{stationOptions(consoleType).length}</span>
-                                                                    </div>
-                                                                    <div className="mt-2 text-xs font-semibold text-white">
-                                                                        {CONSOLE_LABELS[consoleType as keyof typeof CONSOLE_LABELS] || consoleType.toUpperCase()}
+                                                                    <span className="absolute inset-0 grid-dots opacity-20" />
+                                                                    <div className="relative flex h-full flex-col justify-between">
+                                                                        <div className="flex items-start justify-between gap-3">
+                                                                            <span className="flex h-12 w-12 items-center justify-center rounded-2xl text-sm font-bold" style={{ background: `${t.accent}22`, color: t.accent }}>
+                                                                                {t.short}
+                                                                            </span>
+                                                                            <span
+                                                                                className="rounded-full px-2.5 py-1 text-[11px] font-medium"
+                                                                                style={{
+                                                                                    background: selected ? `${t.accent}18` : 'rgba(255,255,255,0.05)',
+                                                                                    color: selected ? '#e8f7ff' : '#94a3b8',
+                                                                                    border: selected ? `1px solid ${t.accent}28` : '1px solid rgba(255,255,255,0.05)',
+                                                                                }}
+                                                                            >
+                                                                                {stationCount} station{stationCount === 1 ? '' : 's'}
+                                                                            </span>
+                                                                        </div>
+                                                                        <div className="mt-6">
+                                                                            <div className="text-xl font-semibold text-white">
+                                                                                {CONSOLE_LABELS[consoleType as keyof typeof CONSOLE_LABELS] || consoleType.toUpperCase()}
+                                                                            </div>
+                                                                            <div className="mt-1 text-[12px]" style={{ color: selected ? '#dbeafe' : 'var(--muted)' }}>
+                                                                                {selected ? 'Selected for this item' : 'Tap to switch'}
+                                                                            </div>
+                                                                        </div>
                                                                     </div>
                                                                 </button>
                                                             );
