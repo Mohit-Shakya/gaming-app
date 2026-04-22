@@ -2143,6 +2143,11 @@ export default function OwnerDashboardPage() {
                   bookings={bookings as any[]}
                   todayStr={getLocalDateString()}
                   onNewSale={() => setSnackSaleModalOpen(true)}
+                  onEditSale={(bookingId, customerName) => {
+                    setViewOrdersBookingId(bookingId);
+                    setViewOrdersCustomerName(customerName);
+                    setViewOrdersModalOpen(true);
+                  }}
                 />
               </section>
 

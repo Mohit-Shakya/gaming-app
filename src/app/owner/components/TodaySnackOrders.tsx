@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { ShoppingBag, Banknote, Smartphone, CreditCard, TrendingUp, Plus, Lock } from 'lucide-react';
+import { ShoppingBag, Banknote, Smartphone, CreditCard, TrendingUp, Plus, Lock, Pencil } from 'lucide-react';
 
 interface SnackOrder {
   id: string;
@@ -26,6 +26,7 @@ interface TodaySnackOrdersProps {
   bookings: Booking[];
   todayStr: string;
   onNewSale?: () => void;
+  onEditSale?: (bookingId: string, customerName: string) => void;
 }
 
 function PaymentBadge({ mode }: { mode?: string | null }) {
@@ -58,7 +59,7 @@ function PaymentBadge({ mode }: { mode?: string | null }) {
   );
 }
 
-export function TodaySnackOrders({ bookings, todayStr, onNewSale }: TodaySnackOrdersProps) {
+export function TodaySnackOrders({ bookings, todayStr, onNewSale, onEditSale }: TodaySnackOrdersProps) {
   const ordersToday = useMemo(() => {
     return bookings
       .filter(b => b.booking_date === todayStr && b.booking_orders && b.booking_orders.length > 0)
@@ -146,6 +147,16 @@ export function TodaySnackOrders({ bookings, todayStr, onNewSale }: TodaySnackOr
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0 ml-3">
+                    {onEditSale && (
+                      <button
+                        onClick={() => onEditSale(booking.id, customer)}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold text-slate-400 hover:text-white hover:bg-white/[0.06] transition-colors"
+                        title="Edit snack order"
+                      >
+                        <Pencil size={11} />
+                        Edit
+                      </button>
+                    )}
                     <PaymentBadge mode={booking.payment_mode} />
                     {booking.payment_mode === 'owner'
                       ? <span className="text-sm font-semibold text-purple-400">Owner</span>
