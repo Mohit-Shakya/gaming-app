@@ -7,6 +7,41 @@ import {
 
 export const dynamic = 'force-dynamic';
 
+export async function GET(request: NextRequest) {
+  const auth = await requireOwnerContext(request);
+  if (auth.response) {
+    return auth.response;
+  }
+
+  const { ownerId, supabase } = auth.context;
+  const cafeId = request.nextUrl.searchParams.get('cafeId');
+
+  if (!cafeId) {
+    return NextResponse.json({ error: "cafeId required" }, { status: 400 });
+  }
+
+  const accessResponse = await requireOwnerCafeAccess(
+    supabase,
+    ownerId,
+    cafeId
+  );
+  if (accessResponse) {
+    return accessResponse;
+  }
+
+  const { data, error } = await supabase
+    .from('subscriptions')
+    .select('*, membership_plans(name, console_type, plan_type, hours, validity_days)')
+    .eq('cafe_id', cafeId)
+    .order('purchase_date', { ascending: false });
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  return NextResponse.json({ subscriptions: data || [] });
+}
+
 // POST /api/owner/subscriptions — create subscription
 export async function POST(request: NextRequest) {
   const auth = await requireOwnerContext(request);

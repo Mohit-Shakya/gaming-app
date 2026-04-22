@@ -5,7 +5,6 @@ import {
   X, Save, Trash2, Clock, Calendar, User, Phone, CreditCard,
   Plus, Minus, ChevronDown, Loader2, UtensilsCrossed, Zap, AlertCircle,
 } from 'lucide-react';
-import { supabase } from '@/lib/supabaseClient';
 import { CONSOLE_DB_KEYS, CONSOLE_LABELS, CONSOLE_ICONS, type ConsoleId } from '@/lib/constants';
 import { getEndTime } from '@/lib/timeUtils';
 import { BookingRow, CafeRow } from '../types';
@@ -129,26 +128,23 @@ export function EditBookingModal({
 
     setSearching(true);
     try {
-      const [bookRes, profRes] = await Promise.all([
-        supabase.from('bookings').select('customer_name, customer_phone')
-          .eq('cafe_id', booking.cafe_id || '').ilike('customer_name', `%${query}%`)
-          .not('customer_name', 'is', null).limit(8)
-          .abortSignal(controller.signal),
-        supabase.from('profiles').select('first_name, last_name, phone')
-          .or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%`).limit(5)
-          .abortSignal(controller.signal),
-      ]);
+      const params = new URLSearchParams({
+        cafeId: booking.cafe_id || '',
+        q: query,
+      });
+      const res = await fetch(`/api/owner/customers/search?${params.toString()}`, {
+        credentials: 'include',
+        cache: 'no-store',
+        signal: controller.signal,
+      });
+      const data = await res.json();
       if (controller.signal.aborted) return;
-      const seen = new Set<string>();
-      const results: { name: string; phone: string | null }[] = [];
-      profRes.data?.forEach(p => {
-        const name = [p.first_name, p.last_name].filter(Boolean).join(' ');
-        if (name && !seen.has(name.toLowerCase())) { seen.add(name.toLowerCase()); results.push({ name, phone: p.phone || null }); }
-      });
-      bookRes.data?.forEach(b => {
-        const name = b.customer_name || '';
-        if (name && !seen.has(name.toLowerCase())) { seen.add(name.toLowerCase()); results.push({ name, phone: b.customer_phone || null }); }
-      });
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to search customers');
+      }
+
+      const results = data.customers || [];
       setSuggestions(results);
       setShowSugg(results.length > 0);
     } catch {
@@ -187,6 +183,7 @@ export function EditBookingModal({
   }, []);
 
   const addItem = () => {
+    if (isSingleItemEdit) return;
     const defaultConsole = configuredConsoleOptions[0]?.id;
     if (!defaultConsole) return;
 
@@ -195,6 +192,7 @@ export function EditBookingModal({
   };
 
   const removeItem = (index: number) => {
+    if (isSingleItemEdit) return;
     setAmountManuallyEdited(false);
     setItems(prev => prev.filter((_, i) => i !== index));
   };
@@ -209,6 +207,7 @@ export function EditBookingModal({
   }
 
   const isAppBooking = !!booking.user_id;
+  const isSingleItemEdit = Boolean(bookingItemId);
   const endTime = calcEndTime(startTime, items, duration);
   const snacksTotal = localOrders.reduce((s, o) => s + (o.total_price || 0), 0);
   const bookingItemsCount = booking.booking_items?.length || 0;
@@ -411,7 +410,7 @@ export function EditBookingModal({
               </div>
               {bookingItemsCount > 1 && bookingItemId && (
                 <span className="text-[11px] text-slate-500 bg-white/[0.06] px-2 py-0.5 rounded-full border border-white/[0.09]">
-                  Editing item {bookingItemsCount > 1 ? `1 of ${bookingItemsCount}` : ''}
+                  Editing selected item
                 </span>
               )}
             </div>
@@ -419,7 +418,7 @@ export function EditBookingModal({
             <div className="p-4 flex flex-col gap-3">
               {items.map((item, idx) => (
                 <div key={idx} className="relative rounded-xl bg-white/[0.03] border border-white/[0.09]/40 p-3">
-                  {items.length > 1 && (
+                  {!isSingleItemEdit && items.length > 1 && (
                     <button
                       onClick={() => removeItem(idx)}
                       className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center hover:bg-red-400 transition-colors z-10"
@@ -504,14 +503,14 @@ export function EditBookingModal({
 
               <button
                 onClick={addItem}
-                disabled={configuredConsoleOptions.length === 0}
+                disabled={isSingleItemEdit || configuredConsoleOptions.length === 0}
                 className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed text-xs font-semibold transition-colors ${
-                  configuredConsoleOptions.length === 0
+                  isSingleItemEdit || configuredConsoleOptions.length === 0
                     ? 'border-white/[0.09] text-slate-600 cursor-not-allowed'
                     : 'border-purple-500/30 text-purple-400 hover:bg-purple-500/5'
                 }`}
               >
-                <Plus size={13} /> {configuredConsoleOptions.length === 0 ? 'No Stations Configured' : 'Add Console / Station'}
+                <Plus size={13} /> {isSingleItemEdit ? 'Editing One Item Only' : configuredConsoleOptions.length === 0 ? 'No Stations Configured' : 'Add Console / Station'}
               </button>
             </div>
           </section>

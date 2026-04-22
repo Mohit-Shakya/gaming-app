@@ -1,12 +1,11 @@
 'use client';
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { BookingsTable } from './BookingsTable';
 import { ActiveSessions } from './ActiveSessions';
 import { Card, Button } from './ui';
-import { RefreshCw, Search, Check, X, IndianRupee, Timer, Clock, CheckCircle2, Zap } from 'lucide-react';
+import { RefreshCw, Search, Check, X, IndianRupee, Timer, Clock, CheckCircle2, Zap, ChevronLeft, ChevronRight } from 'lucide-react';
 import { DeletedBookingsPanel } from './DeletedBookingsPanel';
-import { supabase } from '@/lib/supabaseClient';
 import { subscribeToOwnerBookingsChanged } from '@/lib/ownerBookingsSync';
 import { getLocalDateString } from '../utils';
 
@@ -40,6 +39,7 @@ interface BookingsManagementProps {
     onStopTimer?: (subscriptionId: string) => Promise<void>;
     // Active Sessions props
     pageSubscriptions?: any[];
+    pageBookings?: any[];
     onAddItems?: (bookingId: string, customerName: string) => void;
     onSessionEnded?: (info: { customerName: string; stationName: string; duration: number }) => void;
     onEndCollect?: (bookingId: string, paymentMode: 'cash' | 'upi') => Promise<void>;
@@ -68,11 +68,55 @@ function getDateRange(range: string, customStart: string, customEnd: string): { 
     return { dateFrom: '', dateTo: '' };
 }
 
-export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateStatus, onEdit, onRefresh, onViewOrders, onViewCustomer, onPaymentModeChange, refreshTrigger, activeTimers, timerElapsed, onStartTimer, onStopTimer, pageSubscriptions, onAddItems, onSessionEnded, onEndCollect }: BookingsManagementProps) {
+function parseStartMinutes(startTime: string | null | undefined): number | null {
+    if (!startTime) return null;
+    const timeParts = startTime.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
+    if (!timeParts) return null;
+
+    let hours = parseInt(timeParts[1], 10);
+    const minutes = parseInt(timeParts[2], 10);
+    const period = timeParts[3]?.toLowerCase();
+
+    if (period === 'pm' && hours !== 12) hours += 12;
+    else if (period === 'am' && hours === 12) hours = 0;
+
+    return hours * 60 + minutes;
+}
+
+function getBookingDuration(booking: any): number {
+    const firstItemTitle = booking?.booking_items?.[0]?.title?.split('|')[0] || '';
+    const parsedDuration = parseInt(firstItemTitle, 10);
+    if (!Number.isNaN(parsedDuration) && parsedDuration > 0) {
+        return parsedDuration;
+    }
+    return booking?.duration || 60;
+}
+
+function isActiveSessionBooking(booking: any, todayStr: string, yesterdayStr: string, currentMinutes: number): boolean {
+    if (booking?.status !== 'in-progress') return false;
+
+    const startMinutes = parseStartMinutes(booking?.start_time);
+    const duration = getBookingDuration(booking);
+
+    if (startMinutes === null || duration <= 0) {
+        return booking?.booking_date === todayStr;
+    }
+
+    const endMinutes = startMinutes + duration;
+    if (booking.booking_date === todayStr) return true;
+    if (booking.booking_date === yesterdayStr && endMinutes > 1440) {
+        return currentMinutes < (endMinutes - 1440);
+    }
+
+    return false;
+}
+
+export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateStatus, onEdit, onRefresh, onViewOrders, onViewCustomer, onPaymentModeChange, refreshTrigger, activeTimers, timerElapsed, onStartTimer, onStopTimer, pageSubscriptions, pageBookings, onAddItems, onSessionEnded, onEndCollect }: BookingsManagementProps) {
     const [bookings, setBookings] = useState<any[]>([]);
     const [summary, setSummary] = useState(EMPTY_BOOKING_SUMMARY);
     const [total, setTotal] = useState(0);
     const [limit, setLimit] = useState(30);
+    const [currentPage, setCurrentPage] = useState(1);
     const [fetching, setFetching] = useState(false);
     const [hiddenDeletedIds, setHiddenDeletedIds] = useState<Set<string>>(new Set());
 
@@ -101,8 +145,10 @@ export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateS
     const [debouncedSearch, setDebouncedSearch] = useState('');
     const abortControllerRef = useRef<AbortController | null>(null);
     const subsAbortRef = useRef<AbortController | null>(null);
+    const filterStateKey = `${cafeId || ''}|${statusFilter}|${bookingSubTab}|${dateRange}|${customStart}|${customEnd}|${debouncedSearch}|${limit}`;
+    const previousFilterStateKeyRef = useRef(filterStateKey);
 
-    const fetchBookings = useCallback(async (search: string) => {
+    const fetchBookings = useCallback(async (search: string, pageNumber: number) => {
         if (!cafeId) return;
         // Cancel any previous in-flight request (stale cafeId / rapid filter changes)
         abortControllerRef.current?.abort();
@@ -112,7 +158,7 @@ export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateS
             const { dateFrom, dateTo } = getDateRange(dateRange, customStart, customEnd);
             const params = new URLSearchParams({
                 cafeId,
-                page: '1',
+                page: String(pageNumber),
                 pageSize: String(limit),
                 ...(statusFilter !== 'all' && { status: statusFilter }),
                 ...(bookingSubTab !== 'all' && { source: bookingSubTab }),
@@ -127,13 +173,18 @@ export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateS
             });
             const data = await res.json();
             if (res.ok) {
+                const nextTotal = Math.max(0, data.total || 0);
+                const nextTotalPages = Math.max(1, Math.ceil(nextTotal / limit));
+                if (pageNumber > nextTotalPages && nextTotal > 0) {
+                    setCurrentPage(nextTotalPages);
+                    return;
+                }
                 const visibleBookings = filterVisibleBookings(data.bookings || []).filter(
                     (booking) => !hiddenDeletedIds.has(booking.id)
                 );
-                const hiddenDeletedCount = (data.bookings || []).length - visibleBookings.length;
                 setBookings(visibleBookings);
                 setSummary(data.summary || EMPTY_BOOKING_SUMMARY);
-                setTotal(Math.max(0, (data.total || 0) - hiddenDeletedCount));
+                setTotal(nextTotal);
             } else {
                 console.error('[BookingsManagement] Failed to fetch bookings:', data.error);
             }
@@ -148,16 +199,26 @@ export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateS
 
     // Re-fetch when filters change — don't clear selection so user can act across searches
     useEffect(() => {
-        fetchBookings(debouncedSearch);
-    }, [fetchBookings, debouncedSearch]);
+        const filtersChanged = previousFilterStateKeyRef.current !== filterStateKey;
+        previousFilterStateKeyRef.current = filterStateKey;
 
-    // Keep a ref to the latest fetch fn + search so refreshTrigger never uses a stale closure
-    const latestFetchRef = useRef({ fn: fetchBookings, search: debouncedSearch });
-    useEffect(() => { latestFetchRef.current = { fn: fetchBookings, search: debouncedSearch }; }, [fetchBookings, debouncedSearch]);
+        if (filtersChanged && currentPage !== 1) {
+            setCurrentPage(1);
+            return;
+        }
+
+        const pageToFetch = filtersChanged ? 1 : currentPage;
+        fetchBookings(debouncedSearch, pageToFetch);
+    }, [fetchBookings, debouncedSearch, currentPage, filterStateKey]);
+
+    const latestFetchRef = useRef({ fn: fetchBookings, search: debouncedSearch, page: currentPage });
+    useEffect(() => {
+        latestFetchRef.current = { fn: fetchBookings, search: debouncedSearch, page: currentPage };
+    }, [fetchBookings, debouncedSearch, currentPage]);
 
     useEffect(() => {
         if (!refreshTrigger) return;
-        latestFetchRef.current.fn(latestFetchRef.current.search);
+        latestFetchRef.current.fn(latestFetchRef.current.search, latestFetchRef.current.page);
     }, [refreshTrigger]);
 
     useEffect(() => {
@@ -174,7 +235,7 @@ export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateS
                     return next;
                 });
             }
-            latestFetchRef.current.fn(latestFetchRef.current.search);
+            latestFetchRef.current.fn(latestFetchRef.current.search, latestFetchRef.current.page);
         });
     }, []);
 
@@ -213,6 +274,18 @@ export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateS
         return ok;
     }, [bookings, onPaymentModeChange]);
 
+    const activeSessionBookings = useMemo(() => {
+        const sourceBookings = pageBookings || [];
+        return filterVisibleBookings(sourceBookings).filter((booking) => {
+            if (!cafeId) return true;
+            return booking.cafe_id === cafeId;
+        });
+    }, [pageBookings, cafeId]);
+
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+    const showingStart = total === 0 ? 0 : ((currentPage - 1) * limit) + 1;
+    const showingEnd = total === 0 ? 0 : Math.min(currentPage * limit, total);
+
     // Fetch subscriptions when Membership tab is active
     const fetchSubscriptions = useCallback(async () => {
         if (!cafeId) return;
@@ -221,13 +294,17 @@ export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateS
         subsAbortRef.current = new AbortController();
         setSubsLoading(true);
         try {
-            const { data } = await supabase
-                .from('subscriptions')
-                .select('*, membership_plans(name, console_type, plan_type, hours, validity_days)')
-                .eq('cafe_id', cafeId)
-                .order('purchase_date', { ascending: false })
-                .abortSignal(subsAbortRef.current.signal);
-            setSubscriptions(data || []);
+            const params = new URLSearchParams({ cafeId });
+            const res = await fetch(`/api/owner/subscriptions?${params.toString()}`, {
+                credentials: 'include',
+                cache: 'no-store',
+                signal: subsAbortRef.current.signal,
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data.error || 'Failed to fetch subscriptions');
+            }
+            setSubscriptions(data.subscriptions || []);
         } catch (err: unknown) {
             if (err instanceof Error && err.name !== 'AbortError') {
                 console.error('[BookingsManagement] Subscriptions fetch error:', err.message);
@@ -271,7 +348,7 @@ export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateS
                 failedCount += results.filter(r => r.status === 'rejected').length;
             }
             setSelectedIds(new Set());
-            fetchBookings(debouncedSearch);
+            fetchBookings(debouncedSearch, currentPage);
             if (failedCount > 0) {
                 console.warn(`Bulk update: ${ids.length - failedCount}/${ids.length} succeeded, ${failedCount} failed`);
             }
@@ -281,7 +358,13 @@ export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateS
     }
 
     const todayStr = getLocalDateString();
-    const activeSessionCount = bookings.filter(b => b.status === 'in-progress' && b.booking_date === todayStr).length;
+    const yesterday = new Date(currentTime);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = getLocalDateString(yesterday);
+    const currentMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
+    const activeSessionCount = activeSessionBookings.filter((booking) => (
+        isActiveSessionBooking(booking, todayStr, yesterdayStr, currentMinutes)
+    )).length;
 
     return (
         <div className="space-y-4">
@@ -297,7 +380,7 @@ export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateS
                     )}
                 </div>
                 <ActiveSessions
-                    bookings={bookings}
+                    bookings={activeSessionBookings}
                     subscriptions={pageSubscriptions || []}
                     activeTimers={activeTimers || new Map()}
                     timerElapsed={timerElapsed || new Map()}
@@ -472,7 +555,7 @@ export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateS
                                 />
                             </div>
                             <button
-                                onClick={() => { fetchBookings(debouncedSearch); onRefresh?.(); }}
+                                onClick={() => { fetchBookings(debouncedSearch, currentPage); onRefresh?.(); }}
                                 title="Refresh"
                                 className="w-9 h-9 flex items-center justify-center rounded-lg border border-white/[0.09] bg-white/[0.04] text-slate-400 hover:text-white hover:border-white/20 transition-colors shrink-0"
                             >
@@ -570,18 +653,41 @@ export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateS
 
                     {/* Show count + limit selector */}
                     {total > 0 && (
-                        <div className="flex items-center justify-between px-2">
+                        <div className="flex flex-col gap-3 px-2 md:flex-row md:items-center md:justify-between">
                             <p className="text-sm text-slate-400">
-                                Showing {bookings.length.toLocaleString()} of {total.toLocaleString()} bookings
+                                Showing {showingStart.toLocaleString()}-{showingEnd.toLocaleString()} of {total.toLocaleString()} bookings
                             </p>
-                            <div className="flex items-center gap-1.5">
-                                <span className="text-xs text-slate-500 mr-1">Show</span>
-                                {PAGE_SIZE_OPTIONS.map(size => (
-                                    <button key={size} onClick={() => setLimit(size)}
-                                        className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${limit === size ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white hover:bg-white/[0.06]'}`}>
-                                        {size}
+                            <div className="flex flex-wrap items-center gap-3">
+                                <div className="flex items-center gap-1.5">
+                                    <span className="text-xs text-slate-500 mr-1">Show</span>
+                                    {PAGE_SIZE_OPTIONS.map(size => (
+                                        <button key={size} onClick={() => setLimit(size)}
+                                            className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${limit === size ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white hover:bg-white/[0.06]'}`}>
+                                            {size}
+                                        </button>
+                                    ))}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                                        disabled={currentPage <= 1}
+                                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/[0.09] bg-white/[0.04] text-slate-400 transition-colors hover:text-white hover:border-white/20 disabled:cursor-not-allowed disabled:opacity-40"
+                                        aria-label="Previous page"
+                                    >
+                                        <ChevronLeft size={14} />
                                     </button>
-                                ))}
+                                    <span className="text-xs font-medium text-slate-400">
+                                        Page {currentPage.toLocaleString()} of {totalPages.toLocaleString()}
+                                    </span>
+                                    <button
+                                        onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                                        disabled={currentPage >= totalPages}
+                                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/[0.09] bg-white/[0.04] text-slate-400 transition-colors hover:text-white hover:border-white/20 disabled:cursor-not-allowed disabled:opacity-40"
+                                        aria-label="Next page"
+                                    >
+                                        <ChevronRight size={14} />
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     )}

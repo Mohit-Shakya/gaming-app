@@ -37,6 +37,32 @@ type Props = {
 
 type SortKey = "relevance" | "price_asc" | "price_desc";
 type TabType = "book" | "membership" | "tournaments";
+type MembershipTierPreview = {
+  id: string;
+  name: string;
+  icon?: string | null;
+  color?: string | null;
+  monthly_price: number;
+  yearly_price: number;
+  description?: string | null;
+  badge?: string | null;
+  features?: string[] | null;
+};
+type TournamentPreview = {
+  id: string;
+  name: string;
+  game: string;
+  icon?: string | null;
+  status?: string | null;
+  tournament_date: string;
+  tournament_time?: string | null;
+  prize_amount?: number | null;
+  prize_currency?: string | null;
+  max_participants?: number | null;
+  current_participants?: number | null;
+  location?: string | null;
+  color?: string | null;
+};
 
 export default function HomeClient({ cafes }: Props) {
   const router = useRouter();
@@ -53,11 +79,66 @@ export default function HomeClient({ cafes }: Props) {
   const [sortBy, setSortBy] = useState<SortKey>("relevance");
   const [mounted, setMounted] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [membershipTiers, setMembershipTiers] = useState<MembershipTierPreview[]>([]);
+  const [membershipLoading, setMembershipLoading] = useState(true);
+  const [membershipError, setMembershipError] = useState<string | null>(null);
+  const [tournaments, setTournaments] = useState<TournamentPreview[]>([]);
+  const [tournamentsLoading, setTournamentsLoading] = useState(true);
+  const [tournamentsError, setTournamentsError] = useState<string | null>(null);
 
   const listRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    async function loadPreviewData() {
+      try {
+        const [membershipResponse, tournamentResponse] = await Promise.all([
+          fetch("/api/memberships"),
+          fetch("/api/tournaments?status=upcoming"),
+        ]);
+
+        if (isCancelled) {
+          return;
+        }
+
+        if (membershipResponse.ok) {
+          const membershipData = await membershipResponse.json();
+          setMembershipTiers(Array.isArray(membershipData.tiers) ? membershipData.tiers : []);
+          setMembershipError(null);
+        } else {
+          setMembershipError("Membership plans are not available right now.");
+        }
+
+        if (tournamentResponse.ok) {
+          const tournamentData = await tournamentResponse.json();
+          setTournaments(Array.isArray(tournamentData.tournaments) ? tournamentData.tournaments : []);
+          setTournamentsError(null);
+        } else {
+          setTournamentsError("Tournaments are not available right now.");
+        }
+      } catch {
+        if (!isCancelled) {
+          setMembershipError("Membership plans are not available right now.");
+          setTournamentsError("Tournaments are not available right now.");
+        }
+      } finally {
+        if (!isCancelled) {
+          setMembershipLoading(false);
+          setTournamentsLoading(false);
+        }
+      }
+    }
+
+    loadPreviewData();
+
+    return () => {
+      isCancelled = true;
+    };
   }, []);
 
   // Lock body scroll when filter sheet is open
@@ -134,6 +215,16 @@ export default function HomeClient({ cafes }: Props) {
     if (onlySnooker) n++;
     return n;
   }, [onlyPs5, onlyPc, onlyPool, onlyWheel, onlyVr, onlySnooker]);
+
+  const featuredMemberships = useMemo(
+    () => membershipTiers.slice(0, 3),
+    [membershipTiers]
+  );
+
+  const featuredTournaments = useMemo(
+    () => tournaments.slice(0, 3),
+    [tournaments]
+  );
 
   const clearAllFilters = () => {
     setOnlyPs5(false);
@@ -1077,8 +1168,17 @@ export default function HomeClient({ cafes }: Props) {
                 </>
               )}
 
-              {/* Membership Tab Content */}
               {activeTab === "membership" && (
+                <MembershipPreviewSection
+                  memberships={featuredMemberships}
+                  loading={membershipLoading}
+                  error={membershipError}
+                  onOpenMembershipPage={() => router.push("/membership")}
+                />
+              )}
+
+              {/* Membership Tab Content */}
+              {false && activeTab === "membership" && (
                 <div className="space-y-6">
                   <div className="text-center mb-8">
                     <h2
@@ -1182,8 +1282,17 @@ export default function HomeClient({ cafes }: Props) {
                 </div>
               )}
 
-              {/* Tournaments Tab Content */}
               {activeTab === "tournaments" && (
+                <TournamentPreviewSection
+                  tournaments={featuredTournaments}
+                  loading={tournamentsLoading}
+                  error={tournamentsError}
+                  onOpenTournamentsPage={() => router.push("/tournaments")}
+                />
+              )}
+
+              {/* Tournaments Tab Content */}
+              {false && activeTab === "tournaments" && (
                 <div className="space-y-6">
                   <div className="text-center mb-8">
                     <h2
@@ -1427,4 +1536,365 @@ export default function HomeClient({ cafes }: Props) {
       <PWAInstaller />
     </>
   );
+}
+
+function MembershipPreviewSection({
+  memberships,
+  loading,
+  error,
+  onOpenMembershipPage,
+}: {
+  memberships: MembershipTierPreview[];
+  loading: boolean;
+  error: string | null;
+  onOpenMembershipPage: () => void;
+}) {
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div>
+          <h2
+            className="text-3xl md:text-4xl font-bold text-white mb-3"
+            style={{ fontFamily: "Orbitron, sans-serif" }}
+          >
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#ff073a] to-[#00f0ff]">
+              Premium Memberships
+            </span>
+          </h2>
+          <p
+            className="text-zinc-400 text-lg"
+            style={{ fontFamily: "Inter, sans-serif" }}
+          >
+            Live plans pulled from the membership catalog.
+          </p>
+        </div>
+
+        <button
+          onClick={onOpenMembershipPage}
+          className="btn-ghost self-start px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2"
+          style={{ fontFamily: "Inter, sans-serif" }}
+        >
+          <span>See all plans</span>
+          <ChevronRight className="w-4 h-4" />
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="card-glass rounded-2xl p-6 text-center">
+          <p
+            className="text-zinc-400"
+            style={{ fontFamily: "Inter, sans-serif" }}
+          >
+            Loading membership plans...
+          </p>
+        </div>
+      ) : error ? (
+        <div className="card-glass rounded-2xl p-6 text-center">
+          <p
+            className="text-zinc-400 mb-4"
+            style={{ fontFamily: "Inter, sans-serif" }}
+          >
+            {error}
+          </p>
+          <button
+            onClick={onOpenMembershipPage}
+            className="btn-glow px-5 py-2.5 rounded-xl text-sm font-bold"
+            style={{ fontFamily: "Orbitron, sans-serif" }}
+          >
+            Open Membership Page
+          </button>
+        </div>
+      ) : memberships.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {memberships.map((membership) => (
+            <div
+              key={membership.id}
+              className="card-glass rounded-2xl p-6 flex flex-col gap-4 group hover:scale-[1.02] transition-all duration-300"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl"
+                    style={{
+                      background: `linear-gradient(135deg, ${membership.color || "#ff073a"}33 0%, rgba(255,255,255,0.05) 100%)`,
+                    }}
+                  >
+                    {membership.icon || "M"}
+                  </div>
+                  <div>
+                    <h3
+                      className="text-xl font-bold text-white"
+                      style={{ fontFamily: "Orbitron, sans-serif" }}
+                    >
+                      {membership.name}
+                    </h3>
+                    <p
+                      className="text-sm text-zinc-400"
+                      style={{ fontFamily: "Inter, sans-serif" }}
+                    >
+                      {membership.description || "Priority access and member-only perks."}
+                    </p>
+                  </div>
+                </div>
+
+                {membership.badge && (
+                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-white/10 text-[#00f0ff]">
+                    {membership.badge}
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-baseline gap-2">
+                <span
+                  className="text-3xl font-bold text-[#00f0ff]"
+                  style={{ fontFamily: "Orbitron, sans-serif" }}
+                >
+                  INR {membership.monthly_price}
+                </span>
+                <span
+                  className="text-sm text-zinc-400"
+                  style={{ fontFamily: "Inter, sans-serif" }}
+                >
+                  / month
+                </span>
+              </div>
+
+              <div className="space-y-2 flex-1">
+                {(membership.features || []).slice(0, 4).map((feature) => (
+                  <div key={feature} className="flex items-center gap-2 text-zinc-300">
+                    <Check className="w-4 h-4 text-[#00f0ff]" />
+                    <span
+                      className="text-sm"
+                      style={{ fontFamily: "Inter, sans-serif" }}
+                    >
+                      {feature}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              <button
+                onClick={onOpenMembershipPage}
+                className="w-full btn-glow py-3 rounded-xl font-bold"
+                style={{ fontFamily: "Orbitron, sans-serif" }}
+              >
+                Explore Memberships
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="card-glass rounded-2xl p-6 text-center">
+          <p
+            className="text-zinc-400 mb-4"
+            style={{ fontFamily: "Inter, sans-serif" }}
+          >
+            No membership plans are live yet.
+          </p>
+          <button
+            onClick={onOpenMembershipPage}
+            className="btn-glow px-5 py-2.5 rounded-xl text-sm font-bold"
+            style={{ fontFamily: "Orbitron, sans-serif" }}
+          >
+            Check Membership Hub
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TournamentPreviewSection({
+  tournaments,
+  loading,
+  error,
+  onOpenTournamentsPage,
+}: {
+  tournaments: TournamentPreview[];
+  loading: boolean;
+  error: string | null;
+  onOpenTournamentsPage: () => void;
+}) {
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div>
+          <h2
+            className="text-3xl md:text-4xl font-bold text-white mb-3"
+            style={{ fontFamily: "Orbitron, sans-serif" }}
+          >
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#ff073a] to-[#00f0ff]">
+              Upcoming Tournaments
+            </span>
+          </h2>
+          <p
+            className="text-zinc-400 text-lg"
+            style={{ fontFamily: "Inter, sans-serif" }}
+          >
+            Real upcoming events from the tournament schedule.
+          </p>
+        </div>
+
+        <button
+          onClick={onOpenTournamentsPage}
+          className="btn-ghost self-start px-4 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2"
+          style={{ fontFamily: "Inter, sans-serif" }}
+        >
+          <span>See all tournaments</span>
+          <ChevronRight className="w-4 h-4" />
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="card-glass rounded-2xl p-6 text-center">
+          <p
+            className="text-zinc-400"
+            style={{ fontFamily: "Inter, sans-serif" }}
+          >
+            Loading tournaments...
+          </p>
+        </div>
+      ) : error ? (
+        <div className="card-glass rounded-2xl p-6 text-center">
+          <p
+            className="text-zinc-400 mb-4"
+            style={{ fontFamily: "Inter, sans-serif" }}
+          >
+            {error}
+          </p>
+          <button
+            onClick={onOpenTournamentsPage}
+            className="btn-glow px-5 py-2.5 rounded-xl text-sm font-bold"
+            style={{ fontFamily: "Orbitron, sans-serif" }}
+          >
+            Open Tournament Page
+          </button>
+        </div>
+      ) : tournaments.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {tournaments.map((tournament) => (
+            <div
+              key={tournament.id}
+              className="card-glass rounded-2xl p-6 flex flex-col gap-4 group hover:scale-[1.02] transition-all duration-300"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div
+                    className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl"
+                    style={{
+                      background: `linear-gradient(135deg, ${tournament.color || "#00f0ff"}33 0%, rgba(255,255,255,0.05) 100%)`,
+                    }}
+                  >
+                    {tournament.icon || "T"}
+                  </div>
+                  <div>
+                    <h3
+                      className="text-xl font-bold text-white"
+                      style={{ fontFamily: "Orbitron, sans-serif" }}
+                    >
+                      {tournament.name}
+                    </h3>
+                    <p
+                      className="text-sm text-zinc-400"
+                      style={{ fontFamily: "Inter, sans-serif" }}
+                    >
+                      {tournament.game}
+                    </p>
+                  </div>
+                </div>
+
+                <span className="px-3 py-1 rounded-full text-xs font-bold bg-white/10 text-[#00f0ff] uppercase">
+                  {tournament.status || "upcoming"}
+                </span>
+              </div>
+
+              <div className="space-y-2 text-zinc-300">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-[#00f0ff]" />
+                  <span
+                    className="text-sm"
+                    style={{ fontFamily: "Inter, sans-serif" }}
+                  >
+                    {formatTournamentDate(tournament.tournament_date)}
+                    {tournament.tournament_time ? ` at ${tournament.tournament_time}` : ""}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Trophy className="w-4 h-4 text-[#ff073a]" />
+                  <span
+                    className="text-sm"
+                    style={{ fontFamily: "Inter, sans-serif" }}
+                  >
+                    Prize Pool: {tournament.prize_currency || "INR "}{formatCompactNumber(tournament.prize_amount)}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4 text-[#00f0ff]" />
+                  <span
+                    className="text-sm"
+                    style={{ fontFamily: "Inter, sans-serif" }}
+                  >
+                    {tournament.current_participants || 0}/{tournament.max_participants || 0} registered
+                  </span>
+                </div>
+              </div>
+
+              <div
+                className="text-sm text-zinc-400 flex-1"
+                style={{ fontFamily: "Inter, sans-serif" }}
+              >
+                {tournament.location || "Location to be announced"}
+              </div>
+
+              <button
+                onClick={onOpenTournamentsPage}
+                className="w-full btn-glow py-3 rounded-xl font-bold"
+                style={{ fontFamily: "Orbitron, sans-serif" }}
+              >
+                View Tournament Hub
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="card-glass rounded-2xl p-6 text-center">
+          <p
+            className="text-zinc-400 mb-4"
+            style={{ fontFamily: "Inter, sans-serif" }}
+          >
+            No upcoming tournaments are live yet.
+          </p>
+          <button
+            onClick={onOpenTournamentsPage}
+            className="btn-glow px-5 py-2.5 rounded-xl text-sm font-bold"
+            style={{ fontFamily: "Orbitron, sans-serif" }}
+          >
+            Check Tournament Hub
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function formatTournamentDate(dateValue: string) {
+  const date = new Date(dateValue);
+
+  if (Number.isNaN(date.getTime())) {
+    return "Date TBA";
+  }
+
+  return date.toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function formatCompactNumber(value?: number | null) {
+  if (!value) {
+    return "0";
+  }
+
+  return new Intl.NumberFormat("en-IN").format(value);
 }

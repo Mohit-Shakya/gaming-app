@@ -76,6 +76,20 @@ function getAssignedStationsFromItemTitle(title: string | null | undefined): str
     .filter(Boolean);
 }
 
+function getBookingItemDuration(item: { duration?: number; title?: string | null } | null | undefined, fallback = 60): number {
+  if (typeof item?.duration === 'number' && item.duration > 0) {
+    return item.duration;
+  }
+
+  const parsedDuration = parseInt(item?.title?.split('|')[0] || '', 10);
+  return Number.isNaN(parsedDuration) || parsedDuration <= 0 ? fallback : parsedDuration;
+}
+
+function buildBookingItemTitle(existingTitle: string | null | undefined, duration: number): string {
+  const stationPart = existingTitle?.split('|')[1]?.trim();
+  return stationPart ? `${duration}|${stationPart}` : String(duration);
+}
+
 function getPreferredConsoleForCafe(cafe: CafeRow | null | undefined): ConsoleId {
   return getAvailableConsoleIds(cafe)[0] || 'ps5';
 }
@@ -772,14 +786,14 @@ export default function OwnerDashboardPage() {
     setEditDate(actualBooking.booking_date || "");
     setEditDuration(actualBooking.duration || 60);
     if (actualBooking.booking_items && actualBooking.booking_items.length > 0) {
-      setEditItems(actualBooking.booking_items.map(item => {
+      const editableItems = specificItemId
+        ? actualBooking.booking_items.filter((item) => item.id === specificItemId)
+        : actualBooking.booking_items;
+
+      setEditItems(editableItems.map(item => {
         const consoleType = normaliseConsoleType(item.console || "") || "ps5";
-        
-        // Try to get duration from title (stored as string like "60")
-        let itemDuration = actualBooking.duration || 60;
-        if (item.title && !isNaN(parseInt(item.title))) {
-          itemDuration = parseInt(item.title);
-        }
+
+        const itemDuration = getBookingItemDuration(item, actualBooking.duration || 60);
         return {
           id: item.id,
           console: consoleType,
@@ -788,10 +802,16 @@ export default function OwnerDashboardPage() {
           price: item.price ?? undefined
         };
       }));
+
+      const initialDuration = editableItems.reduce((max, item) => (
+        Math.max(max, getBookingItemDuration(item, actualBooking.duration || 60))
+      ), 0);
+      setEditDuration(initialDuration || actualBooking.duration || 60);
     } else {
       const cafe = cafes.find(c => c.id === actualBooking.cafe_id) || currentCafe;
       const defaultConsole = getPreferredConsoleForCafe(cafe);
       setEditItems([{ console: defaultConsole, quantity: 1, duration: actualBooking.duration || 60 }]);
+      setEditDuration(actualBooking.duration || 60);
     }
 
     // Helper functions removed from here (now at component level)
@@ -882,8 +902,46 @@ export default function OwnerDashboardPage() {
       debugLog('[handleSaveBooking] Parsed amount:', updatedAmount);
       debugLog('[handleSaveBooking] Booking ID:', editingBooking.id);
 
+      const isSingleItemEdit = Boolean(editingBookingItemId);
+      const buildItemPayload = (item: { id?: string; console: string; quantity: number; duration: number }, originalItem?: { title?: string | null }) => ({
+        id: item.id,
+        console: item.console,
+        quantity: item.quantity,
+        title: buildBookingItemTitle(originalItem?.title, item.duration || 60),
+        price: getBillingPrice(item.console as ConsoleId, item.quantity, item.duration || 60) || 0,
+      });
+
+      const nextBookingItems = isSingleItemEdit && editingBookingItemId
+        ? (editingBooking.booking_items || []).map((existingItem: any) => {
+            if (existingItem.id !== editingBookingItemId) return existingItem;
+            const updatedItem = editItems[0];
+            if (!updatedItem) return existingItem;
+            const payload = buildItemPayload(updatedItem, existingItem);
+            return {
+              ...existingItem,
+              console: payload.console,
+              quantity: payload.quantity,
+              title: payload.title,
+              price: payload.price,
+            };
+          })
+        : editItems.map((item, idx) => {
+            const originalItem = editingBooking.booking_items?.find((existingItem: any) => existingItem.id === item.id);
+            const payload = buildItemPayload(item, originalItem);
+            return {
+              id: item.id || `temp-item-${idx}`,
+              booking_id: editingBooking.id,
+              console: payload.console,
+              quantity: payload.quantity,
+              title: payload.title,
+              price: payload.price,
+            };
+          });
+
       // Auto-restore in-progress if a completed booking is extended into the future
-      const newDuration = editItems.reduce((max, item) => Math.max(max, item.duration || 60), 0);
+      const newDuration = nextBookingItems.reduce((max, item) => (
+        Math.max(max, getBookingItemDuration(item, editingBooking.duration || 60))
+      ), 0);
       let resolvedStatus = editStatus;
       if (editStatus === 'completed') {
         const timeParts = startTime12h.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
@@ -906,6 +964,20 @@ export default function OwnerDashboardPage() {
         body: JSON.stringify({
           bookingId: editingBooking.id,
           updatedAtCheck: editConflictBase,
+          ...(isSingleItemEdit && editingBookingItemId && editItems[0]
+            ? {
+                bookingItemId: editingBookingItemId,
+                item: buildItemPayload(
+                  editItems[0],
+                  editingBooking.booking_items?.find((existingItem: any) => existingItem.id === editingBookingItemId)
+                ),
+              }
+            : {
+                items: editItems.map((item) => {
+                  const originalItem = editingBooking.booking_items?.find((existingItem: any) => existingItem.id === item.id);
+                  return buildItemPayload(item, originalItem);
+                }),
+              }),
           booking: {
             total_amount: updatedAmount,
             status: resolvedStatus,
@@ -916,22 +988,6 @@ export default function OwnerDashboardPage() {
             start_time: startTime12h,
             duration: newDuration,
           },
-          items: editItems.map(item => {
-            // Preserve existing station assignment from title (format: "duration|station")
-            const originalItem = editingBooking.booking_items?.find((oi: any) => oi.id === item.id);
-            const existingTitleParts = originalItem?.title?.split('|');
-            const existingStation = existingTitleParts && existingTitleParts.length > 1 ? existingTitleParts[1] : null;
-            const titleValue = existingStation
-              ? `${item.duration || 60}|${existingStation}`
-              : (item.duration || 60).toString();
-            return {
-              id: item.id,
-              console: item.console,
-              quantity: item.quantity,
-              title: titleValue,
-              price: getBillingPrice(item.console as ConsoleId, item.quantity, item.duration || 60) || 0
-            };
-          }),
         }),
       });
 
@@ -961,23 +1017,12 @@ export default function OwnerDashboardPage() {
               user_phone: sanitizedCustomerPhone ?? b.user_phone ?? b.customer_phone,
               booking_date: editDate,
               start_time: startTime12h,
-              duration: editItems.reduce((max, item) => Math.max(max, item.duration || 60), 0),
-              booking_items: editItems.map((item, idx) => {
-                const originalItem = editingBooking.booking_items?.find((oi: any) => oi.id === item.id);
-                const existingTitleParts = originalItem?.title?.split('|');
-                const existingStation = existingTitleParts && existingTitleParts.length > 1 ? existingTitleParts[1] : null;
-                const titleValue = existingStation
-                  ? `${item.duration || 60}|${existingStation}`
-                  : (item.duration || 60).toString();
-                return {
-                  id: item.id || `temp-item-${idx}`,
-                  booking_id: b.id,
-                  console: item.console,
-                  quantity: item.quantity,
-                  title: titleValue,
-                  price: getBillingPrice(item.console as ConsoleId, item.quantity, item.duration || 60) || 0
-                };
-              }),
+              duration: newDuration,
+              booking_items: nextBookingItems.map((item: any, idx: number) => ({
+                ...item,
+                id: item.id || `temp-item-${idx}`,
+                booking_id: b.id,
+              })),
             }
             : b
         )
@@ -2210,6 +2255,7 @@ export default function OwnerDashboardPage() {
               activeTimers={activeTimers}
               timerElapsed={timerElapsed}
               pageSubscriptions={subscriptions}
+              pageBookings={bookings}
               onAddItems={(bookingId, customerName) => {
                 setAddItemsBookingId(bookingId);
                 setAddItemsCustomerName(customerName);

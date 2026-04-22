@@ -38,6 +38,42 @@ function calcTimeRemaining(startMinutes: number, duration: number, currentMinute
     return endMinutes - currentMinutes;
 }
 
+function getBookingItemDuration(item: any, fallbackDuration: number): number {
+    const parsedTitleDuration = parseInt(item?.title || '', 10);
+    if (!Number.isNaN(parsedTitleDuration) && parsedTitleDuration > 0) {
+        return parsedTitleDuration;
+    }
+    return fallbackDuration;
+}
+
+function isActiveBookingForDisplay(
+    booking: any,
+    todayStr: string,
+    yesterdayStr: string,
+    currentMinutes: number
+): boolean {
+    if (booking.status !== 'in-progress') return false;
+
+    const firstItem = booking.booking_items?.[0];
+    const duration = getBookingItemDuration(firstItem, booking.duration || 60);
+    const startMinutes = booking.start_time ? parseStartMinutes(booking.start_time) : null;
+
+    if (startMinutes === null || duration <= 0) {
+        return booking.booking_date === todayStr;
+    }
+
+    const endMinutes = startMinutes + duration;
+    if (booking.booking_date === todayStr) {
+        return true;
+    }
+
+    if (booking.booking_date === yesterdayStr && endMinutes > 1440) {
+        return currentMinutes < (endMinutes - 1440);
+    }
+
+    return false;
+}
+
 interface ActiveSessionsProps {
     bookings: any[];
     subscriptions: any[];
@@ -73,10 +109,15 @@ export function ActiveSessions({
     // Track which card has the End & Collect panel open
     const [endCollectId, setEndCollectId] = useState<string | null>(null);
     const [endCollectPayment, setEndCollectPayment] = useState<'cash' | 'upi'>('cash');
+    const todayStr = getLocalDateString(currentTime);
+    const yesterday = new Date(currentTime);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = getLocalDateString(yesterday);
+    const currentMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
 
     // 1. Filter and Flatten Bookings
     const activeBookings = bookings.filter(
-        (b) => b.status === 'in-progress' && b.booking_date === getLocalDateString()
+        (booking) => isActiveBookingForDisplay(booking, todayStr, yesterdayStr, currentMinutes)
     );
 
     const activeMemberships = subscriptions.filter((sub) => activeTimers.has(sub.id));
@@ -99,8 +140,7 @@ export function ActiveSessions({
             const getTimeRemaining = (booking: typeof a) => {
                 if (!booking.start_time) return 999;
                 const bi = booking.booking_items?.[0];
-                const parsedTitle = parseInt(bi?.title || '');
-                const duration = !isNaN(parsedTitle) && parsedTitle > 0 ? parsedTitle : booking.duration;
+                const duration = getBookingItemDuration(bi, booking.duration || 60);
                 if (!duration) return 999;
                 const startMinutes = parseStartMinutes(booking.start_time);
                 if (startMinutes === null) return 999;
@@ -126,14 +166,12 @@ export function ActiveSessions({
     // Fire session-ended callback once when time hits 0
     useEffect(() => {
         if (!onSessionEnded) return;
-        const currentMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
         sortedActiveBookings.forEach((booking) => {
             const bookingId = booking.originalBookingId || booking.id;
             if (endedSessionsRef.current.has(bookingId)) return;
             if (!booking.start_time) return;
             const bi = booking.booking_items?.[0];
-            const parsedTitle = parseInt(bi?.title || '');
-            const duration = !isNaN(parsedTitle) && parsedTitle > 0 ? parsedTitle : booking.duration;
+            const duration = getBookingItemDuration(bi, booking.duration || 60);
             if (!duration) return;
             const startMinutes = parseStartMinutes(booking.start_time);
             if (startMinutes === null) return;
@@ -199,12 +237,10 @@ export function ActiveSessions({
             {sortedActiveBookings.map((booking, index) => {
                 const consoleInfo = booking.booking_items?.[0];
                 const isWalkIn = booking.source === 'walk-in';
-                const currentMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
 
                 let timeRemaining = 0;
                 let endTime = '';
-                const parsedItemDuration = parseInt(consoleInfo?.title || '');
-                const itemDuration = !isNaN(parsedItemDuration) && parsedItemDuration > 0 ? parsedItemDuration : booking.duration;
+                const itemDuration = getBookingItemDuration(consoleInfo, booking.duration || 60);
 
                 if (booking.start_time && itemDuration) {
                     const startMinutes = parseStartMinutes(booking.start_time);
