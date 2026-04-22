@@ -533,45 +533,41 @@ export function Billing({
         }
     };
 
+    const closeSuggestions = () => {
+        setShowSuggestions(false);
+        setSuggestionField(null);
+    };
+
     const renderSuggestions = (field: 'name' | 'phone') => {
         if (!(showSuggestions && suggestionField === field && suggestions.length > 0)) return null;
 
         return (
-            <>
-                <div
-                    className="fixed inset-0 z-40"
-                    onClick={() => {
-                        setShowSuggestions(false);
-                        setSuggestionField(null);
-                    }}
-                />
-                <div className="glass absolute left-0 top-full z-50 mt-2 max-h-56 w-full overflow-y-auto rounded-2xl">
-                    {suggestions.map((suggestion, idx) => (
-                        <button
-                            key={`${suggestion.phone}-${idx}`}
-                            type="button"
-                            onMouseDown={(event) => {
-                                event.preventDefault();
-                                applyCustomer(suggestion);
-                            }}
-                            className="flex w-full items-center gap-3 border-b border-white/[0.06] px-4 py-3 text-left transition last:border-b-0 hover:bg-white/[0.04]"
-                        >
-                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-cyan-500/12 text-xs font-bold text-cyan-300">
-                                {suggestion.name.charAt(0).toUpperCase()}
-                            </span>
-                            <span className="min-w-0">
-                                <span className="block truncate text-sm font-medium text-white">{suggestion.name}</span>
-                                <span className="mono block text-[11px] text-[var(--muted)]">{suggestion.phone}</span>
-                            </span>
-                        </button>
-                    ))}
-                </div>
-            </>
+            <div className="glass absolute left-0 top-full z-[200] mt-2 max-h-56 w-full overflow-y-auto rounded-2xl">
+                {suggestions.map((suggestion, idx) => (
+                    <button
+                        key={`${suggestion.phone}-${idx}`}
+                        type="button"
+                        onMouseDown={(event) => {
+                            event.preventDefault();
+                            applyCustomer(suggestion);
+                        }}
+                        className="flex w-full items-center gap-3 border-b border-white/[0.06] px-4 py-3 text-left transition last:border-b-0 hover:bg-white/[0.04]"
+                    >
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-cyan-500/12 text-xs font-bold text-cyan-300">
+                            {suggestion.name.charAt(0).toUpperCase()}
+                        </span>
+                        <span className="min-w-0">
+                            <span className="block truncate text-sm font-medium text-white">{suggestion.name}</span>
+                            <span className="mono block text-[11px] text-[var(--muted)]">{suggestion.phone}</span>
+                        </span>
+                    </button>
+                ))}
+            </div>
         );
     };
 
     const customerInfoCard = (
-        <Card className={`relative z-10 overflow-visible space-y-5 ${SECTION_CARD_CLASS}`}>
+        <Card className={`overflow-visible space-y-5 ${SECTION_CARD_CLASS}`}>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="flex items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-500/12 text-cyan-300">
@@ -601,7 +597,7 @@ export function Billing({
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
-                <div className="relative z-20">
+                <div className="relative">
                     <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--dim)]">
                         Name
                     </label>
@@ -614,6 +610,7 @@ export function Billing({
                                     setCustomerName(event.target.value);
                                     searchCustomers(event.target.value, 'name');
                                 }}
+                                onBlur={() => setTimeout(closeSuggestions, 150)}
                                 placeholder="Walk-in customer"
                                 maxLength={100}
                                 className="w-full bg-transparent text-sm text-white placeholder:text-[#4b5060] focus:outline-none"
@@ -623,7 +620,7 @@ export function Billing({
                     {renderSuggestions('name')}
                 </div>
 
-                <div className="relative z-10">
+                <div className="relative">
                     <label className="mb-1.5 block text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--dim)]">
                         {mode === 'membership' ? 'Phone Required' : 'Phone'}
                     </label>
@@ -636,6 +633,7 @@ export function Billing({
                                     setCustomerPhone(event.target.value);
                                     searchCustomers(event.target.value, 'phone');
                                 }}
+                                onBlur={() => setTimeout(closeSuggestions, 150)}
                                 placeholder="98765 43210"
                                 maxLength={15}
                                 className="mono w-full bg-transparent text-sm text-white placeholder:text-[#4b5060] focus:outline-none"
@@ -750,7 +748,7 @@ export function Billing({
                     </div>
                 </div>
             ) : mode === 'gaming' ? (
-                <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_410px]">
+                <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_410px] xl:items-start">
                     <div className="space-y-5">
                         {customerInfoCard}
 
@@ -1145,7 +1143,7 @@ export function Billing({
                     </div>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_410px]">
+                <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_410px] xl:items-start">
                     <div className="space-y-5">
                         {customerInfoCard}
 
