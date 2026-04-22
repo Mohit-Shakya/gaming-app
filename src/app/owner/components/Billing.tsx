@@ -84,6 +84,10 @@ const CONSOLE_THEME: Record<string, { accent: string; short: string }> = {
 const SECTION_CARD_CLASS = 'border-white/[0.08] bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.015))] shadow-[0_24px_64px_-36px_rgba(0,0,0,0.9)]';
 const SUBPANEL_CLASS = 'rounded-2xl border border-white/[0.08] bg-white/[0.03] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]';
 const HOVER_CARD_CLASS = 'transition-all duration-200 hover:-translate-y-0.5 hover:border-white/[0.16]';
+const CONTROL_SURFACE_CLASS = 'rounded-[24px] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]';
+const GAMING_SUMMARY_HERO_CLASS = 'rounded-[28px] border border-white/[0.08] bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.16),transparent_42%),linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.02))] shadow-[0_28px_60px_-36px_rgba(0,0,0,0.95)]';
+const MEMBERSHIP_SUMMARY_HERO_CLASS = 'rounded-[28px] border border-white/[0.08] bg-[radial-gradient(circle_at_top_right,rgba(168,85,247,0.16),transparent_42%),linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.02))] shadow-[0_28px_60px_-36px_rgba(0,0,0,0.95)]';
+const CONTROL_LABEL_CLASS = 'mb-2 text-[10px] smallcaps text-[var(--dim)]';
 
 function getConsoleTheme(consoleType: string) {
     return CONSOLE_THEME[consoleType] || { accent: '#06b6d4', short: consoleType.slice(0, 2).toUpperCase() };
@@ -98,6 +102,15 @@ function formatLastVisit(value?: string) {
     const parsed = new Date(value);
     if (Number.isNaN(parsed.getTime())) return value;
     return parsed.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+}
+
+function formatDurationLabel(duration: number) {
+    if (duration < 60) return `${duration}m`;
+    if (duration === 60) return '1h';
+    if (duration === 90) return '1.5h';
+    if (duration === 120) return '2h';
+    if (duration === 180) return '3h';
+    return `${duration}m`;
 }
 
 export function Billing({
@@ -394,7 +407,6 @@ export function Billing({
     // Reset manual amount when items change (recalculate)
     const resetManualAmount = () => setManualAmount(null);
 
-    const currentCafe = cafes.find((c) => c.id === cafeId) || cafes[0] || null;
     const matchedCustomer = useMemo(() => {
         const phone = normalizePhone(customerPhone);
         if (!phone) return null;
@@ -407,6 +419,18 @@ export function Billing({
         setShowSuggestions(false);
         setSuggestionField(null);
     };
+
+    const modeIntro = mode === 'gaming'
+        ? {
+            eyebrow: 'Counter Billing',
+            title: 'Quick walk-in booking',
+            description: 'Build the session, collect payment, and confirm the booking from one counter screen.',
+        }
+        : {
+            eyebrow: 'Membership Checkout',
+            title: 'Fast plan billing',
+            description: 'Pick the customer, choose the plan, and complete membership checkout without leaving the tab.',
+        };
 
     const handleSubmit = async () => {
         if (!customerName || !startTime || items.length === 0) {
@@ -649,32 +673,40 @@ export function Billing({
 
     return (
         <div className={`space-y-6 ${isMobile && mode === 'gaming' && !lastBooking && items.length > 0 ? 'pb-24' : isMobile ? 'pb-20' : ''}`}>
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-                <div className="flex flex-wrap items-center gap-2">
-                    {onSnackOnlySale && mode === 'gaming' && (
-                        <button
-                            type="button"
-                            onClick={onSnackOnlySale}
-                            className="glass-2 rounded-xl border border-orange-400/15 px-3.5 py-2.5 text-sm font-medium text-orange-300 transition-all duration-200 hover:-translate-y-0.5 hover:border-orange-400/30 hover:bg-orange-500/10"
-                        >
-                            Snack-only sale
-                        </button>
-                    )}
-                    <div className="glass-2 inline-flex rounded-2xl border border-white/[0.08] p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
-                        <button
-                            type="button"
-                            onClick={() => setMode('gaming')}
-                            className={`rounded-xl px-4 py-2.5 text-sm font-medium transition-all ${mode === 'gaming' ? 'bg-cyan-500/15 text-white shadow-[0_0_24px_-10px_rgba(34,211,238,0.75)]' : 'text-slate-400 hover:text-white'}`}
-                        >
-                            Gaming
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setMode('membership')}
-                            className={`rounded-xl px-4 py-2.5 text-sm font-medium transition-all ${mode === 'membership' ? 'bg-violet-500/15 text-white shadow-[0_0_24px_-10px_rgba(168,85,247,0.75)]' : 'text-slate-400 hover:text-white'}`}
-                        >
-                            Membership
-                        </button>
+            <div className="rounded-[28px] border border-white/[0.08] bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.06),transparent_38%),linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.015))] px-4 py-4 shadow-[0_28px_56px_-40px_rgba(0,0,0,0.95)] sm:px-5">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="space-y-1.5">
+                        <div className="text-[10px] smallcaps text-[var(--dim)]">{modeIntro.eyebrow}</div>
+                        <h2 className="text-xl font-semibold tracking-tight text-white sm:text-[1.6rem]">{modeIntro.title}</h2>
+                        <p className="max-w-2xl text-sm text-[var(--muted)]">{modeIntro.description}</p>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                        {onSnackOnlySale && mode === 'gaming' && (
+                            <button
+                                type="button"
+                                onClick={onSnackOnlySale}
+                                className="glass-2 rounded-xl border border-orange-400/15 px-3.5 py-2.5 text-sm font-medium text-orange-300 transition-all duration-200 hover:-translate-y-0.5 hover:border-orange-400/30 hover:bg-orange-500/10"
+                            >
+                                Snack-only sale
+                            </button>
+                        )}
+                        <div className="glass-2 inline-flex rounded-2xl border border-white/[0.08] p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+                            <button
+                                type="button"
+                                onClick={() => setMode('gaming')}
+                                className={`rounded-xl px-4 py-2.5 text-sm font-medium transition-all ${mode === 'gaming' ? 'bg-cyan-500/15 text-white shadow-[0_0_24px_-10px_rgba(34,211,238,0.75)]' : 'text-slate-400 hover:text-white'}`}
+                            >
+                                Gaming
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setMode('membership')}
+                                className={`rounded-xl px-4 py-2.5 text-sm font-medium transition-all ${mode === 'membership' ? 'bg-violet-500/15 text-white shadow-[0_0_24px_-10px_rgba(168,85,247,0.75)]' : 'text-slate-400 hover:text-white'}`}
+                            >
+                                Membership
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -752,7 +784,7 @@ export function Billing({
                     <div className="space-y-5">
                         {customerInfoCard}
 
-                        <Card className={`space-y-5 ${SECTION_CARD_CLASS}`}>
+                        <Card className={`space-y-6 ${SECTION_CARD_CLASS}`}>
                             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                 <div className="flex items-center gap-3">
                                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/12 text-violet-300">
@@ -761,6 +793,7 @@ export function Billing({
                                     <div>
                                         <div className="text-[10px] smallcaps text-[var(--dim)]">Session Builder</div>
                                         <h3 className="text-base font-semibold text-white">Select stations</h3>
+                                        <p className="mt-1 text-sm text-[var(--muted)]">Choose the setup first, then fine-tune station, players, and duration below.</p>
                                     </div>
                                 </div>
                                 {items.length > 0 && (
@@ -771,34 +804,45 @@ export function Billing({
                             </div>
 
                             {items.length === 0 ? (
-                                <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-                                    {availableConsoles.map((consoleType) => {
-                                        const theme = getConsoleTheme(consoleType);
-                                        const stationCount = stationOptions(consoleType).length;
-                                        return (
-                                            <button
-                                                key={consoleType}
-                                                type="button"
-                                                onClick={() => setItems([createItem(consoleType)])}
-                                                className={`relative overflow-hidden rounded-2xl p-4 text-left ${SUBPANEL_CLASS} ${HOVER_CARD_CLASS}`}
-                                                style={{ background: `linear-gradient(180deg, ${theme.accent}18, rgba(0,0,0,0)) , var(--card-2)` }}
-                                            >
-                                                <span className="absolute inset-0 grid-dots opacity-30" />
-                                                <div className="relative flex items-start justify-between gap-3">
-                                                    <span className="flex h-10 w-10 items-center justify-center rounded-xl text-sm font-bold text-white" style={{ background: `${theme.accent}22`, color: theme.accent }}>
-                                                        {theme.short}
-                                                    </span>
-                                                    <span className="chip border-transparent bg-white/[0.06] text-slate-300">
-                                                        {stationCount} station{stationCount === 1 ? '' : 's'}
-                                                    </span>
-                                                </div>
-                                                <div className="relative mt-4">
-                                                    <div className="text-sm font-semibold text-white">{CONSOLE_LABELS[consoleType as keyof typeof CONSOLE_LABELS] || consoleType.toUpperCase()}</div>
-                                                    <div className="mono mt-1 text-[11px] text-[var(--muted)]">Tap to start</div>
-                                                </div>
-                                            </button>
-                                        );
-                                    })}
+                                <div className={`${CONTROL_SURFACE_CLASS} p-3`}>
+                                    <div className="mb-3 flex items-center justify-between gap-3 px-1">
+                                        <div>
+                                            <div className="text-[10px] smallcaps text-[var(--dim)]">Available setups</div>
+                                            <div className="text-sm font-medium text-white">Start with the station type you want to bill</div>
+                                        </div>
+                                        <span className="chip border-transparent bg-white/[0.05] text-slate-300">
+                                            {availableConsoles.length} type{availableConsoles.length === 1 ? '' : 's'}
+                                        </span>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+                                        {availableConsoles.map((consoleType) => {
+                                            const theme = getConsoleTheme(consoleType);
+                                            const stationCount = stationOptions(consoleType).length;
+                                            return (
+                                                <button
+                                                    key={consoleType}
+                                                    type="button"
+                                                    onClick={() => setItems([createItem(consoleType)])}
+                                                    className={`relative overflow-hidden rounded-2xl p-4 text-left ${SUBPANEL_CLASS} ${HOVER_CARD_CLASS}`}
+                                                    style={{ background: `linear-gradient(180deg, ${theme.accent}18, rgba(0,0,0,0)) , var(--card-2)` }}
+                                                >
+                                                    <span className="absolute inset-0 grid-dots opacity-30" />
+                                                    <div className="relative flex items-start justify-between gap-3">
+                                                        <span className="flex h-10 w-10 items-center justify-center rounded-xl text-sm font-bold text-white" style={{ background: `${theme.accent}22`, color: theme.accent }}>
+                                                            {theme.short}
+                                                        </span>
+                                                        <span className="chip border-transparent bg-white/[0.06] text-slate-300">
+                                                            {stationCount} station{stationCount === 1 ? '' : 's'}
+                                                        </span>
+                                                    </div>
+                                                    <div className="relative mt-4">
+                                                        <div className="text-sm font-semibold text-white">{CONSOLE_LABELS[consoleType as keyof typeof CONSOLE_LABELS] || consoleType.toUpperCase()}</div>
+                                                        <div className="mono mt-1 text-[11px] text-[var(--muted)]">Tap to start</div>
+                                                    </div>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
                             ) : (
                                 <div className="space-y-3">
@@ -808,10 +852,25 @@ export function Billing({
                                         const allowSingleStation = canPickSingleStation(item.console, item.quantity);
 
                                         return (
-                                            <div key={item.id} className={`${SUBPANEL_CLASS} space-y-4 rounded-2xl p-4 md:p-5`}>
+                                            <div
+                                                key={item.id}
+                                                className="space-y-4 rounded-[26px] border border-white/[0.09] bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.02))] p-4 shadow-[0_26px_48px_-34px_rgba(0,0,0,0.95)] md:p-5"
+                                            >
                                                 {/* Header row */}
                                                 <div className="flex items-center justify-between gap-2">
-                                                    <span className="text-[10px] smallcaps text-[var(--dim)]">Item {index + 1}</span>
+                                                    <div className="flex items-center gap-3">
+                                                        <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 text-[10px] smallcaps text-[var(--dim)]">
+                                                            Item {index + 1}
+                                                        </span>
+                                                        <div>
+                                                            <div className="text-sm font-semibold text-white">
+                                                                {CONSOLE_LABELS[item.console as keyof typeof CONSOLE_LABELS] || item.console.toUpperCase()}
+                                                            </div>
+                                                            <div className="text-[11px] text-[var(--muted)]">
+                                                                {item.quantity} player{item.quantity === 1 ? '' : 's'} · {formatDurationLabel(item.duration)}
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                     <div className="flex items-center gap-2">
                                                         <span className="mono rounded-full px-2.5 py-1 text-sm font-bold" style={{ color: theme.accent, background: `${theme.accent}12` }}>Rs.{item.price}</span>
                                                         <button
@@ -826,8 +885,9 @@ export function Billing({
 
                                                 {/* Console — card grid */}
                                                 <div>
-                                                    <div className="mb-2 text-[10px] smallcaps text-[var(--dim)]">Console</div>
-                                                    <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+                                                    <div className={CONTROL_LABEL_CLASS}>Choose console</div>
+                                                    <div className={`${CONTROL_SURFACE_CLASS} p-3`}>
+                                                        <div className="grid grid-cols-2 gap-2 xl:grid-cols-4">
                                                         {availableConsoles.map((consoleType) => {
                                                             const t = getConsoleTheme(consoleType);
                                                             const selected = item.console === consoleType;
@@ -840,7 +900,7 @@ export function Billing({
                                                                     className={`relative min-h-[148px] overflow-hidden rounded-2xl border p-4 text-left transition-all duration-200 ${selected ? '' : HOVER_CARD_CLASS}`}
                                                                     style={{
                                                                         background: selected
-                                                                            ? `linear-gradient(180deg, ${t.accent}1c, rgba(255,255,255,0.02) 55%, rgba(0,0,0,0) 100%), var(--card-2)`
+                                                                            ? `linear-gradient(180deg, ${t.accent}20, rgba(255,255,255,0.025) 55%, rgba(0,0,0,0) 100%), var(--card-2)`
                                                                             : `linear-gradient(180deg, ${t.accent}10, rgba(255,255,255,0.01) 55%, rgba(0,0,0,0) 100%), var(--card-2)`,
                                                                         borderColor: selected ? `${t.accent}70` : 'rgba(255,255,255,0.08)',
                                                                         boxShadow: selected
@@ -866,7 +926,7 @@ export function Billing({
                                                                             </span>
                                                                         </div>
                                                                         <div className="mt-6">
-                                                                            <div className="text-xl font-semibold text-white">
+                                                                            <div className="text-lg font-semibold text-white xl:text-xl">
                                                                                 {CONSOLE_LABELS[consoleType as keyof typeof CONSOLE_LABELS] || consoleType.toUpperCase()}
                                                                             </div>
                                                                             <div className="mt-1 text-[12px]" style={{ color: selected ? '#dbeafe' : 'var(--muted)' }}>
@@ -874,17 +934,24 @@ export function Billing({
                                                                             </div>
                                                                         </div>
                                                                     </div>
+                                                                    {selected && (
+                                                                        <span
+                                                                            className="absolute bottom-3 left-4 h-1.5 w-16 rounded-full"
+                                                                            style={{ background: `linear-gradient(90deg, ${t.accent}, transparent)` }}
+                                                                        />
+                                                                    )}
                                                                 </button>
                                                             );
                                                         })}
+                                                        </div>
                                                     </div>
                                                 </div>
 
                                                 {/* Station + Players */}
                                                 <div className="grid gap-4 lg:grid-cols-2">
                                                     {/* Station */}
-                                                    <div>
-                                                        <div className="mb-2 text-[10px] smallcaps text-[var(--dim)]">Station</div>
+                                                    <div className={`${CONTROL_SURFACE_CLASS} p-4`}>
+                                                        <div className={CONTROL_LABEL_CLASS}>Station</div>
                                                         {allowSingleStation ? (
                                                             <div className="flex flex-wrap gap-2">
                                                                 {stations.length === 0 ? (
@@ -915,9 +982,9 @@ export function Billing({
                                                     </div>
 
                                                     {/* Players */}
-                                                    <div>
-                                                        <div className="mb-2 text-[10px] smallcaps text-[var(--dim)]">Players</div>
-                                                        <div className="flex gap-2">
+                                                    <div className={`${CONTROL_SURFACE_CLASS} p-4`}>
+                                                        <div className={CONTROL_LABEL_CLASS}>Players</div>
+                                                        <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
                                                             {PLAYER_OPTIONS.map((players) => {
                                                                 const selected = item.quantity === players;
                                                                 return (
@@ -925,7 +992,7 @@ export function Billing({
                                                                         key={players}
                                                                         type="button"
                                                                         onClick={() => updateItem(item.id, 'quantity', players)}
-                                                                        className="flex-1 rounded-xl py-3 text-sm font-bold transition-all duration-200 hover:-translate-y-0.5"
+                                                                        className="rounded-xl py-3 text-sm font-bold transition-all duration-200 hover:-translate-y-0.5"
                                                                         style={{
                                                                             background: selected ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.04)',
                                                                             border: selected ? '1.5px solid rgba(255,255,255,0.20)' : '1.5px solid rgba(255,255,255,0.07)',
@@ -941,9 +1008,9 @@ export function Billing({
                                                 </div>
 
                                                 {/* Duration */}
-                                                <div>
-                                                    <div className="mb-2 text-[10px] smallcaps text-[var(--dim)]">Duration</div>
-                                                    <div className="grid grid-cols-5 gap-2">
+                                                <div className={`${CONTROL_SURFACE_CLASS} p-4`}>
+                                                    <div className={CONTROL_LABEL_CLASS}>Duration</div>
+                                                    <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-5">
                                                         {DURATION_OPTIONS.map((dur) => {
                                                             const selected = item.duration === dur;
                                                             return (
@@ -959,7 +1026,7 @@ export function Billing({
                                                                         boxShadow: selected ? '0 0 20px -6px rgba(6,182,212,0.5)' : 'none',
                                                                     }}
                                                                 >
-                                                                    {dur < 60 ? `${dur}m` : dur === 60 ? '1h' : dur === 90 ? '1.5h' : dur === 120 ? '2h' : '3h'}
+                                                                    {formatDurationLabel(dur)}
                                                                 </button>
                                                             );
                                                         })}
@@ -967,21 +1034,25 @@ export function Billing({
                                                 </div>
 
                                                 {/* Summary */}
-                                                <div className={`flex items-center justify-between rounded-2xl px-4 py-3.5 ${SUBPANEL_CLASS}`}>
+                                                <div className={`${CONTROL_SURFACE_CLASS} flex flex-col gap-4 px-4 py-4 lg:flex-row lg:items-center lg:justify-between`}>
                                                     <div className="flex items-center gap-3">
                                                         <div className="flex h-9 w-9 items-center justify-center rounded-xl text-sm font-bold shrink-0" style={{ background: `${theme.accent}18`, color: theme.accent }}>
                                                             {theme.short}
                                                         </div>
                                                         <div>
-                                                            <p className="text-sm font-semibold text-white">
-                                                                {item.quantity} player{item.quantity === 1 ? '' : 's'} · {item.duration} min
+                                                            <div className="text-[10px] smallcaps text-[var(--dim)]">Booking line summary</div>
+                                                            <p className="mt-1 text-sm font-semibold text-white">
+                                                                {item.quantity} player{item.quantity === 1 ? '' : 's'} · {formatDurationLabel(item.duration)}
                                                             </p>
                                                             <p className="text-[11px] text-[var(--muted)] mt-0.5">
                                                                 {allowSingleStation ? formatStationOptionLabel(item.station || stations[0] || '—') : 'Auto assign'}
                                                             </p>
                                                         </div>
                                                     </div>
-                                                    <div className="text-right">
+                                                    <div className="flex items-center justify-between gap-3 lg:min-w-[180px] lg:flex-col lg:items-end">
+                                                        <span className="rounded-full border border-white/[0.08] bg-white/[0.04] px-2.5 py-1 text-[11px] text-slate-300">
+                                                            {CONSOLE_LABELS[item.console as keyof typeof CONSOLE_LABELS] || item.console.toUpperCase()}
+                                                        </span>
                                                         <p className="mono text-lg font-bold" style={{ color: theme.accent }}>Rs.{item.price}</p>
                                                     </div>
                                                 </div>
@@ -1006,9 +1077,39 @@ export function Billing({
                                 </div>
                             </div>
 
+                            <div className={`${GAMING_SUMMARY_HERO_CLASS} p-5`}>
+                                <div className="flex items-start justify-between gap-4">
+                                    <div>
+                                        <div className="text-[10px] smallcaps text-cyan-200/70">Due now</div>
+                                        <div className="mono mt-2 text-[2.15rem] font-semibold tracking-tight text-white">Rs.{totalAmount}</div>
+                                        <p className="mt-2 text-sm text-cyan-100/70">
+                                            {items.length > 0
+                                                ? `${items.length} booking line${items.length === 1 ? '' : 's'} ready for checkout`
+                                                : 'Add a setup to begin billing'}
+                                        </p>
+                                    </div>
+                                    <span className="rounded-full border border-cyan-400/20 bg-cyan-500/10 px-3 py-1.5 text-xs font-semibold text-cyan-200">
+                                        {paymentMode.toUpperCase()}
+                                    </span>
+                                </div>
+                                <div className="mt-4 grid grid-cols-2 gap-3">
+                                    <div className={`${CONTROL_SURFACE_CLASS} px-3.5 py-3`}>
+                                        <div className="text-[10px] smallcaps text-[var(--dim)]">Calculated</div>
+                                        <div className="mono mt-2 text-lg font-semibold text-white">Rs.{calculatedTotal}</div>
+                                    </div>
+                                    <div className={`${CONTROL_SURFACE_CLASS} px-3.5 py-3`}>
+                                        <div className="text-[10px] smallcaps text-[var(--dim)]">Payment mode</div>
+                                        <div className="mt-2 text-lg font-semibold text-white">{paymentMode === 'cash' ? 'Cash' : 'UPI'}</div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div className="grid gap-3 sm:grid-cols-2">
-                                <label className={`${SUBPANEL_CLASS} focus-ring rounded-2xl px-3.5 py-3 transition`}>
-                                    <div className="mb-1 text-[10px] smallcaps text-[var(--dim)]">Date</div>
+                                <label className={`${CONTROL_SURFACE_CLASS} focus-ring px-3.5 py-3 transition`}>
+                                    <div className="mb-1.5 flex items-center gap-2 text-[10px] smallcaps text-[var(--dim)]">
+                                        <CalendarDays size={13} className="text-slate-500" />
+                                        Date
+                                    </div>
                                     <input
                                         type="date"
                                         value={bookingDate}
@@ -1017,8 +1118,11 @@ export function Billing({
                                         style={{ colorScheme: 'dark' }}
                                     />
                                 </label>
-                                <label className={`${SUBPANEL_CLASS} focus-ring rounded-2xl px-3.5 py-3 transition`}>
-                                    <div className="mb-1 text-[10px] smallcaps text-[var(--dim)]">Start Time</div>
+                                <label className={`${CONTROL_SURFACE_CLASS} focus-ring px-3.5 py-3 transition`}>
+                                    <div className="mb-1.5 flex items-center gap-2 text-[10px] smallcaps text-[var(--dim)]">
+                                        <Clock size={13} className="text-slate-500" />
+                                        Start Time
+                                    </div>
                                     <input
                                         type="time"
                                         value={startTime}
@@ -1031,14 +1135,26 @@ export function Billing({
 
                             {items.length > 0 ? (
                                 <div className="space-y-2">
+                                    <div className="px-1 text-[10px] smallcaps text-[var(--dim)]">Booking lines</div>
                                     {items.map((item) => (
-                                        <div key={item.id} className={`${SUBPANEL_CLASS} flex items-center justify-between rounded-2xl px-3.5 py-3`}>
-                                            <div>
-                                                <div className="text-sm font-medium text-white">
-                                                    {CONSOLE_LABELS[item.console as keyof typeof CONSOLE_LABELS] || item.console.toUpperCase()}
-                                                </div>
-                                                <div className="text-[11px] text-[var(--muted)]">
-                                                    {item.quantity} player{item.quantity === 1 ? '' : 's'} · {item.duration} min
+                                        <div key={item.id} className={`${CONTROL_SURFACE_CLASS} flex items-center justify-between gap-3 px-3.5 py-3`}>
+                                            <div className="flex items-center gap-3">
+                                                <span
+                                                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold"
+                                                    style={{
+                                                        background: `${getConsoleTheme(item.console).accent}1a`,
+                                                        color: getConsoleTheme(item.console).accent,
+                                                    }}
+                                                >
+                                                    {getConsoleTheme(item.console).short}
+                                                </span>
+                                                <div>
+                                                    <div className="text-sm font-medium text-white">
+                                                        {CONSOLE_LABELS[item.console as keyof typeof CONSOLE_LABELS] || item.console.toUpperCase()}
+                                                    </div>
+                                                    <div className="text-[11px] text-[var(--muted)]">
+                                                        {item.quantity} player{item.quantity === 1 ? '' : 's'} · {formatDurationLabel(item.duration)}
+                                                    </div>
                                                 </div>
                                             </div>
                                             <div className="text-right">
@@ -1051,18 +1167,21 @@ export function Billing({
                                     ))}
                                 </div>
                             ) : (
-                                <div className={`${SUBPANEL_CLASS} rounded-2xl px-4 py-6 text-center text-sm text-[var(--muted)]`}>
+                                <div className={`${CONTROL_SURFACE_CLASS} rounded-2xl px-4 py-6 text-center text-sm text-[var(--muted)]`}>
                                     Select a console to start building the booking.
                                 </div>
                             )}
 
-                            <div className={`${SUBPANEL_CLASS} rounded-[22px] p-4`}>
-                                <div className="flex items-center justify-between text-sm">
-                                    <span className="text-[var(--muted)]">Calculated</span>
-                                    <span className="mono text-white">Rs.{calculatedTotal}</span>
+                            <div className={`${CONTROL_SURFACE_CLASS} rounded-[22px] p-4`}>
+                                <div className="flex items-center justify-between gap-3">
+                                    <div>
+                                        <div className="text-[10px] smallcaps text-[var(--dim)]">Final amount</div>
+                                        <p className="mt-1 text-sm text-[var(--muted)]">Override only if you want to charge a different value at the counter.</p>
+                                    </div>
+                                    <span className="mono rounded-full bg-white/[0.04] px-3 py-1 text-xs text-slate-300">Calc Rs.{calculatedTotal}</span>
                                 </div>
-                                <div className="mt-3 flex items-center justify-between gap-3">
-                                    <span className="text-sm text-[var(--muted)]">Final Amount</span>
+                                <div className="mt-4 flex items-center justify-between gap-3">
+                                    <span className="text-sm text-[var(--muted)]">Charge customer</span>
                                     <div className="flex items-center gap-2">
                                         <span className="mono text-sm text-white">Rs.</span>
                                         <input
@@ -1073,7 +1192,7 @@ export function Billing({
                                                 setManualAmount(value === calculatedTotal ? null : value);
                                             }}
                                             min={0}
-                                            className="mono w-28 rounded-xl border border-white/[0.07] bg-white/[0.04] px-3 py-2 text-right text-lg font-semibold text-white focus:border-cyan-400/40 focus:outline-none"
+                                            className="mono w-32 rounded-xl border border-white/[0.07] bg-white/[0.04] px-3 py-2 text-right text-lg font-semibold text-white focus:border-cyan-400/40 focus:outline-none"
                                         />
                                     </div>
                                 </div>
@@ -1091,23 +1210,34 @@ export function Billing({
                                 <button
                                     type="button"
                                     onClick={() => setPaymentMode('cash')}
-                                    className={`rounded-2xl border p-4 text-center transition-all duration-200 hover:-translate-y-0.5 ${paymentMode === 'cash' ? 'border-emerald-400/30 bg-emerald-500/12 text-emerald-200 shadow-[0_18px_36px_-22px_rgba(16,185,129,0.8)]' : 'glass-2 text-slate-300 hover:border-white/15'}`}
+                                    className={`rounded-2xl border p-4 text-left transition-all duration-200 hover:-translate-y-0.5 ${paymentMode === 'cash' ? 'border-emerald-400/30 bg-emerald-500/12 text-emerald-200 shadow-[0_18px_36px_-22px_rgba(16,185,129,0.8)]' : 'glass-2 text-slate-300 hover:border-white/15'}`}
                                 >
-                                    <Banknote className="mx-auto mb-2" size={20} />
+                                    <Banknote className="mb-3" size={20} />
                                     <div className="text-sm font-semibold">Cash</div>
+                                    <div className="mt-1 text-xs text-current/70">Collect directly at the counter</div>
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => setPaymentMode('upi')}
-                                    className={`rounded-2xl border p-4 text-center transition-all duration-200 hover:-translate-y-0.5 ${paymentMode === 'upi' ? 'border-cyan-400/30 bg-cyan-500/12 text-cyan-100 shadow-[0_18px_36px_-22px_rgba(34,211,238,0.8)]' : 'glass-2 text-slate-300 hover:border-white/15'}`}
+                                    className={`rounded-2xl border p-4 text-left transition-all duration-200 hover:-translate-y-0.5 ${paymentMode === 'upi' ? 'border-cyan-400/30 bg-cyan-500/12 text-cyan-100 shadow-[0_18px_36px_-22px_rgba(34,211,238,0.8)]' : 'glass-2 text-slate-300 hover:border-white/15'}`}
                                 >
-                                    <Smartphone className="mx-auto mb-2" size={20} />
+                                    <Smartphone className="mb-3" size={20} />
                                     <div className="text-sm font-semibold">UPI</div>
+                                    <div className="mt-1 text-xs text-current/70">Show the QR and collect instantly</div>
                                 </button>
                             </div>
 
                             {paymentMode === 'upi' && totalAmount > 0 && (
                                 <div className="space-y-3 rounded-[24px] border border-cyan-400/15 bg-[linear-gradient(180deg,rgba(6,182,212,0.08),rgba(6,182,212,0.03))] px-4 py-4 text-center shadow-[0_20px_40px_-28px_rgba(34,211,238,0.7)]">
+                                    <div className="flex items-center justify-between gap-3 text-left">
+                                        <div>
+                                            <div className="text-[10px] smallcaps text-cyan-200/70">UPI collect</div>
+                                            <div className="text-sm font-semibold text-white">Scan and receive Rs.{totalAmount}</div>
+                                        </div>
+                                        <span className="rounded-full border border-cyan-400/20 bg-cyan-500/10 px-2.5 py-1 text-[11px] text-cyan-100">
+                                            Tap QR
+                                        </span>
+                                    </div>
                                     <div
                                         className="inline-flex cursor-pointer rounded-2xl bg-[#d4d4d4] p-3 transition"
                                         onClick={() => setQrExpanded((value) => !value)}
@@ -1147,7 +1277,7 @@ export function Billing({
                     <div className="space-y-5">
                         {customerInfoCard}
 
-                        <Card className={`space-y-5 ${SECTION_CARD_CLASS}`}>
+                        <Card className={`space-y-6 ${SECTION_CARD_CLASS}`}>
                             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                 <div className="flex items-center gap-3">
                                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/12 text-violet-300">
@@ -1156,6 +1286,7 @@ export function Billing({
                                     <div>
                                         <div className="text-[10px] smallcaps text-[var(--dim)]">Membership Cart</div>
                                         <h3 className="text-base font-semibold text-white">Select plans</h3>
+                                        <p className="mt-1 text-sm text-[var(--muted)]">Pick the plan, adjust quantity, and keep checkout moving from one clean cart.</p>
                                     </div>
                                 </div>
                                 {membershipPlans.length > 0 && (
@@ -1171,7 +1302,17 @@ export function Billing({
                                     <p className="mt-1 text-xs text-slate-500">Add plans in the Memberships tab first.</p>
                                 </div>
                             ) : memItems.length === 0 ? (
-                                <div className="grid gap-3 sm:grid-cols-2">
+                                <div className={`${CONTROL_SURFACE_CLASS} p-3`}>
+                                    <div className="mb-3 flex items-center justify-between gap-3 px-1">
+                                        <div>
+                                            <div className="text-[10px] smallcaps text-[var(--dim)]">Available plans</div>
+                                            <div className="text-sm font-medium text-white">Start the checkout with the plan you want to sell</div>
+                                        </div>
+                                        <span className="chip border-transparent bg-white/[0.05] text-slate-300">
+                                            {membershipPlans.length} plan{membershipPlans.length === 1 ? '' : 's'}
+                                        </span>
+                                    </div>
+                                    <div className="grid gap-3 sm:grid-cols-2">
                                     {membershipPlans.slice(0, 4).map((plan) => (
                                         <button
                                             key={plan.id}
@@ -1193,6 +1334,7 @@ export function Billing({
                                             </div>
                                         </button>
                                     ))}
+                                    </div>
                                 </div>
                             ) : (
                                 <div className="space-y-3">
@@ -1200,7 +1342,7 @@ export function Billing({
                                         const plan = membershipPlans.find((entry) => entry.id === item.planId);
                                         const lineTotal = plan ? plan.price * item.quantity : 0;
                                         return (
-                                            <div key={item.id} className={`${SUBPANEL_CLASS} rounded-2xl p-4`}>
+                                            <div key={item.id} className="rounded-[26px] border border-white/[0.09] bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.02))] p-4 shadow-[0_26px_48px_-34px_rgba(0,0,0,0.95)]">
                                                 <div className="flex items-start justify-between gap-3">
                                                     <div className="min-w-0 flex-1">
                                                         <label className="mb-1.5 block text-[10px] smallcaps text-[var(--dim)]">Plan</label>
@@ -1240,8 +1382,10 @@ export function Billing({
                                                     </button>
                                                 </div>
 
-                                                <div className="mt-4 flex items-center justify-between gap-3">
-                                                    <div className="flex items-center gap-2">
+                                                <div className={`${CONTROL_SURFACE_CLASS} mt-4 flex items-center justify-between gap-3 px-3.5 py-3`}>
+                                                    <div>
+                                                        <div className="text-[10px] smallcaps text-[var(--dim)]">Quantity</div>
+                                                        <div className="mt-2 flex items-center gap-2">
                                                         <button
                                                             type="button"
                                                             onClick={() => updateMemItem(item.id, 'quantity', Math.max(1, item.quantity - 1))}
@@ -1257,8 +1401,10 @@ export function Billing({
                                                         >
                                                             +
                                                         </button>
+                                                        </div>
                                                     </div>
                                                     <div className="text-right">
+                                                        <div className="text-[10px] smallcaps text-[var(--dim)]">Line total</div>
                                                         <div className="mono text-base font-semibold text-white">Rs.{lineTotal}</div>
                                                         {plan && item.quantity > 1 && (
                                                             <div className="text-[11px] text-[var(--muted)]">Rs.{plan.price} each</div>
@@ -1285,33 +1431,68 @@ export function Billing({
                                 </div>
                             </div>
 
+                            <div className={`${MEMBERSHIP_SUMMARY_HERO_CLASS} p-5`}>
+                                <div className="flex items-start justify-between gap-4">
+                                    <div>
+                                        <div className="text-[10px] smallcaps text-violet-200/70">Due now</div>
+                                        <div className="mono mt-2 text-[2.15rem] font-semibold tracking-tight text-white">Rs.{memTotalAmount}</div>
+                                        <p className="mt-2 text-sm text-violet-100/70">
+                                            {memItems.length > 0
+                                                ? `${memItems.length} cart line${memItems.length === 1 ? '' : 's'} ready for checkout`
+                                                : 'Add a membership plan to begin checkout'}
+                                        </p>
+                                    </div>
+                                    <span className="rounded-full border border-violet-400/20 bg-violet-500/10 px-3 py-1.5 text-xs font-semibold text-violet-200">
+                                        {memPaymentMode.toUpperCase()}
+                                    </span>
+                                </div>
+                                <div className="mt-4 grid grid-cols-2 gap-3">
+                                    <div className={`${CONTROL_SURFACE_CLASS} px-3.5 py-3`}>
+                                        <div className="text-[10px] smallcaps text-[var(--dim)]">Calculated</div>
+                                        <div className="mono mt-2 text-lg font-semibold text-white">Rs.{memCalculatedTotal}</div>
+                                    </div>
+                                    <div className={`${CONTROL_SURFACE_CLASS} px-3.5 py-3`}>
+                                        <div className="text-[10px] smallcaps text-[var(--dim)]">Payment mode</div>
+                                        <div className="mt-2 text-lg font-semibold text-white">{memPaymentMode === 'cash' ? 'Cash' : 'UPI'}</div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div className="space-y-2">
                                 {memItems.length > 0 ? memItems.map((item) => {
                                     const plan = membershipPlans.find((entry) => entry.id === item.planId);
                                     if (!plan) return null;
                                     return (
-                                        <div key={item.id} className={`${SUBPANEL_CLASS} flex items-center justify-between rounded-2xl px-3.5 py-3`}>
-                                            <div>
-                                                <div className="text-sm font-medium text-white">{plan.name}</div>
-                                                <div className="text-[11px] text-[var(--muted)]">Qty {item.quantity}</div>
+                                        <div key={item.id} className={`${CONTROL_SURFACE_CLASS} flex items-center justify-between gap-3 px-3.5 py-3`}>
+                                            <div className="flex items-center gap-3">
+                                                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-500/14 text-sm font-bold text-violet-300">
+                                                    {plan.console_type?.slice(0, 2).toUpperCase() || 'PL'}
+                                                </span>
+                                                <div>
+                                                    <div className="text-sm font-medium text-white">{plan.name}</div>
+                                                    <div className="text-[11px] text-[var(--muted)]">Qty {item.quantity}</div>
+                                                </div>
                                             </div>
                                             <div className="mono text-sm font-semibold text-white">Rs.{plan.price * item.quantity}</div>
                                         </div>
                                     );
                                 }) : (
-                                    <div className={`${SUBPANEL_CLASS} rounded-2xl px-4 py-6 text-center text-sm text-[var(--muted)]`}>
+                                    <div className={`${CONTROL_SURFACE_CLASS} rounded-2xl px-4 py-6 text-center text-sm text-[var(--muted)]`}>
                                         Select a plan to start the checkout.
                                     </div>
                                 )}
                             </div>
 
-                            <div className={`${SUBPANEL_CLASS} rounded-[22px] p-4`}>
-                                <div className="flex items-center justify-between text-sm">
-                                    <span className="text-[var(--muted)]">Calculated</span>
-                                    <span className="mono text-white">Rs.{memCalculatedTotal}</span>
+                            <div className={`${CONTROL_SURFACE_CLASS} rounded-[22px] p-4`}>
+                                <div className="flex items-center justify-between gap-3">
+                                    <div>
+                                        <div className="text-[10px] smallcaps text-[var(--dim)]">Final amount</div>
+                                        <p className="mt-1 text-sm text-[var(--muted)]">Override only if you want to charge a different membership amount.</p>
+                                    </div>
+                                    <span className="mono rounded-full bg-white/[0.04] px-3 py-1 text-xs text-slate-300">Calc Rs.{memCalculatedTotal}</span>
                                 </div>
-                                <div className="mt-3 flex items-center justify-between gap-3">
-                                    <span className="text-sm text-[var(--muted)]">Final Amount</span>
+                                <div className="mt-4 flex items-center justify-between gap-3">
+                                    <span className="text-sm text-[var(--muted)]">Charge customer</span>
                                     <div className="flex items-center gap-2">
                                         <span className="mono text-sm text-white">Rs.</span>
                                         <input
@@ -1322,7 +1503,7 @@ export function Billing({
                                                 setMemManualAmount(value === memCalculatedTotal ? null : value);
                                             }}
                                             min={0}
-                                            className="mono w-28 rounded-xl border border-white/[0.07] bg-white/[0.04] px-3 py-2 text-right text-lg font-semibold text-white focus:border-violet-400/30 focus:outline-none"
+                                            className="mono w-32 rounded-xl border border-white/[0.07] bg-white/[0.04] px-3 py-2 text-right text-lg font-semibold text-white focus:border-violet-400/30 focus:outline-none"
                                         />
                                     </div>
                                 </div>
@@ -1340,23 +1521,34 @@ export function Billing({
                                 <button
                                     type="button"
                                     onClick={() => setMemPaymentMode('cash')}
-                                    className={`rounded-2xl border p-4 text-center transition-all duration-200 hover:-translate-y-0.5 ${memPaymentMode === 'cash' ? 'border-emerald-400/30 bg-emerald-500/12 text-emerald-200 shadow-[0_18px_36px_-22px_rgba(16,185,129,0.8)]' : 'glass-2 text-slate-300 hover:border-white/15'}`}
+                                    className={`rounded-2xl border p-4 text-left transition-all duration-200 hover:-translate-y-0.5 ${memPaymentMode === 'cash' ? 'border-emerald-400/30 bg-emerald-500/12 text-emerald-200 shadow-[0_18px_36px_-22px_rgba(16,185,129,0.8)]' : 'glass-2 text-slate-300 hover:border-white/15'}`}
                                 >
-                                    <Banknote className="mx-auto mb-2" size={20} />
+                                    <Banknote className="mb-3" size={20} />
                                     <div className="text-sm font-semibold">Cash</div>
+                                    <div className="mt-1 text-xs text-current/70">Collect directly at the counter</div>
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => setMemPaymentMode('upi')}
-                                    className={`rounded-2xl border p-4 text-center transition-all duration-200 hover:-translate-y-0.5 ${memPaymentMode === 'upi' ? 'border-violet-400/30 bg-violet-500/12 text-violet-100 shadow-[0_18px_36px_-22px_rgba(168,85,247,0.8)]' : 'glass-2 text-slate-300 hover:border-white/15'}`}
+                                    className={`rounded-2xl border p-4 text-left transition-all duration-200 hover:-translate-y-0.5 ${memPaymentMode === 'upi' ? 'border-violet-400/30 bg-violet-500/12 text-violet-100 shadow-[0_18px_36px_-22px_rgba(168,85,247,0.8)]' : 'glass-2 text-slate-300 hover:border-white/15'}`}
                                 >
-                                    <Smartphone className="mx-auto mb-2" size={20} />
+                                    <Smartphone className="mb-3" size={20} />
                                     <div className="text-sm font-semibold">UPI</div>
+                                    <div className="mt-1 text-xs text-current/70">Show the QR and collect instantly</div>
                                 </button>
                             </div>
 
                             {memPaymentMode === 'upi' && memTotalAmount > 0 && (
                                 <div className="space-y-3 rounded-[24px] border border-violet-400/15 bg-[linear-gradient(180deg,rgba(168,85,247,0.09),rgba(168,85,247,0.04))] px-4 py-4 text-center shadow-[0_20px_40px_-28px_rgba(168,85,247,0.7)]">
+                                    <div className="flex items-center justify-between gap-3 text-left">
+                                        <div>
+                                            <div className="text-[10px] smallcaps text-violet-200/70">UPI collect</div>
+                                            <div className="text-sm font-semibold text-white">Scan and receive Rs.{memTotalAmount}</div>
+                                        </div>
+                                        <span className="rounded-full border border-violet-400/20 bg-violet-500/10 px-2.5 py-1 text-[11px] text-violet-100">
+                                            Tap QR
+                                        </span>
+                                    </div>
                                     <div
                                         className="inline-flex cursor-pointer rounded-2xl bg-[#d4d4d4] p-3 transition"
                                         onClick={() => setQrExpanded((value) => !value)}
