@@ -444,7 +444,7 @@ See you soon! 🎯`;
                                     {/* Value Inputs */}
                                     <div className="p-5 rounded-xl bg-[#09090e] border border-white/[0.08]">
                                         {formData.discountType === 'percentage' ? (
-                                            <div className="grid grid-cols-2 gap-6">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                                 <div>
                                                     <label className="block text-xs uppercase tracking-wide text-slate-500 font-semibold mb-2">Discount Percentage</label>
                                                     <div className="relative">
@@ -798,7 +798,7 @@ See you soon! 🎯`;
                         <div className="lg:col-span-2 space-y-6">
                             <Card padding="lg">
                                 <h3 className="font-semibold text-white mb-4">Discount Details</h3>
-                                <div className="grid grid-cols-2 gap-6">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                     <div>
                                         <div className="text-xs text-slate-500 uppercase mb-1">Discount Type</div>
                                         <div className="text-white">
@@ -963,6 +963,7 @@ See you soon! 🎯`;
                                     <p>No eligible customers found</p>
                                 </div>
                             ) : (
+                                <div className="overflow-x-auto">
                                 <table className="w-full">
                                     <thead>
                                         <tr className="text-xs text-slate-500 uppercase border-b border-white/[0.08] bg-white/[0.03]">
@@ -1017,6 +1018,7 @@ See you soon! 🎯`;
                                         ))}
                                     </tbody>
                                 </table>
+                                </div>
                             )}
                         </Card>
                     </div>

@@ -393,6 +393,7 @@ export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateS
             </section>
 
             {/* Sub-tabs */}
+            <div className="overflow-x-auto -mx-1 px-1">
             <div className="flex gap-1 p-1 rounded-xl bg-white/[0.04] border border-white/[0.08] w-fit">
                 {([
                     { id: 'all', label: 'All Bookings' },
@@ -407,6 +408,7 @@ export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateS
                         {tab.label}
                     </button>
                 ))}
+            </div>
             </div>
 
             {/* ── MEMBERSHIP SUB-TAB ── */}

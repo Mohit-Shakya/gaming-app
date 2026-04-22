@@ -268,7 +268,7 @@ export function EditBookingModal({
               </div>
               <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Customer Information</span>
             </div>
-            <div className="p-4 grid grid-cols-2 gap-3">
+            <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
               {/* Name with autocomplete */}
               <div className="relative" ref={suggRef}>
                 <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1.5 flex items-center gap-1.5">
@@ -342,7 +342,7 @@ export function EditBookingModal({
               </div>
               <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Booking Details</span>
             </div>
-            <div className="p-4 grid grid-cols-2 gap-3">
+            <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Date *</label>
                 <input
@@ -426,7 +426,7 @@ export function EditBookingModal({
                       <X size={10} />
                     </button>
                   )}
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                     {/* Console */}
                     <div>
                       <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wide mb-1">Console</label>
@@ -552,7 +552,7 @@ export function EditBookingModal({
 
             <div className="p-4 flex flex-col gap-4">
               {/* Amount + Status row */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {/* Amount */}
                 <div>
                   <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
@@ -610,7 +610,7 @@ export function EditBookingModal({
         </div>
 
         {/* Footer */}
-        <div className="sticky bottom-0 flex items-center gap-2 px-6 py-4 bg-white/[0.03]/95 backdrop-blur border-t border-white/[0.06]">
+        <div className="sticky bottom-0 flex items-center gap-2 px-4 py-3 sm:px-6 sm:py-4 bg-white/[0.03]/95 backdrop-blur border-t border-white/[0.06]">
           {/* Delete */}
           <button
             onClick={onDelete}

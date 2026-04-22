@@ -342,27 +342,27 @@ export default function Inventory({ cafeId }: InventoryProps) {
           )}
 
           {/* ── Quick add bar ── */}
-          <div className="flex gap-2 items-center p-3 bg-white/[0.03] border border-white/[0.08] rounded-xl">
+          <div className="flex flex-wrap gap-2 items-center p-3 bg-white/[0.03] border border-white/[0.08] rounded-xl">
             <input
               type="text" placeholder="Item name" value={quickName}
               onChange={e => setQuickName(e.target.value)}
               onKeyDown={e => e.key === "Enter" && handleQuickAdd()}
-              className="flex-1 px-3 py-1.5 bg-white/[0.05] border border-white/[0.09] rounded-lg text-white placeholder-slate-600 text-sm focus:outline-none focus:border-cyan-500/60"
+              className="flex-1 min-w-[130px] px-3 py-2 bg-white/[0.05] border border-white/[0.09] rounded-lg text-white placeholder-slate-600 text-sm focus:outline-none focus:border-cyan-500/60"
             />
             <input
               type="number" placeholder="₹ Price" value={quickPrice}
               onChange={e => setQuickPrice(e.target.value)}
-              className="w-24 px-3 py-1.5 bg-white/[0.05] border border-white/[0.09] rounded-lg text-white placeholder-slate-600 text-sm focus:outline-none focus:border-cyan-500/60"
+              className="w-24 px-3 py-2 bg-white/[0.05] border border-white/[0.09] rounded-lg text-white placeholder-slate-600 text-sm focus:outline-none focus:border-cyan-500/60"
             />
             <input
               type="number" placeholder="Qty" value={quickQty}
               onChange={e => setQuickQty(e.target.value)}
-              className="w-20 px-3 py-1.5 bg-white/[0.05] border border-white/[0.09] rounded-lg text-white placeholder-slate-600 text-sm focus:outline-none focus:border-cyan-500/60"
+              className="w-20 px-3 py-2 bg-white/[0.05] border border-white/[0.09] rounded-lg text-white placeholder-slate-600 text-sm focus:outline-none focus:border-cyan-500/60"
             />
             <button
               onClick={handleQuickAdd}
               disabled={!quickName || !quickPrice || quickSaving}
-              className="px-4 py-1.5 bg-cyan-600 hover:bg-cyan-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5"
+              className="px-4 py-2 bg-cyan-600 hover:bg-cyan-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg text-sm font-semibold transition-colors flex items-center gap-1.5"
             >
               {quickSaving ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
               Add
