@@ -71,16 +71,16 @@ export function DashboardBookingsTable({ bookings, onViewAll, onEdit, onPaymentM
     return (
         <div className="glass rounded-2xl overflow-hidden">
             {/* Header */}
-            <div className="px-5 py-4 border-b border-white/[0.05] flex items-center justify-between">
+            <div className="flex items-center justify-between border-b border-white/[0.05] px-4 py-3 sm:px-5 sm:py-4">
                 <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'rgba(6,182,212,0.12)', color: '#06b6d4' }}>
-                        <CalendarX size={14} />
+                    <div className="flex h-6 w-6 items-center justify-center rounded-lg sm:h-7 sm:w-7" style={{ background: 'rgba(6,182,212,0.12)', color: '#06b6d4' }}>
+                        <CalendarX size={13} />
                     </div>
-                    <h2 className="text-sm text-slate-300" style={{ fontVariant: 'all-small-caps', letterSpacing: '0.12em', fontWeight: 600 }}>Today&apos;s Bookings</h2>
+                    <h2 className="text-[13px] text-slate-300 sm:text-sm" style={{ fontVariant: 'all-small-caps', letterSpacing: '0.12em', fontWeight: 600 }}>Today&apos;s Bookings</h2>
                     <span className="mono text-[11px] text-slate-500">({bookings.filter(b => !b.deleted_at && b.status !== 'cancelled' && isSessionBooking(b)).length})</span>
                 </div>
                 {onViewAll && (
-                    <button onClick={onViewAll} className="text-[11px] flex items-center gap-1 transition-colors hover:opacity-80" style={{ color: '#06b6d4' }}>
+                    <button onClick={onViewAll} className="flex items-center gap-1 text-[11px] transition-colors hover:opacity-80" style={{ color: '#06b6d4' }}>
                         View all <ArrowRight size={11} />
                     </button>
                 )}
@@ -111,51 +111,51 @@ export function DashboardBookingsTable({ bookings, onViewAll, onEdit, onPaymentM
                     const whatsappUrl = getWhatsAppUrl(b);
 
                     return (
-                        <div key={b.id} className="px-4 py-4 space-y-3">
+                        <div key={b.id} className="space-y-2.5 px-3 py-3">
                             <div className="flex items-start justify-between gap-3">
                                 <div className="min-w-0">
-                                    <p className="text-sm font-semibold text-white truncate">{name || '—'}</p>
-                                    {phone && <p className="mono mt-1 text-[11px] text-slate-500">+91 {phone.replace(/^\+?91/, '')}</p>}
+                                    <p className="truncate text-[15px] font-semibold text-white">{name || '—'}</p>
+                                    {phone && <p className="mono mt-0.5 text-[10px] text-slate-500">+91 {phone.replace(/^\+?91/, '')}</p>}
                                 </div>
-                                <span className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px]"
+                                <span className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[10px]"
                                     style={{ background: status.bg, color: status.fg }}>
                                     <span className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: status.dot }} />
                                     {status.label}
                                 </span>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-2">
-                                <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-2.5">
-                                    <div className="text-[10px] uppercase tracking-[0.12em] text-slate-500">Station</div>
+                            <div className="flex items-center justify-between gap-3 rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-2.5">
+                                <div className="min-w-0 flex-1">
+                                    <div className="text-[9px] uppercase tracking-[0.12em] text-slate-500">Station</div>
                                     <div className="mt-1 flex items-center gap-2">
-                                        <span className="flex h-6 w-6 items-center justify-center rounded-md text-[11px]"
+                                        <span className="flex h-5 w-5 items-center justify-center rounded-md text-[10px]"
                                             style={{ background: `${consoleColor}22`, color: consoleColor }}>
                                             {consoleIcon}
                                         </span>
-                                        <span className="mono text-[12px] font-semibold text-white truncate">{stationLabel}</span>
+                                        <span className="mono truncate text-[11px] font-semibold text-white">{stationLabel}</span>
                                     </div>
-                                    {duration && <p className="mono mt-1 text-[10px] text-slate-500">{duration}m</p>}
+                                    {duration && <p className="mono mt-0.5 text-[10px] text-slate-500">{duration}m</p>}
                                 </div>
-                                <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-2.5">
-                                    <div className="text-[10px] uppercase tracking-[0.12em] text-slate-500">Amount</div>
-                                    <div className="mono mt-1 text-[15px] font-semibold text-white">₹{(b.total_amount || 0).toLocaleString('en-IN')}</div>
-                                    <p className="mt-1 text-[10px] text-slate-500">{b.start_time || '—'}</p>
+                                <div className="shrink-0 text-right">
+                                    <div className="text-[9px] uppercase tracking-[0.12em] text-slate-500">Amount</div>
+                                    <div className="mono mt-1 text-[14px] font-semibold text-white">₹{(b.total_amount || 0).toLocaleString('en-IN')}</div>
+                                    <p className="mt-0.5 text-[10px] text-slate-500">{b.start_time || '—'}</p>
                                 </div>
                             </div>
 
                             {(onEdit || onPaymentModeChange || whatsappUrl) && (
-                                <div className="flex flex-wrap items-center gap-2">
+                                <div className="flex flex-wrap items-center gap-1.5">
                                     {onPaymentModeChange && (
-                                        <div className="flex items-center rounded-xl border border-white/[0.07] bg-white/[0.04] p-1">
+                                        <div className="flex items-center rounded-lg border border-white/[0.07] bg-white/[0.04] p-1">
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); onPaymentModeChange(b.id, 'cash'); }}
-                                                className={`rounded-md px-2.5 py-1 text-[10px] font-bold uppercase transition-all ${!isDigital ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-slate-400 hover:text-white hover:bg-white/[0.05]'}`}
+                                                className={`rounded-md px-2 py-1 text-[10px] font-bold uppercase transition-all ${!isDigital ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' : 'text-slate-400 hover:text-white hover:bg-white/[0.05]'}`}
                                             >
                                                 Cash
                                             </button>
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); onPaymentModeChange(b.id, 'upi'); }}
-                                                className={`rounded-md px-2.5 py-1 text-[10px] font-bold uppercase transition-all ${isDigital ? 'bg-cyan-500 text-white shadow-lg shadow-cyan-500/20' : 'text-slate-400 hover:text-white hover:bg-white/[0.05]'}`}
+                                                className={`rounded-md px-2 py-1 text-[10px] font-bold uppercase transition-all ${isDigital ? 'bg-cyan-500 text-white shadow-lg shadow-cyan-500/20' : 'text-slate-400 hover:text-white hover:bg-white/[0.05]'}`}
                                             >
                                                 UPI
                                             </button>
@@ -164,7 +164,7 @@ export function DashboardBookingsTable({ bookings, onViewAll, onEdit, onPaymentM
                                     {onEdit && (
                                         <button
                                             onClick={(e) => { e.stopPropagation(); onEdit(b); }}
-                                            className="inline-flex items-center gap-1 rounded-xl border border-white/[0.07] bg-white/[0.04] px-3 py-2 text-[11px] font-semibold text-slate-300 transition-colors hover:bg-white/[0.06] hover:text-white"
+                                            className="inline-flex items-center gap-1 rounded-lg border border-white/[0.07] bg-white/[0.04] px-2.5 py-1.5 text-[10px] font-semibold text-slate-300 transition-colors hover:bg-white/[0.06] hover:text-white"
                                         >
                                             <Pencil size={11} />
                                             Edit
@@ -176,7 +176,7 @@ export function DashboardBookingsTable({ bookings, onViewAll, onEdit, onPaymentM
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             onClick={(e) => e.stopPropagation()}
-                                            className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-[#25D366]/15 text-[#25D366] transition-colors hover:bg-[#25D366]/25"
+                                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[#25D366]/15 text-[#25D366] transition-colors hover:bg-[#25D366]/25"
                                             title="Send ticket on WhatsApp"
                                         >
                                             <WhatsAppIcon />

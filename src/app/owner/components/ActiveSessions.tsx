@@ -121,6 +121,7 @@ export function ActiveSessions({
     );
 
     const activeMemberships = subscriptions.filter((sub) => activeTimers.has(sub.id));
+    const actionButtonCount = Number(Boolean(onAddTime)) + Number(Boolean(onAddItems)) + Number(Boolean(onEndCollect));
 
     const flattenedBookings = activeBookings.flatMap((booking) => {
         const items = booking.booking_items || [];
@@ -199,7 +200,7 @@ export function ActiveSessions({
     }
 
     return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3 2xl:grid-cols-4">
             {/* Active Membership Sessions */}
             {activeMemberships.map((sub: any) => {
                 const planDetails = sub.membership_plans || {};
@@ -212,21 +213,21 @@ export function ActiveSessions({
                 const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 
                 return (
-                    <div key={sub.id} className="flex flex-col justify-between bg-emerald-500/5 border-2 border-emerald-500/40 rounded-2xl p-5 min-h-[160px]">
+                    <div key={sub.id} className="flex flex-col justify-between rounded-xl border-2 border-emerald-500/40 bg-emerald-500/5 p-4 min-h-[136px] sm:min-h-[160px] sm:rounded-2xl sm:p-5">
                         <div>
-                            <div className="flex justify-between items-start mb-3">
+                            <div className="mb-2.5 flex items-start justify-between sm:mb-3">
                                 <div>
                                     <p className="text-xs text-[#6b7280] mb-1 font-semibold uppercase tracking-wide">{stationName}</p>
-                                    <p className="text-base font-bold text-white mb-0">{sub.customer_name}</p>
+                                    <p className="mb-0 text-[15px] font-bold text-white sm:text-base">{sub.customer_name}</p>
                                     <p className="text-xs text-[#6b7280] mt-0.5">{planDetails.name || 'Membership'}</p>
                                 </div>
                                 <span className="px-2.5 py-1 bg-emerald-500/20 text-emerald-500 rounded-xl text-xs font-semibold whitespace-nowrap">MEMBERSHIP</span>
                             </div>
                         </div>
                         <div>
-                            <div className="mb-3">
+                            <div className="mb-2 sm:mb-3">
                                 <p className="text-xs text-[#6b7280] mb-1">Session Time</p>
-                                <p className="text-2xl font-bold text-emerald-500 m-0 font-mono">{timeString}</p>
+                                <p className="m-0 font-mono text-xl font-bold text-emerald-500 sm:text-2xl">{timeString}</p>
                             </div>
                         </div>
                     </div>
@@ -289,9 +290,9 @@ export function ActiveSessions({
                         style={{ borderLeft: `2px solid ${ringStroke}`, boxShadow: `0 0 0 1px ${ringStroke}22, 0 0 28px -8px ${ringStroke}44` }}
                     >
                         {/* Card header */}
-                        <div className="flex items-center justify-between px-4 pt-4 pb-2">
-                            <div className="flex items-center gap-2.5">
-                                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-base" style={{ background: `${consoleBaseColor}22`, color: consoleBaseColor }}>
+                        <div className="flex items-center justify-between px-3 pt-3 pb-1.5 sm:px-4 sm:pt-4 sm:pb-2">
+                            <div className="flex items-center gap-2 sm:gap-2.5">
+                                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-sm sm:h-8 sm:w-8 sm:text-base" style={{ background: `${consoleBaseColor}22`, color: consoleBaseColor }}>
                                     {getConsoleIcon(consoleInfo?.console || '')}
                                 </div>
                                 <div>
@@ -299,15 +300,15 @@ export function ActiveSessions({
                                     <p className="text-[10px] text-slate-500">{getConsoleLabel(consoleInfo?.console || '')}</p>
                                 </div>
                             </div>
-                            <span className={`text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full ${badgeBg} ${badgeText}`}>
+                            <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide sm:px-2.5 sm:py-1 sm:text-[10px] ${badgeBg} ${badgeText}`}>
                                 {isCritical ? 'Urgent' : isWarning ? 'Ending' : 'Live'}
                             </span>
                         </div>
 
                         {/* Middle: ring + customer info */}
-                        <div className="flex items-center gap-4 px-4 py-3">
+                        <div className="flex items-center gap-3 px-3 py-2 sm:gap-4 sm:px-4 sm:py-3">
                             {/* Circular ring */}
-                            <div className="relative w-[76px] h-[76px] shrink-0 flex items-center justify-center">
+                            <div className="relative flex h-[60px] w-[60px] shrink-0 items-center justify-center sm:h-[76px] sm:w-[76px]">
                                 <svg className="absolute inset-0 w-full h-full" viewBox="0 0 80 80" style={{ transform: 'rotate(-90deg)' }}>
                                     <circle cx="40" cy="40" r={ringR} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="5" />
                                     <circle
@@ -320,19 +321,19 @@ export function ActiveSessions({
                                     />
                                 </svg>
                                 <div className="text-center z-10">
-                                    <p className="mono text-xl font-bold leading-none" style={{ color: ringStroke }}>{timeRemaining}</p>
-                                    <p className="text-[9px] text-slate-500 mt-0.5 uppercase tracking-wide">min</p>
+                                    <p className="mono text-lg font-bold leading-none sm:text-xl" style={{ color: ringStroke }}>{timeRemaining}</p>
+                                    <p className="mt-0.5 text-[8px] uppercase tracking-wide text-slate-500 sm:text-[9px]">min</p>
                                 </div>
                             </div>
 
                             {/* Customer info */}
                             <div className="flex-1 min-w-0">
-                                <p className="text-[10px] text-slate-500 mb-0.5" style={{ fontVariant: 'all-small-caps', letterSpacing: '0.12em' }}>Customer</p>
-                                <p className="text-sm font-bold text-white truncate">{customerName}</p>
-                                {endTime && <p className="text-[11px] text-slate-500 mt-1">ends {endTime}</p>}
-                                <div className="flex items-center gap-1.5 mt-1.5">
+                                <p className="mb-0.5 text-[9px] text-slate-500 sm:text-[10px]" style={{ fontVariant: 'all-small-caps', letterSpacing: '0.12em' }}>Customer</p>
+                                <p className="truncate text-[15px] font-bold text-white sm:text-sm">{customerName}</p>
+                                {endTime && <p className="mt-0.5 text-[10px] text-slate-500 sm:mt-1 sm:text-[11px]">ends {endTime}</p>}
+                                <div className="mt-1 flex items-center gap-1.5 sm:mt-1.5">
                                     {booking.payment_mode && (
-                                        <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/[0.06] text-[9px] font-semibold text-slate-400 uppercase">
+                                        <span className="flex items-center gap-1 rounded bg-white/[0.06] px-1.5 py-0.5 text-[9px] font-semibold uppercase text-slate-400">
                                             {booking.payment_mode.toLowerCase() === 'cash' ? <Banknote size={9} /> : <Smartphone size={9} />}
                                             {booking.payment_mode}
                                         </span>
@@ -342,7 +343,7 @@ export function ActiveSessions({
                                             href={`https://wa.me/${(isWalkIn ? booking.customer_phone : booking.user_phone)?.replace(/\D/g, '')}`}
                                             target="_blank" rel="noopener noreferrer"
                                             onClick={(e) => e.stopPropagation()}
-                                            className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-green-500/10 text-[9px] font-semibold text-green-400 hover:bg-green-500/20 transition-colors"
+                                            className="flex items-center gap-1 rounded bg-green-500/10 px-1.5 py-0.5 text-[9px] font-semibold text-green-400 transition-colors hover:bg-green-500/20"
                                         >
                                             <MessageCircle size={9} />WA
                                         </a>
@@ -380,32 +381,36 @@ export function ActiveSessions({
 
                         {/* Action buttons */}
                         {!isShowingEndCollect && (
-                            <div className="mt-3 grid grid-cols-2 gap-1.5 px-4 pb-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+                            <div className={`mt-2 grid ${actionButtonCount === 3 ? 'grid-cols-3' : 'grid-cols-2'} gap-1.5 px-3 pb-3 sm:mt-3 sm:px-4 sm:pb-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]`}>
                                 {onAddTime && (
                                     <button
                                         onClick={(e) => { e.stopPropagation(); onAddTime(booking); }}
-                                        className="flex items-center justify-center gap-1.5 py-1.5 text-[11px] font-semibold text-slate-300 hover:text-white hover:border-cyan-500/30 hover:bg-cyan-500/8 transition-colors rounded-lg"
+                                        className="flex items-center justify-center gap-1 py-1.5 text-[10px] font-semibold text-slate-300 transition-colors hover:border-cyan-500/30 hover:bg-cyan-500/8 hover:text-white sm:gap-1.5 sm:text-[11px] rounded-lg"
                                         style={{ border: '1px solid rgba(255,255,255,0.07)' }}
                                     >
-                                        <Clock3 className="w-3 h-3" /> Add time
+                                        <Clock3 className="h-3 w-3" />
+                                        <span className="sm:hidden">Time</span>
+                                        <span className="hidden sm:inline">Add time</span>
                                     </button>
                                 )}
                                 {onAddItems && (
                                     <button
                                         onClick={(e) => { e.stopPropagation(); onAddItems(bookingId, customerName); }}
-                                        className="flex items-center justify-center gap-1.5 py-1.5 text-[11px] font-semibold text-slate-300 hover:text-white hover:border-amber-500/30 hover:bg-amber-500/8 transition-colors rounded-lg"
+                                        className="flex items-center justify-center gap-1 py-1.5 text-[10px] font-semibold text-slate-300 transition-colors hover:border-amber-500/30 hover:bg-amber-500/8 hover:text-white sm:gap-1.5 sm:text-[11px] rounded-lg"
                                         style={{ border: '1px solid rgba(255,255,255,0.07)' }}
                                     >
-                                        <UtensilsCrossed className="w-3 h-3" /> Add item
+                                        <UtensilsCrossed className="h-3 w-3" />
+                                        <span className="sm:hidden">Item</span>
+                                        <span className="hidden sm:inline">Add item</span>
                                     </button>
                                 )}
                                 {onEndCollect && (
                                     <button
                                         onClick={(e) => { e.stopPropagation(); setEndCollectId(booking.id); setEndCollectPayment('cash'); }}
-                                        className="col-span-2 flex items-center justify-center gap-1 px-2.5 py-1.5 text-[11px] font-semibold rounded-lg transition-colors hover:border-white/20 sm:col-span-1"
+                                        className={`${actionButtonCount === 1 ? 'col-span-full' : ''} flex items-center justify-center gap-1 px-2 py-1.5 text-[10px] font-semibold rounded-lg transition-colors hover:border-white/20 sm:text-[11px]`}
                                         style={{ border: '1px solid rgba(255,255,255,0.07)', color: '#fca5a5' }}
                                     >
-                                        <Square className="w-3 h-3" /> End
+                                        <Square className="h-3 w-3" /> End
                                     </button>
                                 )}
                             </div>
