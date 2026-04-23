@@ -7,7 +7,7 @@ import { getLocalDateString } from '../utils';
 function Sparkline({ data, compact = false }: { data: number[]; compact?: boolean }) {
   if (data.length < 2) return null;
   const W = 320;
-  const H = compact ? 42 : 52;
+  const H = compact ? 34 : 52;
   const P = 4;
   const min = Math.min(...data);
   const max = Math.max(...data);
@@ -18,7 +18,7 @@ function Sparkline({ data, compact = false }: { data: number[]; compact?: boolea
   const area = `${P},${H - P} ${polyline} ${P + (data.length - 1) * xStep},${H - P}`;
   const [lx, ly] = pts[pts.length - 1];
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: compact ? 42 : 52 }} preserveAspectRatio="none">
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: compact ? 34 : 52 }} preserveAspectRatio="none">
       <defs>
         <linearGradient id="spkGrad" x1="0" x2="0" y1="0" y2="1">
           <stop offset="0%" stopColor="#06b6d4" stopOpacity="0.3" />
@@ -237,9 +237,24 @@ export function DashboardStats({ bookings, subscriptions, activeTimers, loadingD
   const averageCheckout = totalCheckouts > 0 ? Math.round(totalRevenue / totalCheckouts) : 0;
   const liveIndicatorColor = activeNow > 0 ? '#10b981' : '#475569';
   const sessionChange = todaySessions - yesterdaySessions;
-  const compactTileClass = isMobile ? 'p-3.5' : 'p-4';
-  const compactTileHeightClass = isMobile ? 'min-h-[156px]' : 'min-h-[190px]';
-  const compactRevenuePadding = isMobile ? 'p-4' : 'p-5';
+  const compactTileClass = isMobile ? 'p-3' : 'p-4';
+  const compactTileHeightClass = isMobile ? '' : 'min-h-[190px]';
+  const compactRevenuePadding = isMobile ? 'p-3.5' : 'p-5';
+  const paymentSummaryText = paymentSplitTotal > 0
+    ? isMobile
+      ? `${cashPct}% cash · ${totalCheckouts} checks`
+      : `${cashPct}% cash across ${totalCheckouts} checkout${totalCheckouts === 1 ? '' : 's'}`
+    : 'No payments recorded today';
+  const activeSummaryText = activeNow > 0
+    ? isMobile
+      ? `${activeBookingsCount} gaming · ${activeSubscriptionsCount} mem`
+      : `${activeBookingsCount} gaming · ${activeSubscriptionsCount} memberships`
+    : 'No active sessions right now';
+  const sessionsSummaryText = totalCheckouts > 0
+    ? isMobile
+      ? `Avg ₹${averageCheckout.toLocaleString('en-IN')}`
+      : `Avg checkout ₹${averageCheckout.toLocaleString('en-IN')}`
+    : 'No completed checkouts today';
 
   if (loadingData) {
     return (
@@ -255,7 +270,7 @@ export function DashboardStats({ bookings, subscriptions, activeTimers, loadingD
   return (
     <div>
       {/* Main grid: revenue card (5/12) + 3 KPI tiles side-by-side (7/12) */}
-      <div className={`grid grid-cols-12 ${isMobile ? 'gap-3' : 'gap-4'}`}>
+      <div className={`grid grid-cols-12 ${isMobile ? 'gap-2.5' : 'gap-4'}`}>
 
         {/* ── BIG REVENUE CARD ── */}
         <div className={`col-span-12 lg:col-span-5 glass rounded-2xl ${compactRevenuePadding} relative overflow-hidden`} style={{ position: 'relative' }}>
@@ -267,7 +282,7 @@ export function DashboardStats({ bookings, subscriptions, activeTimers, loadingD
             style={{ backgroundImage: 'linear-gradient(to bottom right, rgba(255,255,255,0.03), transparent 30%)', mixBlendMode: 'overlay' }} />
 
           {/* Top row */}
-          <div className="relative flex items-start justify-between gap-3">
+          <div className="relative flex items-start justify-between gap-2">
             <div className="text-[10px] text-slate-500 font-semibold" style={{ fontVariant: 'all-small-caps', letterSpacing: '0.12em' }}>
               {period === 'today' ? 'Today · Revenue' : '7 Days · Revenue'}
             </div>
@@ -286,53 +301,85 @@ export function DashboardStats({ bookings, subscriptions, activeTimers, loadingD
           </div>
 
           {/* Revenue amount + sessions */}
-          <div className={`relative flex items-baseline gap-2.5 ${isMobile ? 'mt-1.5' : 'mt-2'}`}>
-            <p className="mono font-bold text-white leading-none tracking-tight" style={{ fontSize: isMobile ? 32 : 44 }}>
+          <div className={`relative flex items-baseline gap-2 ${isMobile ? 'mt-1' : 'mt-2'}`}>
+            <p className="mono font-bold text-white leading-none tracking-tight" style={{ fontSize: isMobile ? 28 : 44 }}>
               {revenueVisible ? `₹${displayRevenue.toLocaleString('en-IN')}` : '₹ ••••••'}
             </p>
-            <span className="text-[11px] text-slate-500">{displaySessions} sessions</span>
+            <span className="text-[10px] text-slate-500">{displaySessions} sessions</span>
           </div>
 
           {/* Sparkline */}
-          {revenueVisible && <div className={`${isMobile ? 'mt-3' : 'mt-4'} relative`}><Sparkline data={sparklineData} compact={isMobile} /></div>}
+          {revenueVisible && <div className={`${isMobile ? 'mt-2' : 'mt-4'} relative`}><Sparkline data={sparklineData} compact={isMobile} /></div>}
 
           {/* Split bar */}
           {revenueVisible && totalForSplit > 0 && (
-            <div className={isMobile ? 'mt-3' : 'mt-4'}>
-              <div className="h-2 rounded-full overflow-hidden flex" style={{ background: 'rgba(255,255,255,0.04)' }}>
+            <div className={isMobile ? 'mt-2' : 'mt-4'}>
+              <div className={`${isMobile ? 'h-1.5' : 'h-2'} rounded-full overflow-hidden flex`} style={{ background: 'rgba(255,255,255,0.04)' }}>
                 {gamingPct > 0 && <div style={{ width: `${gamingPct}%`, background: 'linear-gradient(90deg,#06b6d4,#22d3ee)' }} />}
                 {snacksPct > 0 && <div style={{ width: `${snacksPct}%`, background: 'linear-gradient(90deg,#f59e0b,#fbbf24)' }} />}
                 {memberPct > 0 && <div style={{ width: `${memberPct}%`, background: 'linear-gradient(90deg,#8b5cf6,#a78bfa)' }} />}
               </div>
-              <div className={`grid grid-cols-2 text-sm ${isMobile ? 'mt-2.5 gap-2' : 'mt-3 gap-3'}`}>
-                {gamingRevenue > 0 && (
-                  <div className="flex items-center gap-2">
-                    <span className={`w-2 ${isMobile ? 'h-7' : 'h-8'} rounded shrink-0`} style={{ background: '#06b6d4' }} />
-                    <div>
-                      <div className="text-[10px] text-slate-500" style={{ fontVariant: 'all-small-caps', letterSpacing: '0.1em' }}>Gaming · {gamingPct}%</div>
-                      <p className={`mono font-bold text-white ${isMobile ? 'text-[15px]' : 'text-base'}`}>₹{gamingRevenue.toLocaleString('en-IN')}</p>
+              {isMobile ? (
+                <div className="mt-2 flex items-center gap-3 overflow-x-auto no-scrollbar">
+                  {gamingRevenue > 0 && (
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className="h-6 w-1.5 rounded shrink-0" style={{ background: '#06b6d4' }} />
+                      <div>
+                        <div className="text-[9px] text-slate-500" style={{ fontVariant: 'all-small-caps', letterSpacing: '0.1em' }}>Gaming</div>
+                        <p className="mono text-[14px] font-bold text-white">₹{gamingRevenue.toLocaleString('en-IN')}</p>
+                      </div>
                     </div>
-                  </div>
-                )}
-                {snacksRevenue > 0 && (
-                  <div className="flex items-center gap-2">
-                    <span className={`w-2 ${isMobile ? 'h-7' : 'h-8'} rounded shrink-0`} style={{ background: '#f59e0b' }} />
-                    <div>
-                      <div className="text-[10px] text-slate-500" style={{ fontVariant: 'all-small-caps', letterSpacing: '0.1em' }}>Snacks · {snacksPct}%</div>
-                      <p className={`mono font-bold text-white ${isMobile ? 'text-[15px]' : 'text-base'}`}>₹{snacksRevenue.toLocaleString('en-IN')}</p>
+                  )}
+                  {snacksRevenue > 0 && (
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className="h-6 w-1.5 rounded shrink-0" style={{ background: '#f59e0b' }} />
+                      <div>
+                        <div className="text-[9px] text-slate-500" style={{ fontVariant: 'all-small-caps', letterSpacing: '0.1em' }}>Snacks</div>
+                        <p className="mono text-[14px] font-bold text-white">₹{snacksRevenue.toLocaleString('en-IN')}</p>
+                      </div>
                     </div>
-                  </div>
-                )}
-                {membershipRevenue > 0 && (
-                  <div className="flex items-center gap-2">
-                    <span className={`w-2 ${isMobile ? 'h-7' : 'h-8'} rounded shrink-0`} style={{ background: '#8b5cf6' }} />
-                    <div>
-                      <div className="text-[10px] text-slate-500" style={{ fontVariant: 'all-small-caps', letterSpacing: '0.1em' }}>Members · {memberPct}%</div>
-                      <p className={`mono font-bold text-white ${isMobile ? 'text-[15px]' : 'text-base'}`}>₹{membershipRevenue.toLocaleString('en-IN')}</p>
+                  )}
+                  {membershipRevenue > 0 && (
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className="h-6 w-1.5 rounded shrink-0" style={{ background: '#8b5cf6' }} />
+                      <div>
+                        <div className="text-[9px] text-slate-500" style={{ fontVariant: 'all-small-caps', letterSpacing: '0.1em' }}>Members</div>
+                        <p className="mono text-[14px] font-bold text-white">₹{membershipRevenue.toLocaleString('en-IN')}</p>
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
+              ) : (
+                <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
+                  {gamingRevenue > 0 && (
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-8 rounded shrink-0" style={{ background: '#06b6d4' }} />
+                      <div>
+                        <div className="text-[10px] text-slate-500" style={{ fontVariant: 'all-small-caps', letterSpacing: '0.1em' }}>Gaming · {gamingPct}%</div>
+                        <p className="mono font-bold text-white text-base">₹{gamingRevenue.toLocaleString('en-IN')}</p>
+                      </div>
+                    </div>
+                  )}
+                  {snacksRevenue > 0 && (
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-8 rounded shrink-0" style={{ background: '#f59e0b' }} />
+                      <div>
+                        <div className="text-[10px] text-slate-500" style={{ fontVariant: 'all-small-caps', letterSpacing: '0.1em' }}>Snacks · {snacksPct}%</div>
+                        <p className="mono font-bold text-white text-base">₹{snacksRevenue.toLocaleString('en-IN')}</p>
+                      </div>
+                    </div>
+                  )}
+                  {membershipRevenue > 0 && (
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-8 rounded shrink-0" style={{ background: '#8b5cf6' }} />
+                      <div>
+                        <div className="text-[10px] text-slate-500" style={{ fontVariant: 'all-small-caps', letterSpacing: '0.1em' }}>Members · {memberPct}%</div>
+                        <p className="mono font-bold text-white text-base">₹{membershipRevenue.toLocaleString('en-IN')}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -353,37 +400,33 @@ export function DashboardStats({ bookings, subscriptions, activeTimers, loadingD
                 </div>
                 <span className="text-[10px] text-slate-600" style={{ fontVariant: 'all-small-caps', letterSpacing: '0.1em' }}>Today</span>
               </div>
-              <div className={`${isMobile ? 'mt-3' : 'mt-4'} text-[10px] text-slate-500`} style={{ fontVariant: 'all-small-caps', letterSpacing: '0.12em' }}>Payment split</div>
+              <div className={`${isMobile ? 'mt-2.5' : 'mt-4'} text-[10px] text-slate-500`} style={{ fontVariant: 'all-small-caps', letterSpacing: '0.12em' }}>Payment split</div>
               <div className="mt-1 flex items-baseline gap-1.5">
-                <span className="mono font-bold text-white" style={{ fontSize: isMobile ? 22 : 26 }}>{upiPct}%</span>
-                <span className="text-[11px] text-slate-500">digital</span>
+                <span className="mono font-bold text-white" style={{ fontSize: isMobile ? 20 : 26 }}>{upiPct}%</span>
+                <span className="text-[10px] text-slate-500">digital</span>
               </div>
-              <div className="mt-2 text-[11px] text-slate-500">
-                {paymentSplitTotal > 0
-                  ? `${cashPct}% cash across ${totalCheckouts} checkout${totalCheckouts === 1 ? '' : 's'}`
-                  : 'No payments recorded today'}
-              </div>
+              <div className="mt-1.5 text-[10px] text-slate-500">{paymentSummaryText}</div>
               {paymentSplitTotal > 0 && (
                 <>
-                  <div className={`${isMobile ? 'mt-3' : 'mt-4'} h-1.5 rounded-full overflow-hidden flex`} style={{ background: 'rgba(255,255,255,0.04)' }}>
+                  <div className={`${isMobile ? 'mt-2.5' : 'mt-4'} h-1.5 rounded-full overflow-hidden flex`} style={{ background: 'rgba(255,255,255,0.04)' }}>
                     {upiTotal > 0 && <div style={{ width: `${upiPct}%`, background: '#06b6d4' }} />}
                     {cashTotal > 0 && <div style={{ width: `${cashPct}%`, background: '#10b981' }} />}
                   </div>
                   {isMobile ? (
-                    <div className="mt-auto grid grid-cols-2 gap-2 pt-3 text-[10px]">
-                      <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] px-2.5 py-2">
+                    <div className="mt-auto grid grid-cols-2 gap-1.5 pt-2.5 text-[10px]">
+                      <div className="rounded-lg border border-white/[0.06] bg-white/[0.03] px-2 py-1.5">
                         <div className="flex items-center gap-1.5 text-slate-500">
                           <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 shrink-0" />
                           UPI
                         </div>
-                        <div className="mono mt-1 text-sm font-semibold text-white">₹{upiTotal.toLocaleString('en-IN')}</div>
+                        <div className="mono mt-0.5 text-[13px] font-semibold text-white">₹{upiTotal.toLocaleString('en-IN')}</div>
                       </div>
-                      <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] px-2.5 py-2">
+                      <div className="rounded-lg border border-white/[0.06] bg-white/[0.03] px-2 py-1.5">
                         <div className="flex items-center gap-1.5 text-slate-500">
                           <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0" />
                           Cash
                         </div>
-                        <div className="mono mt-1 text-sm font-semibold text-white">₹{cashTotal.toLocaleString('en-IN')}</div>
+                        <div className="mono mt-0.5 text-[13px] font-semibold text-white">₹{cashTotal.toLocaleString('en-IN')}</div>
                       </div>
                     </div>
                   ) : (
@@ -422,24 +465,20 @@ export function DashboardStats({ bookings, subscriptions, activeTimers, loadingD
                 </div>
                 <span className="relative inline-block w-1.5 h-1.5 rounded-full" style={{ background: liveIndicatorColor, color: liveIndicatorColor }} />
               </div>
-              <div className={`${isMobile ? 'mt-3' : 'mt-4'} text-[10px] text-slate-500`} style={{ fontVariant: 'all-small-caps', letterSpacing: '0.12em' }}>Active now</div>
+              <div className={`${isMobile ? 'mt-2.5' : 'mt-4'} text-[10px] text-slate-500`} style={{ fontVariant: 'all-small-caps', letterSpacing: '0.12em' }}>Active now</div>
               <div className="mt-1 flex items-baseline gap-1.5">
-                <span className="mono font-bold text-white" style={{ fontSize: isMobile ? 22 : 26 }}>{activeNow}</span>
-                <span className="text-[10px] text-slate-500">live sessions</span>
+                <span className="mono font-bold text-white" style={{ fontSize: isMobile ? 20 : 26 }}>{activeNow}</span>
+                <span className="text-[10px] text-slate-500">{isMobile ? 'live' : 'live sessions'}</span>
               </div>
-              <div className="mt-2 text-[11px] text-slate-500">
-                {activeNow > 0
-                  ? `${activeBookingsCount} gaming · ${activeSubscriptionsCount} memberships`
-                  : 'No active sessions right now'}
-              </div>
-              <div className={`mt-auto grid grid-cols-2 gap-2 ${isMobile ? 'pt-3' : 'pt-4'}`}>
-                <div className={`rounded-xl border border-white/[0.06] bg-white/[0.03] ${isMobile ? 'px-2.5 py-2' : 'px-3 py-2'}`}>
+              <div className="mt-1.5 text-[10px] text-slate-500">{activeSummaryText}</div>
+              <div className={`mt-auto grid grid-cols-2 gap-1.5 ${isMobile ? 'pt-2.5' : 'pt-4'}`}>
+                <div className={`rounded-lg border border-white/[0.06] bg-white/[0.03] ${isMobile ? 'px-2 py-1.5' : 'px-3 py-2'}`}>
                   <div className="text-[10px] text-slate-500" style={{ fontVariant: 'all-small-caps', letterSpacing: '0.1em' }}>Gaming</div>
-                  <div className="mono mt-1 text-sm font-bold text-white">{activeBookingsCount}</div>
+                  <div className="mono mt-0.5 text-[13px] font-bold text-white">{activeBookingsCount}</div>
                 </div>
-                <div className={`rounded-xl border border-white/[0.06] bg-white/[0.03] ${isMobile ? 'px-2.5 py-2' : 'px-3 py-2'}`}>
+                <div className={`rounded-lg border border-white/[0.06] bg-white/[0.03] ${isMobile ? 'px-2 py-1.5' : 'px-3 py-2'}`}>
                   <div className="text-[10px] text-slate-500" style={{ fontVariant: 'all-small-caps', letterSpacing: '0.1em' }}>Members</div>
-                  <div className="mono mt-1 text-sm font-bold text-white">{activeSubscriptionsCount}</div>
+                  <div className="mono mt-0.5 text-[13px] font-bold text-white">{activeSubscriptionsCount}</div>
                 </div>
               </div>
             </div>
@@ -460,26 +499,22 @@ export function DashboardStats({ bookings, subscriptions, activeTimers, loadingD
                   {sessionChange > 0 ? `+${sessionChange}` : sessionChange} vs yest
                 </span>
               </div>
-              <div className={`${isMobile ? 'mt-3' : 'mt-4'} text-[10px] text-slate-500`} style={{ fontVariant: 'all-small-caps', letterSpacing: '0.12em' }}>
+              <div className={`${isMobile ? 'mt-2.5' : 'mt-4'} text-[10px] text-slate-500`} style={{ fontVariant: 'all-small-caps', letterSpacing: '0.12em' }}>
                 Sessions
               </div>
               <div className="mt-1 flex items-baseline gap-1.5">
-                <span className="mono font-bold text-white" style={{ fontSize: isMobile ? 22 : 26 }}>{displaySessions}</span>
+                <span className="mono font-bold text-white" style={{ fontSize: isMobile ? 20 : 26 }}>{displaySessions}</span>
                 <span className="text-[10px] text-slate-500">today</span>
               </div>
-              <div className="mt-2 text-[11px] text-slate-500">
-                {totalCheckouts > 0
-                  ? `Avg checkout ₹${averageCheckout.toLocaleString('en-IN')}`
-                  : 'No completed checkouts today'}
-              </div>
-              <div className={`mt-auto grid grid-cols-2 gap-2 ${isMobile ? 'pt-3' : 'pt-4'}`}>
-                <div className={`rounded-xl border border-white/[0.06] bg-white/[0.03] ${isMobile ? 'px-2.5 py-2' : 'px-3 py-2'}`}>
+              <div className="mt-1.5 text-[10px] text-slate-500">{sessionsSummaryText}</div>
+              <div className={`mt-auto grid grid-cols-2 gap-1.5 ${isMobile ? 'pt-2.5' : 'pt-4'}`}>
+                <div className={`rounded-lg border border-white/[0.06] bg-white/[0.03] ${isMobile ? 'px-2 py-1.5' : 'px-3 py-2'}`}>
                   <div className="text-[10px] text-slate-500" style={{ fontVariant: 'all-small-caps', letterSpacing: '0.1em' }}>Yesterday</div>
-                  <div className="mono mt-1 text-sm font-bold text-white">{yesterdaySessions}</div>
+                  <div className="mono mt-0.5 text-[13px] font-bold text-white">{yesterdaySessions}</div>
                 </div>
-                <div className={`rounded-xl border border-white/[0.06] bg-white/[0.03] ${isMobile ? 'px-2.5 py-2' : 'px-3 py-2'}`}>
+                <div className={`rounded-lg border border-white/[0.06] bg-white/[0.03] ${isMobile ? 'px-2 py-1.5' : 'px-3 py-2'}`}>
                   <div className="text-[10px] text-slate-500" style={{ fontVariant: 'all-small-caps', letterSpacing: '0.1em' }}>Checkouts</div>
-                  <div className="mono mt-1 text-sm font-bold text-white">{totalCheckouts}</div>
+                  <div className="mono mt-0.5 text-[13px] font-bold text-white">{totalCheckouts}</div>
                 </div>
               </div>
             </div>
