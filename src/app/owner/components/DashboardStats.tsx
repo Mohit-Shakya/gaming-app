@@ -385,7 +385,7 @@ export function DashboardStats({ bookings, subscriptions, activeTimers, loadingD
         </div>
 
         {/* ── 3 KPI TILES side-by-side ── */}
-        <div className={`col-span-12 lg:col-span-7 grid ${isMobile ? 'grid-cols-2 gap-3' : 'grid-cols-1 sm:grid-cols-3 gap-4'}`}>
+        <div className={`col-span-12 lg:col-span-7 grid ${isMobile ? 'grid-cols-1 gap-2.5' : 'grid-cols-1 sm:grid-cols-3 gap-4'}`}>
 
           {/* Payment split */}
           <div className={`glass rounded-2xl ${compactTileClass} relative overflow-hidden`}>
@@ -485,7 +485,7 @@ export function DashboardStats({ bookings, subscriptions, activeTimers, loadingD
           </div>
 
           {/* Sessions */}
-          <div className={`glass rounded-2xl ${compactTileClass} relative overflow-hidden ${isMobile ? 'col-span-2' : ''}`}>
+          <div className={`glass rounded-2xl ${compactTileClass} relative overflow-hidden`}>
             <div className="absolute inset-0 rounded-2xl pointer-events-none"
               style={{ backgroundImage: 'linear-gradient(to bottom right, rgba(255,255,255,0.03), transparent 30%)', mixBlendMode: 'overlay' }} />
             <div className="absolute -right-10 -bottom-10 h-28 w-28 rounded-full pointer-events-none"
