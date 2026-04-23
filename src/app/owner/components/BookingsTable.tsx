@@ -403,7 +403,7 @@ export function BookingsTable({
                 {loading ? (
                     <div className="divide-y divide-white/5 border-t border-white/5 animate-pulse">
                         {Array.from({ length: 4 }).map((_, i) => (
-                            <div key={i} className="p-4 space-y-3">
+                            <div key={i} className="p-3 space-y-2.5">
                                 <div className="flex justify-between">
                                     <div>
                                         <div className="h-3.5 w-28 rounded bg-white/[0.06] mb-2" />
@@ -425,14 +425,14 @@ export function BookingsTable({
                 ) : (
                     <div className="divide-y divide-white/5 border-t border-white/5">
                         {paginatedBookings.map((booking) => (
-                            <div key={booking.id} className="p-4 space-y-3">
+                            <div key={booking.id} className="p-3 space-y-2.5">
                                 {/* Header */}
                                 <div className="flex justify-between items-start">
                                     <div>
-                                        <div className="font-medium text-white">
+                                        <div className="text-[15px] font-medium text-white">
                                             {booking.customer_name || booking.user_name || "Guest"}
                                         </div>
-                                        <div className="text-xs text-slate-500">
+                                        <div className="text-[11px] text-slate-500">
                                             {getCustomerContact(booking)}
                                         </div>
                                     </div>
@@ -440,22 +440,22 @@ export function BookingsTable({
                                 </div>
 
                                 {/* Info Row */}
-                                <div className="flex justify-between items-center py-2 text-sm text-slate-300 bg-white/5 rounded-lg px-3">
-                                    <div className="text-xs">
+                                <div className="flex items-center justify-between gap-3 rounded-lg bg-white/5 px-2.5 py-2 text-sm text-slate-300">
+                                    <div className="min-w-0 text-[11px]">
                                         {hasBookingItems(booking) ? booking.booking_items.map((item: any, idx: number) => (
-                                            <span key={idx} className="block">
+                                            <span key={idx} className="block truncate">
                                                 {item.quantity}x {item.console}
                                             </span>
                                         )) : "No items"}
                                     </div>
-                                    <div className="font-semibold text-emerald-400">
+                                    <div className="shrink-0 text-[13px] font-semibold text-emerald-400">
                                         ₹{booking.total_amount}
                                     </div>
                                 </div>
 
                                 {/* Footer */}
-                                <div className="flex justify-between items-center text-xs text-slate-500">
-                                    <div>
+                                <div className="flex items-center justify-between text-[11px] text-slate-500">
+                                    <div className="truncate pr-2">
                                         {formatDate(booking.booking_date)} • {formatTime(booking.start_time)}
                                     </div>
                                     <div className="capitalize">
@@ -465,20 +465,20 @@ export function BookingsTable({
 
                                 {/* Actions */}
                                 {showActions && (
-                                    <div className="pt-2 border-t border-white/[0.06] mt-1 space-y-2">
+                                    <div className="mt-1 space-y-1.5 border-t border-white/[0.06] pt-2">
 
                                         {/* Row 1: Cash / UPI toggle */}
                                         {onPaymentModeChange && (
-                                            <div className="flex bg-white/[0.04] rounded-lg p-0.5 border border-white/[0.08]">
+                                            <div className="flex rounded-lg border border-white/[0.08] bg-white/[0.04] p-0.5">
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); onPaymentModeChange(booking.id, 'cash'); }}
-                                                    className={`flex-1 py-1.5 rounded-md text-[11px] font-bold uppercase transition-all ${booking.payment_mode === 'cash' ? 'bg-emerald-500 text-white shadow-sm shadow-emerald-500/30' : 'text-slate-400 hover:text-white'}`}
+                                                    className={`flex-1 rounded-md py-1.5 text-[10px] font-bold uppercase transition-all ${booking.payment_mode === 'cash' ? 'bg-emerald-500 text-white shadow-sm shadow-emerald-500/30' : 'text-slate-400 hover:text-white'}`}
                                                 >
                                                     Cash
                                                 </button>
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); onPaymentModeChange(booking.id, 'upi'); }}
-                                                    className={`flex-1 py-1.5 rounded-md text-[11px] font-bold uppercase transition-all ${isDigitalPaymentMode(booking.payment_mode) ? 'bg-blue-500 text-white shadow-sm shadow-blue-500/30' : 'text-slate-400 hover:text-white'}`}
+                                                    className={`flex-1 rounded-md py-1.5 text-[10px] font-bold uppercase transition-all ${isDigitalPaymentMode(booking.payment_mode) ? 'bg-blue-500 text-white shadow-sm shadow-blue-500/30' : 'text-slate-400 hover:text-white'}`}
                                                 >
                                                     UPI
                                                 </button>
@@ -491,7 +491,7 @@ export function BookingsTable({
                                             {onStatusChange && (booking.status === 'confirmed' || booking.status === 'in-progress') && (
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); onStatusChange(booking.id, 'completed'); }}
-                                                    className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg bg-blue-500/10 text-blue-400 text-[11px] font-semibold hover:bg-blue-500/20 transition-colors"
+                                                    className="flex-1 flex items-center justify-center gap-1 rounded-lg bg-blue-500/10 px-2 py-1.5 text-[10px] font-semibold text-blue-400 transition-colors hover:bg-blue-500/20"
                                                 >
                                                     <CheckCircle size={13} /> Done
                                                 </button>
@@ -500,7 +500,7 @@ export function BookingsTable({
                                             {onEdit && (
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); onEdit(booking); }}
-                                                    className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-slate-300 text-[11px] font-semibold hover:bg-white/[0.08] transition-colors"
+                                                    className="flex-1 flex items-center justify-center gap-1 rounded-lg border border-white/[0.08] bg-white/[0.04] px-2 py-1.5 text-[10px] font-semibold text-slate-300 transition-colors hover:bg-white/[0.08]"
                                                 >
                                                     Edit
                                                 </button>
@@ -512,7 +512,7 @@ export function BookingsTable({
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     onClick={(e) => e.stopPropagation()}
-                                                    className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 rounded-lg bg-[#25D366]/10 text-[#25D366] text-[11px] font-semibold hover:bg-[#25D366]/20 transition-colors"
+                                                    className="flex-1 flex items-center justify-center gap-1 rounded-lg bg-[#25D366]/10 px-2 py-1.5 text-[10px] font-semibold text-[#25D366] transition-colors hover:bg-[#25D366]/20"
                                                 >
                                                     <WhatsAppIcon /> WA
                                                 </a>
@@ -521,7 +521,7 @@ export function BookingsTable({
                                             {onViewOrders && (
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); onViewOrders(booking.id, booking.customer_name || booking.user_name || 'Guest'); }}
-                                                    className="w-8 h-8 flex items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 transition-colors shrink-0"
+                                                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-cyan-500/10 text-cyan-400 transition-colors hover:bg-cyan-500/20"
                                                     title="F&B Orders"
                                                 >
                                                     <ShoppingBag size={14} />
@@ -531,7 +531,7 @@ export function BookingsTable({
                                             {onStatusChange && ['confirmed', 'in-progress'].includes(booking.status) && (
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); onStatusChange(booking.id, 'cancelled'); }}
-                                                    className="w-8 h-8 flex items-center justify-center rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors shrink-0"
+                                                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-red-500/10 text-red-400 transition-colors hover:bg-red-500/20"
                                                     title="Cancel"
                                                 >
                                                     <X size={14} />

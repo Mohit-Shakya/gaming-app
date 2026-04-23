@@ -195,12 +195,12 @@ export function StationsTab({
     return (
         <div>
             {/* Header */}
-            <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'stretch' : 'center', gap: isMobile ? 16 : 0, marginBottom: 16 }}>
+            <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'stretch' : 'center', gap: isMobile ? 12 : 0, marginBottom: isMobile ? 14 : 16 }}>
                 <div>
-                    <h2 style={{ fontSize: isMobile ? 24 : 28, fontWeight: 700, color: theme.textPrimary, margin: 0, marginBottom: 8 }}>
+                    <h2 style={{ fontSize: isMobile ? 22 : 28, fontWeight: 700, color: theme.textPrimary, margin: 0, marginBottom: 6 }}>
                         Gaming Stations
                     </h2>
-                    <p style={{ fontSize: 14, color: theme.textMuted, margin: 0 }}>
+                    <p style={{ fontSize: isMobile ? 13 : 14, color: theme.textMuted, margin: 0 }}>
                         Real-time occupancy · {freeCount} free · {occupiedCount} occupied · {maintenanceCount} maintenance
                     </p>
                 </div>
@@ -211,6 +211,7 @@ export function StationsTab({
                         border: 'none', borderRadius: 12, color: '#ffffff', fontSize: 14, fontWeight: 700,
                         cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                         width: isMobile ? '100%' : 'auto',
+                        ...(isMobile ? { padding: '10px 16px', fontSize: 13 } : {}),
                     }}
                 >
                     <span style={{ fontSize: 18 }}>+</span> Add New Station
@@ -218,7 +219,7 @@ export function StationsTab({
             </div>
 
             {/* Quick occupancy summary pills */}
-            <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 8, marginBottom: isMobile ? 16 : 20, flexWrap: 'wrap' }}>
                 {[
                     { label: 'Free', count: freeCount, bg: 'rgba(16,185,129,0.1)', color: '#10b981', border: 'rgba(16,185,129,0.3)' },
                     { label: 'Occupied', count: occupiedCount, bg: 'rgba(239,68,68,0.1)', color: '#ef4444', border: 'rgba(239,68,68,0.3)' },
@@ -229,6 +230,7 @@ export function StationsTab({
                         padding: '6px 14px', borderRadius: 20, background: pill.bg,
                         border: `1px solid ${pill.border}`, color: pill.color, fontSize: 12, fontWeight: 700,
                         cursor: 'pointer',
+                        ...(isMobile ? { padding: '5px 12px', fontSize: 11 } : {}),
                     }} onClick={() => setStationStatusFilter(
                         stationStatusFilter === pill.label.toLowerCase() ? 'all' : pill.label.toLowerCase()
                     )}>
@@ -238,7 +240,7 @@ export function StationsTab({
             </div>
 
             {/* Search and Filters */}
-            <div style={{ background: theme.cardBackground, borderRadius: 16, border: `1px solid ${theme.border}`, padding: '20px', marginBottom: 24 }}>
+            <div style={{ background: theme.cardBackground, borderRadius: 16, border: `1px solid ${theme.border}`, padding: isMobile ? '14px' : '20px', marginBottom: isMobile ? 16 : 24 }}>
                 <div style={{ display: 'flex', gap: 12, alignItems: isMobile ? 'stretch' : 'center', flexWrap: 'wrap', flexDirection: isMobile ? 'column' : 'row' }}>
                     <div style={{ flex: 1, minWidth: 180, position: 'relative', width: isMobile ? '100%' : 'auto' }}>
                         <input
@@ -246,17 +248,17 @@ export function StationsTab({
                             placeholder="Search stations..."
                             value={stationSearch}
                             onChange={(e) => setStationSearch(e.target.value)}
-                            style={{ width: '100%', padding: '12px 16px 12px 44px', background: 'rgba(15,23,42,0.6)', border: `1px solid ${theme.border}`, borderRadius: 10, color: theme.textPrimary, fontSize: 14, outline: 'none' }}
+                            style={{ width: '100%', padding: isMobile ? '10px 14px 10px 40px' : '12px 16px 12px 44px', background: 'rgba(15,23,42,0.6)', border: `1px solid ${theme.border}`, borderRadius: 10, color: theme.textPrimary, fontSize: isMobile ? 13 : 14, outline: 'none' }}
                         />
-                        <span style={{ position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)', fontSize: 18, opacity: 0.5 }}>🔍</span>
+                        <span style={{ position: 'absolute', left: isMobile ? 14 : 16, top: '50%', transform: 'translateY(-50%)', fontSize: isMobile ? 16 : 18, opacity: 0.5 }}>🔍</span>
                     </div>
                     <select value={stationTypeFilter} onChange={(e) => setStationTypeFilter(e.target.value)}
-                        style={{ padding: '12px 16px', background: 'rgba(15,23,42,0.6)', border: `1px solid ${theme.border}`, borderRadius: 10, color: theme.textPrimary, fontSize: 14, cursor: 'pointer', minWidth: 140, width: isMobile ? '100%' : 'auto' }}>
+                        style={{ padding: isMobile ? '10px 14px' : '12px 16px', background: 'rgba(15,23,42,0.6)', border: `1px solid ${theme.border}`, borderRadius: 10, color: theme.textPrimary, fontSize: isMobile ? 13 : 14, cursor: 'pointer', minWidth: 140, width: isMobile ? '100%' : 'auto' }}>
                         <option value="all">All Types</option>
                         {consoleTypes.map(t => <option key={t.name} value={t.name}>{t.name}</option>)}
                     </select>
                     <select value={stationStatusFilter} onChange={(e) => setStationStatusFilter(e.target.value)}
-                        style={{ padding: '12px 16px', background: 'rgba(15,23,42,0.6)', border: `1px solid ${theme.border}`, borderRadius: 10, color: theme.textPrimary, fontSize: 14, cursor: 'pointer', minWidth: 160, width: isMobile ? '100%' : 'auto' }}>
+                        style={{ padding: isMobile ? '10px 14px' : '12px 16px', background: 'rgba(15,23,42,0.6)', border: `1px solid ${theme.border}`, borderRadius: 10, color: theme.textPrimary, fontSize: isMobile ? 13 : 14, cursor: 'pointer', minWidth: 160, width: isMobile ? '100%' : 'auto' }}>
                         <option value="all">All Status</option>
                         <option value="free">Free Now</option>
                         <option value="occupied">Occupied Now</option>
@@ -315,19 +317,19 @@ export function StationsTab({
                             })();
 
                             return (
-                                <div key={station.id} style={{ background: theme.cardBackground, borderRadius: 16, border: `1px solid ${theme.border}`, padding: 16 }}>
+                                <div key={station.id} style={{ background: theme.cardBackground, borderRadius: 16, border: `1px solid ${theme.border}`, padding: 12 }}>
                                     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
-                                            <div style={{ width: 42, height: 42, borderRadius: 12, background: station.bgColor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, opacity: dimmed ? 0.4 : 1, flexShrink: 0 }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                                            <div style={{ width: 36, height: 36, borderRadius: 10, background: station.bgColor, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, opacity: dimmed ? 0.4 : 1, flexShrink: 0 }}>
                                                 {station.icon}
                                             </div>
                                             <div style={{ minWidth: 0 }}>
-                                                <div style={{ fontSize: 15, fontWeight: 700, color: theme.textPrimary, opacity: dimmed ? 0.5 : 1 }}>{station.displayName}</div>
-                                                <div style={{ marginTop: 4, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                                                    <span style={{ display: 'inline-block', padding: '5px 10px', borderRadius: 999, background: station.bgColor, color: station.color, fontSize: 11, fontWeight: 700, opacity: dimmed ? 0.5 : 1 }}>
+                                                <div style={{ fontSize: 14, fontWeight: 700, color: theme.textPrimary, opacity: dimmed ? 0.5 : 1 }}>{station.displayName}</div>
+                                                <div style={{ marginTop: 4, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                                                    <span style={{ display: 'inline-block', padding: '4px 9px', borderRadius: 999, background: station.bgColor, color: station.color, fontSize: 10, fontWeight: 700, opacity: dimmed ? 0.5 : 1 }}>
                                                         {station.type}
                                                     </span>
-                                                    <span style={{ display: 'inline-block', padding: '5px 10px', borderRadius: 999, background: statusBadge.bg, color: statusBadge.color, fontSize: 11, fontWeight: 700 }}>
+                                                    <span style={{ display: 'inline-block', padding: '4px 9px', borderRadius: 999, background: statusBadge.bg, color: statusBadge.color, fontSize: 10, fontWeight: 700 }}>
                                                         {statusBadge.label}
                                                     </span>
                                                 </div>
@@ -335,37 +337,37 @@ export function StationsTab({
                                         </div>
                                     </div>
 
-                                    <div style={{ marginTop: 14, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                                        <div style={{ padding: '12px', borderRadius: 12, background: 'rgba(255,255,255,0.03)', border: `1px solid ${theme.border}` }}>
+                                    <div style={{ marginTop: 10, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                                        <div style={{ padding: '10px', borderRadius: 12, background: 'rgba(255,255,255,0.03)', border: `1px solid ${theme.border}` }}>
                                             <div style={{ fontSize: 10, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.12em' }}>Rate</div>
-                                            <div style={{ marginTop: 6, fontSize: 13, color: theme.textSecondary }}>{pricingContent}</div>
+                                            <div style={{ marginTop: 4, fontSize: 12, color: theme.textSecondary }}>{pricingContent}</div>
                                         </div>
-                                        <div style={{ padding: '12px', borderRadius: 12, background: 'rgba(255,255,255,0.03)', border: `1px solid ${theme.border}` }}>
+                                        <div style={{ padding: '10px', borderRadius: 12, background: 'rgba(255,255,255,0.03)', border: `1px solid ${theme.border}` }}>
                                             <div style={{ fontSize: 10, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.12em' }}>Now</div>
                                             {isOccupied && occupancy ? (
-                                                <div style={{ marginTop: 6 }}>
-                                                    <div style={{ fontSize: 13, color: theme.textPrimary, fontWeight: 600 }}>{occupancy.customerName}</div>
-                                                    {occupancy.endTime && <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 2 }}>until {occupancy.endTime}</div>}
+                                                <div style={{ marginTop: 4 }}>
+                                                    <div style={{ fontSize: 12, color: theme.textPrimary, fontWeight: 600 }}>{occupancy.customerName}</div>
+                                                    {occupancy.endTime && <div style={{ fontSize: 10, color: theme.textMuted, marginTop: 2 }}>until {occupancy.endTime}</div>}
                                                 </div>
                                             ) : (
-                                                <div style={{ marginTop: 6, fontSize: 13, color: theme.textSecondary }}>{statusBadge.label === 'FREE' ? 'Ready to use' : statusBadge.label.toLowerCase()}</div>
+                                                <div style={{ marginTop: 4, fontSize: 12, color: theme.textSecondary }}>{statusBadge.label === 'FREE' ? 'Ready to use' : statusBadge.label.toLowerCase()}</div>
                                             )}
                                         </div>
                                     </div>
 
-                                    <div style={{ marginTop: 14, display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
-                                        <button style={{ padding: '10px 12px', background: 'transparent', border: `1px solid ${theme.border}`, borderRadius: 10, cursor: 'pointer', color: theme.textPrimary, fontSize: 13, fontWeight: 600 }} onClick={() => onEditPricing(station)}>✏️ Edit</button>
+                                    <div style={{ marginTop: 10, display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
+                                        <button style={{ padding: '9px 10px', background: 'transparent', border: `1px solid ${theme.border}`, borderRadius: 10, cursor: 'pointer', color: theme.textPrimary, fontSize: 12, fontWeight: 600 }} onClick={() => onEditPricing(station)}>✏️ Edit</button>
                                         {onToggleMaintenance ? (
                                             <button
-                                                style={{ padding: '10px 12px', background: isMaintenance ? 'rgba(245,158,11,0.15)' : 'transparent', border: `1px solid ${isMaintenance ? '#f59e0b' : theme.border}`, borderRadius: 10, cursor: 'pointer', color: isMaintenance ? '#f59e0b' : theme.textPrimary, fontSize: 13, fontWeight: 600 }}
+                                                style={{ padding: '9px 10px', background: isMaintenance ? 'rgba(245,158,11,0.15)' : 'transparent', border: `1px solid ${isMaintenance ? '#f59e0b' : theme.border}`, borderRadius: 10, cursor: 'pointer', color: isMaintenance ? '#f59e0b' : theme.textPrimary, fontSize: 12, fontWeight: 600 }}
                                                 onClick={() => onToggleMaintenance(station.name)}
                                             >🔧 {isMaintenance ? 'Clear' : 'Maintain'}</button>
                                         ) : <div />}
                                         <button
-                                            style={{ padding: '10px 12px', background: 'transparent', border: `1px solid ${theme.border}`, borderRadius: 10, cursor: 'pointer', color: isPoweredOff ? '#ef4444' : '#10b981', fontSize: 13, fontWeight: 600 }}
+                                            style={{ padding: '9px 10px', background: 'transparent', border: `1px solid ${theme.border}`, borderRadius: 10, cursor: 'pointer', color: isPoweredOff ? '#ef4444' : '#10b981', fontSize: 12, fontWeight: 600 }}
                                             onClick={() => onTogglePower(station.name)}
                                         >🔌 {isPoweredOff ? 'Power On' : 'Power Off'}</button>
-                                        <button style={{ padding: '10px 12px', background: 'transparent', border: `1px solid ${theme.border}`, borderRadius: 10, cursor: 'pointer', color: '#ef4444', fontSize: 13, fontWeight: 600 }} onClick={() => onDeleteStation({ name: station.name, displayName: station.displayName, type: station.type })}>🗑️ Delete</button>
+                                        <button style={{ padding: '9px 10px', background: 'transparent', border: `1px solid ${theme.border}`, borderRadius: 10, cursor: 'pointer', color: '#ef4444', fontSize: 12, fontWeight: 600 }} onClick={() => onDeleteStation({ name: station.name, displayName: station.displayName, type: station.type })}>🗑️ Delete</button>
                                     </div>
                                 </div>
                             );

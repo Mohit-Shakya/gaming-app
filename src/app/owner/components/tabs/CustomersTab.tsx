@@ -382,30 +382,30 @@ export default function CustomersTab({
                 <div
                   key={customer.id}
                   onClick={() => handleViewCustomer(customer)}
-                  className="group flex md:grid md:grid-cols-[minmax(180px,1fr)_120px_80px_100px_90px_100px_80px] gap-3 items-center px-4 py-3 hover:bg-white/[0.04] cursor-pointer transition-colors"
+                  className="group flex items-center gap-3 px-3 py-3 transition-colors hover:bg-white/[0.04] cursor-pointer md:grid md:grid-cols-[minmax(180px,1fr)_120px_80px_100px_90px_100px_80px] md:px-4"
                 >
                   {/* Customer name + avatar */}
                   <div className="min-w-0">
                     <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500/30 to-purple-500/30 flex items-center justify-center text-sm font-bold text-white shrink-0">
+                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500/30 to-purple-500/30 text-xs font-bold text-white md:h-8 md:w-8 md:text-sm">
                       {customer.name.charAt(0).toUpperCase()}
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-white truncate group-hover:text-blue-300 transition-colors">{customer.name}</p>
+                      <p className="truncate text-[15px] font-semibold text-white transition-colors group-hover:text-blue-300 md:text-sm">{customer.name}</p>
                       <p className="text-[11px] text-slate-500 truncate md:hidden">{customer.phone || customer.email || '-'}</p>
                     </div>
                   </div>
-                    <div className="mt-3 grid grid-cols-2 gap-2 md:hidden">
-                      <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-2">
-                        <div className="text-[10px] uppercase tracking-[0.12em] text-slate-500">Sessions</div>
-                        <div className="mt-1 text-sm font-semibold text-white">{customer.sessions}</div>
+                    <div className="mt-2 flex flex-wrap gap-1.5 md:hidden">
+                      <div className="rounded-lg border border-white/[0.06] bg-white/[0.03] px-2.5 py-1.5">
+                        <div className="text-[9px] uppercase tracking-[0.12em] text-slate-500">Sessions</div>
+                        <div className="mt-0.5 text-[13px] font-semibold text-white">{customer.sessions}</div>
                       </div>
-                      <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-2">
-                        <div className="text-[10px] uppercase tracking-[0.12em] text-slate-500">Spent</div>
-                        <div className="mt-1 text-sm font-semibold text-emerald-400">₹{customer.totalSpent.toLocaleString('en-IN')}</div>
+                      <div className="rounded-lg border border-white/[0.06] bg-white/[0.03] px-2.5 py-1.5">
+                        <div className="text-[9px] uppercase tracking-[0.12em] text-slate-500">Spent</div>
+                        <div className="mt-0.5 text-[13px] font-semibold text-emerald-400">₹{customer.totalSpent.toLocaleString('en-IN')}</div>
                       </div>
                     </div>
-                    <div className="mt-2 flex items-center gap-2 md:hidden">
+                    <div className="mt-2 flex items-center gap-1.5 md:hidden">
                       <span className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-semibold ${seg === 'new' ? 'bg-sky-500/10 border-sky-500/20 text-sky-400' : seg === 'regular' ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' : seg === 'vip' ? 'bg-violet-500/10 border-violet-500/20 text-violet-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
                         {meta.badge} {meta.label}
                       </span>
@@ -427,11 +427,11 @@ export default function CustomersTab({
                   {/* Last visit */}
                   <p className="hidden md:block text-xs text-slate-500">{getLastVisitDisplay(customer.lastVisit)}</p>
                   {/* Actions */}
-                  <div className="ml-auto md:ml-0 flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
+                  <div className="ml-auto flex items-center gap-1.5 md:ml-0" onClick={e => e.stopPropagation()}>
                     {customer.phone && <WhatsAppBtn phone={customer.phone} name={customer.name} />}
                     <button
                       onClick={(e) => { e.stopPropagation(); handleViewCustomer(customer); }}
-                      className="flex items-center justify-center w-7 h-7 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 hover:bg-indigo-500/20 transition-colors"
+                      className="flex h-7 w-7 items-center justify-center rounded-lg border border-indigo-500/20 bg-indigo-500/10 text-indigo-400 transition-colors hover:bg-indigo-500/20"
                       title="View details"
                     >
                       <span className="text-sm">›</span>

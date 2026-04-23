@@ -390,15 +390,15 @@ export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateS
     }, [activeSessionCount]);
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-3 md:space-y-4">
             {/* Active Sessions */}
-            <section className="mb-2 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-3 md:border-0 md:bg-transparent md:p-0">
+            <section className="mb-2 rounded-2xl border border-white/[0.06] bg-white/[0.02] p-2.5 md:border-0 md:bg-transparent md:p-0">
                 <div className="flex items-center justify-between gap-3 md:mb-4">
                     <div className="flex items-center gap-2.5">
-                        <div className="w-7 h-7 rounded-lg bg-red-500/15 flex items-center justify-center">
+                        <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-red-500/15 md:h-7 md:w-7">
                             <Zap size={14} className="text-red-400" />
                         </div>
-                        <h2 className="text-base font-semibold text-white">Active Sessions</h2>
+                        <h2 className="text-[15px] font-semibold text-white md:text-base">Active Sessions</h2>
                         {activeSessionCount > 0 && (
                             <span className="px-2 py-0.5 rounded-full bg-red-500/15 text-red-400 text-[11px] font-bold">{activeSessionCount}</span>
                         )}
@@ -429,7 +429,7 @@ export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateS
 
             {/* Sub-tabs */}
             <div className="overflow-x-auto -mx-1 px-1">
-            <div className="flex gap-1 p-1 rounded-xl bg-white/[0.04] border border-white/[0.08] w-fit">
+            <div className="flex w-fit gap-1 rounded-xl border border-white/[0.08] bg-white/[0.04] p-1">
                 {([
                     { id: 'all', label: 'All Bookings' },
                     { id: 'normal', label: 'Normal' },
@@ -438,7 +438,7 @@ export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateS
                     <button
                         key={tab.id}
                         onClick={() => setBookingSubTab(tab.id)}
-                        className={`px-4 py-2 rounded-lg text-xs font-semibold transition-colors ${bookingSubTab === tab.id ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white hover:bg-white/[0.06]'}`}
+                        className={`rounded-lg px-3 py-1.5 text-[11px] font-semibold transition-colors md:px-4 md:py-2 md:text-xs ${bookingSubTab === tab.id ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-white hover:bg-white/[0.06]'}`}
                     >
                         {tab.label}
                     </button>
@@ -485,33 +485,33 @@ export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateS
                                 const displaySecs = elapsed % 60;
 
                                 return (
-                                    <div key={s.id} className="space-y-3 px-4 py-4">
+                                    <div key={s.id} className="space-y-2.5 px-3 py-3">
                                         <div className="flex items-start justify-between gap-3">
                                             <div>
-                                                <div className="text-sm font-semibold text-white">{s.customer_name || '—'}</div>
-                                                {s.customer_phone && <div className="mt-1 text-xs text-slate-500">{s.customer_phone}</div>}
+                                                <div className="text-[15px] font-semibold text-white">{s.customer_name || '—'}</div>
+                                                {s.customer_phone && <div className="mt-0.5 text-[11px] text-slate-500">{s.customer_phone}</div>}
                                             </div>
                                             <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ${statusColor[s.status] || statusColor.cancelled}`}>
                                                 {s.status}
                                             </span>
                                         </div>
                                         <div className="grid grid-cols-2 gap-2">
-                                            <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-2.5">
+                                            <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] px-2.5 py-2">
                                                 <div className="text-[10px] uppercase tracking-[0.12em] text-slate-500">Plan</div>
-                                                <div className="mt-1 text-sm font-medium text-white">{s.membership_plans?.name || '—'}</div>
+                                                <div className="mt-1 text-[13px] font-medium text-white">{s.membership_plans?.name || '—'}</div>
                                                 <div className="mt-1 text-[11px] uppercase text-slate-500">{s.membership_plans?.console_type || '—'}</div>
                                             </div>
-                                            <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-2.5">
+                                            <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] px-2.5 py-2">
                                                 <div className="text-[10px] uppercase tracking-[0.12em] text-slate-500">Amount</div>
-                                                <div className="mt-1 text-sm font-semibold text-emerald-400">₹{(s.amount_paid ?? 0).toLocaleString()}</div>
+                                                <div className="mt-1 text-[13px] font-semibold text-emerald-400">₹{(s.amount_paid ?? 0).toLocaleString()}</div>
                                                 <div className="mt-1 text-[11px] text-slate-500">{s.purchase_date ? fmt(s.purchase_date) : '—'}</div>
                                             </div>
                                         </div>
-                                        <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-3">
+                                        <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] px-2.5 py-2.5">
                                             <div className="flex items-center justify-between gap-3">
                                                 <div>
                                                     <div className="text-[10px] uppercase tracking-[0.12em] text-slate-500">Hours</div>
-                                                    <div className="mt-1 text-sm text-slate-300">
+                                                    <div className="mt-1 text-[13px] text-slate-300">
                                                         {s.hours_remaining != null ? Number(s.hours_remaining).toFixed(2) : '—'} / {s.hours_purchased ?? '—'} hrs
                                                     </div>
                                                 </div>
@@ -530,14 +530,14 @@ export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateS
                                             {isRunning ? (
                                                 <button
                                                     onClick={async () => { await onStopTimer?.(s.id); fetchSubscriptions(); }}
-                                                    className="px-3 py-2 rounded-lg bg-red-500/15 text-red-400 border border-red-500/30 text-xs font-semibold hover:bg-red-500/25 transition-colors"
+                                                    className="rounded-lg border border-red-500/30 bg-red-500/15 px-3 py-1.5 text-[11px] font-semibold text-red-400 transition-colors hover:bg-red-500/25"
                                                 >
                                                     Stop
                                                 </button>
                                             ) : s.status === 'active' ? (
                                                 <button
                                                     onClick={async () => { await onStartTimer?.(s.id); fetchSubscriptions(); }}
-                                                    className="px-3 py-2 rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-xs font-semibold hover:bg-emerald-500/25 transition-colors"
+                                                    className="rounded-lg border border-emerald-500/30 bg-emerald-500/15 px-3 py-1.5 text-[11px] font-semibold text-emerald-400 transition-colors hover:bg-emerald-500/25"
                                                 >
                                                     Start
                                                 </button>
@@ -632,26 +632,26 @@ export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateS
                             {/* Summary bar — derived from fetched bookings */}
                     {(() => {
                         return (
-                            <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-                                <div className="col-span-2 md:col-span-1 flex items-center gap-2.5 rounded-xl bg-emerald-500/[0.07] border border-emerald-500/20 px-3 py-2.5">
+                            <div className="grid grid-cols-2 gap-2 md:grid-cols-5">
+                                <div className="col-span-2 flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/[0.07] px-2.5 py-2 md:col-span-1 md:gap-2.5 md:px-3 md:py-2.5">
                                     <CheckCircle2 size={15} className="text-emerald-400 shrink-0" />
-                                    <div><p className="text-[10px] text-slate-500 font-medium">Completed</p><p className="text-lg font-bold text-emerald-400 leading-none mt-0.5">{summary.completed}</p></div>
+                                    <div><p className="text-[10px] text-slate-500 font-medium">Completed</p><p className="mt-0.5 text-base font-bold leading-none text-emerald-400 md:text-lg">{summary.completed}</p></div>
                                 </div>
-                                <div className="flex items-center gap-2.5 rounded-xl bg-blue-500/[0.07] border border-blue-500/20 px-3 py-2.5">
+                                <div className="flex items-center gap-2 rounded-xl border border-blue-500/20 bg-blue-500/[0.07] px-2.5 py-2 md:gap-2.5 md:px-3 md:py-2.5">
                                     <Timer size={15} className="text-blue-400 shrink-0" />
-                                    <div><p className="text-[10px] text-slate-500 font-medium">Active</p><p className="text-lg font-bold text-blue-400 leading-none mt-0.5">{activeSessionCount}</p></div>
+                                    <div><p className="text-[10px] text-slate-500 font-medium">Active</p><p className="mt-0.5 text-base font-bold leading-none text-blue-400 md:text-lg">{activeSessionCount}</p></div>
                                 </div>
-                                <div className="flex items-center gap-2.5 rounded-xl bg-amber-500/[0.07] border border-amber-500/20 px-3 py-2.5">
+                                <div className="flex items-center gap-2 rounded-xl border border-amber-500/20 bg-amber-500/[0.07] px-2.5 py-2 md:gap-2.5 md:px-3 md:py-2.5">
                                     <Clock size={15} className="text-amber-400 shrink-0" />
-                                    <div><p className="text-[10px] text-slate-500 font-medium">Pending</p><p className="text-lg font-bold text-amber-400 leading-none mt-0.5">{summary.pending}</p></div>
+                                    <div><p className="text-[10px] text-slate-500 font-medium">Pending</p><p className="mt-0.5 text-base font-bold leading-none text-amber-400 md:text-lg">{summary.pending}</p></div>
                                 </div>
-                                <div className="flex items-center gap-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] px-3 py-2.5">
+                                <div className="flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-2.5 py-2 md:gap-2.5 md:px-3 md:py-2.5">
                                     <IndianRupee size={15} className="text-slate-400 shrink-0" />
-                                    <div><p className="text-[10px] text-slate-500 font-medium">Cash</p><p className="text-base font-bold text-white leading-none mt-0.5">₹{summary.cashTotal.toLocaleString('en-IN')}</p></div>
+                                    <div><p className="text-[10px] text-slate-500 font-medium">Cash</p><p className="mt-0.5 text-[15px] font-bold leading-none text-white md:text-base">₹{summary.cashTotal.toLocaleString('en-IN')}</p></div>
                                 </div>
-                                <div className="flex items-center gap-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] px-3 py-2.5">
+                                <div className="flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-2.5 py-2 md:gap-2.5 md:px-3 md:py-2.5">
                                     <IndianRupee size={15} className="text-violet-400 shrink-0" />
-                                    <div><p className="text-[10px] text-slate-500 font-medium">Online/UPI</p><p className="text-base font-bold text-white leading-none mt-0.5">₹{summary.upiTotal.toLocaleString('en-IN')}</p></div>
+                                    <div><p className="text-[10px] text-slate-500 font-medium">Online/UPI</p><p className="mt-0.5 text-[15px] font-bold leading-none text-white md:text-base">₹{summary.upiTotal.toLocaleString('en-IN')}</p></div>
                                 </div>
                             </div>
                         );

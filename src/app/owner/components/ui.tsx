@@ -36,7 +36,7 @@ interface CardProps {
 }
 
 export function Card({ children, className = '', padding = 'md' }: CardProps) {
-    const p = { none: '', sm: 'p-3 md:p-4', md: 'p-4 md:p-5', lg: 'p-5 md:p-6' };
+    const p = { none: '', sm: 'p-2.5 md:p-4', md: 'p-3 md:p-5', lg: 'p-4 md:p-6' };
     return (
         <div className={`glass rounded-2xl ${p[padding]} ${className}`}>
             {children}
@@ -65,8 +65,8 @@ export function Button({
     };
     const sizes = {
         sm: 'px-3 py-1.5 text-xs rounded-lg',
-        md: 'px-4 py-2.5 text-sm rounded-xl',
-        lg: 'px-5 py-3 text-sm rounded-xl',
+        md: 'px-3.5 py-2 text-sm rounded-xl md:px-4 md:py-2.5',
+        lg: 'px-4 py-2.5 text-sm rounded-xl md:px-5 md:py-3',
     };
     return (
         <button
@@ -120,7 +120,7 @@ export function Input({ id, label, placeholder, value, onChange, type = 'text', 
                     placeholder={placeholder}
                     disabled={disabled}
                     maxLength={maxLength}
-                    className="w-full rounded-xl bg-transparent px-3.5 py-2.5 text-sm text-white placeholder:text-[#4b5060] focus:outline-none disabled:cursor-not-allowed disabled:opacity-40"
+                    className="w-full rounded-xl bg-transparent px-3 py-2 text-sm text-white placeholder:text-[#4b5060] focus:outline-none disabled:cursor-not-allowed disabled:opacity-40 md:px-3.5 md:py-2.5"
                 />
             </div>
         </div>
@@ -155,7 +155,7 @@ export function Select({ id, label, value, onChange, options, disabled = false, 
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
                     disabled={disabled}
-                    className="w-full cursor-pointer appearance-none rounded-xl bg-transparent px-3.5 py-2.5 text-sm text-white focus:outline-none disabled:cursor-not-allowed disabled:opacity-40"
+                    className="w-full cursor-pointer appearance-none rounded-xl bg-transparent px-3 py-2 text-sm text-white focus:outline-none disabled:cursor-not-allowed disabled:opacity-40 md:px-3.5 md:py-2.5"
                 >
                     {options.map((o) => (
                         <option key={o.value} value={o.value} className="bg-[#11111a] text-white">{o.label}</option>
@@ -177,7 +177,7 @@ interface EmptyStateProps {
 
 export function EmptyState({ icon, title, description, action }: EmptyStateProps) {
     return (
-        <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
+        <div className="flex flex-col items-center justify-center gap-3 py-12 text-center md:py-16">
             {icon && (
                 <div className="glass-2 mb-1 flex h-12 w-12 items-center justify-center rounded-2xl text-slate-500">
                     {icon}
@@ -209,7 +209,7 @@ export function Skeleton({ className = '' }: { className?: string }) {
 
 export function SkeletonCard({ rows = 2 }: { rows?: number }) {
     return (
-        <div className="glass rounded-2xl p-4 space-y-3">
+        <div className="glass rounded-2xl p-3 md:p-4 space-y-3">
             <Skeleton className="h-3 w-1/3" />
             {Array.from({ length: rows }).map((_, i) => (
                 <Skeleton key={i} className={`h-3 ${i % 2 === 0 ? 'w-full' : 'w-2/3'}`} />
@@ -259,9 +259,9 @@ interface StatCardProps {
 
 export function StatCard({ title, value, subtitle }: StatCardProps) {
     return (
-        <div className="glass relative flex flex-col gap-2 overflow-hidden rounded-2xl px-4 py-4">
+        <div className="glass relative flex flex-col gap-1.5 overflow-hidden rounded-2xl px-3 py-3 md:gap-2 md:px-4 md:py-4">
             <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">{title}</p>
-            <p className="text-2xl font-bold text-white leading-none">{value}</p>
+            <p className="text-[22px] font-bold leading-none text-white md:text-2xl">{value}</p>
             {subtitle && <p className="text-[11px] text-slate-500">{subtitle}</p>}
         </div>
     );
