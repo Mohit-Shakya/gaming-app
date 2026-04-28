@@ -42,9 +42,22 @@ function getSnackTotal(booking: BookingRow): number {
     );
 }
 
+function getBookingItemsTotal(booking: BookingRow): number {
+    return (booking.booking_items || []).reduce(
+        (sum, item) => sum + (Number(item.price) || 0),
+        0
+    );
+}
+
 function getSessionAmount(booking: BookingRow): number {
+    const itemTotal = getBookingItemsTotal(booking);
+    if (itemTotal > 0) return itemTotal;
+
     const totalAmount = Number(booking.total_amount) || 0;
-    return Math.max(0, totalAmount - getSnackTotal(booking));
+    const snackTotal = getSnackTotal(booking);
+    return snackTotal > 0 && totalAmount > snackTotal
+        ? totalAmount - snackTotal
+        : totalAmount;
 }
 
 const WhatsAppIcon = () => (
