@@ -755,6 +755,17 @@ export default function OwnerDashboardPage() {
 
       actualBooking = data.booking;
 
+      const isSnackOnlyBooking =
+        (!actualBooking.booking_items || actualBooking.booking_items.length === 0) &&
+        (actualBooking.booking_orders?.length || 0) > 0;
+
+      if (isSnackOnlyBooking) {
+        setViewOrdersBookingId(actualBooking.id);
+        setViewOrdersCustomerName(actualBooking.customer_name || actualBooking.user_name || 'Walk-in');
+        setViewOrdersModalOpen(true);
+        return;
+      }
+
       if (specificItemId && !actualBooking.booking_items?.some((item) => item.id === specificItemId)) {
         toast.error('That booking item no longer exists.');
         setBookingsMgmtRefreshKey(k => k + 1);

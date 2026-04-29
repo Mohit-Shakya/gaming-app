@@ -358,7 +358,7 @@ export async function GET(request: NextRequest) {
       const enrichedBookings = await enrichBookings([normalizedBooking]);
       const booking = enrichedBookings[0];
 
-      if (!booking || !isSessionBooking(booking as BookingSummaryRecord)) {
+      if (!booking) {
         return NextResponse.json({ error: "Booking not found" }, { status: 404 });
       }
 
