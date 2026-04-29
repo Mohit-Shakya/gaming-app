@@ -12,6 +12,7 @@ interface SnackOrder {
 
 interface Booking {
   id: string;
+  deleted_at?: string | null;
   customer_name?: string | null;
   user_name?: string | null;
   customer_phone?: string | null;
@@ -62,7 +63,7 @@ function PaymentBadge({ mode }: { mode?: string | null }) {
 export function TodaySnackOrders({ bookings, todayStr, onNewSale, onEditSale }: TodaySnackOrdersProps) {
   const ordersToday = useMemo(() => {
     return bookings
-      .filter(b => b.booking_date === todayStr && b.booking_orders && b.booking_orders.length > 0)
+      .filter(b => !b.deleted_at && b.booking_date === todayStr && b.booking_orders && b.booking_orders.length > 0)
       .sort((a, b) => (a.start_time || '').localeCompare(b.start_time || ''));
   }, [bookings, todayStr]);
 

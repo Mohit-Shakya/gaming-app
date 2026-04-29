@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { getBookingRevenueTotal } from '@/lib/ownerRevenue';
+import { subscribeToOwnerBookingsChanged } from '@/lib/ownerBookingsSync';
 import { OwnerStats, CafeRow, BookingRow, NavTab } from '../types';
 import { getLocalDateString } from '../utils';
 
@@ -39,7 +40,7 @@ export function useOwnerData(canFetch: boolean, canAutoRefresh: boolean, activeT
   const [loadedScope, setLoadedScope] = useState<OwnerDataScope>('dashboard');
   const [hasLoadedData, setHasLoadedData] = useState(false);
 
-  const refreshData = () => setRefreshTrigger(prev => prev + 1);
+  const refreshData = useCallback(() => setRefreshTrigger(prev => prev + 1), []);
   const dataScope = useMemo(() => getOwnerDataScope(activeTab), [activeTab]);
   const fetchKey = useMemo(() => getFetchKey(dataScope, activeTab), [dataScope, activeTab]);
   const shouldAutoRefresh = useMemo(() => AUTO_REFRESH_TABS.has(activeTab), [activeTab]);
@@ -58,12 +59,13 @@ export function useOwnerData(canFetch: boolean, canAutoRefresh: boolean, activeT
     // Exclude only cancelled and owner-use bookings from revenue
     // in-progress sessions have amounts set at booking creation time and count as earned revenue
     const activeBookings = bookings.filter(b =>
+      !b.deleted_at &&
       b.status !== 'cancelled' &&
       (b as any).payment_mode !== 'owner'
     );
 
     const bookingsToday = activeBookings.filter(b => b.booking_date === todayStr).length;
-    const pendingBookings = bookings.filter(b => b.status?.toLowerCase() === "pending").length;
+    const pendingBookings = bookings.filter(b => !b.deleted_at && b.status?.toLowerCase() === "pending").length;
     const todayRevenue = activeBookings.filter(b => b.booking_date === todayStr).reduce((sum, b) => sum + getBookingRevenueTotal(b), 0);
     const weekRevenue = activeBookings.filter(b => new Date(b.booking_date || "") >= startOfWeek).reduce((sum, b) => sum + getBookingRevenueTotal(b), 0);
     const totalRevenue = activeBookings.reduce((sum, b) => sum + getBookingRevenueTotal(b), 0);
@@ -141,7 +143,7 @@ export function useOwnerData(canFetch: boolean, canAutoRefresh: boolean, activeT
         setCafes(data.cafes as CafeRow[]);
         // Don't overwrite bookings/subscriptions on billing-only fetches (avoids state poisoning)
         if (!isPricingOnly) {
-          setBookings(data.bookings as BookingRow[]);
+          setBookings(((data.bookings as BookingRow[]) || []).filter((booking) => !booking.deleted_at));
           setSubscriptions(data.subscriptions);
           setTotalBookingsCount(data.totalBookingsCount);
           setLoadedScope(dataScope);
@@ -168,6 +170,26 @@ export function useOwnerData(canFetch: boolean, canAutoRefresh: boolean, activeT
       cancelled = true;
     };
   }, [canFetch, refreshTrigger, fetchKey]);
+
+  useEffect(() => {
+    if (!canFetch) return;
+
+    return subscribeToOwnerBookingsChanged((detail) => {
+      if (!detail?.bookingId) return;
+
+      if (detail.action === 'deleted' || detail.action === 'permanently-deleted') {
+        const deletedId = detail.bookingId;
+        setBookings((prev) => prev.filter((booking) => (
+          booking.id !== deletedId && (booking as any).originalBookingId !== deletedId
+        )));
+        return;
+      }
+
+      if (detail.action === 'restored') {
+        refreshData();
+      }
+    });
+  }, [canFetch, refreshData]);
 
   return {
     stats,

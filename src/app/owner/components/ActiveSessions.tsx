@@ -85,7 +85,7 @@ export function ActiveSessions({
 
     // 1. Filter and Flatten Bookings
     const activeBookings = bookings.filter(
-        (booking) => isBookingActiveNow(booking, currentTime)
+        (booking) => !booking.deleted_at && isBookingActiveNow(booking, currentTime)
     );
 
     const activeMemberships = subscriptions.filter((sub) => activeTimers.has(sub.id));

@@ -20,7 +20,7 @@ const FULL_BOOKING_LOOKBACK_DAYS = 90;
 
 const BOOKING_SELECT_BASE = `
   id, cafe_id, user_id, booking_date, start_time, duration, total_amount, status,
-  source, payment_mode, created_at, customer_name, customer_phone,
+  source, payment_mode, created_at, customer_name, customer_phone, deleted_at,
   booking_items (id, console, quantity, price, title),
   booking_orders (id, item_name, quantity, total_price)
 `;
@@ -28,7 +28,7 @@ const BOOKING_SELECT_BASE = `
 const BOOKING_SELECT_WITH_UPDATED_AT = `
   id, cafe_id, user_id, booking_date, start_time, duration, total_amount, status,
   updated_at,
-  source, payment_mode, created_at, customer_name, customer_phone,
+  source, payment_mode, created_at, customer_name, customer_phone, deleted_at,
   booking_items (id, console, quantity, price, title),
   booking_orders (id, item_name, quantity, total_price)
 `;
@@ -267,8 +267,8 @@ export async function POST(request: NextRequest) {
       consolePricingMap[item.cafe_id][item.console_type][key] = item.price;
     });
 
-    // deleted_at now filtered in DB query — no need to filter in-process
-    let ownerBookings = bookingsResult.data || [];
+    // Keep the DB filter and an in-process guard so stale/fallback payloads cannot leak deleted rows.
+    let ownerBookings = (bookingsResult.data || []).filter((booking: any) => !booking.deleted_at);
     
     const endedIds: string[] = [];
     const confirmedIds: string[] = [];

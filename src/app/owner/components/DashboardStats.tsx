@@ -54,6 +54,7 @@ interface DashboardStatsProps {
 
 interface DashboardBooking {
   booking_date?: string | null;
+  deleted_at?: string | null;
   payment_mode?: string | null;
   status?: string | null;
   source?: string | null;
@@ -120,7 +121,7 @@ export function DashboardStats({ bookings, subscriptions, activeTimers, loadingD
   const prevWeekStartStr = getLocalDateString(prevWeekStart);
 
   const billableSessionBookings = bookings.filter(
-    (booking) => booking.payment_mode !== 'owner' && booking.status !== 'cancelled' && booking.source !== 'membership'
+    (booking) => !booking.deleted_at && booking.payment_mode !== 'owner' && booking.status !== 'cancelled' && booking.source !== 'membership'
   );
 
   const activeBookingsCount = billableSessionBookings.filter((booking) => isBookingActiveNow(booking)).length;

@@ -164,6 +164,13 @@ export default function OwnerDashboardPage() {
   const currentCafe = cafes.find(c => c.id === selectedCafeId) || cafes[0] || null;
   const currentCafeId = currentCafe?.id || '';
 
+  const hideDeletedBookingLocally = (bookingId: string) => {
+    setBookings((prev) => prev.filter((booking: any) => (
+      booking.id !== bookingId && booking.originalBookingId !== bookingId
+    )));
+    setBookingsMgmtRefreshKey(k => k + 1);
+  };
+
   // Subscription timer state
   const [activeTimers, setActiveTimers] = useState<Map<string, number>>(new Map()); // Now storing start time (epoch seconds or ms)
   const [timerElapsed, setTimerElapsed] = useState<Map<string, number>>(new Map());
@@ -725,7 +732,7 @@ export default function OwnerDashboardPage() {
 
     if (booking.deleted_at) {
       toast.error('Deleted bookings cannot be edited.');
-      setBookingsMgmtRefreshKey(k => k + 1);
+      hideDeletedBookingLocally(targetBookingId);
       dispatchOwnerBookingsChanged({ action: 'deleted', bookingId: targetBookingId });
       return;
     }
@@ -744,7 +751,7 @@ export default function OwnerDashboardPage() {
 
       if (res.status === 404) {
         toast.error('This booking was deleted or is no longer available.');
-        setBookingsMgmtRefreshKey(k => k + 1);
+        hideDeletedBookingLocally(targetBookingId);
         dispatchOwnerBookingsChanged({ action: 'deleted', bookingId: targetBookingId });
         return;
       }
@@ -1151,8 +1158,7 @@ export default function OwnerDashboardPage() {
         }
 
         // Remove from local state (soft-deleted = hidden from normal view)
-        setBookings((prev) => prev.filter((b) => b.id !== editingBooking.id && (b as any).originalBookingId !== editingBooking.id));
-        setBookingsMgmtRefreshKey(k => k + 1);
+        hideDeletedBookingLocally(editingBooking.id);
         dispatchOwnerBookingsChanged({ action: 'deleted', bookingId: editingBooking.id });
       }
 
@@ -1514,6 +1520,7 @@ export default function OwnerDashboardPage() {
     const yesterdayStr = getLocalDateString(yesterday);
 
     const expiredBookings = bookings.filter((b: any) => {
+      if (b.deleted_at) return false;
       if (b.status !== 'in-progress') return false;
       const isToday = b.booking_date === todayStr;
       const isYesterday = b.booking_date === yesterdayStr;
@@ -2062,6 +2069,7 @@ export default function OwnerDashboardPage() {
               {(() => {
                 const now = new Date();
                 const endingSoon = bookings.filter((b: any) => {
+                  if (b.deleted_at) return false;
                   if (!isBookingActiveNow(b, now)) return false;
                   if (!b.start_time || !b.duration) return false;
                   const timeParts = b.start_time.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
@@ -2118,7 +2126,7 @@ export default function OwnerDashboardPage() {
                   <div className="flex items-center gap-2">
                     <h2 className="text-sm text-slate-500" style={{ fontVariant: 'all-small-caps', letterSpacing: '0.12em', fontWeight: 600 }}>Active Sessions</h2>
                     {(() => {
-                      const count = bookings.filter((b: any) => isBookingActiveNow(b)).length;
+                      const count = bookings.filter((b: any) => !b.deleted_at && isBookingActiveNow(b)).length;
                       return count > 0 ? (
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px]" style={{ background: 'rgba(239,68,68,0.12)', color: '#fca5a5', border: '1px solid transparent' }}>
                           <span className="relative inline-block w-1.5 h-1.5 rounded-full bg-red-400 pulse-dot" style={{ color: '#ef4444' }} />
@@ -2158,6 +2166,7 @@ export default function OwnerDashboardPage() {
               {/* Today's Bookings — clean design-matching table */}
               <DashboardBookingsTable
                 bookings={bookings.filter((b: any) =>
+                  !b.deleted_at &&
                   b.booking_date === getLocalDateString() &&
                   (!currentCafeId || b.cafe_id === currentCafeId) &&
                   isSessionBooking(b)
@@ -2196,6 +2205,7 @@ export default function OwnerDashboardPage() {
                 const todayStr = getLocalDateString(today);
 
                 const weeklyBookings = bookings.filter((b: any) => {
+                  if (b.deleted_at) return false;
                   const bDate = b.booking_date;
                   return bDate >= lastWeekStr && bDate <= todayStr;
                 });
@@ -2239,6 +2249,7 @@ export default function OwnerDashboardPage() {
               {(() => {
                 const todayStr = getLocalDateString();
                 const todayDone = bookings.filter((b: any) =>
+                  !b.deleted_at &&
                   b.booking_date === todayStr &&
                   b.status !== 'cancelled' &&
                   b.payment_mode !== 'owner' &&

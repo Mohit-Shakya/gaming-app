@@ -227,7 +227,9 @@ export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateS
         return subscribeToOwnerBookingsChanged((detail) => {
             if (detail?.bookingId && (detail.action === 'deleted' || detail.action === 'permanently-deleted')) {
                 setHiddenDeletedIds((prev) => new Set(prev).add(detail.bookingId!));
-                setBookings((prev) => prev.filter((booking) => booking.id !== detail.bookingId));
+                setBookings((prev) => prev.filter((booking) => (
+                    booking.id !== detail.bookingId && booking.originalBookingId !== detail.bookingId
+                )));
                 setTotal((prev) => Math.max(0, prev - 1));
             }
             if (detail?.bookingId && detail.action === 'restored') {
@@ -279,10 +281,11 @@ export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateS
     const activeSessionBookings = useMemo(() => {
         const sourceBookings = pageBookings || [];
         return filterVisibleBookings(sourceBookings).filter((booking) => {
+            if (hiddenDeletedIds.has(booking.id) || hiddenDeletedIds.has(booking.originalBookingId)) return false;
             if (!cafeId) return true;
             return booking.cafe_id === cafeId;
         });
-    }, [pageBookings, cafeId]);
+    }, [pageBookings, cafeId, hiddenDeletedIds]);
 
     const totalPages = Math.max(1, Math.ceil(total / limit));
     const showingStart = total === 0 ? 0 : ((currentPage - 1) * limit) + 1;
