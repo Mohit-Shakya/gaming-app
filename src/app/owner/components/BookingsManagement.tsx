@@ -31,6 +31,7 @@ interface BookingsManagementProps {
     loading?: boolean;
     onUpdateStatus: (bookingId: string, status: string) => Promise<void>;
     onEdit?: (booking: any) => void;
+    onAdjustTime?: (booking: any) => void;
     onRefresh?: () => void;
     onViewOrders?: (bookingId: string, customerName: string) => void;
     onViewCustomer?: (customer: { name: string; phone?: string; email?: string }) => void;
@@ -115,7 +116,7 @@ function isActiveSessionBooking(booking: any, todayStr: string, yesterdayStr: st
     return false;
 }
 
-export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateStatus, onEdit, onRefresh, onViewOrders, onViewCustomer, onPaymentModeChange, refreshTrigger, activeTimers, timerElapsed, onStartTimer, onStopTimer, pageSubscriptions, pageBookings, onAddItems, onSessionEnded, onEndCollect }: BookingsManagementProps) {
+export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateStatus, onEdit, onAdjustTime, onRefresh, onViewOrders, onViewCustomer, onPaymentModeChange, refreshTrigger, activeTimers, timerElapsed, onStartTimer, onStopTimer, pageSubscriptions, pageBookings, onAddItems, onSessionEnded, onEndCollect }: BookingsManagementProps) {
     const [bookings, setBookings] = useState<any[]>([]);
     const [summary, setSummary] = useState(EMPTY_BOOKING_SUMMARY);
     const [total, setTotal] = useState(0);
@@ -427,7 +428,7 @@ export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateS
                         activeTimers={activeTimers || new Map()}
                         timerElapsed={timerElapsed || new Map()}
                         currentTime={currentTime}
-                        onAddTime={onEdit}
+                        onAddTime={onAdjustTime || onEdit}
                         onAddItems={onAddItems}
                         onSessionEnded={onSessionEnded}
                         onEndCollect={onEndCollect}

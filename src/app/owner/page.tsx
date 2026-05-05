@@ -6,7 +6,7 @@
 // are used for flexibility. These can be refactored incrementally with proper typing.
 
 import { useEffect, useState } from "react";
-import { AlarmClock, ShoppingBag, BarChart3, ChevronRight } from 'lucide-react';
+import { AlarmClock, ShoppingBag, BarChart3, ChevronRight, Clock3, Loader2, Minus, Plus, X } from 'lucide-react';
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
@@ -115,6 +115,15 @@ function getDayPassDurationUntil10Pm(startTime: string): number {
 function getPreferredConsoleForCafe(cafe: CafeRow | null | undefined): ConsoleId {
   return getAvailableConsoleIds(cafe)[0] || 'ps5';
 }
+
+type TimeAdjustmentTarget = {
+  booking: BookingRow;
+  bookingItemId: string | null;
+  currentDuration: number;
+  nextDuration: number;
+  customerName: string;
+  stationName: string;
+};
 
 function getIndiaParts(date: Date) {
   const parts = new Intl.DateTimeFormat('en-US', {
@@ -366,6 +375,8 @@ export default function OwnerDashboardPage() {
   const [addItemsModalOpen, setAddItemsModalOpen] = useState(false);
   const [addItemsBookingId, setAddItemsBookingId] = useState<string>("");
   const [addItemsCustomerName, setAddItemsCustomerName] = useState<string>("");
+  const [timeAdjustment, setTimeAdjustment] = useState<TimeAdjustmentTarget | null>(null);
+  const [savingTimeAdjustment, setSavingTimeAdjustment] = useState(false);
 
   // View Orders Modal state (for viewing/removing F&B items)
   const [viewOrdersModalOpen, setViewOrdersModalOpen] = useState(false);
@@ -803,6 +814,175 @@ export default function OwnerDashboardPage() {
       refreshData(); // revert
     }
   };
+
+  async function handleOpenTimeAdjustment(booking: BookingRow) {
+    const originalBookingId = (booking as any).originalBookingId;
+    const targetBookingId = originalBookingId || booking.id;
+    const specificItemId = originalBookingId && booking.booking_items?.[0]?.id
+      ? booking.booking_items[0].id
+      : null;
+
+    if (booking.deleted_at) {
+      toast.error('Deleted bookings cannot be edited.');
+      hideDeletedBookingLocally(targetBookingId);
+      dispatchOwnerBookingsChanged({ action: 'deleted', bookingId: targetBookingId });
+      return;
+    }
+
+    let actualBooking = originalBookingId
+      ? bookings.find(b => b.id === originalBookingId) || booking
+      : booking;
+
+    try {
+      const params = new URLSearchParams({ bookingId: targetBookingId });
+      if (booking.booking_date) params.set('bookingDate', booking.booking_date);
+      if (booking.cafe_id || currentCafeId) params.set('cafeId', booking.cafe_id || currentCafeId);
+      const res = await fetch(`/api/owner/bookings?${params.toString()}`, {
+        credentials: 'include',
+        cache: 'no-store',
+      });
+      const data = await res.json();
+
+      if (res.status === 404) {
+        toast.error('This booking was deleted or is no longer available.');
+        hideDeletedBookingLocally(targetBookingId);
+        dispatchOwnerBookingsChanged({ action: 'deleted', bookingId: targetBookingId });
+        return;
+      }
+
+      if (!res.ok || !data.booking) {
+        throw new Error(data.error || 'Failed to load the latest booking');
+      }
+
+      actualBooking = data.booking;
+
+      if (specificItemId && !actualBooking.booking_items?.some((item) => item.id === specificItemId)) {
+        toast.error('That booking item no longer exists.');
+        setBookingsMgmtRefreshKey(k => k + 1);
+        dispatchOwnerBookingsChanged({ action: 'updated', bookingId: targetBookingId });
+        return;
+      }
+    } catch (err) {
+      console.error('[handleOpenTimeAdjustment] Failed to load latest booking:', err);
+      toast.error('Failed to load the latest booking details.');
+      return;
+    }
+
+    if (actualBooking.source === 'membership') {
+      toast.error('Membership time is managed from memberships.');
+      return;
+    }
+
+    const targetItems = specificItemId
+      ? (actualBooking.booking_items || []).filter((item) => item.id === specificItemId)
+      : (actualBooking.booking_items || []);
+
+    const targetItem = targetItems[0];
+    if (!targetItem) {
+      toast.error('This session has no game item to adjust.');
+      return;
+    }
+
+    const currentDuration = targetItems.reduce((max, item) => (
+      Math.max(max, getBookingItemDuration(item, actualBooking.duration || 60))
+    ), 0) || actualBooking.duration || 60;
+    const consoleName = String(targetItem.console || 'Session').toUpperCase();
+    const assignedStation = targetItem.title?.split('|')[1]?.trim().toUpperCase();
+
+    setTimeAdjustment({
+      booking: actualBooking,
+      bookingItemId: specificItemId,
+      currentDuration,
+      nextDuration: currentDuration,
+      customerName: actualBooking.customer_name || actualBooking.user_name || 'Guest',
+      stationName: assignedStation || consoleName,
+    });
+  }
+
+  async function handleSaveTimeAdjustment() {
+    if (!timeAdjustment) return;
+
+    const nextDuration = Math.max(30, Math.round(timeAdjustment.nextDuration));
+    if (nextDuration === timeAdjustment.currentDuration) {
+      setTimeAdjustment(null);
+      return;
+    }
+
+    try {
+      setSavingTimeAdjustment(true);
+
+      const booking = timeAdjustment.booking;
+      const nextBookingItems = (booking.booking_items || []).map((item: any) => {
+        const shouldUpdate = timeAdjustment.bookingItemId ? item.id === timeAdjustment.bookingItemId : true;
+        const itemDuration = shouldUpdate
+          ? nextDuration
+          : getBookingItemDuration(item, booking.duration || 60);
+        const consoleType = normaliseConsoleType(item.console || '') as ConsoleId;
+        const nextPrice = shouldUpdate
+          ? (getBillingPrice(consoleType, item.quantity || 1, itemDuration) || Number(item.price) || 0)
+          : (Number(item.price) || 0);
+
+        return {
+          ...item,
+          title: buildBookingItemTitle(item.title, itemDuration),
+          price: nextPrice,
+        };
+      });
+
+      const bookingDuration = nextBookingItems.reduce((max: number, item: any) => (
+        Math.max(max, getBookingItemDuration(item, booking.duration || 60))
+      ), 0) || nextDuration;
+      const amountToSave = nextBookingItems.reduce((sum: number, item: any) => sum + (Number(item.price) || 0), 0);
+
+      const res = await fetch('/api/owner/billing', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          bookingId: booking.id,
+          items: nextBookingItems.map((item: any) => ({
+            id: item.id,
+            console: item.console,
+            quantity: item.quantity,
+            title: item.title,
+            price: item.price,
+          })),
+          booking: {
+            total_amount: amountToSave,
+            duration: bookingDuration,
+            status: booking.status || 'in-progress',
+          },
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to update session time');
+      }
+
+      setBookings((prev) => prev.map((entry) => (
+        entry.id === booking.id
+          ? {
+              ...entry,
+              total_amount: amountToSave,
+              duration: bookingDuration,
+              booking_items: nextBookingItems,
+            }
+          : entry
+      )));
+
+      setTimeAdjustment(null);
+      setBookingsMgmtRefreshKey(k => k + 1);
+      toast.success('Session time updated.');
+      dispatchOwnerBookingsChanged({ action: 'updated', bookingId: booking.id });
+      refreshData();
+    } catch (err) {
+      console.error('Error updating session time:', err);
+      toast.error('Failed to update session time: ' + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setSavingTimeAdjustment(false);
+    }
+  }
 
   async function handleEditBooking(booking: BookingRow) {
     // If this is a flattened booking entry (from bulk booking), find the original booking
@@ -2348,7 +2528,7 @@ export default function OwnerDashboardPage() {
                   activeTimers={activeTimers}
                   timerElapsed={timerElapsed}
                   currentTime={currentTime}
-                  onAddTime={handleEditBooking}
+                  onAddTime={handleOpenTimeAdjustment}
                   onAddItems={(bookingId, customerName) => {
                     setAddItemsBookingId(bookingId);
                     setAddItemsCustomerName(customerName);
@@ -2499,6 +2679,7 @@ export default function OwnerDashboardPage() {
               loading={loadingData}
               onUpdateStatus={handleBookingStatusChange}
               onEdit={handleEditBooking}
+              onAdjustTime={handleOpenTimeAdjustment}
               onPaymentModeChange={handlePaymentModeChange}
               onRefresh={() => refreshData()}
               refreshTrigger={bookingsMgmtRefreshKey}
@@ -2857,6 +3038,151 @@ export default function OwnerDashboardPage() {
         customerName={viewOrdersCustomerName}
         onOrdersUpdated={handleOrdersUpdated}
       />
+
+      {/* Quick Time Adjustment Modal */}
+      {timeAdjustment && (
+        <div
+          className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/80 p-4"
+          onClick={() => {
+            if (!savingTimeAdjustment) setTimeAdjustment(null);
+          }}
+        >
+          <div
+            className="w-full max-w-md overflow-hidden rounded-2xl border border-slate-800 bg-[#090d14] shadow-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-slate-800 bg-[#0f1520] px-5 py-4">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan-500/15 text-cyan-300">
+                  <Clock3 size={18} />
+                </div>
+                <div className="min-w-0">
+                  <h2 className="text-base font-bold text-white">Adjust Time</h2>
+                  <p className="truncate text-xs text-slate-500">
+                    {timeAdjustment.stationName} · {timeAdjustment.customerName}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                disabled={savingTimeAdjustment}
+                onClick={() => setTimeAdjustment(null)}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-800 text-slate-400 transition hover:bg-slate-700 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                aria-label="Close time adjustment"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="space-y-5 p-5">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-xl border border-slate-800 bg-[#111827] p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+                    Current
+                  </p>
+                  <p className="mt-1 text-lg font-bold text-white">
+                    {formatDurationLabel(timeAdjustment.currentDuration, { long: true })}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 p-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-cyan-300/70">
+                    New
+                  </p>
+                  <p className="mt-1 text-lg font-bold text-cyan-200">
+                    {formatDurationLabel(timeAdjustment.nextDuration, { long: true })}
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-slate-500">
+                  Add Time
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {[30, 60].map((minutes) => (
+                    <button
+                      key={`add-${minutes}`}
+                      type="button"
+                      disabled={savingTimeAdjustment}
+                      onClick={() => setTimeAdjustment((prev) => prev ? {
+                        ...prev,
+                        nextDuration: prev.nextDuration + minutes,
+                      } : prev)}
+                      className="flex h-11 items-center justify-center gap-2 rounded-xl border border-cyan-500/25 bg-cyan-500/10 text-sm font-semibold text-cyan-200 transition hover:border-cyan-400 hover:bg-cyan-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <Plus size={14} />
+                      {formatDurationLabel(minutes)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-slate-500">
+                  Remove Time
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {[30, 60].map((minutes) => (
+                    <button
+                      key={`remove-${minutes}`}
+                      type="button"
+                      disabled={savingTimeAdjustment || timeAdjustment.nextDuration <= 30}
+                      onClick={() => setTimeAdjustment((prev) => prev ? {
+                        ...prev,
+                        nextDuration: Math.max(30, prev.nextDuration - minutes),
+                      } : prev)}
+                      className="flex h-11 items-center justify-center gap-2 rounded-xl border border-rose-500/25 bg-rose-500/10 text-sm font-semibold text-rose-200 transition hover:border-rose-400 hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      <Minus size={14} />
+                      {formatDurationLabel(minutes)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {(() => {
+                const diffMinutes = timeAdjustment.nextDuration - timeAdjustment.currentDuration;
+                const diffLabel = diffMinutes === 0
+                  ? 'No change'
+                  : `${diffMinutes > 0 ? '+' : '-'}${formatDurationLabel(Math.abs(diffMinutes), { long: true })}`;
+
+                return (
+                  <div className="rounded-xl border border-slate-800 bg-[#111827] px-3 py-2 text-sm text-slate-400">
+                    Difference:{' '}
+                    <span className={diffMinutes > 0 ? 'font-semibold text-cyan-300' : diffMinutes < 0 ? 'font-semibold text-rose-300' : 'font-semibold text-slate-300'}>
+                      {diffLabel}
+                    </span>
+                  </div>
+                );
+              })()}
+            </div>
+
+            <div className="flex items-center gap-3 border-t border-slate-800 bg-[#0f1520] px-5 py-4">
+              <button
+                type="button"
+                disabled={savingTimeAdjustment}
+                onClick={() => setTimeAdjustment(null)}
+                className="h-11 flex-1 rounded-xl border border-slate-700 bg-slate-900 px-4 text-sm font-semibold text-slate-300 transition hover:border-slate-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={savingTimeAdjustment || timeAdjustment.nextDuration === timeAdjustment.currentDuration}
+                onClick={handleSaveTimeAdjustment}
+                className="flex h-11 flex-1 items-center justify-center gap-2 rounded-xl bg-cyan-500 px-4 text-sm font-bold text-slate-950 shadow-lg shadow-cyan-500/20 transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 disabled:shadow-none"
+              >
+                {savingTimeAdjustment ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <Clock3 size={16} />
+                )}
+                Save Time
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Session Ended Popup */}
       <SessionEndedPopup
