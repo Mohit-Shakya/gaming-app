@@ -279,7 +279,6 @@ export default function OwnerDashboardPage() {
   // Edit modal state
   const [editingBooking, setEditingBooking] = useState<BookingRow | null>(null);
   const [editingBookingItemId, setEditingBookingItemId] = useState<string | null>(null); // Track specific item for bulk bookings
-  const [editConflictBase, setEditConflictBase] = useState<string | null>(null); // updated_at when modal was opened
 
   // Settings state
   const [settingsChanged, setSettingsChanged] = useState(false);
@@ -724,7 +723,6 @@ export default function OwnerDashboardPage() {
             }
           : prev
       ));
-      if (updatedAt) setEditConflictBase(updatedAt);
     }
   };
 
@@ -886,7 +884,6 @@ export default function OwnerDashboardPage() {
 
     setEditingBooking(actualBooking);
     setEditingBookingItemId(specificItemId);
-    setEditConflictBase(actualBooking.updated_at ?? null);
     setEditAmount(getBookingGamingTotal(actualBooking).toString());
     setEditAmountManuallyEdited(true); // Preserve DB amount on open; set to false when user changes items
     setEditStatus(actualBooking.status || "confirmed");
@@ -1033,7 +1030,9 @@ export default function OwnerDashboardPage() {
         };
       };
 
-      const nextBookingItems = isSingleItemEdit && editingBookingItemId
+      const roundMoney = (value: number) => Math.round(value * 100) / 100;
+
+      let nextBookingItems = isSingleItemEdit && editingBookingItemId
         ? (editingBooking.booking_items || []).map((existingItem: any) => {
             if (existingItem.id !== editingBookingItemId) return existingItem;
             const updatedItem = editItems[0];
@@ -1060,10 +1059,37 @@ export default function OwnerDashboardPage() {
             };
           });
 
+      const shouldApplyManualAmount = isMembershipBooking || editAmountManuallyEdited;
+      if (shouldApplyManualAmount && nextBookingItems.length > 0) {
+        const currentItemTotal = nextBookingItems.reduce((sum: number, item: any) => sum + (Number(item.price) || 0), 0);
+        let remainingAmount = updatedAmount;
+
+        nextBookingItems = nextBookingItems.map((item: any, index: number) => {
+          const isLastItem = index === nextBookingItems.length - 1;
+          const itemPrice = Number(item.price) || 0;
+          const nextPrice = isLastItem
+            ? roundMoney(remainingAmount)
+            : roundMoney(
+                currentItemTotal > 0
+                  ? (updatedAmount * itemPrice) / currentItemTotal
+                  : updatedAmount / nextBookingItems.length
+              );
+
+          remainingAmount = roundMoney(remainingAmount - nextPrice);
+          return { ...item, price: nextPrice };
+        });
+      }
+
       const calculatedGamingAmount = nextBookingItems.reduce((sum: number, item: any) => sum + (Number(item.price) || 0), 0);
-      const amountToSave = isMembershipBooking
-        ? updatedAmount
-        : editAmountManuallyEdited ? updatedAmount : calculatedGamingAmount;
+      const amountToSave = shouldApplyManualAmount ? updatedAmount : calculatedGamingAmount;
+
+      const buildServerItemPayload = (item: any) => ({
+        ...(item.id && !String(item.id).startsWith('temp-item-') ? { id: item.id } : {}),
+        console: item.console,
+        quantity: item.quantity,
+        title: item.title,
+        price: item.price,
+      });
 
       // Auto-restore in-progress if a completed booking is extended into the future
       const newDuration = forcedMembershipDuration || nextBookingItems.reduce((max, item) => (
@@ -1098,21 +1124,7 @@ export default function OwnerDashboardPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           bookingId: editingBooking.id,
-          updatedAtCheck: editConflictBase,
-          ...(isSingleItemEdit && editingBookingItemId && editItems[0]
-            ? {
-                bookingItemId: editingBookingItemId,
-                item: buildItemPayload(
-                  editItems[0],
-                  editingBooking.booking_items?.find((existingItem: any) => existingItem.id === editingBookingItemId)
-                ),
-              }
-            : {
-                items: editItems.map((item) => {
-                  const originalItem = editingBooking.booking_items?.find((existingItem: any) => existingItem.id === item.id);
-                  return buildItemPayload(item, originalItem);
-                }),
-              }),
+          items: nextBookingItems.map(buildServerItemPayload),
           booking: {
             total_amount: amountToSave,
             status: resolvedStatus,
@@ -1126,15 +1138,40 @@ export default function OwnerDashboardPage() {
         }),
       });
 
-      if (res.status === 409) {
-        setSaving(false);
-        toast.error('This booking was modified by someone else. Please close and reopen it to get the latest version.');
-        return;
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to update booking');
       }
 
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Failed to update booking');
+      if (isMembershipBooking && membershipSubscription?.id) {
+        const subscriptionUpdates: Record<string, unknown> = {
+          amount_paid: amountToSave,
+          payment_mode: normalizedPaymentMode,
+          updated_at: new Date().toISOString(),
+        };
+        if (sanitizedCustomerName) subscriptionUpdates.customer_name = sanitizedCustomerName;
+        if (sanitizedCustomerPhone) subscriptionUpdates.customer_phone = sanitizedCustomerPhone;
+
+        const subRes = await fetch('/api/owner/subscriptions', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            id: membershipSubscription.id,
+            updates: subscriptionUpdates,
+          }),
+        });
+
+        if (!subRes.ok) {
+          const subData = await subRes.json().catch(() => ({}));
+          throw new Error(subData.error || 'Booking saved but membership amount could not be updated');
+        }
+
+        setSubscriptions((prev) => prev.map((subscription: any) => (
+          subscription.id === membershipSubscription.id
+            ? { ...subscription, ...subscriptionUpdates }
+            : subscription
+        )));
       }
 
       // Update local state immediately for instant UI feedback
@@ -2842,7 +2879,7 @@ export default function OwnerDashboardPage() {
           duration={editDuration}
           items={editItems} setItems={setEditItems} updateItem={updateEditItem}
           amount={editAmount} setAmount={setEditAmount} setAmountManuallyEdited={setEditAmountManuallyEdited}
-          status={editStatus} setStatus={setEditStatus}
+          status={editStatus}
           paymentMethod={editPaymentMethod} setPaymentMethod={setEditPaymentMethod}
           saving={saving} deleting={deletingBooking}
           onSave={handleSaveBooking}

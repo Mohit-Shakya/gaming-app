@@ -46,7 +46,7 @@ interface Props {
   updateItem: (index: number, updates: Partial<EditItem>) => void;
   amount: string; setAmount: (v: string) => void;
   setAmountManuallyEdited: (v: boolean) => void;
-  status: string; setStatus: (v: string) => void;
+  status: string;
   paymentMethod: string; setPaymentMethod: (v: string) => void;
   // Actions
   saving: boolean; deleting: boolean;
@@ -133,7 +133,7 @@ export function EditBookingModal({
   date, setDate, startTime, setStartTime, duration,
   items, setItems, updateItem,
   amount, setAmount, setAmountManuallyEdited,
-  status, setStatus, paymentMethod, setPaymentMethod,
+  status, paymentMethod, setPaymentMethod,
   saving, deleting,
   onSave, onClose, onDelete, onEndNow, onManageSnacks,
   cafe, getBillingPrice, membershipSubscription,
@@ -671,23 +671,21 @@ export function EditBookingModal({
             </>
           )}
 
-          {/* Payment & Status */}
+          {/* Payment */}
           <section className="rounded-xl bg-white/[0.06]/40 border border-white/[0.09]/40 overflow-hidden">
             <div className="flex items-center gap-2.5 px-4 py-3 border-b border-white/[0.09]/40 bg-white/[0.03]">
               <div className="w-7 h-7 rounded-lg bg-emerald-500/15 flex items-center justify-center">
                 <CreditCard size={13} className="text-emerald-400" />
               </div>
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Payment & Status</span>
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Payment</span>
             </div>
 
             <div className="p-4 flex flex-col gap-4">
-              {/* Amount + Status row */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* Amount */}
+              <div className="grid grid-cols-1 gap-3">
                 <div>
-	                  <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
-	                    {isMembershipBooking ? 'Membership Amount *' : 'Session Amount *'}
-	                  </label>
+                  <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
+                    {isMembershipBooking ? 'Membership Amount *' : 'Session Amount *'}
+                  </label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400 font-bold text-base">₹</span>
                     <input
@@ -700,26 +698,8 @@ export function EditBookingModal({
                     />
                   </div>
                 </div>
-
-                {/* Status */}
-                <div>
-                  <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Status *</label>
-                  <div className="relative">
-                    <select
-                      value={status}
-                      onChange={e => setStatus(e.target.value)}
-                      className="w-full appearance-none px-3 py-2.5 pr-8 rounded-lg bg-white/[0.03] border border-white/[0.06] text-slate-200 text-sm font-medium focus:outline-none focus:border-indigo-500/60 transition-colors cursor-pointer"
-                    >
-                      {STATUS_OPTIONS.map(s => (
-                        <option key={s.value} value={s.value}>{s.label}</option>
-                      ))}
-                    </select>
-                    <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
-                  </div>
-                </div>
               </div>
 
-              {/* Payment Method */}
               <div>
                 <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-2">Payment Method *</label>
                 <div className="grid grid-cols-2 gap-2">
