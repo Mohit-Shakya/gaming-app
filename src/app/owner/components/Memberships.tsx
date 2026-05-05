@@ -5,6 +5,7 @@ import { Card, Button, Input, Select } from './ui';
 import { Search, Filter, Clock, Calendar, CheckCircle, XCircle, Plus, Edit2, Trash2, Smartphone, Monitor, User, Users } from 'lucide-react';
 
 type MembershipPlanType = 'day_pass' | 'hourly_package';
+const DAY_PASS_END_LABEL = '10:00 PM';
 
 interface MembershipPlan {
     id: string;
@@ -49,12 +50,6 @@ interface MembershipsProps {
     onRefresh: () => void;
 }
 
-// Parse closing time from "Mon-Sun: 10:00 AM - 11:00 PM" format
-function parseClosingTime(openingHours: string): string | null {
-    const match = openingHours.match(/(\d{1,2}:\d{2}\s*[AP]M)\s*-\s*(\d{1,2}:\d{2}\s*[AP]M)/i);
-    return match ? match[2].trim() : null;
-}
-
 function normalizePlanType(planType?: string | null): MembershipPlanType {
     return planType === 'day_pass' ? 'day_pass' : 'hourly_package';
 }
@@ -70,7 +65,6 @@ function getErrorMessage(error: unknown): string {
 export function Memberships({
     isMobile,
     cafeId,
-    cafeOpeningHours = '',
     subscriptions,
     membershipPlans,
     activeTimers,
@@ -79,7 +73,6 @@ export function Memberships({
     onStopTimer,
     onRefresh
 }: MembershipsProps) {
-    const closingTime = cafeOpeningHours ? parseClosingTime(cafeOpeningHours) : null;
     const [subTab, setSubTab] = useState<'subscriptions' | 'plans'>('subscriptions');
 
     // Subscription Filter States
@@ -484,13 +477,13 @@ export function Memberships({
                                                     )}
                                                 </div>
 
-                                                {/* Progress */}
-                                                <div className="flex-1 md:max-w-xs">
+	                                                {/* Progress */}
+	                                                <div className="flex-1 md:max-w-xs">
                                                     {sub.membership_plans?.plan_type === 'day_pass' ? (
                                                         <div className="flex justify-between text-xs mb-1.5">
                                                             <span className="text-slate-400">Ends at</span>
                                                             <span className={`font-mono font-medium ${isRunning ? 'text-emerald-400' : 'text-slate-200'}`}>
-                                                                {closingTime || `${Math.floor(currentRem)}h ${Math.round((currentRem % 1) * 60)}m`}
+                                                                {DAY_PASS_END_LABEL}
                                                             </span>
                                                         </div>
                                                     ) : (

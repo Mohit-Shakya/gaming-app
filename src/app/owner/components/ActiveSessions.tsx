@@ -173,6 +173,7 @@ export function ActiveSessions({
             {activeMemberships.map((sub: any) => {
                 const planDetails = sub.membership_plans || {};
                 const elapsedSeconds = timerElapsed.get(sub.id) || 0;
+                const isDayPass = planDetails.plan_type === 'day_pass';
                 const consoleType = planDetails.console_type?.toUpperCase() || 'UNKNOWN';
                 const stationName = sub.assigned_console_station?.toUpperCase() || `${consoleType}-??`;
                 const hours = Math.floor(elapsedSeconds / 3600);
@@ -194,8 +195,9 @@ export function ActiveSessions({
                         </div>
                         <div>
                             <div className="mb-2 sm:mb-3">
-                                <p className="text-xs text-[#6b7280] mb-1">Session Time</p>
-                                <p className="m-0 font-mono text-xl font-bold text-emerald-500 sm:text-2xl">{timeString}</p>
+                                <p className="text-xs text-[#6b7280] mb-1">{isDayPass ? 'Valid Until' : 'Session Time'}</p>
+                                <p className="m-0 font-mono text-xl font-bold text-emerald-500 sm:text-2xl">{isDayPass ? '10:00 PM' : timeString}</p>
+                                {isDayPass && <p className="mt-1 text-xs font-semibold text-slate-400">Elapsed {timeString}</p>}
                             </div>
                         </div>
                     </div>

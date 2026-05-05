@@ -8,10 +8,7 @@ import {
 
 export const dynamic = "force-dynamic";
 
-const DAY_PASS_SUBSCRIPTION_HOURS = 24;
-// The bookings table caps session duration at 300 minutes; day-pass entitlement
-// still lives on the subscription as 24 hours.
-const DAY_PASS_BOOKING_DURATION_MINUTES = 300;
+const DAY_PASS_END_HOUR_IST = 22;
 
 type CheckoutItem = {
   planId?: string;
@@ -46,6 +43,51 @@ function getIndiaDateString(date: Date = new Date()): string {
   }
 
   return `${year}-${month}-${day}`;
+}
+
+function getIndiaDateTimeParts(date: Date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    hourCycle: "h23",
+    minute: "2-digit",
+  }).formatToParts(date);
+
+  const value = (type: string) => parts.find((part) => part.type === type)?.value;
+  const year = value("year");
+  const month = value("month");
+  const day = value("day");
+  const hour = value("hour");
+  const minute = value("minute");
+
+  if (!year || !month || !day || !hour || !minute) {
+    throw new Error("Failed to format India date/time");
+  }
+
+  return {
+    year,
+    month,
+    day,
+    hour: Number(hour),
+    minute: Number(minute),
+  };
+}
+
+function getDayPassWindow(now: Date = new Date()) {
+  const parts = getIndiaDateTimeParts(now);
+  const endAt = new Date(`${parts.year}-${parts.month}-${parts.day}T${String(DAY_PASS_END_HOUR_IST).padStart(2, "0")}:00:00+05:30`);
+  const currentMinutes = parts.hour * 60 + parts.minute;
+  const endMinutes = DAY_PASS_END_HOUR_IST * 60;
+  const durationMinutes = Math.max(0, endMinutes - currentMinutes);
+
+  return {
+    durationHours: Number((durationMinutes / 60).toFixed(2)),
+    durationMinutes,
+    endAt,
+  };
 }
 
 function toPaise(value: number): number {
@@ -194,21 +236,32 @@ export async function POST(request: NextRequest) {
     hour12: true,
   }).format(now);
   const requiresAutoAssignedStations = purchasedUnits.some((plan) => plan.plan_type === "day_pass");
+  const dayPassWindow = getDayPassWindow(now);
+
+  if (requiresAutoAssignedStations && dayPassWindow.durationMinutes <= 0) {
+    return NextResponse.json(
+      { error: "Day pass can only be sold before 10:00 PM." },
+      { status: 400 }
+    );
+  }
+
   const createdBookingIds: string[] = [];
   const createdSubscriptionIds: string[] = [];
 
   try {
     const reservationState = requiresAutoAssignedStations
-      ? await loadStationReservationState(supabase, cafeId, todayStr, currentIndiaTime, 24 * 60)
+      ? await loadStationReservationState(supabase, cafeId, todayStr, currentIndiaTime, dayPassWindow.durationMinutes)
       : null;
 
     for (const [index, plan] of purchasedUnits.entries()) {
       const isDayPass = plan.plan_type === "day_pass";
-      const purchasedHours = isDayPass ? DAY_PASS_SUBSCRIPTION_HOURS : Number(plan.hours || 0);
-      const bookingDuration = isDayPass ? DAY_PASS_BOOKING_DURATION_MINUTES : purchasedHours * 60;
+      const purchasedHours = isDayPass ? dayPassWindow.durationHours : Number(plan.hours || 0);
+      const bookingDuration = isDayPass ? dayPassWindow.durationMinutes : purchasedHours * 60;
       const amountPaid = perUnitAmounts[index] ?? 0;
-      const expiryDate = new Date(now);
-      expiryDate.setDate(expiryDate.getDate() + Number(plan.validity_days || 30));
+      const expiryDate = isDayPass ? dayPassWindow.endAt : new Date(now);
+      if (!isDayPass) {
+        expiryDate.setDate(expiryDate.getDate() + Number(plan.validity_days || 30));
+      }
 
       const assignedStations =
         isDayPass && reservationState

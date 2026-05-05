@@ -13,6 +13,25 @@ import { formatDurationLabel, getAvailableConsoleIds, normaliseConsoleType } fro
 import InlineSnackManager from './InlineSnackManager';
 
 type EditItem = { id?: string; console: string; quantity: number; duration: number; price?: number };
+type MembershipSubscriptionSummary = {
+  id?: string;
+  amount_paid?: number | null;
+  assigned_console_station?: string | null;
+  expiry_date?: string | null;
+  hours_purchased?: number | null;
+  hours_remaining?: number | null;
+  membership_plans?: {
+    console_type?: string | null;
+    hours?: number | null;
+    name?: string | null;
+    plan_type?: string | null;
+    validity_days?: number | null;
+  } | null;
+  payment_mode?: string | null;
+  purchase_date?: string | null;
+  status?: string | null;
+  timer_active?: boolean | null;
+};
 
 interface Props {
   booking: BookingRow;
@@ -37,6 +56,7 @@ interface Props {
   // Data
   cafe: CafeRow | null;
   getBillingPrice: (c: ConsoleId, qty: number, dur: number) => number;
+  membershipSubscription?: MembershipSubscriptionSummary | null;
 }
 
 const CONSOLE_OPTIONS: { id: ConsoleId; label: string; icon: string }[] = [
@@ -69,6 +89,8 @@ const PAYMENT_OPTIONS = [
   { value: 'upi', label: 'UPI', icon: '📱', active: 'border-indigo-500 bg-indigo-500/10 text-indigo-300', inactive: 'border-white/[0.09] bg-white/[0.04] text-slate-400' },
 ];
 
+const DAY_PASS_END_LABEL = '10:00 PM';
+
 function calcEndTime(startTime24: string, items: EditItem[], fallbackDuration: number): string {
   if (!startTime24) return '—';
   const [h, m] = startTime24.split(':').map(Number);
@@ -81,6 +103,30 @@ function calcEndTime(startTime24: string, items: EditItem[], fallbackDuration: n
   return getEndTime(start12, maxDur).replace(/\s*(am|pm)$/i, m => ` ${m.trim().toUpperCase()}`);
 }
 
+function formatDateTimeLabel(value?: string | null): string {
+  if (!value) return '—';
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return '—';
+
+  return parsed.toLocaleString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
+}
+
+function getTitleDuration(title?: string | null): number | null {
+  const parsed = parseInt(title?.split('|')[0] || '', 10);
+  return Number.isNaN(parsed) || parsed <= 0 ? null : parsed;
+}
+
+function getTitleStations(title?: string | null): string {
+  return title?.split('|')[1]?.trim().toUpperCase() || '';
+}
+
 export function EditBookingModal({
   booking, bookingItemId,
   customerName, setCustomerName, customerPhone, setCustomerPhone,
@@ -90,7 +136,7 @@ export function EditBookingModal({
   status, setStatus, paymentMethod, setPaymentMethod,
   saving, deleting,
   onSave, onClose, onDelete, onEndNow, onManageSnacks,
-  cafe, getBillingPrice,
+  cafe, getBillingPrice, membershipSubscription,
 }: Props) {
   // Customer autocomplete
   const [suggestions, setSuggestions] = useState<{ name: string; phone: string | null }[]>([]);
@@ -205,10 +251,25 @@ export function EditBookingModal({
   }
 
   const isAppBooking = !!booking.user_id;
+  const isMembershipBooking = booking.source === 'membership';
+  const membershipPlan = membershipSubscription?.membership_plans;
+  const isDayPassMembership = membershipPlan?.plan_type === 'day_pass';
   const isSingleItemEdit = Boolean(bookingItemId);
   const endTime = calcEndTime(startTime, items, duration);
   const snacksTotal = localOrders.reduce((s, o) => s + (o.total_price || 0), 0);
   const bookingItemsCount = booking.booking_items?.length || 0;
+  const primaryBookingItem = booking.booking_items?.[0];
+  const membershipConsole = membershipPlan?.console_type || primaryBookingItem?.console || items[0]?.console || '—';
+  const membershipStation = membershipSubscription?.assigned_console_station?.toUpperCase() || getTitleStations(primaryBookingItem?.title) || 'Auto assigned';
+  const membershipDuration = getTitleDuration(primaryBookingItem?.title)
+    || (membershipPlan?.hours ? Number(membershipPlan.hours) * 60 : 0)
+    || duration
+    || 60;
+  const membershipValidityLabel = isDayPassMembership
+    ? `${DAY_PASS_END_LABEL} today`
+    : membershipSubscription?.expiry_date
+      ? formatDateTimeLabel(membershipSubscription.expiry_date)
+      : formatDurationLabel(membershipDuration, { long: true });
 
   return (
     <div
@@ -230,15 +291,17 @@ export function EditBookingModal({
           <div>
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-indigo-500/15 flex items-center justify-center">
-                <span className="text-lg">📝</span>
+                <span className="text-lg">{isMembershipBooking ? '🎟️' : '📝'}</span>
               </div>
               <div>
                 <h2 className="text-base font-bold text-slate-100">
-                  {isAppBooking ? 'Edit App Booking' : 'Edit Walk-In Booking'}
+                  {isMembershipBooking ? 'Edit Membership Entry' : isAppBooking ? 'Edit App Booking' : 'Edit Walk-In Booking'}
                 </h2>
                 <div className="flex items-center gap-2 mt-0.5">
                   <span className="text-[11px] text-slate-500 font-mono">#{booking.id.slice(0, 8).toUpperCase()}</span>
-                  {isAppBooking && (
+                  {isMembershipBooking ? (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-violet-500/15 text-violet-300 font-semibold">MEMBERSHIP</span>
+                  ) : isAppBooking && (
                     <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-500/15 text-blue-400 font-semibold">APP</span>
                   )}
                   {booking.status && (
@@ -264,7 +327,7 @@ export function EditBookingModal({
               <div className="w-7 h-7 rounded-lg bg-indigo-500/15 flex items-center justify-center">
                 <User size={13} className="text-indigo-400" />
               </div>
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Customer Information</span>
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{isMembershipBooking ? 'Member Information' : 'Customer Information'}</span>
             </div>
             <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
               {/* Name with autocomplete */}
@@ -332,6 +395,73 @@ export function EditBookingModal({
             </div>
           </section>
 
+          {isMembershipBooking ? (
+            <section className="rounded-xl bg-white/[0.06]/40 border border-violet-500/20 overflow-hidden">
+              <div className="flex items-center gap-2.5 px-4 py-3 border-b border-violet-500/15 bg-violet-500/[0.04]">
+                <div className="w-7 h-7 rounded-lg bg-violet-500/15 flex items-center justify-center">
+                  <Calendar size={13} className="text-violet-300" />
+                </div>
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Membership Details</span>
+              </div>
+              <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-2.5">
+                  <div className="text-[10px] uppercase tracking-[0.14em] text-slate-500">Plan</div>
+                  <div className="mt-1 text-sm font-semibold text-slate-100">{membershipPlan?.name || 'Membership Plan'}</div>
+                  <div className="mt-0.5 text-xs text-slate-500">
+                    {isDayPassMembership ? 'Day pass' : `${formatDurationLabel(membershipDuration, { long: true })} package`}
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-2.5">
+                  <div className="text-[10px] uppercase tracking-[0.14em] text-slate-500">Console / Station</div>
+                  <div className="mt-1 text-sm font-semibold text-slate-100 uppercase">{membershipConsole}</div>
+                  <div className="mt-0.5 text-xs text-slate-500">{membershipStation}</div>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Sale Date *</label>
+                  <input
+                    type="date"
+                    value={date}
+                    onChange={e => setDate(e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/[0.06] text-slate-200 text-sm focus:outline-none focus:border-violet-500/60 transition-colors"
+                    style={{ colorScheme: 'dark' }}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1.5">Sale Time *</label>
+                  <div className="relative">
+                    <Clock size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
+                    <input
+                      type="time"
+                      value={startTime}
+                      onChange={e => setStartTime(e.target.value)}
+                      className="w-full pl-8 pr-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/[0.06] text-slate-200 text-sm focus:outline-none focus:border-violet-500/60 transition-colors"
+                      style={{ colorScheme: 'dark' }}
+                    />
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-2.5">
+                  <div className="text-[10px] uppercase tracking-[0.14em] text-slate-500">{isDayPassMembership ? 'Valid Until' : 'Expires'}</div>
+                  <div className="mt-1 text-sm font-semibold text-slate-100">{membershipValidityLabel}</div>
+                  {isDayPassMembership && (
+                    <div className="mt-0.5 text-xs text-violet-300">Day pass closes at 10:00 PM.</div>
+                  )}
+                </div>
+
+                <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-2.5">
+                  <div className="text-[10px] uppercase tracking-[0.14em] text-slate-500">Subscription</div>
+                  <div className="mt-1 text-sm font-semibold text-slate-100">
+                    {membershipSubscription?.id ? `#${membershipSubscription.id.slice(0, 8).toUpperCase()}` : 'Linked membership entry'}
+                  </div>
+                  <div className="mt-0.5 text-xs text-slate-500">{membershipSubscription?.purchase_date ? formatDateTimeLabel(membershipSubscription.purchase_date) : 'Created from membership checkout'}</div>
+                </div>
+              </div>
+            </section>
+          ) : (
+            <>
           {/* Booking Details */}
           <section className="rounded-xl bg-white/[0.06]/40 border border-white/[0.09]/40 overflow-hidden">
             <div className="flex items-center gap-2.5 px-4 py-3 border-b border-white/[0.09]/40 bg-white/[0.03]">
@@ -538,6 +668,8 @@ export function EditBookingModal({
               />
             </div>
           </section>
+            </>
+          )}
 
           {/* Payment & Status */}
           <section className="rounded-xl bg-white/[0.06]/40 border border-white/[0.09]/40 overflow-hidden">
@@ -553,9 +685,9 @@ export function EditBookingModal({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {/* Amount */}
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
-                    Session Amount *
-                  </label>
+	                  <label className="block text-[11px] font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
+	                    {isMembershipBooking ? 'Membership Amount *' : 'Session Amount *'}
+	                  </label>
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400 font-bold text-base">₹</span>
                     <input
@@ -615,8 +747,8 @@ export function EditBookingModal({
             disabled={saving || deleting}
             className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-red-500/10 border border-red-500/25 text-red-400 text-sm font-semibold hover:bg-red-500/20 transition-colors disabled:opacity-40"
           >
-            {deleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
-            Delete
+	            {deleting ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+	            {isMembershipBooking ? 'Delete Entry' : 'Delete'}
           </button>
 
           <div className="flex-1" />
@@ -636,9 +768,9 @@ export function EditBookingModal({
             disabled={saving || deleting || !amount || !date || !startTime}
             className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed shadow-lg shadow-indigo-500/20"
           >
-            {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-            {saving ? 'Saving...' : 'Save Changes'}
-          </button>
+	            {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+	            {saving ? 'Saving...' : isMembershipBooking ? 'Save Membership' : 'Save Changes'}
+	          </button>
         </div>
       </div>
     </div>

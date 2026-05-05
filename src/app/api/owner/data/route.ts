@@ -197,8 +197,9 @@ export async function POST(request: NextRequest) {
         : supabase
             .from('subscriptions')
             .select(`
-              id, amount_paid, purchase_date, payment_mode, customer_name, assigned_console_station,
-              timer_active, timer_start_time, hours_remaining, membership_plans(name, console_type)
+              id, cafe_id, amount_paid, purchase_date, expiry_date, payment_mode, customer_name,
+              customer_phone, status, assigned_console_station, timer_active, timer_start_time,
+              hours_purchased, hours_remaining, membership_plans(name, console_type, plan_type, hours, validity_days)
             `)
             .in('cafe_id', cafeIds)
             .or(`timer_active.eq.true,and(purchase_date.gte.${todayStr}T00:00:00+05:30,purchase_date.lte.${todayStr}T23:59:59+05:30)`)

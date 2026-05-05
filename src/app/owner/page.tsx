@@ -59,6 +59,7 @@ const SessionEndedPopup = dynamic(() => import('./components/SessionEndedPopup')
 const debugLog: (...args: any[]) => void = process.env.NODE_ENV !== "production" ? console.log.bind(console) : () => {};
 
 const DIGITAL_PAYMENT_MODES = new Set(['online', 'upi', 'paytm', 'gpay', 'phonepe', 'card']);
+const DAY_PASS_END_HOUR_IST = 22;
 
 function normaliseOwnerPaymentMode(mode: string | null | undefined): string {
   const normalized = mode?.toLowerCase() || '';
@@ -89,8 +90,94 @@ function buildBookingItemTitle(existingTitle: string | null | undefined, duratio
   return stationPart ? `${duration}|${stationPart}` : String(duration);
 }
 
+function parseClockTimeToMinutes(timeStr: string | null | undefined): number | null {
+  const timeParts = timeStr?.match(/(\d{1,2}):(\d{2})\s*(am|pm)?/i);
+  if (!timeParts) return null;
+
+  let hours = parseInt(timeParts[1], 10);
+  const minutes = parseInt(timeParts[2], 10);
+  const period = timeParts[3]?.toLowerCase();
+
+  if (period === 'pm' && hours !== 12) hours += 12;
+  else if (period === 'am' && hours === 12) hours = 0;
+
+  return hours * 60 + minutes;
+}
+
+function getDayPassDurationUntil10Pm(startTime: string): number {
+  const startMinutes = parseClockTimeToMinutes(startTime);
+  if (startMinutes === null) return 60;
+
+  const endMinutes = DAY_PASS_END_HOUR_IST * 60;
+  return Math.max(1, endMinutes - startMinutes);
+}
+
 function getPreferredConsoleForCafe(cafe: CafeRow | null | undefined): ConsoleId {
   return getAvailableConsoleIds(cafe)[0] || 'ps5';
+}
+
+function getIndiaParts(date: Date) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+
+  return {
+    year: parts.find((part) => part.type === 'year')?.value,
+    month: parts.find((part) => part.type === 'month')?.value,
+    day: parts.find((part) => part.type === 'day')?.value,
+  };
+}
+
+function getDayPassEndAt(value?: string | null): Date | null {
+  if (!value) return null;
+
+  const sourceDate = new Date(value);
+  if (Number.isNaN(sourceDate.getTime())) return null;
+
+  const { year, month, day } = getIndiaParts(sourceDate);
+  if (!year || !month || !day) return null;
+
+  return new Date(`${year}-${month}-${day}T${String(DAY_PASS_END_HOUR_IST).padStart(2, '0')}:00:00+05:30`);
+}
+
+function normalizePhoneDigits(value?: string | null): string {
+  return (value || '').replace(/\D/g, '').replace(/^91(?=\d{10}$)/, '');
+}
+
+function findMembershipSubscriptionForBooking(booking: BookingRow | null, subscriptions: any[]) {
+  if (!booking || booking.source !== 'membership') return null;
+
+  const bookingPhone = normalizePhoneDigits(booking.customer_phone || booking.user_phone);
+  const bookingAmount = Number(booking.total_amount || 0);
+  const bookingDate = booking.booking_date || '';
+  const bookingCreatedAt = booking.created_at ? new Date(booking.created_at).getTime() : 0;
+
+  const candidates = subscriptions
+    .filter((subscription) => {
+      if (booking.cafe_id && subscription.cafe_id && subscription.cafe_id !== booking.cafe_id) return false;
+      if (bookingPhone && normalizePhoneDigits(subscription.customer_phone) !== bookingPhone) return false;
+      return true;
+    })
+    .map((subscription) => {
+      const purchaseDate = subscription.purchase_date
+        ? getLocalDateString(new Date(subscription.purchase_date))
+        : '';
+      const purchaseTime = subscription.purchase_date ? new Date(subscription.purchase_date).getTime() : 0;
+      const amountMatches = Math.abs(Number(subscription.amount_paid || 0) - bookingAmount) < 0.01;
+      const dateMatches = bookingDate && purchaseDate === bookingDate;
+
+      return {
+        subscription,
+        score: Number(amountMatches) * 4 + Number(dateMatches) * 3,
+        timeDiff: bookingCreatedAt && purchaseTime ? Math.abs(bookingCreatedAt - purchaseTime) : Number.MAX_SAFE_INTEGER,
+      };
+    })
+    .sort((left, right) => right.score - left.score || left.timeDiff - right.timeDiff);
+
+  return candidates[0]?.subscription || null;
 }
 
 
@@ -925,14 +1012,26 @@ export default function OwnerDashboardPage() {
       debugLog('[handleSaveBooking] Parsed amount:', updatedAmount);
       debugLog('[handleSaveBooking] Booking ID:', editingBooking.id);
 
+      const isMembershipBooking = editingBooking.source === 'membership';
+      const membershipSubscription = findMembershipSubscriptionForBooking(editingBooking, subscriptions);
+      const isDayPassMembership = membershipSubscription?.membership_plans?.plan_type === 'day_pass';
+      const forcedMembershipDuration = isDayPassMembership
+        ? getDayPassDurationUntil10Pm(startTime12h)
+        : null;
       const isSingleItemEdit = Boolean(editingBookingItemId);
-      const buildItemPayload = (item: { id?: string; console: string; quantity: number; duration: number }, originalItem?: { title?: string | null }) => ({
-        id: item.id,
-        console: item.console,
-        quantity: item.quantity,
-        title: buildBookingItemTitle(originalItem?.title, item.duration || 60),
-        price: getBillingPrice(item.console as ConsoleId, item.quantity, item.duration || 60) || 0,
-      });
+      const buildItemPayload = (item: { id?: string; console: string; quantity: number; duration: number }, originalItem?: { title?: string | null }) => {
+        const itemDuration = forcedMembershipDuration || item.duration || 60;
+
+        return {
+          id: item.id,
+          console: item.console,
+          quantity: item.quantity,
+          title: buildBookingItemTitle(originalItem?.title, itemDuration),
+          price: isMembershipBooking
+            ? updatedAmount
+            : getBillingPrice(item.console as ConsoleId, item.quantity, itemDuration) || 0,
+        };
+      };
 
       const nextBookingItems = isSingleItemEdit && editingBookingItemId
         ? (editingBooking.booking_items || []).map((existingItem: any) => {
@@ -962,14 +1061,18 @@ export default function OwnerDashboardPage() {
           });
 
       const calculatedGamingAmount = nextBookingItems.reduce((sum: number, item: any) => sum + (Number(item.price) || 0), 0);
-      const amountToSave = editAmountManuallyEdited ? updatedAmount : calculatedGamingAmount;
+      const amountToSave = isMembershipBooking
+        ? updatedAmount
+        : editAmountManuallyEdited ? updatedAmount : calculatedGamingAmount;
 
       // Auto-restore in-progress if a completed booking is extended into the future
-      const newDuration = nextBookingItems.reduce((max, item) => (
+      const newDuration = forcedMembershipDuration || nextBookingItems.reduce((max, item) => (
         Math.max(max, getBookingItemDuration(item, editingBooking.duration || 60))
       ), 0);
       let resolvedStatus = editStatus;
-      if (editStatus === 'in-progress') {
+      if (isMembershipBooking) {
+        resolvedStatus = editStatus;
+      } else if (editStatus === 'in-progress') {
         resolvedStatus = getInitialOwnerBookingStatus(editDate, startTime12h);
       } else if (editStatus === 'completed') {
         const initialStatus = getInitialOwnerBookingStatus(editDate, startTime12h);
@@ -1484,6 +1587,67 @@ export default function OwnerDashboardPage() {
       }
     });
   }, [subscriptions, activeTimers]); // Run when subscriptions are loaded/updated
+
+  // Day passes are valid only until 10:00 PM IST on the purchase day.
+  useEffect(() => {
+    if (activeTimers.size === 0) return;
+
+    const expiredDayPasses = subscriptions.filter((subscription) => {
+      const isDayPass = subscription.membership_plans?.plan_type === 'day_pass';
+      if (!isDayPass || !subscription.timer_active || !activeTimers.has(subscription.id)) return false;
+
+      const dayPassEndAt = getDayPassEndAt(subscription.timer_start_time || subscription.purchase_date || subscription.expiry_date);
+      return Boolean(dayPassEndAt && currentTime.getTime() >= dayPassEndAt.getTime());
+    });
+
+    if (expiredDayPasses.length === 0) return;
+
+    expiredDayPasses.forEach((subscription) => {
+      debugLog('[Timer] Day pass reached 10:00 PM, auto-expiring:', subscription.id);
+
+      setSubscriptions(prev => prev.map(s =>
+        s.id === subscription.id
+          ? {
+              ...s,
+              hours_remaining: 0,
+              timer_active: false,
+              timer_start_time: null,
+              assigned_console_station: null,
+              status: 'expired',
+            }
+          : s
+      ));
+      setActiveTimers(prev => {
+        const next = new Map(prev);
+        next.delete(subscription.id);
+        return next;
+      });
+      setTimerElapsed(prev => {
+        const next = new Map(prev);
+        next.delete(subscription.id);
+        return next;
+      });
+
+      fetch('/api/owner/subscriptions', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: subscription.id,
+          updates: {
+            hours_remaining: 0,
+            timer_active: false,
+            timer_start_time: null,
+            assigned_console_station: null,
+            status: 'expired',
+            updated_at: new Date().toISOString(),
+          },
+        }),
+      }).catch(err => {
+        console.error('[Timer] Failed to auto-expire day pass at 10 PM:', err);
+        refreshData();
+      });
+    });
+  }, [activeTimers, currentTime, refreshData, subscriptions]);
 
   // Fetch usage history when viewing a subscription
   useEffect(() => {
@@ -2692,6 +2856,7 @@ export default function OwnerDashboardPage() {
           }}
           cafe={cafes.find(c => c.id === editingBooking.cafe_id) || currentCafe}
           getBillingPrice={getBillingPrice}
+          membershipSubscription={findMembershipSubscriptionForBooking(editingBooking, subscriptions)}
         />
       )}
 
