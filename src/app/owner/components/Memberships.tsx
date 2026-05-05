@@ -58,6 +58,10 @@ function isHourlyPlan(planType?: string | null): boolean {
     return normalizePlanType(planType) === 'hourly_package';
 }
 
+function isDayPassSubscription(subscription: Subscription): boolean {
+    return normalizePlanType(subscription.membership_plans?.plan_type) === 'day_pass';
+}
+
 function getErrorMessage(error: unknown): string {
     return error instanceof Error ? error.message : 'Unknown error';
 }
@@ -142,8 +146,12 @@ export function Memberships({
         return membershipPlans.filter(plan => !cafeId || plan.cafe_id === cafeId);
     }, [membershipPlans, cafeId]);
 
+    const hourlyMembershipPlans = useMemo(() => {
+        return cafeMembershipPlans.filter(plan => isHourlyPlan(plan.plan_type));
+    }, [cafeMembershipPlans]);
+
     const cafeSubscriptions = useMemo(() => {
-        return subscriptions.filter(sub => !cafeId || sub.cafe_id === cafeId);
+        return subscriptions.filter(sub => (!cafeId || sub.cafe_id === cafeId) && !isDayPassSubscription(sub));
     }, [subscriptions, cafeId]);
 
     // Filter Logic
@@ -251,7 +259,7 @@ export function Memberships({
             return;
         }
 
-        const selectedPlan = cafeMembershipPlans.find(p => p.id === subSelectedPlanId);
+        const selectedPlan = hourlyMembershipPlans.find(p => p.id === subSelectedPlanId);
         if (!selectedPlan) {
             alert('Please select a valid plan');
             return;
@@ -395,8 +403,8 @@ export function Memberships({
                                 onClick={() => {
                                     setSubCustomerName('');
                                     setSubCustomerPhone('');
-                                    setSubSelectedPlanId(cafeMembershipPlans[0]?.id || '');
-                                    setSubAmountPaid(cafeMembershipPlans[0]?.price?.toString() || '');
+                                    setSubSelectedPlanId(hourlyMembershipPlans[0]?.id || '');
+                                    setSubAmountPaid(hourlyMembershipPlans[0]?.price?.toString() || '');
                                     setSubPaymentMode('cash');
                                     setSuggestions([]);
                                     setShowSuggestions(false);
@@ -887,12 +895,12 @@ export function Memberships({
                                 value={subSelectedPlanId}
                                 onChange={(val) => {
                                     setSubSelectedPlanId(val);
-                                    const plan = cafeMembershipPlans.find(p => p.id === val);
+                                    const plan = hourlyMembershipPlans.find(p => p.id === val);
                                     if (plan) setSubAmountPaid(plan.price.toString());
                                 }}
-                                options={cafeMembershipPlans.map(p => ({
+                                options={hourlyMembershipPlans.map(p => ({
                                     value: p.id,
-                                    label: `${p.name} - ₹${p.price} (${p.hours || 'Day'}${p.hours ? 'h' : ' Pass'})`
+                                    label: `${p.name} - ₹${p.price} (${p.hours || 0}h)`
                                 }))}
                             />
 
@@ -918,7 +926,7 @@ export function Memberships({
                             </div>
 
                             {subSelectedPlanId && (() => {
-                                const plan = cafeMembershipPlans.find(p => p.id === subSelectedPlanId);
+                                const plan = hourlyMembershipPlans.find(p => p.id === subSelectedPlanId);
                                 if (!plan) return null;
                                 return (
                                     <div className="bg-white/[0.04] rounded-lg p-3 border border-white/[0.06]">

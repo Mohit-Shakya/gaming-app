@@ -22,6 +22,10 @@ function filterVisibleBookings(bookings: any[]): any[] {
     return bookings.filter((booking) => !booking?.deleted_at);
 }
 
+function isDayPassSubscription(subscription: any): boolean {
+    return subscription?.membership_plans?.plan_type === 'day_pass';
+}
+
 interface BookingsManagementProps {
     cafeId?: string;
     loading?: boolean;
@@ -324,6 +328,7 @@ export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateS
     }, [bookingSubTab, fetchSubscriptions]);
 
     const filteredSubs = subscriptions.filter(s => {
+        if (!isDayPassSubscription(s)) return false;
         if (!subSearch) return true;
         const q = subSearch.toLowerCase();
         return (
@@ -436,7 +441,7 @@ export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateS
                 {([
                     { id: 'all', label: 'All Bookings' },
                     { id: 'normal', label: 'Normal' },
-                    { id: 'membership', label: 'Membership' },
+                    { id: 'membership', label: 'Day Pass' },
                 ] as const).map(tab => (
                     <button
                         key={tab.id}
@@ -469,7 +474,7 @@ export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateS
                                 <Button variant="secondary" onClick={fetchSubscriptions} title="Refresh">
                                     <RefreshCw size={16} />
                                 </Button>
-                                <span className="text-xs text-slate-500">{filteredSubs.length} subscription{filteredSubs.length !== 1 ? 's' : ''}</span>
+                                <span className="text-xs text-slate-500">{filteredSubs.length} day pass entr{filteredSubs.length === 1 ? 'y' : 'ies'}</span>
                             </div>
                         </div>
                     </Card>
@@ -479,7 +484,7 @@ export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateS
                             {subsLoading ? (
                                 <div className="px-4 py-12 text-center text-slate-500">Loading…</div>
                             ) : filteredSubs.length === 0 ? (
-                                <div className="px-4 py-12 text-center text-slate-500">No membership subscriptions found</div>
+                                <div className="px-4 py-12 text-center text-slate-500">No day pass entries found</div>
                             ) : filteredSubs.map((s) => {
                                 const isRunning = activeTimers?.has(s.id) ?? false;
                                 const elapsed = timerElapsed?.get(s.id) ?? 0;
@@ -513,9 +518,9 @@ export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateS
                                         <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] px-2.5 py-2.5">
                                             <div className="flex items-center justify-between gap-3">
                                                 <div>
-                                                    <div className="text-[10px] uppercase tracking-[0.12em] text-slate-500">Hours</div>
+                                                    <div className="text-[10px] uppercase tracking-[0.12em] text-slate-500">Pass Time</div>
                                                     <div className="mt-1 text-[13px] text-slate-300">
-                                                        {s.hours_remaining != null ? Number(s.hours_remaining).toFixed(2) : '—'} / {s.hours_purchased ?? '—'} hrs
+                                                        Ends at 10:00 PM
                                                     </div>
                                                 </div>
                                                 <div className="text-right">
@@ -560,7 +565,7 @@ export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateS
                                         <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Customer</th>
                                         <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Plan</th>
                                         <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Console</th>
-                                        <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Hours</th>
+                                        <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Pass Time</th>
                                         <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Amount</th>
                                         <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Purchased</th>
                                         <th className="px-4 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-widest">Expiry</th>
@@ -572,7 +577,7 @@ export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateS
                                     {subsLoading ? (
                                         <tr><td colSpan={9} className="px-4 py-12 text-center text-slate-500">Loading…</td></tr>
                                     ) : filteredSubs.length === 0 ? (
-                                        <tr><td colSpan={9} className="px-4 py-12 text-center text-slate-500">No membership subscriptions found</td></tr>
+                                        <tr><td colSpan={9} className="px-4 py-12 text-center text-slate-500">No day pass entries found</td></tr>
                                     ) : filteredSubs.map(s => {
                                         const isRunning = activeTimers?.has(s.id) ?? false;
                                         const elapsed = timerElapsed?.get(s.id) ?? 0;
@@ -588,7 +593,7 @@ export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateS
                                             <td className="px-4 py-3.5 text-slate-300">{s.membership_plans?.name || '—'}</td>
                                             <td className="px-4 py-3.5 text-slate-400 uppercase text-xs">{s.membership_plans?.console_type || '—'}</td>
                                             <td className="px-4 py-3.5">
-                                                <div className="text-slate-300">{s.hours_remaining != null ? Number(s.hours_remaining).toFixed(2) : '—'} / {s.hours_purchased ?? '—'} hrs</div>
+                                                <div className="text-slate-300">Ends at 10:00 PM</div>
                                                 {isRunning && (
                                                     <div className="text-xs text-emerald-400 mt-0.5 font-mono">
                                                         ● {String(displayHours).padStart(2, '0')}:{String(displayMins).padStart(2, '0')}:{String(displaySecs).padStart(2, '0')}
