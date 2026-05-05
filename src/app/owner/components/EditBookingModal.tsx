@@ -85,8 +85,8 @@ const STATUS_OPTIONS = [
 ];
 
 const PAYMENT_OPTIONS = [
-  { value: 'cash', label: 'Cash', icon: '💵', active: 'border-emerald-500 bg-emerald-500/10 text-emerald-300', inactive: 'border-white/[0.09] bg-white/[0.04] text-slate-400' },
-  { value: 'upi', label: 'UPI', icon: '📱', active: 'border-indigo-500 bg-indigo-500/10 text-indigo-300', inactive: 'border-white/[0.09] bg-white/[0.04] text-slate-400' },
+  { value: 'cash', label: 'Cash', icon: '💵', active: 'border-emerald-500 bg-emerald-500/10 text-emerald-300', inactive: 'border-slate-700 bg-slate-800 text-slate-400' },
+  { value: 'upi', label: 'UPI', icon: '📱', active: 'border-indigo-500 bg-indigo-500/10 text-indigo-300', inactive: 'border-slate-700 bg-slate-800 text-slate-400' },
 ];
 
 const DAY_PASS_END_LABEL = '10:00 PM';
@@ -273,7 +273,7 @@ export function EditBookingModal({
 
   return (
     <div
-      className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm"
+      className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/90"
       onClick={onClose}
     >
       <style>{`
@@ -283,11 +283,11 @@ export function EditBookingModal({
       `}</style>
 
       <div
-        className="relative w-full max-w-2xl max-h-[92vh] overflow-y-auto rounded-2xl bg-white/[0.03] border border-white/[0.06] shadow-2xl flex flex-col"
+        className="relative w-full max-w-2xl max-h-[92vh] overflow-y-auto rounded-2xl bg-[#090d14] border border-slate-800 shadow-2xl flex flex-col"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 bg-white/[0.03]/95 backdrop-blur border-b border-white/[0.06]">
+        <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 bg-[#0f1520] border-b border-slate-800">
           <div>
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-indigo-500/15 flex items-center justify-center">
@@ -305,7 +305,7 @@ export function EditBookingModal({
                     <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-500/15 text-blue-400 font-semibold">APP</span>
                   )}
                   {booking.status && (
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold border ${STATUS_OPTIONS.find(s => s.value === booking.status)?.color || 'text-slate-400 bg-white/[0.08] border-slate-600'}`}>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold border ${STATUS_OPTIONS.find(s => s.value === booking.status)?.color || 'text-slate-400 bg-slate-800 border-slate-600'}`}>
                       {booking.status.toUpperCase()}
                     </span>
                   )}
@@ -313,7 +313,7 @@ export function EditBookingModal({
               </div>
             </div>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-lg bg-white/[0.06] hover:bg-white/[0.08] flex items-center justify-center text-slate-400 hover:text-white transition-colors">
+          <button onClick={onClose} className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-400 hover:text-white transition-colors">
             <X size={16} />
           </button>
         </div>
@@ -322,8 +322,8 @@ export function EditBookingModal({
         <div className="flex flex-col gap-5 p-6">
 
           {/* Customer Information */}
-          <section className="rounded-xl bg-white/[0.06]/40 border border-white/[0.09]/40 overflow-hidden">
-            <div className="flex items-center gap-2.5 px-4 py-3 border-b border-white/[0.09]/40 bg-white/[0.03]">
+          <section className="rounded-xl bg-[#111827] border border-slate-800 overflow-hidden">
+            <div className="flex items-center gap-2.5 px-4 py-3 border-b border-slate-800 bg-[#151d2a]">
               <div className="w-7 h-7 rounded-lg bg-indigo-500/15 flex items-center justify-center">
                 <User size={13} className="text-indigo-400" />
               </div>
@@ -342,15 +342,15 @@ export function EditBookingModal({
                   onChange={e => { setCustomerName(e.target.value); }}
                   placeholder="Customer name"
                   maxLength={100}
-                  className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/[0.06] text-slate-200 text-sm placeholder-slate-600 focus:outline-none focus:border-indigo-500/60 transition-colors"
+                  className="w-full px-3 py-2.5 rounded-lg bg-[#0b1018] border border-slate-700 text-slate-200 text-sm placeholder-slate-600 focus:outline-none focus:border-indigo-500/60 transition-colors"
                 />
                 {showSugg && suggestions.length > 0 && (
-                  <div className="absolute z-50 w-full top-full mt-1 rounded-xl bg-white/[0.06] border border-white/[0.09] shadow-xl overflow-hidden">
+                  <div className="absolute z-50 w-full top-full mt-1 rounded-xl bg-[#111827] border border-slate-700 shadow-xl overflow-hidden">
                     {suggestions.map((s, i) => (
                       <button
                         key={i}
                         type="button"
-                        className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/[0.08]/60 transition-colors text-left"
+                        className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-slate-800 transition-colors text-left"
                         onMouseDown={() => {
                           setCustomerName(s.name);
                           if (s.phone) setCustomerPhone(s.phone);
@@ -381,7 +381,7 @@ export function EditBookingModal({
                     onChange={e => setCustomerPhone(e.target.value.replace(/[^\d+\-\s()]/g, ''))}
                     placeholder="e.g. 9876543210"
                     maxLength={15}
-                    className={`w-full pl-8 pr-3 py-2.5 rounded-lg bg-white/[0.03] border text-slate-200 text-sm placeholder-slate-600 focus:outline-none focus:border-indigo-500/60 transition-colors ${customerPhone && !/^(\+91|0)?[6-9]\d{9}$|^\+\d{7,15}$/.test(customerPhone) ? 'border-red-500/60' : 'border-white/[0.06]'}`}
+                    className={`w-full pl-8 pr-3 py-2.5 rounded-lg bg-[#0b1018] border text-slate-200 text-sm placeholder-slate-600 focus:outline-none focus:border-indigo-500/60 transition-colors ${customerPhone && !/^(\+91|0)?[6-9]\d{9}$|^\+\d{7,15}$/.test(customerPhone) ? 'border-red-500/60' : 'border-slate-700'}`}
                   />
                 </div>
               </div>
@@ -396,15 +396,15 @@ export function EditBookingModal({
           </section>
 
           {isMembershipBooking ? (
-            <section className="rounded-xl bg-white/[0.06]/40 border border-violet-500/20 overflow-hidden">
-              <div className="flex items-center gap-2.5 px-4 py-3 border-b border-violet-500/15 bg-violet-500/[0.04]">
+            <section className="rounded-xl bg-[#111827] border border-violet-500/25 overflow-hidden">
+              <div className="flex items-center gap-2.5 px-4 py-3 border-b border-violet-500/20 bg-[#151d2a]">
                 <div className="w-7 h-7 rounded-lg bg-violet-500/15 flex items-center justify-center">
                   <Calendar size={13} className="text-violet-300" />
                 </div>
                 <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Membership Details</span>
               </div>
               <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-2.5">
+                <div className="rounded-xl border border-slate-800 bg-[#0b1018] px-3 py-2.5">
                   <div className="text-[10px] uppercase tracking-[0.14em] text-slate-500">Plan</div>
                   <div className="mt-1 text-sm font-semibold text-slate-100">{membershipPlan?.name || 'Membership Plan'}</div>
                   <div className="mt-0.5 text-xs text-slate-500">
@@ -412,7 +412,7 @@ export function EditBookingModal({
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-2.5">
+                <div className="rounded-xl border border-slate-800 bg-[#0b1018] px-3 py-2.5">
                   <div className="text-[10px] uppercase tracking-[0.14em] text-slate-500">Console / Station</div>
                   <div className="mt-1 text-sm font-semibold text-slate-100 uppercase">{membershipConsole}</div>
                   <div className="mt-0.5 text-xs text-slate-500">{membershipStation}</div>
@@ -424,7 +424,7 @@ export function EditBookingModal({
                     type="date"
                     value={date}
                     onChange={e => setDate(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/[0.06] text-slate-200 text-sm focus:outline-none focus:border-violet-500/60 transition-colors"
+                    className="w-full px-3 py-2.5 rounded-lg bg-[#0b1018] border border-slate-700 text-slate-200 text-sm focus:outline-none focus:border-violet-500/60 transition-colors"
                     style={{ colorScheme: 'dark' }}
                   />
                 </div>
@@ -437,13 +437,13 @@ export function EditBookingModal({
                       type="time"
                       value={startTime}
                       onChange={e => setStartTime(e.target.value)}
-                      className="w-full pl-8 pr-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/[0.06] text-slate-200 text-sm focus:outline-none focus:border-violet-500/60 transition-colors"
+                      className="w-full pl-8 pr-3 py-2.5 rounded-lg bg-[#0b1018] border border-slate-700 text-slate-200 text-sm focus:outline-none focus:border-violet-500/60 transition-colors"
                       style={{ colorScheme: 'dark' }}
                     />
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-2.5">
+                <div className="rounded-xl border border-slate-800 bg-[#0b1018] px-3 py-2.5">
                   <div className="text-[10px] uppercase tracking-[0.14em] text-slate-500">{isDayPassMembership ? 'Valid Until' : 'Expires'}</div>
                   <div className="mt-1 text-sm font-semibold text-slate-100">{membershipValidityLabel}</div>
                   {isDayPassMembership && (
@@ -451,7 +451,7 @@ export function EditBookingModal({
                   )}
                 </div>
 
-                <div className="rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-2.5">
+                <div className="rounded-xl border border-slate-800 bg-[#0b1018] px-3 py-2.5">
                   <div className="text-[10px] uppercase tracking-[0.14em] text-slate-500">Subscription</div>
                   <div className="mt-1 text-sm font-semibold text-slate-100">
                     {membershipSubscription?.id ? `#${membershipSubscription.id.slice(0, 8).toUpperCase()}` : 'Linked membership entry'}
@@ -463,8 +463,8 @@ export function EditBookingModal({
           ) : (
             <>
           {/* Booking Details */}
-          <section className="rounded-xl bg-white/[0.06]/40 border border-white/[0.09]/40 overflow-hidden">
-            <div className="flex items-center gap-2.5 px-4 py-3 border-b border-white/[0.09]/40 bg-white/[0.03]">
+          <section className="rounded-xl bg-[#111827] border border-slate-800 overflow-hidden">
+            <div className="flex items-center gap-2.5 px-4 py-3 border-b border-slate-800 bg-[#151d2a]">
               <div className="w-7 h-7 rounded-lg bg-blue-500/15 flex items-center justify-center">
                 <Calendar size={13} className="text-blue-400" />
               </div>
@@ -477,7 +477,7 @@ export function EditBookingModal({
                   type="date"
                   value={date}
                   onChange={e => setDate(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/[0.06] text-slate-200 text-sm focus:outline-none focus:border-indigo-500/60 transition-colors"
+                  className="w-full px-3 py-2.5 rounded-lg bg-[#0b1018] border border-slate-700 text-slate-200 text-sm focus:outline-none focus:border-indigo-500/60 transition-colors"
                   style={{ colorScheme: 'dark' }}
                 />
               </div>
@@ -489,7 +489,7 @@ export function EditBookingModal({
                     type="time"
                     value={startTime}
                     onChange={e => setStartTime(e.target.value)}
-                    className="w-full pl-8 pr-3 py-2.5 rounded-lg bg-white/[0.03] border border-white/[0.06] text-slate-200 text-sm focus:outline-none focus:border-indigo-500/60 transition-colors"
+                    className="w-full pl-8 pr-3 py-2.5 rounded-lg bg-[#0b1018] border border-slate-700 text-slate-200 text-sm focus:outline-none focus:border-indigo-500/60 transition-colors"
                     style={{ colorScheme: 'dark' }}
                   />
                 </div>
@@ -515,7 +515,7 @@ export function EditBookingModal({
                     </button>
                   )}
                 </div>
-                <div className="px-3 py-2.5 rounded-lg bg-white/[0.03]/30 border border-dashed border-white/[0.06] text-slate-400 text-sm font-medium">
+                <div className="px-3 py-2.5 rounded-lg bg-[#0b1018] border border-dashed border-slate-700 text-slate-400 text-sm font-medium">
                   {endTime}
                 </div>
                 {endNowMsg && (
@@ -528,8 +528,8 @@ export function EditBookingModal({
           </section>
 
           {/* Console & Controllers */}
-          <section className="rounded-xl bg-white/[0.06]/40 border border-white/[0.09]/40 overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.09]/40 bg-white/[0.03]">
+          <section className="rounded-xl bg-[#111827] border border-slate-800 overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800 bg-[#151d2a]">
               <div className="flex items-center gap-2.5">
                 <div className="w-7 h-7 rounded-lg bg-purple-500/15 flex items-center justify-center">
                   <span className="text-sm">🎮</span>
@@ -537,7 +537,7 @@ export function EditBookingModal({
                 <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Console & Controllers</span>
               </div>
               {bookingItemsCount > 1 && bookingItemId && (
-                <span className="text-[11px] text-slate-500 bg-white/[0.06] px-2 py-0.5 rounded-full border border-white/[0.09]">
+                <span className="text-[11px] text-slate-500 bg-slate-800 px-2 py-0.5 rounded-full border border-slate-700">
                   Editing selected item
                 </span>
               )}
@@ -545,7 +545,7 @@ export function EditBookingModal({
 
             <div className="p-4 flex flex-col gap-3">
               {items.map((item, idx) => (
-                <div key={idx} className="relative rounded-xl bg-white/[0.03] border border-white/[0.09]/40 p-3">
+                <div key={idx} className="relative rounded-xl bg-[#0b1018] border border-slate-800 p-3">
                   {!isSingleItemEdit && items.length > 1 && (
                     <button
                       onClick={() => removeItem(idx)}
@@ -562,7 +562,7 @@ export function EditBookingModal({
                         <select
                           value={item.console}
                           onChange={e => { updateItem(idx, { console: e.target.value }); setAmountManuallyEdited(false); }}
-                          className="w-full appearance-none px-2.5 py-2 pr-7 rounded-lg bg-white/[0.06] border border-white/[0.06] text-slate-200 text-xs font-medium focus:outline-none focus:border-purple-500/60 transition-colors cursor-pointer"
+                          className="w-full appearance-none px-2.5 py-2 pr-7 rounded-lg bg-[#151d2a] border border-slate-700 text-slate-200 text-xs font-medium focus:outline-none focus:border-purple-500/60 transition-colors cursor-pointer"
                         >
                           {selectableConsoleOptions.map(o => (
                             <option key={o.id} value={o.id}>{o.icon} {o.label}</option>
@@ -579,7 +579,7 @@ export function EditBookingModal({
                         <select
                           value={item.duration}
                           onChange={e => { updateItem(idx, { duration: parseInt(e.target.value) }); setAmountManuallyEdited(false); }}
-                          className="w-full appearance-none px-2.5 py-2 pr-7 rounded-lg bg-white/[0.06] border border-white/[0.06] text-slate-200 text-xs font-medium focus:outline-none focus:border-purple-500/60 transition-colors cursor-pointer"
+                          className="w-full appearance-none px-2.5 py-2 pr-7 rounded-lg bg-[#151d2a] border border-slate-700 text-slate-200 text-xs font-medium focus:outline-none focus:border-purple-500/60 transition-colors cursor-pointer"
                         >
                           {DURATIONS.map(d => (
                             <option key={d} value={d}>{formatDurationLabel(d, { long: true })}</option>
@@ -597,14 +597,14 @@ export function EditBookingModal({
                       <div className="flex items-center gap-1.5">
                         <button
                           onClick={() => { if (item.quantity > 1) { updateItem(idx, { quantity: item.quantity - 1 }); setAmountManuallyEdited(false); } }}
-                          className="w-7 h-7 rounded-lg bg-white/[0.08] hover:bg-white/[0.10] flex items-center justify-center text-slate-300 transition-colors shrink-0"
+                          className="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-300 transition-colors shrink-0"
                         >
                           <Minus size={11} />
                         </button>
                         <span className="flex-1 text-center text-sm font-bold text-slate-200">{item.quantity}</span>
                         <button
                           onClick={() => { if (item.quantity < 4) { updateItem(idx, { quantity: item.quantity + 1 }); setAmountManuallyEdited(false); } }}
-                          className="w-7 h-7 rounded-lg bg-white/[0.08] hover:bg-white/[0.10] flex items-center justify-center text-slate-300 transition-colors shrink-0"
+                          className="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-300 transition-colors shrink-0"
                         >
                           <Plus size={11} />
                         </button>
@@ -634,7 +634,7 @@ export function EditBookingModal({
                 disabled={isSingleItemEdit || configuredConsoleOptions.length === 0}
                 className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dashed text-xs font-semibold transition-colors ${
                   isSingleItemEdit || configuredConsoleOptions.length === 0
-                    ? 'border-white/[0.09] text-slate-600 cursor-not-allowed'
+                    ? 'border-slate-800 text-slate-600 cursor-not-allowed'
                     : 'border-purple-500/30 text-purple-400 hover:bg-purple-500/5'
                 }`}
               >
@@ -644,9 +644,9 @@ export function EditBookingModal({
           </section>
 
           {/* Snacks & Orders */}
-          <section className="rounded-xl overflow-hidden" style={{ background: 'rgba(251,146,60,0.03)', border: '1px solid rgba(251,146,60,0.10)' }}>
+          <section className="rounded-xl overflow-hidden bg-[#111827] border border-amber-500/20">
             {/* Header */}
-            <div className="flex items-center justify-between px-4 py-3 border-b" style={{ borderColor: 'rgba(251,146,60,0.10)', background: 'rgba(251,146,60,0.05)' }}>
+            <div className="flex items-center justify-between px-4 py-3 border-b border-amber-500/20 bg-[#151d2a]">
               <div className="flex items-center gap-2.5">
                 <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: 'rgba(251,146,60,0.15)' }}>
                   <UtensilsCrossed size={13} className="text-amber-400" />
@@ -672,8 +672,8 @@ export function EditBookingModal({
           )}
 
           {/* Payment */}
-          <section className="rounded-xl bg-white/[0.06]/40 border border-white/[0.09]/40 overflow-hidden">
-            <div className="flex items-center gap-2.5 px-4 py-3 border-b border-white/[0.09]/40 bg-white/[0.03]">
+          <section className="rounded-xl bg-[#111827] border border-slate-800 overflow-hidden">
+            <div className="flex items-center gap-2.5 px-4 py-3 border-b border-slate-800 bg-[#151d2a]">
               <div className="w-7 h-7 rounded-lg bg-emerald-500/15 flex items-center justify-center">
                 <CreditCard size={13} className="text-emerald-400" />
               </div>
@@ -694,7 +694,7 @@ export function EditBookingModal({
                       onChange={e => { setAmount(e.target.value); setAmountManuallyEdited(true); }}
                       min="0"
                       step="1"
-                      className="w-full pl-7 pr-3 py-2.5 rounded-lg bg-emerald-500/5 border border-emerald-500/20 text-emerald-300 font-bold text-base focus:outline-none focus:border-emerald-500/50 transition-colors"
+                      className="w-full pl-7 pr-3 py-2.5 rounded-lg bg-[#0b1018] border border-emerald-500/30 text-emerald-300 font-bold text-base focus:outline-none focus:border-emerald-500/50 transition-colors"
                     />
                   </div>
                 </div>
@@ -720,7 +720,7 @@ export function EditBookingModal({
         </div>
 
         {/* Footer */}
-        <div className="sticky bottom-0 flex items-center gap-2 px-4 py-3 sm:px-6 sm:py-4 bg-white/[0.03]/95 backdrop-blur border-t border-white/[0.06]">
+        <div className="sticky bottom-0 flex items-center gap-2 px-4 py-3 sm:px-6 sm:py-4 bg-[#0f1520] border-t border-slate-800">
           {/* Delete */}
           <button
             onClick={onDelete}
@@ -737,7 +737,7 @@ export function EditBookingModal({
           <button
             onClick={onClose}
             disabled={saving || deleting}
-            className="px-4 py-2.5 rounded-xl border border-white/[0.09] bg-white/[0.04] text-slate-400 text-sm font-semibold hover:text-slate-200 hover:border-slate-600 transition-colors disabled:opacity-40"
+            className="px-4 py-2.5 rounded-xl border border-slate-700 bg-slate-800 text-slate-400 text-sm font-semibold hover:text-slate-200 hover:border-slate-600 transition-colors disabled:opacity-40"
           >
             Cancel
           </button>
