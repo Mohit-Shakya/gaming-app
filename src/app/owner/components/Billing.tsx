@@ -32,7 +32,7 @@ interface BillingProps {
     cafes: CafeRow[];
     isMobile?: boolean;
     onSuccess?: () => void;
-    onMembershipSuccess?: () => void;
+    onMembershipSuccess?: (result?: { hasDayPass: boolean; hasHourlyMembership: boolean }) => void;
     onSnackOnlySale?: () => void;
     pricingData?: ConsolePricingMap[string];
     stationPricingList?: StationPricingRecord[];
@@ -103,6 +103,11 @@ function formatLastVisit(value?: string) {
     const parsed = new Date(value);
     if (Number.isNaN(parsed.getTime())) return value;
     return parsed.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+}
+
+function toWholeRupees(value: number): number {
+    if (!Number.isFinite(value)) return 0;
+    return Math.max(0, Math.round(value));
 }
 
 export function Billing({
@@ -500,17 +505,22 @@ export function Billing({
     };
     const removeMemItem = (id: string) => setMemItems(prev => prev.filter(mi => mi.id !== id));
 
-    const memCalculatedTotal = memItems.reduce((sum, mi) => {
+    const memCalculatedTotal = toWholeRupees(memItems.reduce((sum, mi) => {
         const plan = membershipPlans.find(p => p.id === mi.planId);
         return sum + (plan ? plan.price * mi.quantity : 0);
-    }, 0);
-    const memTotalAmount = memManualAmount !== null ? memManualAmount : memCalculatedTotal;
+    }, 0));
+    const memTotalAmount = toWholeRupees(memManualAmount !== null ? memManualAmount : memCalculatedTotal);
 
     const handleMemSubmit = async () => {
         if (!customerName.trim()) { setFormError('Customer name is required'); return; }
         if (!customerPhone.trim()) { setFormError('Phone number is required'); return; }
         if (!/^\+?\d[\d\s\-()]{7,14}$/.test(customerPhone.trim())) { setFormError('Invalid phone number format'); return; }
         if (memItems.length === 0) { setFormError('Please add at least one membership plan'); return; }
+        const selectedPlans = memItems
+            .map((item) => membershipPlans.find((plan) => plan.id === item.planId))
+            .filter((plan): plan is MembershipPlan => Boolean(plan));
+        const hasDayPass = selectedPlans.some((plan) => plan.plan_type === 'day_pass');
+        const hasHourlyMembership = selectedPlans.some((plan) => plan.plan_type !== 'day_pass');
         setFormError(null);
 
         setMemSubmitting(true);
@@ -539,7 +549,7 @@ export function Billing({
             setMemItems([]);
             setMemManualAmount(null);
             setMemPaymentMode('cash');
-            if (onMembershipSuccess) onMembershipSuccess();
+            if (onMembershipSuccess) onMembershipSuccess({ hasDayPass, hasHourlyMembership });
             else if (onSuccess) onSuccess();
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : 'Please try again.';
@@ -1453,10 +1463,11 @@ export function Billing({
                                             type="number"
                                             value={memManualAmount !== null ? memManualAmount : memCalculatedTotal}
                                             onChange={(event) => {
-                                                const value = parseFloat(event.target.value) || 0;
+                                                const value = toWholeRupees(parseFloat(event.target.value) || 0);
                                                 setMemManualAmount(value === memCalculatedTotal ? null : value);
                                             }}
                                             min={0}
+                                            step={1}
                                             className="mono w-32 rounded-xl border border-white/[0.07] bg-white/[0.04] px-3 py-2 text-right text-lg font-semibold text-white focus:border-violet-400/30 focus:outline-none"
                                         />
                                     </div>

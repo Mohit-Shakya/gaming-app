@@ -90,26 +90,28 @@ function getDayPassWindow(now: Date = new Date()) {
   };
 }
 
-function toPaise(value: number): number {
-  return Math.round(value * 100);
+function toWholeRupees(value: unknown): number {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return 0;
+  return Math.max(0, Math.round(numeric));
 }
 
-function distributeAmounts(totalAmount: number, weights: number[]): number[] {
+function distributeWholeRupeeAmounts(totalAmount: number, weights: number[]): number[] {
   if (weights.length === 0) return [];
 
-  const totalPaise = toPaise(totalAmount);
+  const wholeTotal = toWholeRupees(totalAmount);
   const normalizedWeights = weights.map((weight) => Math.max(0, weight));
   const totalWeight = normalizedWeights.reduce((sum, weight) => sum + weight, 0);
 
   if (totalWeight <= 0) {
-    const baseShare = Math.floor(totalPaise / normalizedWeights.length);
-    const remainder = totalPaise - baseShare * normalizedWeights.length;
+    const baseShare = Math.floor(wholeTotal / normalizedWeights.length);
+    const remainder = wholeTotal - baseShare * normalizedWeights.length;
 
-    return normalizedWeights.map((_, index) => (baseShare + (index < remainder ? 1 : 0)) / 100);
+    return normalizedWeights.map((_, index) => baseShare + (index < remainder ? 1 : 0));
   }
 
   const provisional = normalizedWeights.map((weight, index) => {
-    const raw = (totalPaise * weight) / totalWeight;
+    const raw = (wholeTotal * weight) / totalWeight;
     const floor = Math.floor(raw);
     return {
       floor,
@@ -118,18 +120,18 @@ function distributeAmounts(totalAmount: number, weights: number[]): number[] {
     };
   });
 
-  let remainingPaise = totalPaise - provisional.reduce((sum, entry) => sum + entry.floor, 0);
+  let remaining = wholeTotal - provisional.reduce((sum, entry) => sum + entry.floor, 0);
   provisional
     .sort((left, right) => right.fraction - left.fraction || left.index - right.index)
     .forEach((entry) => {
-      if (remainingPaise <= 0) return;
+      if (remaining <= 0) return;
       entry.floor += 1;
-      remainingPaise -= 1;
+      remaining -= 1;
     });
 
   return provisional
     .sort((left, right) => left.index - right.index)
-    .map((entry) => entry.floor / 100);
+    .map((entry) => entry.floor);
 }
 
 export async function POST(request: NextRequest) {
@@ -215,18 +217,19 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const baseAmounts = purchasedUnits.map((plan) => Number(plan.price || 0));
+  const baseAmounts = purchasedUnits.map((plan) => toWholeRupees(plan.price));
   const calculatedTotal = baseAmounts.reduce((sum, amount) => sum + amount, 0);
-  const finalAmount =
-    typeof body?.final_amount === "number" && Number.isFinite(body.final_amount)
-      ? body.final_amount
-      : calculatedTotal;
+  const requestedFinalAmount = Number(body?.final_amount);
 
-  if (finalAmount < 0) {
+  if (body?.final_amount !== undefined && (!Number.isFinite(requestedFinalAmount) || requestedFinalAmount < 0)) {
     return NextResponse.json({ error: "Final amount cannot be negative" }, { status: 400 });
   }
 
-  const perUnitAmounts = distributeAmounts(finalAmount, baseAmounts);
+  const finalAmount = body?.final_amount !== undefined
+    ? toWholeRupees(requestedFinalAmount)
+    : calculatedTotal;
+
+  const perUnitAmounts = distributeWholeRupeeAmounts(finalAmount, baseAmounts);
   const now = new Date();
   const todayStr = getIndiaDateString(now);
   const currentIndiaTime = new Intl.DateTimeFormat("en-US", {
@@ -256,8 +259,8 @@ export async function POST(request: NextRequest) {
     for (const [index, plan] of purchasedUnits.entries()) {
       const isDayPass = plan.plan_type === "day_pass";
       const purchasedHours = isDayPass ? dayPassWindow.durationHours : Number(plan.hours || 0);
-      const bookingDuration = isDayPass ? dayPassWindow.durationMinutes : purchasedHours * 60;
-      const amountPaid = perUnitAmounts[index] ?? 0;
+      const bookingDuration = isDayPass ? dayPassWindow.durationMinutes : Math.round(purchasedHours * 60);
+      const amountPaid = toWholeRupees(perUnitAmounts[index] ?? 0);
       const expiryDate = isDayPass ? dayPassWindow.endAt : new Date(now);
       if (!isDayPass) {
         expiryDate.setDate(expiryDate.getDate() + Number(plan.validity_days || 30));

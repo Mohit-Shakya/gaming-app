@@ -2986,9 +2986,9 @@ export default function OwnerDashboardPage() {
                   refreshData();
                   handleTabChange('dashboard');
                 }}
-                onMembershipSuccess={() => {
+                onMembershipSuccess={(result) => {
                   refreshData();
-                  handleTabChange('memberships');
+                  handleTabChange(result?.hasDayPass ? 'bookings' : 'memberships');
                 }}
               />
             </div>
