@@ -116,6 +116,36 @@ function getPreferredConsoleForCafe(cafe: CafeRow | null | undefined): ConsoleId
   return getAvailableConsoleIds(cafe)[0] || 'ps5';
 }
 
+function toWholeRupees(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.round(value));
+}
+
+function distributeWholeRupees<T extends { price?: number }>(items: T[], total: number): T[] {
+  if (items.length === 0) return items;
+
+  const wholeTotal = toWholeRupees(total);
+  const weights = items.map((item) => Math.max(0, Number(item.price) || 0));
+  const weightTotal = weights.reduce((sum, weight) => sum + weight, 0);
+  const exactShares = weights.map((weight) => (
+    weightTotal > 0 ? (wholeTotal * weight) / weightTotal : wholeTotal / items.length
+  ));
+  const baseShares = exactShares.map(Math.floor);
+  let remaining = wholeTotal - baseShares.reduce((sum, share) => sum + share, 0);
+  const bonusIndexes = exactShares
+    .map((share, index) => ({ index, fraction: share - Math.floor(share) }))
+    .sort((a, b) => b.fraction - a.fraction);
+
+  const prices = [...baseShares];
+  for (const { index } of bonusIndexes) {
+    if (remaining <= 0) break;
+    prices[index] += 1;
+    remaining -= 1;
+  }
+
+  return items.map((item, index) => ({ ...item, price: prices[index] }));
+}
+
 type TimeAdjustmentTarget = {
   booking: BookingRow;
   bookingItemId: string | null;
@@ -1166,7 +1196,7 @@ export default function OwnerDashboardPage() {
       const hours12 = hours % 12 || 12;
       const startTime12h = `${hours12}:${minutes.toString().padStart(2, "0")} ${period}`;
 
-      const updatedAmount = parseFloat(editAmount);
+      const parsedUpdatedAmount = parseFloat(editAmount);
 
       // Validate the amount
       if (!editAmount || editAmount.trim() === '') {
@@ -1174,18 +1204,19 @@ export default function OwnerDashboardPage() {
         toast.error('Amount cannot be empty.');
         return;
       }
-      if (isNaN(updatedAmount)) {
+      if (isNaN(parsedUpdatedAmount)) {
         console.error('[handleSaveBooking] ERROR: Invalid amount - parseFloat returned NaN from:', editAmount);
         setSaving(false);
         toast.error('Invalid amount entered. Please enter a valid number.');
         return;
       }
-      if (updatedAmount < 0) {
+      if (parsedUpdatedAmount < 0) {
         setSaving(false);
         toast.error('Amount cannot be negative.');
         return;
       }
 
+      const updatedAmount = toWholeRupees(parsedUpdatedAmount);
       debugLog('[handleSaveBooking] Parsed amount:', updatedAmount);
       debugLog('[handleSaveBooking] Booking ID:', editingBooking.id);
 
@@ -1204,13 +1235,11 @@ export default function OwnerDashboardPage() {
           console: item.console,
           quantity: item.quantity,
           title: buildBookingItemTitle(originalItem?.title, itemDuration),
-          price: isMembershipBooking
+          price: toWholeRupees(isMembershipBooking
             ? updatedAmount
-            : getBillingPrice(item.console as ConsoleId, item.quantity, itemDuration) || 0,
+            : getBillingPrice(item.console as ConsoleId, item.quantity, itemDuration) || 0),
         };
       };
-
-      const roundMoney = (value: number) => Math.round(value * 100) / 100;
 
       let nextBookingItems = isSingleItemEdit && editingBookingItemId
         ? (editingBooking.booking_items || []).map((existingItem: any) => {
@@ -1241,34 +1270,18 @@ export default function OwnerDashboardPage() {
 
       const shouldApplyManualAmount = isMembershipBooking || editAmountManuallyEdited;
       if (shouldApplyManualAmount && nextBookingItems.length > 0) {
-        const currentItemTotal = nextBookingItems.reduce((sum: number, item: any) => sum + (Number(item.price) || 0), 0);
-        let remainingAmount = updatedAmount;
-
-        nextBookingItems = nextBookingItems.map((item: any, index: number) => {
-          const isLastItem = index === nextBookingItems.length - 1;
-          const itemPrice = Number(item.price) || 0;
-          const nextPrice = isLastItem
-            ? roundMoney(remainingAmount)
-            : roundMoney(
-                currentItemTotal > 0
-                  ? (updatedAmount * itemPrice) / currentItemTotal
-                  : updatedAmount / nextBookingItems.length
-              );
-
-          remainingAmount = roundMoney(remainingAmount - nextPrice);
-          return { ...item, price: nextPrice };
-        });
+        nextBookingItems = distributeWholeRupees(nextBookingItems, updatedAmount);
       }
 
       const calculatedGamingAmount = nextBookingItems.reduce((sum: number, item: any) => sum + (Number(item.price) || 0), 0);
-      const amountToSave = shouldApplyManualAmount ? updatedAmount : calculatedGamingAmount;
+      const amountToSave = shouldApplyManualAmount ? updatedAmount : toWholeRupees(calculatedGamingAmount);
 
       const buildServerItemPayload = (item: any) => ({
         ...(item.id && !String(item.id).startsWith('temp-item-') ? { id: item.id } : {}),
         console: item.console,
         quantity: item.quantity,
         title: item.title,
-        price: item.price,
+        price: toWholeRupees(Number(item.price) || 0),
       });
 
       // Auto-restore in-progress if a completed booking is extended into the future

@@ -26,6 +26,16 @@ function validatePhone(phone: unknown): boolean {
   return PHONE_REGEX.test(phone.trim());
 }
 
+function toDbInteger(value: unknown, fallback = 0): number {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return fallback;
+  return Math.max(0, Math.round(numeric));
+}
+
+function toPositiveDbInteger(value: unknown, fallback = 1): number {
+  return Math.max(1, toDbInteger(value, fallback));
+}
+
 function isMissingBookingsUpdatedAtError(error: { message?: string | null } | null | undefined): boolean {
   const message = error?.message?.toLowerCase() || "";
   return message.includes("bookings.updated_at") && message.includes("does not exist");
@@ -96,10 +106,10 @@ function normalizeBookingItemPayload(raw: Partial<BookingItemPayload>, fallback?
   return {
     id: raw.id ?? fallback?.id,
     console: String(raw.console ?? fallback?.console ?? ""),
-    quantity: Number(raw.quantity ?? fallback?.quantity ?? 1) || 1,
-    price: Number(raw.price ?? fallback?.price ?? 0) || 0,
+    quantity: toPositiveDbInteger(raw.quantity ?? fallback?.quantity ?? 1, 1),
+    price: toDbInteger(raw.price ?? fallback?.price ?? 0, 0),
     title: raw.title ?? fallback?.title ?? null,
-    duration: raw.duration,
+    duration: raw.duration == null ? undefined : toPositiveDbInteger(raw.duration, 60),
   };
 }
 
@@ -161,6 +171,12 @@ export async function PUT(request: NextRequest) {
       for (const key of ALLOWED_BOOKING_FIELDS) {
         if (booking[key] !== undefined) safeBooking[key] = booking[key];
       }
+    }
+    if (safeBooking.total_amount !== undefined) {
+      safeBooking.total_amount = toDbInteger(safeBooking.total_amount, 0);
+    }
+    if (safeBooking.duration !== undefined) {
+      safeBooking.duration = toPositiveDbInteger(safeBooking.duration, Number(existingBooking.duration || 60));
     }
 
     // Conflict detection: if caller provided a base updated_at, verify it hasn't changed
@@ -253,7 +269,7 @@ export async function PUT(request: NextRequest) {
         return NextResponse.json({ error: message }, { status: 409 });
       }
 
-      safeBooking.duration = requestedDuration;
+      safeBooking.duration = toPositiveDbInteger(requestedDuration, Number(existingBooking.duration || 60));
     }
 
     // Support item sync — upsert FIRST, delete AFTER to avoid data loss on failure
@@ -276,13 +292,13 @@ export async function PUT(request: NextRequest) {
         if (it.id) {
           return supabase
             .from("booking_items")
-            .update({ console: it.console, quantity: it.quantity, price: it.price, title: it.title })
+            .update({ console: it.console, quantity: it.quantity, price: toDbInteger(it.price, 0), title: it.title })
             .eq("id", it.id)
             .eq("booking_id", bookingId);
         } else {
           return supabase
             .from("booking_items")
-            .insert({ booking_id: bookingId, console: it.console, quantity: it.quantity, price: it.price, title: it.title });
+            .insert({ booking_id: bookingId, console: it.console, quantity: it.quantity, price: toDbInteger(it.price, 0), title: it.title });
         }
       }));
       const firstItemError = itemResults.find(r => r.error);
@@ -388,7 +404,7 @@ export async function DELETE(request: NextRequest) {
       if (newTotalAmount !== undefined) {
         const { error: updateError } = await supabase
           .from("bookings")
-          .update({ total_amount: newTotalAmount })
+          .update({ total_amount: toDbInteger(newTotalAmount, 0) })
           .eq("id", bookingId);
 
         if (updateError) {
@@ -446,7 +462,9 @@ export async function POST(request: NextRequest) {
     return accessResponse;
   }
 
-  let resolvedItems: BookingItemPayload[] = Array.isArray(items) ? items : [];
+  let resolvedItems: BookingItemPayload[] = Array.isArray(items)
+    ? items.map((item: Partial<BookingItemPayload>) => normalizeBookingItemPayload(item))
+    : [];
   const requestedDuration = deriveBookingDuration(resolvedItems, booking.duration);
 
   if (resolvedItems.length > 0) {
@@ -484,7 +502,8 @@ export async function POST(request: NextRequest) {
 
   const resolvedBooking = {
     ...booking,
-    duration: resolvedDuration,
+    total_amount: toDbInteger(booking.total_amount, 0),
+    duration: toPositiveDbInteger(resolvedDuration, 60),
     status: booking.status === "in-progress" || booking.status === "confirmed"
       ? getInitialOwnerBookingStatus(booking.booking_date, booking.start_time)
       : booking.status,
@@ -503,7 +522,7 @@ export async function POST(request: NextRequest) {
       booking_id: newBooking.id,
       console: item.console,
       quantity: item.quantity,
-      price: item.price,
+      price: toDbInteger(item.price, 0),
       title: normalizeBookingItemTitle(item),
     }));
 
