@@ -9,6 +9,7 @@ import {
 export const dynamic = "force-dynamic";
 
 const DAY_PASS_END_HOUR_IST = 22;
+const MEMBERSHIP_LEDGER_BOOKING_DURATION_MINUTES = 60;
 
 type CheckoutItem = {
   planId?: string;
@@ -259,7 +260,7 @@ export async function POST(request: NextRequest) {
     for (const [index, plan] of purchasedUnits.entries()) {
       const isDayPass = plan.plan_type === "day_pass";
       const purchasedHours = isDayPass ? dayPassWindow.durationHours : Number(plan.hours || 0);
-      const bookingDuration = isDayPass ? dayPassWindow.durationMinutes : Math.round(purchasedHours * 60);
+      const membershipDuration = isDayPass ? dayPassWindow.durationMinutes : Math.round(purchasedHours * 60);
       const amountPaid = toWholeRupees(perUnitAmounts[index] ?? 0);
       const expiryDate = isDayPass ? dayPassWindow.endAt : new Date(now);
       if (!isDayPass) {
@@ -311,7 +312,9 @@ export async function POST(request: NextRequest) {
             hour12: true,
             timeZone: "Asia/Kolkata",
           }).toLowerCase(),
-          duration: bookingDuration,
+          // bookings.duration is constrained to normal session durations.
+          // The actual membership/day-pass length lives on subscriptions and in the item title.
+          duration: MEMBERSHIP_LEDGER_BOOKING_DURATION_MINUTES,
           total_amount: amountPaid,
           status: "completed",
           source: "membership",
@@ -333,7 +336,7 @@ export async function POST(request: NextRequest) {
           console: plan.console_type || "pc",
           quantity: 1,
           price: amountPaid,
-          title: encodeAssignedStationsTitle(bookingDuration, assignedStations),
+          title: encodeAssignedStationsTitle(membershipDuration, assignedStations),
         });
 
       if (bookingItemError) {
