@@ -2556,6 +2556,7 @@ export default function OwnerDashboardPage() {
                     await handlePaymentModeChange(bookingId, paymentMode);
                     await handleBookingStatusChange(bookingId, 'completed');
                   }}
+                  onEndMembership={handleStopTimer}
                 />
               </section>
 

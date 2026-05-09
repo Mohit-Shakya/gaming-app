@@ -56,6 +56,7 @@ interface ActiveSessionsProps {
     onAddItems?: (bookingId: string, customerName: string) => void;
     onSessionEnded?: (info: SessionEndedInfo) => void;
     onEndCollect?: (bookingId: string, paymentMode: 'cash' | 'upi') => void;
+    onEndMembership?: (subscriptionId: string) => Promise<void> | void;
 }
 
 export function ActiveSessions({
@@ -68,6 +69,7 @@ export function ActiveSessions({
     onAddItems,
     onSessionEnded,
     onEndCollect,
+    onEndMembership,
 }: ActiveSessionsProps) {
     const endedSessionsRef = useRef<Set<string>>(new Set());
     // Clear ended-session tracking when bookings list changes (prevents unbounded Set growth)
@@ -81,6 +83,7 @@ export function ActiveSessions({
     // Track which card has the End & Collect panel open
     const [endCollectId, setEndCollectId] = useState<string | null>(null);
     const [endCollectPayment, setEndCollectPayment] = useState<'cash' | 'upi'>('cash');
+    const [endingMembershipId, setEndingMembershipId] = useState<string | null>(null);
     const currentMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
 
     // 1. Filter and Flatten Bookings
@@ -180,6 +183,17 @@ export function ActiveSessions({
                 const minutes = Math.floor((elapsedSeconds % 3600) / 60);
                 const seconds = elapsedSeconds % 60;
                 const timeString = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                const isEnding = endingMembershipId === sub.id;
+
+                const handleEndMembership = async () => {
+                    if (!onEndMembership || isEnding) return;
+                    try {
+                        setEndingMembershipId(sub.id);
+                        await onEndMembership(sub.id);
+                    } finally {
+                        setEndingMembershipId(null);
+                    }
+                };
 
                 return (
                     <div key={sub.id} className="flex flex-col justify-between rounded-xl border-2 border-emerald-500/40 bg-emerald-500/5 p-4 min-h-[136px] sm:min-h-[160px] sm:rounded-2xl sm:p-5">
@@ -199,6 +213,17 @@ export function ActiveSessions({
                                 <p className="m-0 font-mono text-xl font-bold text-emerald-500 sm:text-2xl">{isDayPass ? '10:00 PM' : timeString}</p>
                                 {isDayPass && <p className="mt-1 text-xs font-semibold text-slate-400">Elapsed {timeString}</p>}
                             </div>
+                            {onEndMembership && (
+                                <button
+                                    type="button"
+                                    onClick={handleEndMembership}
+                                    disabled={isEnding}
+                                    className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg border border-red-500/25 bg-red-500/10 px-3 py-2 text-[11px] font-semibold text-red-300 transition-colors hover:border-red-400/40 hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    <Square className="h-3 w-3" />
+                                    {isEnding ? 'Ending...' : isDayPass ? 'End Day Pass' : 'Stop Membership'}
+                                </button>
+                            )}
                         </div>
                     </div>
                 );

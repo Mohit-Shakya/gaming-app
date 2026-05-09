@@ -432,6 +432,7 @@ export function BookingsManagement({ cafeId, loading: externalLoading, onUpdateS
                         onAddItems={onAddItems}
                         onSessionEnded={onSessionEnded}
                         onEndCollect={onEndCollect}
+                        onEndMembership={onStopTimer}
                     />
                 </div>
             </section>
