@@ -120,9 +120,11 @@ export function DashboardStats({ bookings, subscriptions, activeTimers, loadingD
   const prevWeekStart = new Date(); prevWeekStart.setDate(prevWeekStart.getDate() - 14);
   const prevWeekStartStr = getLocalDateString(prevWeekStart);
 
-  const billableSessionBookings = bookings.filter(
-    (booking) => !booking.deleted_at && booking.payment_mode !== 'owner' && booking.status !== 'cancelled' && booking.source !== 'membership'
+  const billableRevenueBookings = bookings.filter(
+    (booking) => !booking.deleted_at && booking.payment_mode !== 'owner' && booking.status !== 'cancelled'
   );
+  const billableSessionBookings = billableRevenueBookings.filter((booking) => booking.source !== 'membership');
+  const billableMembershipBookings = billableRevenueBookings.filter((booking) => booking.source === 'membership');
 
   const activeBookingsCount = billableSessionBookings.filter((booking) => isBookingActiveNow(booking)).length;
   const activeSubscriptionsCount = subscriptions.filter(sub => activeTimers.has(sub.id)).length;
@@ -130,46 +132,34 @@ export function DashboardStats({ bookings, subscriptions, activeTimers, loadingD
 
   const todayBookings = billableSessionBookings.filter((booking) => booking.booking_date === todayStr);
   const todaySessions = todayBookings.filter(b => b.booking_items && b.booking_items.length > 0).length;
-  const todaySubscriptions = subscriptions.filter(sub => sub.purchase_date && getLocalDateString(new Date(sub.purchase_date)) === todayStr);
+  const todayMembershipBookings = billableMembershipBookings.filter((booking) => booking.booking_date === todayStr);
 
   // Week data
   const weekBookings = billableSessionBookings.filter(b => (b.booking_date ?? '') >= weekAgoStr && (b.booking_date ?? '') <= todayStr);
   const weekSessions = weekBookings.filter(b => b.booking_items && b.booking_items.length > 0).length;
-  const weekSubscriptions = subscriptions.filter(sub => {
-    const d = sub.purchase_date ? getLocalDateString(new Date(sub.purchase_date)) : '';
-    return d >= weekAgoStr && d <= todayStr;
-  });
+  const weekMembershipBookings = billableMembershipBookings.filter(b => (b.booking_date ?? '') >= weekAgoStr && (b.booking_date ?? '') <= todayStr);
   const prevWeekBookings = billableSessionBookings.filter(b => (b.booking_date ?? '') >= prevWeekStartStr && (b.booking_date ?? '') < weekAgoStr);
-  const prevWeekSubscriptions = subscriptions.filter(sub => {
-    const d = sub.purchase_date ? getLocalDateString(new Date(sub.purchase_date)) : '';
-    return d >= prevWeekStartStr && d < weekAgoStr;
-  });
+  const prevWeekMembershipBookings = billableMembershipBookings.filter(b => (b.booking_date ?? '') >= prevWeekStartStr && (b.booking_date ?? '') < weekAgoStr);
 
-  const calcRevenue = (bkgs: DashboardBooking[], subs: DashboardSubscription[]) => {
-    const bkgTotal = bkgs.reduce((s, b) => s + getBookingRevenueTotal(b), 0);
-    const subTotal = subs.reduce((s, sub) => {
-      return s + toOwnerAmount(sub.amount_paid);
-    }, 0);
-    return bkgTotal + subTotal;
+  const calcRevenue = (bkgs: DashboardBooking[]) => {
+    return bkgs.reduce((s, b) => s + getBookingRevenueTotal(b), 0);
   };
 
-  const totalRevenue = calcRevenue(todayBookings, todaySubscriptions);
+  const totalRevenue = calcRevenue([...todayBookings, ...todayMembershipBookings]);
   const yesterdayBookings = billableSessionBookings.filter((booking) => booking.booking_date === yesterdayStr);
-  const yesterdaySubscriptions = subscriptions.filter(sub => sub.purchase_date && getLocalDateString(new Date(sub.purchase_date)) === yesterdayStr);
-  const yesterdayRevenue = calcRevenue(yesterdayBookings, yesterdaySubscriptions);
+  const yesterdayMembershipBookings = billableMembershipBookings.filter((booking) => booking.booking_date === yesterdayStr);
+  const yesterdayRevenue = calcRevenue([...yesterdayBookings, ...yesterdayMembershipBookings]);
   const yesterdaySessions = yesterdayBookings.filter(b => b.booking_items && b.booking_items.length > 0).length;
 
-  const weekRevenue = calcRevenue(weekBookings, weekSubscriptions);
-  const prevWeekRevenue = calcRevenue(prevWeekBookings, prevWeekSubscriptions);
+  const weekRevenue = calcRevenue([...weekBookings, ...weekMembershipBookings]);
+  const prevWeekRevenue = calcRevenue([...prevWeekBookings, ...prevWeekMembershipBookings]);
 
   // Active card values based on period
   const displaySessions = period === 'today' ? todaySessions : weekSessions;
   const displayRevenue = period === 'today' ? totalRevenue : weekRevenue;
   const displayPrevRevenue = period === 'today' ? yesterdayRevenue : prevWeekRevenue;
 
-  const membershipRevenue = todaySubscriptions.reduce((s, sub) => {
-    return s + toOwnerAmount(sub.amount_paid);
-  }, 0);
+  const membershipRevenue = todayMembershipBookings.reduce((s, booking) => s + getBookingRevenueTotal(booking), 0);
 
   let snacksRevenue = 0;
   let gamingCash = 0;
@@ -213,20 +203,20 @@ export function DashboardStats({ bookings, subscriptions, activeTimers, loadingD
     },
     { cash: 0, upi: 0 }
   );
-  const subscriptionPaymentSplit = todaySubscriptions.reduce(
+  const membershipPaymentSplit = todayMembershipBookings.reduce(
     (totals, subscription) => {
       const bucket = getOwnerPaymentBucket(subscription.payment_mode);
-      totals[bucket] += toOwnerAmount(subscription.amount_paid);
+      totals[bucket] += getBookingRevenueTotal(subscription);
       return totals;
     },
     { cash: 0, upi: 0 }
   );
-  const cashTotal = bookingPaymentSplit.cash + subscriptionPaymentSplit.cash;
-  const upiTotal = bookingPaymentSplit.upi + subscriptionPaymentSplit.upi;
+  const cashTotal = bookingPaymentSplit.cash + membershipPaymentSplit.cash;
+  const upiTotal = bookingPaymentSplit.upi + membershipPaymentSplit.upi;
   const paymentSplitTotal = cashTotal + upiTotal;
   const upiPct = paymentSplitTotal > 0 ? Math.round((upiTotal / paymentSplitTotal) * 100) : 0;
   const cashPct = paymentSplitTotal > 0 ? 100 - upiPct : 0;
-  const totalCheckouts = todayBookings.length + todaySubscriptions.length;
+  const totalCheckouts = todayBookings.length + todayMembershipBookings.length;
   const averageCheckout = totalCheckouts > 0 ? Math.round(totalRevenue / totalCheckouts) : 0;
   const liveIndicatorColor = activeNow > 0 ? '#10b981' : '#475569';
   const sessionChange = todaySessions - yesterdaySessions;
