@@ -9,6 +9,7 @@ export type OwnerBookingOrderLike = {
 export type OwnerBookingRevenueLike = {
   booking_items?: OwnerBookingItemLike[] | null;
   booking_orders?: OwnerBookingOrderLike[] | null;
+  deleted_at?: string | null;
   payment_mode?: string | null;
   source?: string | null;
   status?: string | null;
@@ -70,11 +71,15 @@ export function getBookingRevenueTotal(booking: OwnerBookingRevenueLike): number
 }
 
 export function isOwnerUseRevenueBooking(booking: OwnerBookingRevenueLike): boolean {
-  return (booking.payment_mode || "").toLowerCase() === "owner";
+  return (booking.payment_mode || "").toLowerCase().trim() === "owner";
 }
 
 export function isBillableRevenueBooking(booking: OwnerBookingRevenueLike): boolean {
-  return booking.status !== "cancelled" && !isOwnerUseRevenueBooking(booking);
+  return (
+    !booking.deleted_at &&
+    (booking.status || "").toLowerCase().trim() !== "cancelled" &&
+    !isOwnerUseRevenueBooking(booking)
+  );
 }
 
 export function getOwnerPaymentBucket(mode?: string | null): "cash" | "upi" {

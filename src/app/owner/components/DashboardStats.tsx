@@ -8,6 +8,7 @@ import {
   getBookingSnackTotal,
   getOwnerPaymentBucket,
   hasBookingSessionItems,
+  isBillableRevenueBooking,
   toOwnerAmount,
 } from '@/lib/ownerRevenue';
 import { isBookingActiveNow } from '@/lib/bookingFilters';
@@ -120,9 +121,7 @@ export function DashboardStats({ bookings, subscriptions, activeTimers, loadingD
   const prevWeekStart = new Date(); prevWeekStart.setDate(prevWeekStart.getDate() - 14);
   const prevWeekStartStr = getLocalDateString(prevWeekStart);
 
-  const billableRevenueBookings = bookings.filter(
-    (booking) => !booking.deleted_at && booking.payment_mode !== 'owner' && booking.status !== 'cancelled'
-  );
+  const billableRevenueBookings = bookings.filter(isBillableRevenueBooking);
   const billableSessionBookings = billableRevenueBookings.filter((booking) => booking.source !== 'membership');
   const billableMembershipBookings = billableRevenueBookings.filter((booking) => booking.source === 'membership');
 
@@ -184,7 +183,7 @@ export function DashboardStats({ bookings, subscriptions, activeTimers, loadingD
       const d = new Date(); d.setDate(d.getDate() - i);
       const dateStr = getLocalDateString(d);
       const rev = bookings
-        .filter(b => b.booking_date === dateStr && b.status !== 'cancelled' && b.payment_mode !== 'owner')
+        .filter(b => b.booking_date === dateStr && isBillableRevenueBooking(b))
         .reduce((s, b) => s + getBookingRevenueTotal(b), 0);
       days.push(rev);
     }

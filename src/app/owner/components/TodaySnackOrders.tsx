@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react';
 import { ShoppingBag, Banknote, Smartphone, CreditCard, TrendingUp, Plus, Lock, Pencil } from 'lucide-react';
+import { isBillableRevenueBooking } from '@/lib/ownerRevenue';
 
 interface SnackOrder {
   id: string;
@@ -69,14 +70,14 @@ export function TodaySnackOrders({ bookings, todayStr, onNewSale, onEditSale }: 
 
   const totalRevenue = useMemo(() =>
     ordersToday
-      .filter(b => b.payment_mode !== 'owner')
+      .filter(isBillableRevenueBooking)
       .reduce((sum, b) =>
         sum + (b.booking_orders?.reduce((s, o) => s + (o.total_price || 0), 0) || 0), 0),
     [ordersToday]
   );
 
   const billableOrdersToday = useMemo(
-    () => ordersToday.filter(b => b.payment_mode !== 'owner'),
+    () => ordersToday.filter(isBillableRevenueBooking),
     [ordersToday]
   );
 

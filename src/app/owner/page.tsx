@@ -13,7 +13,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { fonts, type ConsoleId } from "@/lib/constants";
 import { buildStationPricingMap } from "@/lib/stationNames";
 import { dispatchOwnerBookingsChanged } from "@/lib/ownerBookingsSync";
-import { getBookingGamingTotal, getBookingRevenueTotal } from "@/lib/ownerRevenue";
+import { getBookingGamingTotal, getBookingRevenueTotal, getOwnerPaymentBucket, isBillableRevenueBooking } from "@/lib/ownerRevenue";
 import {
   CafeRow,
   BookingRow,
@@ -2608,7 +2608,7 @@ export default function OwnerDashboardPage() {
                 });
 
                 const weeklyRevenue = weeklyBookings
-                  .filter((b: any) => b.status !== 'cancelled' && b.payment_mode !== 'owner')
+                  .filter(isBillableRevenueBooking)
                   .reduce((sum: number, b: any) => sum + getBookingRevenueTotal(b), 0);
 
                 return (
@@ -2646,17 +2646,15 @@ export default function OwnerDashboardPage() {
               {(() => {
                 const todayStr = getLocalDateString();
                 const todayDone = bookings.filter((b: any) =>
-                  !b.deleted_at &&
+                  isBillableRevenueBooking(b) &&
                   b.booking_date === todayStr &&
-                  b.status !== 'cancelled' &&
-                  b.payment_mode !== 'owner' &&
                   b.source !== 'membership'
                 );
                 const cashTotal = todayDone
-                  .filter((b: any) => b.payment_mode?.toLowerCase() === 'cash')
+                  .filter((b: any) => getOwnerPaymentBucket(b.payment_mode) === 'cash')
                   .reduce((s: number, b: any) => s + getBookingRevenueTotal(b), 0);
                 const upiTotal = todayDone
-                  .filter((b: any) => b.payment_mode?.toLowerCase() !== 'cash')
+                  .filter((b: any) => getOwnerPaymentBucket(b.payment_mode) === 'upi')
                   .reduce((s: number, b: any) => s + getBookingRevenueTotal(b), 0);
                 if (cashTotal === 0 && upiTotal === 0) return null;
                 return (

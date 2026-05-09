@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { getBookingRevenueTotal } from '@/lib/ownerRevenue';
+import { getBookingRevenueTotal, isBillableRevenueBooking } from '@/lib/ownerRevenue';
 import { subscribeToOwnerBookingsChanged } from '@/lib/ownerBookingsSync';
 import { OwnerStats, CafeRow, BookingRow, NavTab } from '../types';
 import { getLocalDateString } from '../utils';
@@ -56,13 +56,9 @@ export function useOwnerData(canFetch: boolean, canAutoRefresh: boolean, activeT
     const currentQuarter = Math.floor(now.getMonth() / 3);
     const startOfQuarter = new Date(now.getFullYear(), currentQuarter * 3, 1);
 
-    // Exclude only cancelled and owner-use bookings from revenue
+    // Exclude deleted, cancelled, and owner-use bookings from revenue
     // in-progress sessions have amounts set at booking creation time and count as earned revenue
-    const activeBookings = bookings.filter(b =>
-      !b.deleted_at &&
-      b.status !== 'cancelled' &&
-      (b as any).payment_mode !== 'owner'
-    );
+    const activeBookings = bookings.filter(isBillableRevenueBooking);
 
     const bookingsToday = activeBookings.filter(b => b.booking_date === todayStr).length;
     const pendingBookings = bookings.filter(b => !b.deleted_at && b.status?.toLowerCase() === "pending").length;
