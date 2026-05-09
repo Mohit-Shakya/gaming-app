@@ -110,6 +110,18 @@ function toWholeRupees(value: number): number {
     return Math.max(0, Math.round(value));
 }
 
+function getCurrentIndiaTimeInput(date: Date = new Date()): string {
+    const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Kolkata',
+        hour: '2-digit',
+        hourCycle: 'h23',
+        minute: '2-digit',
+    }).formatToParts(date);
+    const hour = parts.find((part) => part.type === 'hour')?.value || '00';
+    const minute = parts.find((part) => part.type === 'minute')?.value || '00';
+    return `${hour}:${minute}`;
+}
+
 export function Billing({
     cafeId,
     cafes,
@@ -136,7 +148,7 @@ export function Billing({
     const [customerName, setCustomerName] = useState('');
     const [customerPhone, setCustomerPhone] = useState('');
     const [bookingDate, setBookingDate] = useState(getLocalDateString());
-    const [startTime, setStartTime] = useState('');
+    const [startTime, setStartTime] = useState(() => getCurrentIndiaTimeInput());
     const [items, setItems] = useState<BillingItem[]>([]);
     const [paymentMode, setPaymentMode] = useState<'cash' | 'upi'>('cash');
     const [manualAmount, setManualAmount] = useState<number | null>(null);
@@ -216,8 +228,7 @@ export function Billing({
     // Initialize time and available consoles
     useEffect(() => {
         const updateTime = () => {
-            const now = new Date();
-            setStartTime(`${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`);
+            setStartTime(getCurrentIndiaTimeInput());
         };
         updateTime();
 
@@ -400,6 +411,13 @@ export function Billing({
 
     const calculatedTotal = items.reduce((sum, i) => sum + i.price, 0);
     const totalAmount = manualAmount !== null ? manualAmount : calculatedTotal;
+    const previousCalculatedTotalRef = useRef(calculatedTotal);
+
+    useEffect(() => {
+        if (previousCalculatedTotalRef.current === calculatedTotal) return;
+        previousCalculatedTotalRef.current = calculatedTotal;
+        setManualAmount(null);
+    }, [calculatedTotal]);
 
     // Reset manual amount when items change (recalculate)
     const resetManualAmount = () => setManualAmount(null);
@@ -481,8 +499,7 @@ export function Billing({
             setManualAmount(null);
             setPaymentMode('cash');
             setBookingDate(getLocalDateString());
-            const now = new Date();
-            setStartTime(`${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`);
+            setStartTime(getCurrentIndiaTimeInput());
             // Don't call onSuccess here — wait for user to click "New Booking"
             // so the success card stays visible for WhatsApp sending
 
@@ -510,6 +527,13 @@ export function Billing({
         return sum + (plan ? plan.price * mi.quantity : 0);
     }, 0));
     const memTotalAmount = toWholeRupees(memManualAmount !== null ? memManualAmount : memCalculatedTotal);
+    const previousMemCalculatedTotalRef = useRef(memCalculatedTotal);
+
+    useEffect(() => {
+        if (previousMemCalculatedTotalRef.current === memCalculatedTotal) return;
+        previousMemCalculatedTotalRef.current = memCalculatedTotal;
+        setMemManualAmount(null);
+    }, [memCalculatedTotal]);
 
     const handleMemSubmit = async () => {
         if (!customerName.trim()) { setFormError('Customer name is required'); return; }
