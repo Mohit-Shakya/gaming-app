@@ -18,7 +18,7 @@ type RealtimeBookingLike = BookingLike & {
 };
 
 export function isOwnerUseBooking(booking: BookingLike | null | undefined): boolean {
-  return (booking?.payment_mode || "").toLowerCase() === "owner";
+  return (booking?.payment_mode || "").toLowerCase().trim() === "owner";
 }
 
 export function isSnackOnlyOrderBooking(booking: BookingLike | null | undefined): boolean {

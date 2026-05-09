@@ -3,7 +3,7 @@ import {
   requireOwnerCafeAccess,
   requireOwnerContext,
 } from "@/lib/ownerAuth";
-import { getBookingRevenueTotal } from "@/lib/ownerRevenue";
+import { getBookingRevenueTotal, isBillableRevenueBooking } from "@/lib/ownerRevenue";
 
 export const dynamic = 'force-dynamic';
 
@@ -20,6 +20,7 @@ type CustomerBookingRow = {
   payment_mode?: string | null;
   booking_items?: Array<{ id?: string | null; price?: number | string | null }> | null;
   booking_orders?: Array<{ id?: string | null; total_price?: number | string | null }> | null;
+  deleted_at?: string | null;
 };
 
 type ProfileRow = {
@@ -65,6 +66,7 @@ export async function GET(request: NextRequest) {
       .from('bookings')
       .select('customer_name, customer_phone')
       .eq('cafe_id', cafeId)
+      .is('deleted_at', null)
       .neq('status', 'cancelled')
       .neq('payment_mode', 'owner')
       .or(`customer_name.ilike.%${search}%,customer_phone.ilike.%${search}%`)
@@ -90,8 +92,9 @@ export async function GET(request: NextRequest) {
   // Full path: load all customers for coupons page
   const { data: bookings, error: bookingsError } = await supabase
     .from('bookings')
-    .select('id, user_id, customer_name, customer_phone, total_amount, booking_date, created_at, status, source, payment_mode, booking_items(id, price), booking_orders(id, total_price)')
+    .select('id, user_id, customer_name, customer_phone, total_amount, booking_date, created_at, status, source, payment_mode, deleted_at, booking_items(id, price), booking_orders(id, total_price)')
     .eq('cafe_id', cafeId)
+    .is('deleted_at', null)
     .neq('payment_mode', 'owner');
 
   if (bookingsError) return NextResponse.json({ error: bookingsError.message }, { status: 500 });
@@ -118,7 +121,7 @@ export async function GET(request: NextRequest) {
 
   const customerMap = new Map<string, CouponCustomerSummary>();
   bookingRows.forEach((booking) => {
-    if (booking.status === 'cancelled') return;
+    if (!isBillableRevenueBooking(booking)) return;
     const userProfile = booking.user_id ? userProfiles.get(booking.user_id) : null;
     const phone = booking.customer_phone || userProfile?.phone;
     if (!phone) return;

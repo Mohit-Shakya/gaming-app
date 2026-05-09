@@ -182,6 +182,7 @@ export default function InventoryAnalytics({ cafeId }: InventoryAnalyticsProps) 
         .in('inventory_item_id', itemIds)
         .neq('bookings.status', 'cancelled')
         .neq('bookings.payment_mode', 'owner')
+        .is('bookings.deleted_at', null)
         .gte('ordered_at', `${startDate}T00:00:00.000${getTimezoneOffset(now)}`)
         .lte('ordered_at', `${endDate}T23:59:59.999${getTimezoneOffset(now)}`)
         .order('ordered_at', { ascending: false });
@@ -196,6 +197,7 @@ export default function InventoryAnalytics({ cafeId }: InventoryAnalyticsProps) 
         .in('inventory_item_id', itemIds)
         .neq('bookings.status', 'cancelled')
         .neq('bookings.payment_mode', 'owner')
+        .is('bookings.deleted_at', null)
         .gte('ordered_at', `${prevStartDate}T00:00:00.000${getTimezoneOffset(now)}`)
         .lte('ordered_at', `${prevEndDate}T23:59:59.999${getTimezoneOffset(now)}`);
 

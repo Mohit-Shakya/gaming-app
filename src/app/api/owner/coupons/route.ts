@@ -7,6 +7,14 @@ import {
 
 export const dynamic = 'force-dynamic';
 
+function hasValidCouponValue(payload: Record<string, unknown>): boolean {
+  const discountValue = Number(payload.discount_value || 0);
+  const bonusMinutes = Number(payload.bonus_minutes || 0);
+  if (!Number.isFinite(discountValue) || discountValue < 0) return false;
+  if (!Number.isFinite(bonusMinutes) || bonusMinutes < 0) return false;
+  return discountValue > 0 || bonusMinutes > 0;
+}
+
 // GET /api/owner/coupons?cafeId=...
 export async function GET(request: NextRequest) {
   const auth = await requireOwnerContext(request);
@@ -50,18 +58,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Coupon not found" }, { status: 404 });
     }
 
+    if (!hasValidCouponValue(payload)) {
+      return NextResponse.json({ error: "Coupon must have a discount or bonus minutes" }, { status: 400 });
+    }
+
     const { error } = await supabase.from('coupons').update(payload).eq('id', id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   } else {
     if (!payload.cafe_id) {
       return NextResponse.json({ error: "cafe_id required" }, { status: 400 });
     }
-    const hasBonusMinutes = Number(payload.bonus_minutes || 0) > 0;
-    if (
-      payload.discount_value !== undefined &&
-      (typeof payload.discount_value !== 'number' || payload.discount_value < 0 || (payload.discount_value === 0 && !hasBonusMinutes))
-    ) {
-      return NextResponse.json({ error: "discount_value must be positive unless bonus_minutes is set" }, { status: 400 });
+    if (!hasValidCouponValue(payload)) {
+      return NextResponse.json({ error: "Coupon must have a discount or bonus minutes" }, { status: 400 });
     }
 
     const accessResponse = await requireOwnerCafeAccess(

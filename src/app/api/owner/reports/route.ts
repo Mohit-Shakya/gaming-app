@@ -31,15 +31,6 @@ type BookingOrderRow = {
 
 type BookingOrderSummary = Omit<BookingOrderRow, "booking_id">;
 
-type SubscriptionRow = {
-  id: string;
-  amount_paid: number | string;
-  purchase_date: string;
-  payment_mode?: string | null;
-  customer_name?: string | null;
-  membership_plans?: { name?: string | null } | null;
-};
-
 const getIndiaDateString = (date: Date = new Date()): string => {
   const formatter = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Kolkata",
@@ -49,19 +40,6 @@ const getIndiaDateString = (date: Date = new Date()): string => {
   });
 
   return formatter.format(date);
-};
-
-const parseAmount = (amount: number | string | null | undefined): number => {
-  if (typeof amount === "number") {
-    return amount;
-  }
-
-  if (typeof amount === "string") {
-    const parsed = Number.parseFloat(amount);
-    return Number.isFinite(parsed) ? parsed : 0;
-  }
-
-  return 0;
 };
 
 // POST /api/owner/reports — fetch booking data for reports
@@ -170,72 +148,12 @@ export async function POST(request: NextRequest) {
       booking_orders: prevSnackOrdersMap[b.id] || [],
     }));
 
-    // Fetch current period subscriptions
-    const { data: currentSubscriptions, error: currentSubError } = await supabase
-      .from('subscriptions')
-      .select('id, amount_paid, purchase_date, payment_mode, customer_name, membership_plans(name)')
-      .eq('cafe_id', cafeId)
-      .is('deleted_at', null)
-      .gte('purchase_date', `${startDate}T00:00:00+05:30`)
-      .lte('purchase_date', `${endDate}T23:59:59+05:30`);
-
-    if (currentSubError) {
-      console.error("Error fetching current subscriptions:", currentSubError);
-    }
-      
-    // Fetch previous period subscriptions
-    const { data: prevSubscriptions, error: prevSubError } = await supabase
-      .from('subscriptions')
-      .select('id, amount_paid, purchase_date, payment_mode')
-      .eq('cafe_id', cafeId)
-      .is('deleted_at', null)
-      .gte('purchase_date', `${prevStartDate}T00:00:00+05:30`)
-      .lte('purchase_date', `${prevEndDate}T23:59:59+05:30`);
-
-    if (prevSubError) {
-      console.error("Error fetching previous subscriptions:", prevSubError);
-    }
-
-    // Map subscriptions to look like bookings
-    const formattedCurrentSubscriptions = ((currentSubscriptions || []) as SubscriptionRow[]).map((sub) => ({
-      id: `sub_${sub.id}`,
-      total_amount: parseAmount(sub.amount_paid),
-      created_at: sub.purchase_date,
-      booking_date: sub.purchase_date.split('T')[0],
-      status: 'completed', // For reporting purposes, a paid subscription is completed revenue
-      payment_mode: sub.payment_mode || 'cash',
-      start_time: sub.purchase_date.split('T')[1]?.substring(0, 5) || '00:00',
-      customer_name: sub.customer_name,
-      source: 'membership',
-      booking_items: [{
-        console: 'Membership',
-        quantity: 1,
-        price: parseAmount(sub.amount_paid),
-        name: sub.membership_plans?.name || 'Membership'
-      }],
-      booking_orders: [],
-    }));
-
-    const formattedPrevSubscriptions = ((prevSubscriptions || []) as SubscriptionRow[]).map((sub) => ({
-      id: `sub_${sub.id}`,
-      total_amount: parseAmount(sub.amount_paid),
-      booking_date: sub.purchase_date.split('T')[0],
-      status: 'completed',
-      payment_mode: sub.payment_mode || 'cash',
-      source: 'membership',
-      booking_items: [{
-        console: 'Membership',
-        quantity: 1,
-        price: parseAmount(sub.amount_paid),
-      }],
-      booking_orders: [],
-    }));
-
-    // Combine bookings and subscriptions
-    const combinedCurrentData = [...enrichedCurrentData, ...formattedCurrentSubscriptions]
+    // Membership checkout creates a booking ledger row as the revenue source.
+    // Do not add subscriptions here as well, or reports double-count memberships.
+    const combinedCurrentData = enrichedCurrentData
       .sort((a, b) => new Date(a.booking_date).getTime() - new Date(b.booking_date).getTime());
       
-    const combinedPrevData = [...enrichedPrevData, ...formattedPrevSubscriptions];
+    const combinedPrevData = enrichedPrevData;
 
     return NextResponse.json({
       currentBookings: combinedCurrentData,

@@ -212,12 +212,15 @@ See you soon! 🎯`;
 
         const codeToSubmit = formData.code || Math.random().toString(36).substring(2, 10).toUpperCase();
 
-        if (formData.discountType === 'percentage' && (!formData.discountValue || parseFloat(formData.discountValue) > 100)) {
+        const discountValue = parseFloat(formData.discountValue);
+        const bonusMinutes = parseInt(formData.bonusMinutes) || 0;
+
+        if (formData.discountType === 'percentage' && (!Number.isFinite(discountValue) || discountValue <= 0 || discountValue > 100)) {
             setError('Percentage discount must be between 1 and 100');
             return;
         }
 
-        if (formData.discountType === 'minutes' && !formData.bonusMinutes) {
+        if (formData.discountType === 'minutes' && bonusMinutes <= 0) {
             setError('Please enter the free minutes amount');
             return;
         }
@@ -230,9 +233,9 @@ See you soon! 🎯`;
                 cafe_id: cafeId,
                 code: codeToSubmit.toUpperCase().trim(),
                 discount_type: isPercentage ? 'percentage' : 'flat',
-                discount_value: isPercentage ? (parseFloat(formData.discountValue) || 0) : 0,
+                discount_value: isPercentage ? discountValue : 0,
                 max_discount_amount: isPercentage && formData.maxDiscountAmount ? parseFloat(formData.maxDiscountAmount) : null,
-                bonus_minutes: !isPercentage ? (parseInt(formData.bonusMinutes) || 0) : (parseInt(formData.bonusMinutes) || 0),
+                bonus_minutes: bonusMinutes,
                 min_order_amount: parseFloat(formData.minOrderAmount) || 0,
                 max_uses: formData.maxUses ? parseInt(formData.maxUses) : null,
                 single_use_per_customer: formData.singleUsePerCustomer,
@@ -256,8 +259,8 @@ See you soon! 🎯`;
             setView('list');
             setSelectedCoupon(null);
             resetForm();
-        } catch (err: any) {
-            setError(err.message || 'Failed to save coupon');
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to save coupon');
         } finally {
             setSaving(false);
         }
@@ -854,7 +857,7 @@ See you soon! 🎯`;
                                 {usageHistory.length === 0 ? (
                                     <div className="text-center py-8 text-slate-500">
                                         <Ticket className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                                        <p>This coupon hasn't been used yet</p>
+                                        <p>This coupon has not been used yet</p>
                                     </div>
                                 ) : (
                                     <table className="w-full">

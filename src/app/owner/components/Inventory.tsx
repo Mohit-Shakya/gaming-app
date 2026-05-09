@@ -42,6 +42,15 @@ const CATEGORY_CONFIG: Record<InventoryCategory, { icon: React.ReactNode; color:
 
 const LOW_STOCK_THRESHOLD = 5;
 
+function parseNonNegativeNumber(value: string, fallback = 0): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+}
+
+function parseNonNegativeInteger(value: string, fallback = 0): number {
+  return Math.floor(parseNonNegativeNumber(value, fallback));
+}
+
 function StockBadge({ qty }: { qty: number }) {
   if (qty === 0)  return <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-red-500/15 text-red-400 font-bold text-sm border border-red-500/20">0 left</span>;
   if (qty <= LOW_STOCK_THRESHOLD) return <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-amber-500/15 text-amber-400 font-bold text-sm border border-amber-500/20">{qty} left</span>;
@@ -146,16 +155,20 @@ export default function Inventory({ cafeId }: InventoryProps) {
 
   async function handleSave() {
     if (!formData.name.trim()) { setError("Name is required"); return; }
-    if (formData.price === "" || parseFloat(formData.price) < 0) { setError("Valid price is required"); return; }
+    const price = parseNonNegativeNumber(formData.price, NaN);
+    const costPrice = formData.cost_price === "" ? null : parseNonNegativeNumber(formData.cost_price, NaN);
+    const stockQuantity = parseNonNegativeInteger(formData.stock_quantity, 0);
+    if (!Number.isFinite(price)) { setError("Valid price is required"); return; }
+    if (costPrice !== null && !Number.isFinite(costPrice)) { setError("Valid cost price is required"); return; }
     try {
       setSaving(true); setError(null);
       const itemData = {
         cafe_id: cafeId,
         name: formData.name.trim(),
         category: formData.category,
-        price: parseFloat(formData.price),
-        cost_price: formData.cost_price ? parseFloat(formData.cost_price) : null,
-        stock_quantity: parseInt(formData.stock_quantity) || 0,
+        price,
+        cost_price: costPrice,
+        stock_quantity: stockQuantity,
         is_available: formData.is_available,
       };
       if (editingItem) {
@@ -192,12 +205,14 @@ export default function Inventory({ cafeId }: InventoryProps) {
   }
 
   async function handleQuickAdd() {
-    if (!quickName.trim() || !quickPrice) return;
+    const price = parseNonNegativeNumber(quickPrice, NaN);
+    const quantity = parseNonNegativeInteger(quickQty, 0);
+    if (!quickName.trim() || !Number.isFinite(price)) return;
     setQuickSaving(true);
     try {
       const { error } = await supabase.from("inventory_items").insert({
         cafe_id: cafeId, name: quickName.trim(), category: "snacks" as InventoryCategory,
-        price: parseFloat(quickPrice), stock_quantity: parseInt(quickQty) || 0, is_available: true,
+        price, stock_quantity: quantity, is_available: true,
       });
       if (error) throw error;
       setQuickName(""); setQuickPrice(""); setQuickQty("");

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { getBookingRevenueTotal } from '@/lib/ownerRevenue';
+import { getBookingRevenueTotal, isBillableRevenueBooking } from '@/lib/ownerRevenue';
 import { BookingRow } from '../../types';
 import { getLocalDateString } from '../../utils';
 import { Search, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
@@ -78,6 +78,10 @@ function getSubscriptionAmount(amountPaid?: number | string | null) {
   return parseFloat(amountPaid ?? '0') || 0;
 }
 
+function isWalkInSource(source?: string | null): boolean {
+  return source === 'walk-in' || source === 'walk_in';
+}
+
 function getActiveSubscription(subscription: CustomerSubscription | null) {
   if (!subscription || subscription.status !== 'active') return null;
   if (!subscription.expiry_date) return subscription;
@@ -145,7 +149,7 @@ export default function CustomersTab({
 
     bookings.forEach((booking) => {
       if (booking.source === 'membership') return;
-      if (booking.status === 'cancelled' || booking.payment_mode === 'owner') return;
+      if (!isBillableRevenueBooking(booking)) return;
       const customerId = getCustomerKey({
         userId: booking.user_id,
         phone: booking.customer_phone || booking.user_phone,
@@ -167,7 +171,7 @@ export default function CustomersTab({
         if (!existing.phone && customerPhone) existing.phone = customerPhone;
         if (!existing.email && customerEmail) existing.email = customerEmail;
         if (existing.name === 'Unknown' && customerName !== 'Unknown') existing.name = customerName;
-        if (booking.source === 'walk_in') existing.source = 'walk-in';
+        if (isWalkInSource(booking.source)) existing.source = 'walk-in';
         if (booking.source === 'online' && existing.source === 'membership') existing.source = 'online';
       } else {
         customerMap.set(customerId, {
@@ -180,7 +184,7 @@ export default function CustomersTab({
           name: customerName,
           phone: customerPhone,
           sessions: 1,
-          source: booking.source === 'walk_in' ? 'walk-in' : 'online',
+          source: isWalkInSource(booking.source) ? 'walk-in' : 'online',
           totalSpent: getBookingRevenueTotal(booking),
         });
       }
