@@ -146,30 +146,29 @@ export function DashboardLayout({
                     </div>
 
                     {/* Row 2: Tab nav */}
-                    <nav className="flex items-center gap-1.5 relative overflow-x-auto no-scrollbar">
-                        {DESKTOP_PRIMARY_TABS.map(tab => {
-                            const Icon = tab.icon;
-                            const isActive = activeTab === tab.id;
-                            return (
-                                <button key={tab.id} onClick={() => onTabChange(tab.id)}
-                                    className={`relative flex items-center gap-2 px-4 h-11 rounded-xl text-[14px] transition-all whitespace-nowrap
-                                        ${isActive ? 'text-white' : 'text-slate-500 hover:text-white'}`}
-                                    style={{
-                                        background: isActive ? 'rgba(255,255,255,0.04)' : 'transparent',
-                                        border: `1px solid ${isActive ? 'rgba(255,255,255,0.12)' : 'transparent'}`,
-                                    }}>
-                                    <Icon size={16} />
-                                    {tab.label}
-                                    {isActive && (
-                                        <span className="absolute left-3 right-3 h-0.5 rounded-full"
-                                            style={{ bottom: -8, background: '#06b6d4' }} />
-                                    )}
-                                </button>
-                            );
-                        })}
+                    <div className="relative">
+                        <nav className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+                            {DESKTOP_PRIMARY_TABS.map(tab => {
+                                const Icon = tab.icon;
+                                const isActive = activeTab === tab.id;
+                                return (
+                                    <button key={tab.id} onClick={() => onTabChange(tab.id)}
+                                        className={`relative flex items-center gap-2 px-4 h-11 rounded-xl text-[14px] transition-all whitespace-nowrap
+                                            ${isActive ? 'text-white' : 'text-slate-500 hover:text-white'}`}
+                                        style={{
+                                            background: isActive ? 'rgba(255,255,255,0.04)' : 'transparent',
+                                            border: `1px solid ${isActive ? 'rgba(255,255,255,0.12)' : 'transparent'}`,
+                                        }}>
+                                        <Icon size={16} />
+                                        {tab.label}
+                                        {isActive && (
+                                            <span className="absolute left-3 right-3 h-0.5 rounded-full"
+                                                style={{ bottom: -8, background: '#06b6d4' }} />
+                                        )}
+                                    </button>
+                                );
+                            })}
 
-                        {/* More dropdown */}
-                        <div className="relative">
                             <button onClick={() => setMoreOpen(p => !p)}
                                 className={`relative flex items-center gap-2 px-4 h-11 rounded-xl text-[14px] transition-all whitespace-nowrap
                                     ${isMoreActive ? 'text-white' : 'text-slate-500 hover:text-white'}`}
@@ -183,29 +182,30 @@ export function DashboardLayout({
                                         style={{ bottom: -8, background: '#06b6d4' }} />
                                 )}
                             </button>
-                            {moreOpen && (
-                                <div className="absolute top-full left-0 mt-2 w-44 glass rounded-xl overflow-hidden py-1 z-50"
-                                    onClick={() => setMoreOpen(false)}>
-                                    {DESKTOP_MORE_TABS.map(tab => {
-                                        const Icon = tab.icon;
-                                        return (
-                                            <button key={tab.id} onClick={() => onTabChange(tab.id)}
-                                                className={`w-full flex items-center gap-2.5 px-4 py-3 text-[14px] transition-colors
-                                                    ${activeTab === tab.id ? 'text-cyan-400 bg-cyan-500/10' : 'text-slate-400 hover:text-white hover:bg-white/[0.05]'}`}>
-                                                <Icon size={16} />{tab.label}
-                                            </button>
-                                        );
-                                    })}
-                                    <div className="border-t border-white/[0.06] mt-1 pt-1">
-                                        <button onClick={handleLogout}
-                                            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-red-400 hover:bg-red-500/10 transition-colors">
-                                            <Settings size={14} />Logout
+                        </nav>
+
+                        {moreOpen && (
+                            <div className="absolute top-full right-0 mt-2 w-44 glass rounded-xl overflow-hidden py-1 z-50 shadow-2xl shadow-black/30"
+                                onClick={() => setMoreOpen(false)}>
+                                {DESKTOP_MORE_TABS.map(tab => {
+                                    const Icon = tab.icon;
+                                    return (
+                                        <button key={tab.id} onClick={() => onTabChange(tab.id)}
+                                            className={`w-full flex items-center gap-2.5 px-4 py-3 text-[14px] transition-colors
+                                                ${activeTab === tab.id ? 'text-cyan-400 bg-cyan-500/10' : 'text-slate-400 hover:text-white hover:bg-white/[0.05]'}`}>
+                                            <Icon size={16} />{tab.label}
                                         </button>
-                                    </div>
+                                    );
+                                })}
+                                <div className="border-t border-white/[0.06] mt-1 pt-1">
+                                    <button onClick={handleLogout}
+                                        className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-red-400 hover:bg-red-500/10 transition-colors">
+                                        <Settings size={14} />Logout
+                                    </button>
                                 </div>
-                            )}
-                        </div>
-                    </nav>
+                            </div>
+                        )}
+                    </div>
 
                     {/* Hairline below nav */}
                     <div className="h-px mt-[6px]" style={{ background: 'rgba(255,255,255,0.05)' }} />
