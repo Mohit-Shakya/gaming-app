@@ -327,12 +327,18 @@ export function DashboardLayout({
                 <>
                     <button
                         aria-label="Close more menu"
-                        className="fixed inset-0 z-[70] cursor-default bg-transparent"
+                        className="cursor-default bg-transparent"
+                        style={{ position: 'fixed', inset: 0, zIndex: 70 }}
                         onClick={() => setMoreOpen(false)}
                     />
                     <div
-                        className="fixed z-[80] w-44 glass rounded-xl overflow-hidden py-1 shadow-2xl shadow-black/30"
-                        style={{ top: moreMenuPosition.top, left: moreMenuPosition.left }}
+                        className="w-44 glass rounded-xl overflow-hidden py-1 shadow-2xl shadow-black/30"
+                        style={{
+                            position: 'fixed',
+                            top: moreMenuPosition.top,
+                            left: moreMenuPosition.left,
+                            zIndex: 80,
+                        }}
                         onClick={() => setMoreOpen(false)}
                     >
                         {DESKTOP_MORE_TABS.map(tab => {
