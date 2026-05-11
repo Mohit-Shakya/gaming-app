@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { CONSOLE_LABELS } from '@/lib/constants';
 import { getInitialOwnerBookingStatus } from '@/lib/bookingFilters';
-import { dedupeStationPricingRows, formatStationOptionLabel, normaliseStationName } from '@/lib/stationNames';
+import { dedupeStationPricingRows, normaliseStationName } from '@/lib/stationNames';
 import { Card, Button } from './ui';
 import {
     User, Smartphone, Clock, Plus, Trash2, X,
@@ -45,7 +45,6 @@ type BillingItem = {
     quantity: number;
     duration: number;
     price: number;
-    station?: string;
 };
 
 type CustomerSuggestion = {
@@ -273,38 +272,25 @@ export function Billing({
         [cafeId, pricing]
     );
 
-    const getEffectiveStationName = useCallback((consoleType: string, stationName?: string) => {
-        if (stationName) return normaliseStationName(stationName);
-        return stationOptions(consoleType)[0];
-    }, [stationOptions]);
-
-    const canPickSingleStation = (consoleType: string, quantity: number) => {
-        const normalizedConsoleType = normaliseConsoleType(consoleType);
-        return quantity <= 1 || ['ps5', 'ps4', 'xbox'].includes(normalizedConsoleType);
-    };
-
-    const calculatePrice = useCallback((type: string, qty: number, duration: number, stationName?: string) =>
-        calcBillingPrice(type, qty, duration, cafeId, consolePricingMap, stationPricingMap, {
-            stationName: getEffectiveStationName(type, stationName),
-        }), [cafeId, consolePricingMap, getEffectiveStationName, stationPricingMap]);
+    const calculatePrice = useCallback((type: string, qty: number, duration: number) =>
+        calcBillingPrice(type, qty, duration, cafeId, consolePricingMap, stationPricingMap),
+        [cafeId, consolePricingMap, stationPricingMap]);
 
     useEffect(() => {
         setItems(prevItems => prevItems.map(item => {
-            const nextPrice = calculatePrice(item.console, item.quantity, item.duration, item.station);
+            const nextPrice = calculatePrice(item.console, item.quantity, item.duration);
 
             return nextPrice === item.price ? item : { ...item, price: nextPrice };
         }));
     }, [calculatePrice]);
 
     const createItem = (consoleType: string) => {
-        const defaultStation = stationOptions(consoleType)[0];
         return {
             id: Math.random().toString(36).substr(2, 9),
             console: consoleType,
             quantity: 1,
             duration: 60,
-            price: calculatePrice(consoleType, 1, 60, defaultStation),
-            station: defaultStation,
+            price: calculatePrice(consoleType, 1, 60),
         } satisfies BillingItem;
     };
 
@@ -371,33 +357,10 @@ export function Billing({
     const updateItem = (id: string, field: keyof BillingItem, value: string | number | undefined) => {
         setItems(items.map(item => {
             if (item.id === id) {
-                const nextValue = field === 'station'
-                    ? (value ? normaliseStationName(String(value)) : undefined)
-                    : value;
-                const updated = { ...item, [field]: nextValue };
+                const updated = { ...item, [field]: value };
 
-                if (field === 'console' && updated.station && !stationOptions(String(value)).includes(updated.station)) {
-                    updated.station = undefined;
-                }
-
-                if (field === 'console' && canPickSingleStation(String(value), updated.quantity) && !updated.station) {
-                    updated.station = stationOptions(String(value))[0];
-                }
-
-                if (
-                    ['console', 'quantity'].includes(field) &&
-                    updated.station &&
-                    !canPickSingleStation(updated.console, updated.quantity)
-                ) {
-                    updated.station = undefined;
-                }
-
-                if (field === 'quantity' && canPickSingleStation(updated.console, updated.quantity) && !updated.station) {
-                    updated.station = stationOptions(updated.console)[0];
-                }
-
-                if (['console', 'quantity', 'duration', 'station'].includes(field)) {
-                    updated.price = calculatePrice(updated.console, updated.quantity, updated.duration, updated.station);
+                if (['console', 'quantity', 'duration'].includes(field)) {
+                    updated.price = calculatePrice(updated.console, updated.quantity, updated.duration);
                 }
                 return updated;
             }
@@ -482,8 +445,10 @@ export function Billing({
                         payment_mode: paymentMode,
                     },
                     items: items.map(it => ({
-                        ...it,
-                        title: it.station ? `${it.duration}|${it.station}` : String(it.duration),
+                        console: it.console,
+                        quantity: it.quantity,
+                        price: it.price,
+                        title: String(it.duration),
                     })),
                 }),
             });
@@ -817,12 +782,12 @@ export function Billing({
                                     </div>
                                     <div>
                                         <div className="text-[10px] smallcaps text-[var(--dim)]">Session Builder</div>
-                                        <h3 className="text-base font-semibold text-white">Select stations</h3>
+                                        <h3 className="text-base font-semibold text-white">Build session</h3>
                                     </div>
                                 </div>
                                 {items.length > 0 && (
                                     <Button size="sm" variant="secondary" onClick={addItem} className="shadow-[0_10px_30px_-18px_rgba(255,255,255,0.25)]">
-                                        <Plus size={14} /> Add Station
+                                        <Plus size={14} /> Add Console
                                     </Button>
                                 )}
                             </div>
@@ -832,7 +797,7 @@ export function Billing({
                                     <div className="mb-3 flex items-center justify-between gap-3 px-1">
                                         <div>
                                             <div className="text-[10px] smallcaps text-[var(--dim)]">Available setups</div>
-                                            <div className="text-sm font-medium text-white">Start with the station type you want to bill</div>
+                                            <div className="text-sm font-medium text-white">Start with the console type you want to bill</div>
                                         </div>
                                         <span className="chip border-transparent bg-white/[0.05] text-slate-300">
                                             {availableConsoles.length} type{availableConsoles.length === 1 ? '' : 's'}
@@ -872,8 +837,6 @@ export function Billing({
                                 <div className="space-y-3">
                                     {items.map((item, index) => {
                                         const theme = getConsoleTheme(item.console);
-                                        const stations = stationOptions(item.console);
-                                        const allowSingleStation = canPickSingleStation(item.console, item.quantity);
 
                                         return (
                                             <div
@@ -965,42 +928,8 @@ export function Billing({
                                                     </div>
                                                 </div>
 
-                                                {/* Station + Players */}
-                                                <div className="grid gap-4 lg:grid-cols-2">
-                                                    {/* Station */}
-                                                    <div className={`${CONTROL_SURFACE_CLASS} p-4`}>
-                                                        <div className={CONTROL_LABEL_CLASS}>Station</div>
-                                                        {allowSingleStation ? (
-                                                            <div className="flex flex-wrap gap-2">
-                                                                {stations.length === 0 ? (
-                                                                    <p className="text-xs text-[var(--muted)]">Configure stations in Settings.</p>
-                                                                ) : stations.map((station) => {
-                                                                    const selected = item.station === station;
-                                                                    return (
-                                                                        <button
-                                                                            key={station}
-                                                                            type="button"
-                                                                            onClick={() => updateItem(item.id, 'station', station)}
-                                                                            className="relative rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-all duration-200 hover:-translate-y-0.5"
-                                                                            style={{
-                                                                                background: selected ? `${theme.accent}18` : 'rgba(255,255,255,0.04)',
-                                                                                border: selected ? `1.5px solid ${theme.accent}60` : '1.5px solid rgba(255,255,255,0.07)',
-                                                                                color: selected ? '#fff' : '#94a3b8',
-                                                                                boxShadow: selected ? `0 0 16px -4px ${theme.accent}50` : 'none',
-                                                                            }}
-                                                                        >
-                                                                            {formatStationOptionLabel(station)}
-                                                                        </button>
-                                                                    );
-                                                                })}
-                                                            </div>
-                                                        ) : (
-                                                            <p className="text-xs text-[var(--muted)]">Auto-assigns to available stations.</p>
-                                                        )}
-                                                    </div>
-
-                                                    {/* Players */}
-                                                    <div className={`${CONTROL_SURFACE_CLASS} p-4`}>
+                                                {/* Players */}
+                                                <div className={`${CONTROL_SURFACE_CLASS} p-4`}>
                                                         <div className={CONTROL_LABEL_CLASS}>Players</div>
                                                         <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
                                                             {PLAYER_OPTIONS.map((players) => {
@@ -1022,7 +951,6 @@ export function Billing({
                                                                 );
                                                             })}
                                                         </div>
-                                                    </div>
                                                 </div>
 
                                                 {/* Duration */}
@@ -1154,9 +1082,7 @@ export function Billing({
                                             </div>
                                             <div className="text-right">
                                                 <div className="mono text-sm font-semibold text-white">Rs.{item.price}</div>
-                                                <div className="text-[11px] text-[var(--muted)]">
-                                                    {item.station ? formatStationOptionLabel(item.station) : 'Auto assign'}
-                                                </div>
+                                                <div className="text-[11px] text-[var(--muted)]">Auto station</div>
                                             </div>
                                         </div>
                                     ))}
