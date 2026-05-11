@@ -72,13 +72,24 @@ export function parseBookingStartMinutes(startTime?: string | null): number | nu
   return hours * 60 + minutes;
 }
 
-function getBookingDurationMinutes(booking: RealtimeBookingLike): number {
-  const titleDuration = booking.booking_items?.[0]?.title?.split("|")[0] || "";
+export function getBookingItemDurationMinutes(
+  item?: BookingItemLike | null,
+  fallbackDuration = 60
+): number {
+  const titleDuration = item?.title?.split("|")[0] || "";
   const parsedDuration = parseInt(titleDuration, 10);
   if (!Number.isNaN(parsedDuration) && parsedDuration > 0) {
     return parsedDuration;
   }
-  return booking.duration || 60;
+  return fallbackDuration > 0 ? fallbackDuration : 60;
+}
+
+export function getBookingDurationMinutes(booking: RealtimeBookingLike): number {
+  const fallbackDuration = booking.duration || 60;
+  const itemDurations = ((booking.booking_items || []) as BookingItemLike[]).map((item) =>
+    getBookingItemDurationMinutes(item, fallbackDuration)
+  );
+  return itemDurations.length > 0 ? Math.max(...itemDurations) : fallbackDuration;
 }
 
 export function getRealtimeBookingStatus(booking: RealtimeBookingLike, now: Date = new Date()): string | null | undefined {
@@ -144,6 +155,41 @@ export function isBookingActiveNow(booking: RealtimeBookingLike, now: Date = new
 
   const startMinutes = parseBookingStartMinutes(booking.start_time);
   const duration = getBookingDurationMinutes(booking);
+  const currentMinutes = getIndiaCurrentMinutes(now);
+
+  if (startMinutes === null || duration <= 0) {
+    return bookingDate === todayStr;
+  }
+
+  const endMinutes = startMinutes + duration;
+  if (bookingDate === todayStr) {
+    return currentMinutes >= startMinutes && currentMinutes < endMinutes;
+  }
+
+  if (bookingDate === yesterdayStr && endMinutes > 1440) {
+    return currentMinutes < endMinutes - 1440;
+  }
+
+  return false;
+}
+
+export function isBookingItemActiveNow(
+  booking: RealtimeBookingLike,
+  item?: BookingItemLike | null,
+  now: Date = new Date()
+): boolean {
+  if (booking.status !== "in-progress") return false;
+
+  const bookingDate = booking.booking_date;
+  if (!bookingDate) return false;
+
+  const todayStr = getIndiaDateString(now);
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = getIndiaDateString(yesterday);
+
+  const startMinutes = parseBookingStartMinutes(booking.start_time);
+  const duration = getBookingItemDurationMinutes(item, booking.duration || 60);
   const currentMinutes = getIndiaCurrentMinutes(now);
 
   if (startMinutes === null || duration <= 0) {

@@ -4,7 +4,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ConsoleId, CONSOLE_ICONS, CONSOLE_COLORS, CONSOLE_LABELS } from '@/lib/constants';
-import { isBookingActiveNow } from '@/lib/bookingFilters';
+import { getBookingItemDurationMinutes, isBookingActiveNow, isBookingItemActiveNow } from '@/lib/bookingFilters';
 import { getBookingRevenueTotal } from '@/lib/ownerRevenue';
 import { Clock3, MessageCircle, Banknote, Smartphone, Gamepad2, X, Square, UtensilsCrossed } from 'lucide-react';
 
@@ -36,14 +36,6 @@ function calcTimeRemaining(startMinutes: number, duration: number, currentMinute
         return remaining;
     }
     return endMinutes - currentMinutes;
-}
-
-function getBookingItemDuration(item: any, fallbackDuration: number): number {
-    const parsedTitleDuration = parseInt(item?.title || '', 10);
-    if (!Number.isNaN(parsedTitleDuration) && parsedTitleDuration > 0) {
-        return parsedTitleDuration;
-    }
-    return fallbackDuration;
 }
 
 interface ActiveSessionsProps {
@@ -96,10 +88,17 @@ export function ActiveSessions({
 
     const flattenedBookings = activeBookings.flatMap((booking) => {
         const items = booking.booking_items || [];
-        if (items.length <= 1) return [booking];
-        return items.map((item: any, itemIndex: number) => ({
+        if (items.length === 0) return [booking];
+
+        const activeItems = items
+            .map((item: any, itemIndex: number) => ({ item, itemIndex }))
+            .filter(({ item }: { item: any }) => isBookingItemActiveNow(booking, item, currentTime));
+
+        if (items.length === 1) return activeItems.length > 0 ? [booking] : [];
+
+        return activeItems.map(({ item, itemIndex }: { item: any; itemIndex: number }) => ({
             ...booking,
-            id: `${booking.id}-item-${itemIndex}`,
+            id: `${booking.id}-item-${item.id || itemIndex}`,
             originalBookingId: booking.id,
             booking_items: [item],
         }));
@@ -112,7 +111,7 @@ export function ActiveSessions({
             const getTimeRemaining = (booking: typeof a) => {
                 if (!booking.start_time) return 999;
                 const bi = booking.booking_items?.[0];
-                const duration = getBookingItemDuration(bi, booking.duration || 60);
+                const duration = getBookingItemDurationMinutes(bi, booking.duration || 60);
                 if (!duration) return 999;
                 const startMinutes = parseStartMinutes(booking.start_time);
                 if (startMinutes === null) return 999;
@@ -139,11 +138,11 @@ export function ActiveSessions({
     useEffect(() => {
         if (!onSessionEnded) return;
         sortedActiveBookings.forEach((booking) => {
-            const bookingId = booking.originalBookingId || booking.id;
+            const bookingId = booking.id;
             if (endedSessionsRef.current.has(bookingId)) return;
             if (!booking.start_time) return;
             const bi = booking.booking_items?.[0];
-            const duration = getBookingItemDuration(bi, booking.duration || 60);
+            const duration = getBookingItemDurationMinutes(bi, booking.duration || 60);
             if (!duration) return;
             const startMinutes = parseStartMinutes(booking.start_time);
             if (startMinutes === null) return;
@@ -153,7 +152,7 @@ export function ActiveSessions({
                 const isWalkIn = booking.source === 'walk-in';
                 const customerName = isWalkIn ? booking.customer_name : (booking.user_name || 'Guest');
                 endedSessionsRef.current.add(bookingId);
-                onSessionEnded({ customerName, stationName: consoleType, duration: booking.duration });
+                onSessionEnded({ customerName, stationName: consoleType, duration });
             }
         });
     }, [currentMinutes, currentTime, sortedActiveBookings, onSessionEnded]);
@@ -236,7 +235,7 @@ export function ActiveSessions({
 
                 let timeRemaining = 0;
                 let endTime = '';
-                const itemDuration = getBookingItemDuration(consoleInfo, booking.duration || 60);
+                const itemDuration = getBookingItemDurationMinutes(consoleInfo, booking.duration || 60);
 
                 if (booking.start_time && itemDuration) {
                     const startMinutes = parseStartMinutes(booking.start_time);

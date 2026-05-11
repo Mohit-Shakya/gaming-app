@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import React, { useState } from 'react';
-import { isBookingActiveNow } from '@/lib/bookingFilters';
+import { getBookingItemDurationMinutes, isBookingActiveNow, isBookingItemActiveNow } from '@/lib/bookingFilters';
 import { CafeRow, BookingRow } from '../types';
 
 interface StationsTabProps {
@@ -102,14 +102,16 @@ export function StationsTab({
         .filter(b => isBookingActiveNow(b))
         .forEach(b => {
             const customerName = b.customer_name || b.user_name || 'Customer';
-            let endTimeStr = '';
-            if (b.start_time && b.duration) {
-                const startMin = parseStartMinutes(b.start_time);
-                if (startMin !== null) endTimeStr = formatEndTime(startMin, b.duration);
-            }
             (b.booking_items || []).forEach(item => {
+                if (!isBookingItemActiveNow(b, item)) return;
                 if (!item.console) return;
                 const ct = item.console.toLowerCase();
+                const itemDuration = getBookingItemDurationMinutes(item, b.duration || 60);
+                let endTimeStr = '';
+                if (b.start_time) {
+                    const startMin = parseStartMinutes(b.start_time);
+                    if (startMin !== null) endTimeStr = formatEndTime(startMin, itemDuration);
+                }
 
                 const assignedStations = getAssignedStations(item.title);
                 if (assignedStations.length > 0) {
